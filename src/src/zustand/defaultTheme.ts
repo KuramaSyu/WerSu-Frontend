@@ -22,6 +22,6 @@ export const defaultTheme = createTheme({
   custom: {
     backgroundImage: 'https://i.postimg.cc/prhxrMh8/thumb-1920-553471.jpg',
     themeName: 'default',
-    longName: 'Nord Theme',
+    longName: 'Nord Theme Dark',
   },
 }) as CustomTheme;

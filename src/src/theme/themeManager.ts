@@ -1,12 +1,10 @@
 import { createTheme } from '@mui/material/styles';
-import { Vibrant } from 'node-vibrant/browser';
-import { CustomThemeConfig, CustomTheme } from '../theme/customTheme';
+import type { CustomThemeConfig, CustomTheme } from '../theme/customTheme';
 import {
   docsTheme,
   customThemes,
   useThemeStore,
 } from '../zustand/useThemeStore';
-import { error } from 'console';
 import useInfoStore, { SnackbarUpdateImpl } from '../zustand/InfoStore';
 import { defaultTheme } from '../zustand/defaultTheme';
 
@@ -110,133 +108,8 @@ export class ThemeManager {
         return docsTheme;
       case 'default':
         return defaultTheme;
+      default:
+        return defaultTheme;
     }
-    const themeConfig = this.themes.get(themeName);
-    if (!themeConfig) {
-      console.warn(`Theme "${themeName}" not found.`);
-      return null;
-    }
-
-    // Randomly choose one background image.
-    var backgrounds = themeConfig.backgrounds;
-    if (backgrounds.length > 1) {
-      backgrounds = backgrounds.filter((b) => b !== background);
-    }
-    const randomIndex = Math.floor(Math.random() * backgrounds.length);
-    const chosenBackground = backgrounds[randomIndex];
-
-    // Always extract the palette using Vibrant.
-    let extractedPalette;
-    try {
-      // Load the image first, then process with Vibrant
-      const img = new Image();
-      img.crossOrigin = 'Anonymous'; // Needed for CORS if images are on different domain
-
-      // display timer after too much loading time
-      const warningTimer = setTimeout(() => {
-        useInfoStore
-          .getState()
-          .setMessage(
-            new SnackbarUpdateImpl(
-              `Loading image for theme ${themeName} takes longer then expected`,
-              'warning'
-            )
-          );
-      }, 1200);
-      // Create a promise to wait for the image to load
-      const imageLoaded = new Promise((resolve, reject) => {
-        img.onload = () => {
-          clearTimeout(warningTimer);
-          resolve(img);
-        };
-        img.onerror = (e) => {
-          clearTimeout(warningTimer);
-          reject(e);
-          useInfoStore
-            .getState()
-            .setMessage(
-              new SnackbarUpdateImpl(
-                `Failed to load image for theme ${themeName} with URL "${chosenBackground}". Using default Theme`,
-                'error'
-              )
-            );
-        };
-        img.src = chosenBackground!;
-      });
-
-      // Wait for the image to load, then process with Vibrant
-      const loadedImg = await imageLoaded;
-      extractedPalette = await Vibrant.from(
-        loadedImg as HTMLImageElement
-      ).getPalette();
-    } catch (err) {
-      console.error('Error extracting colors with Node-Vibrant:', err);
-      extractedPalette = {};
-      return {
-        ...defaultTheme,
-        custom: {
-          themeName: themeConfig.name,
-          longName: themeConfig.longName,
-          backgroundImage: themeConfig.backgrounds[0] ?? '',
-        },
-      };
-    }
-
-    // Get extracted swatches (with sensible fallbacks).
-    const vibrantHex = extractedPalette.Vibrant
-      ? extractedPalette.Vibrant.hex
-      : '#1976d2';
-    const lightVibrantHex = extractedPalette.LightVibrant
-      ? extractedPalette.LightVibrant.hex
-      : '#63a4ff';
-    const darkVibrantHex = extractedPalette.DarkVibrant
-      ? extractedPalette.DarkVibrant.hex
-      : '#004ba0';
-    const mutedHex = extractedPalette.Muted
-      ? extractedPalette.Muted.hex
-      : '#757575';
-    const lightMutedHex = extractedPalette.LightMuted
-      ? extractedPalette.LightMuted.hex
-      : '#a4a4a4';
-    const darkMutedHex = extractedPalette.DarkMuted
-      ? extractedPalette.DarkMuted.hex
-      : '#494949';
-
-    // Use provided primary/secondary if available.
-    const primaryMain = themeConfig.primary || vibrantHex;
-    const secondaryMain = themeConfig.secondary || darkVibrantHex;
-
-    // Build and return the full MUI theme.
-    return createTheme({
-      palette: {
-        mode: this.isDark ? 'dark' : 'light',
-        primary: {
-          main: primaryMain,
-          light: lightVibrantHex,
-          dark: darkVibrantHex,
-        },
-        secondary: {
-          main: secondaryMain,
-          light: lightMutedHex,
-          dark: darkMutedHex,
-        },
-        // Add full Vibrant palette swatches for extended use.
-        vibrant: {
-          main: vibrantHex,
-          light: lightVibrantHex,
-          dark: darkVibrantHex,
-        },
-        muted: {
-          main: mutedHex,
-          light: lightMutedHex,
-          dark: darkMutedHex,
-        },
-      },
-      custom: {
-        backgroundImage: chosenBackground,
-        themeName: themeConfig.name,
-        longName: themeConfig.longName,
-      },
-    }) as CustomTheme;
   }
 }

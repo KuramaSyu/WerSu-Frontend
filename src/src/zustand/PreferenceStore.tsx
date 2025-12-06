@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { defaultPreferences, UserPreferences } from '../models/Preferences';
+import { defaultPreferences } from '../models/Preferences';
+import type { UserPreferences } from '../models/Preferences';
 
 interface PreferencesState {
   preferences: UserPreferences;
