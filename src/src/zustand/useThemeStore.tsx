@@ -50,12 +50,6 @@ interface ThemeState {
    * static themes: 'brightNord', 'default'
    */
   setTheme: (themeName: string) => Promise<void>;
-
-  /**
-   * initializeTheme picks a random theme from custom themes and sets it.
-   * It respects the user's preferences if any are set.
-   */
-  initializeTheme: () => Promise<void>;
 }
 
 export const useThemeStore = create<ThemeState>((set, get) => ({
@@ -76,30 +70,5 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
     } else {
       console.error(`Unable to generate theme for "${themeName}".`);
     }
-  },
-  initializeTheme: async () => {
-    // get preferences from the store
-    loadPreferencesFromCookie();
-    const preferences = usePreferenceStore.getState().preferences;
-
-    // filter out valid games, or use all if no preferences are set
-    var validThemes = customThemes;
-    const preferredGames = preferences.ui.displayedGames?.filter(
-      (x) => x.isDisplayed
-    );
-    if (preferredGames !== null) {
-      validThemes = customThemes.filter((theme) =>
-        preferredGames!.map((x) => x.name).includes(theme.name)
-      );
-    }
-    const randomTheme =
-      validThemes[Math.floor(Math.random() * validThemes.length)];
-    // If a theme is found, apply it using "get" provided as the second parameter.
-    if (randomTheme) {
-      await get().setTheme(randomTheme.name);
-    } else {
-      console.error('No theme available to initialize.');
-    }
-    console.log('Theme initialized:', get().themeName, get().themeLongName);
   },
 }));
