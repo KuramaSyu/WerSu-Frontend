@@ -1,3 +1,5 @@
+import { useThemeStore } from '../zustand/useThemeStore';
+
 interface LogoSvgComponentProps {
   style?: React.CSSProperties;
   monochrome?: boolean; // add monochrome flag
