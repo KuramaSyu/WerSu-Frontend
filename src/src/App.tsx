@@ -6,6 +6,7 @@ import { useThemeStore } from './zustand/useThemeStore';
 
 import './App.css';
 import { MainPage } from './pages/MainPage/Main';
+import { Box } from '@mui/material';
 
 function App() {
   const { theme } = useThemeStore();
@@ -15,9 +16,20 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Router>
-        <Routes>
-          <Route path="/" element={<MainPage />} />
-        </Routes>
+        <Box
+          sx={{
+            width: '100vw',
+            height: '100vh',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden', // Prevents content from growing beyond 100vh
+            backgroundColor: theme.palette.background.default,
+          }}
+        >
+          <Routes>
+            <Route path="/" element={<MainPage />} />
+          </Routes>
+        </Box>
       </Router>
     </ThemeProvider>
   );
