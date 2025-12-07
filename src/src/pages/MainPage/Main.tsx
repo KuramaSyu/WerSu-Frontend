@@ -3,6 +3,7 @@ import { useThemeStore } from '../../zustand/useThemeStore';
 import SearchIcon from '@mui/icons-material/Search';
 
 import { Logo } from '../../components/logo';
+import TopBar from '../../components/TopBar';
 
 export const MainPage: React.FC = () => {
   const { theme } = useThemeStore();
@@ -14,6 +15,7 @@ export const MainPage: React.FC = () => {
         alignSelf: 'center',
       }}
     >
+      <TopBar></TopBar>
       <Box
         sx={{
           height: '33%',
