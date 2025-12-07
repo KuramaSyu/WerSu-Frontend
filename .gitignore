@@ -23,7 +23,6 @@ vite.config.ts.timestamp*
 *.tsbuildinfo
 
 # Editor directories and files
-.vscode/
 .idea/
 *.suo
 *.ntvs*
