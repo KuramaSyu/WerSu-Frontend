@@ -1,13 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import AppBar from '@mui/material/AppBar';
-import Typography from '@mui/material/Typography';
 import Toolbar from '@mui/material/Toolbar';
 import Box from '@mui/material/Box';
 import { useThemeStore } from '../zustand/useThemeStore';
-import { alpha, Button } from '@mui/material';
+import { Button, InputAdornment, Stack, TextField } from '@mui/material';
 import { useLocation, useNavigate } from 'react-router-dom';
 import SettingsIcon from '@mui/icons-material/Settings';
 import PeopleIcon from '@mui/icons-material/People';
+import SearchIcon from '@mui/icons-material/Search';
 
 import HomeIcon from '@mui/icons-material/Home';
 
@@ -31,6 +31,8 @@ const TopBar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [userDrawerOpen, setUserDrawerOpen] = useState(false);
+  const [searchText, setSearchText] = useState('');
+  const isActive = searchText.length > 0;
 
   // Desktop view
   return (
@@ -45,18 +47,43 @@ const TopBar: React.FC = () => {
       }
     >
       <Toolbar>
-        <Box
-          sx={{
-            flexGrow: 1,
-            display: 'flex',
-            justifyContent: 'space-between',
-          }}
+        <Stack
+          flexGrow={1}
+          direction="row"
+          spacing={2} 
+          alignItems="center"
+          justifyContent="space-between"
         >
           {/* Title */}
           <Box>
             <Button onClick={() => navigate('/')}>Wersu</Button>
           </Box>
-
+          <Box>
+          <TextField
+            fullWidth
+            placeholder="Search for anything..."
+            variant="outlined"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            slotProps={{input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ fontSize: '1.5rem' }} />
+                </InputAdornment>
+              ),
+              sx: {
+                // "BIG"
+                fontSize: '1.5rem',
+                // "Properly Rounded"
+                borderRadius: '50px',
+                // Adjust internal padding for height
+                '& .MuiOutlinedInput-input': {
+                  padding: '9px 0',
+                },
+              },
+            }}}
+          />
+          </Box>
           {/* Home, Friends, Settings, Discord Login or Profile */}
           <Box
             sx={{
@@ -88,7 +115,7 @@ const TopBar: React.FC = () => {
               <SettingsIcon />
             </Button>
           </Box>
-        </Box>
+        </Stack>
       </Toolbar>
     </AppBar>
   );
