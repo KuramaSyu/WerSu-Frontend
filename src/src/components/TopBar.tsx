@@ -3,7 +3,7 @@ import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import Box from '@mui/material/Box';
 import { useThemeStore } from '../zustand/useThemeStore';
-import { Button, InputAdornment, Stack, TextField } from '@mui/material';
+import { Button, CssBaseline, InputAdornment, Stack, TextField, ThemeProvider, Typography } from '@mui/material';
 import { useLocation, useNavigate } from 'react-router-dom';
 import SettingsIcon from '@mui/icons-material/Settings';
 import PeopleIcon from '@mui/icons-material/People';
@@ -36,6 +36,7 @@ const TopBar: React.FC = () => {
 
   // Desktop view
   return (
+    <ThemeProvider theme={theme}>
     <AppBar
       position="fixed"
       color="default" // Prevent AppBar from using the theme's primary color by default
@@ -53,10 +54,11 @@ const TopBar: React.FC = () => {
           spacing={2} 
           alignItems="center"
           justifyContent="space-between"
+          fontFamily="Open Sans"
         >
           {/* Title */}
-          <Box>
-            <Button onClick={() => navigate('/')}>Wersu</Button>
+          <Box minWidth={1/4}>
+            <Button onClick={() => navigate('/')} sx={{ fontSize: '1.5rem', }}>Wersu</Button>
           </Box>
           <Box>
           <TextField
@@ -74,12 +76,12 @@ const TopBar: React.FC = () => {
               sx: {
                 // "BIG"
                 fontSize: '1.5rem',
-                // "Properly Rounded"
-                borderRadius: '50px',
-                // Adjust internal padding for height
-                '& .MuiOutlinedInput-input': {
-                  padding: '9px 0',
-                },
+                // // "Properly Rounded"
+                // borderRadius: '4rem',
+                // // Adjust internal padding for height
+                // '& .MuiOutlinedInput-input': {
+                //   padding: '0.5rem 0.5rem',
+                // },
               },
             }}}
           />
@@ -91,6 +93,7 @@ const TopBar: React.FC = () => {
               display: 'flex',
               flexDirection: 'row',
               alignItems: 'center',
+              minWidth: 1/4
             }}
           >
             <Button
@@ -118,6 +121,7 @@ const TopBar: React.FC = () => {
         </Stack>
       </Toolbar>
     </AppBar>
+    </ThemeProvider>
   );
 };
 
