@@ -10,7 +10,7 @@ export const defaultTheme = createTheme({
     secondary: { main: '#b48ead', light: '#D8DEE9', dark: '#3B4252' }, // Nord15
     vibrant: { main: '#b48ead', light: '#ebcb8b', dark: '#bf616a' }, // Nord8, Nord7
     muted: { main: '#434c5e', light: '#4c566a', dark: '#3B4252' }, // Nord1, 2, 3
-    text: { primary: '#d8dee9', secondary: '#e5e9f0' },
+    text: { primary: '#eceff4', secondary: '#d8dee9' },
     background: {
       default: '#2E3440', // Nord0
       paper: '#3B4252', // Nord1
