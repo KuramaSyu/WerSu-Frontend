@@ -1,32 +1,62 @@
-import { Box, ButtonBase, InputAdornment, Paper, Stack, TextField } from '@mui/material';
+import { Box, ButtonBase, Grid, InputAdornment, Paper, Stack, TextField } from '@mui/material';
 import { useThemeStore } from '../../zustand/useThemeStore';
 import { AnimatePresence, motion } from 'framer-motion';
 
 
 import { Logo } from '../../components/logo';
 import TopBar from '../../components/TopBar';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import CreateIcon from '@mui/icons-material/Create';
+import { TestSearchNotesApi, type SearchNotesApi } from '../../api/SearchNotesApi';
+import { useNotesStore } from '../../zustand/useNotesStore';
+import { NoteCard } from './NoteCard';
+import { M2, M3, M4, M5, M6 } from '../../statics';
 
 export const MainPage: React.FC = () => {
   const { theme } = useThemeStore();
   const [searchText, setSearchText] = useState('');
-  const hasText = searchText.length > 0;
+  const { notes, setNotes } = useNotesStore();
+  
+ 
+
+  // fetch notes
+  useEffect(() => {
+    async function fetchNotes() {
+      const api_service: SearchNotesApi = new TestSearchNotesApi();
+      const notes = await api_service.search('', 'all', 50, 0);
+      console.log(notes);
+      setNotes(notes);
+    }
+    fetchNotes();
+  }, [])
+
+  const cards = useMemo(() => {
+    return notes.map((note) => (
+      <NoteCard key={note.id} note={note} ></NoteCard>
+    ))
+  }, [notes])
 
   return (
-    <div
-      style={{
+    <Box
+      sx={{
         height: '100%',
         width: '100%',
         alignSelf: 'center',
         fontFamily: "Open Sans",
+        display: 'flex',
+        overflow: 'auto'
       }}
     >
       <TopBar></TopBar>
-      <Box sx={{pt: '8rem', height: 'calc(100% - 8rem)', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+      {/* add padding of the actual margin, topbar, and margin of top bar */}
+      <Box sx={{pt: `calc(${M4} + ${M5} + ${M3})`, height: 'calc(100% - 8rem)', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
         <CreateNote></CreateNote>
+        <Grid container spacing={M3} p={M4} width={'100%'} size={{ xs: 2, sm: 4, md: 4 }}>
+          {cards.map((c) => (<Grid>{c}</Grid>))}
+        </Grid>
+      
       </Box>
-    </div>
+    </Box>
   );
 };
 
@@ -38,12 +68,6 @@ export const CreateNote: React.FC = () => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
 
-  // Autofocus content when expanded
-  // useEffect(() => {
-  //   if (open && contentRef.current) {
-  //     contentRef.current.focus();
-  //   }
-  // }, [open]);
 
   return <Stack width={1/3} spacing={'1rem'} sx={{backgroundColor: theme.palette.background.paper, padding: '1rem', borderRadius: '1rem'}}>
     
