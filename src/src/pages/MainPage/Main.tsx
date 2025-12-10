@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Logo } from '../../components/logo';
 import TopBar from '../../components/TopBar';
 import { useState } from 'react';
+import CreateIcon from '@mui/icons-material/Create';
 
 export const MainPage: React.FC = () => {
   const { theme } = useThemeStore();
@@ -18,30 +19,32 @@ export const MainPage: React.FC = () => {
         height: '100%',
         width: '100%',
         alignSelf: 'center',
+        fontFamily: "Open Sans",
       }}
     >
       <TopBar></TopBar>
-      <Box
-        component={motion.div}
-        animate={{
-          height: hasText ? '15%' : '33%',
-          width: hasText ? '66vw' : '100vw',
-          position: 'absolute',
-          zIndex: hasText ? 1000 : 1,
-        }}
-        transition={{
-          duration: 0.5,
-          ease: 'easeInOut',
-        }}
-        sx={{
-          minWidth: '100%',
-          alignItems: 'center',
-          justifyContent: 'center',
-          justifyItems: 'center',
-          display: 'flex',
-        }}
-      >
+      <Box sx={{pt: '4rem', height: 'calc(100% - 4rem)', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+        <CreateNote></CreateNote>
       </Box>
     </div>
   );
 };
+
+
+export const CreateNote: React.FC = () => {
+  return <Box>
+    <TextField
+      variant="outlined"
+      placeholder="Create a new note..."
+      slotProps={{
+        input: {
+          startAdornment: (
+            <InputAdornment position="start">
+              <CreateIcon />
+            </InputAdornment>
+          ),
+        },
+      }}
+    />
+  </Box>;
+}
