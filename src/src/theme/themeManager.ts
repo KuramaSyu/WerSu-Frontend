@@ -147,17 +147,17 @@ const themechanges = {
         typography: {
         fontFamily: "Open Sans",
       },
-      components: {
-        MuiOutlinedInput: {
-          styleOverrides: {
-            root: {
-              borderRadius: "4rem",
-            },
-            input: {
-              padding: "0.5rem 0.5rem",
-              fontSize: "1.5rem",
-            },
-          },
-        },
-      }
+      // components: {
+      //   MuiOutlinedInput: {
+      //     styleOverrides: {
+      //       root: {
+      //         borderRadius: "4rem",
+      //       },
+      //       input: {
+      //         padding: "0.5rem 0.5rem",
+      //         //fontSize: "1.5rem",
+      //       },
+      //     },
+      //   },
+      // }
 }
