@@ -10,6 +10,7 @@ import PeopleIcon from '@mui/icons-material/People';
 import SearchIcon from '@mui/icons-material/Search';
 
 import HomeIcon from '@mui/icons-material/Home';
+import { M2, M3 } from '../statics';
 
 export const Pages = {
   HOME: '/',
@@ -42,7 +43,7 @@ const TopBar: React.FC = () => {
       color="default" // Prevent AppBar from using the theme's primary color by default
       sx={
         {
-          mt: '1rem',
+          mt: M3,
           borderRadius: '2rem',
           width: 'calc(100% - 2rem)',
           left: '50%',
