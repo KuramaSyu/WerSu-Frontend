@@ -42,8 +42,11 @@ const TopBar: React.FC = () => {
       color="default" // Prevent AppBar from using the theme's primary color by default
       sx={
         {
-          //backgroundColor: theme.palette.background.default,
-          //color: theme.palette.primary.light,
+          mt: '1rem',
+          borderRadius: '2rem',
+          width: 'calc(100% - 2rem)',
+          left: '50%',
+          transform: 'translateX(-50%)',
         }
       }
     >
@@ -58,12 +61,16 @@ const TopBar: React.FC = () => {
         >
           {/* Title */}
           <Box minWidth={1/4}>
-            <Button onClick={() => navigate('/')} sx={{ fontSize: '1.5rem', }}>Wersu</Button>
+            <Button
+             onClick={() => navigate('/')} 
+             sx={{ fontSize: '2rem', fontWeight: 300, color: theme.palette.text.primary }}>
+              Wersu
+            </Button>
           </Box>
           <Box>
           <TextField
             fullWidth
-            placeholder="Search for anything..."
+            placeholder="Search"
             variant="outlined"
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
@@ -76,12 +83,12 @@ const TopBar: React.FC = () => {
               sx: {
                 // "BIG"
                 fontSize: '1.5rem',
-                // // "Properly Rounded"
-                // borderRadius: '4rem',
-                // // Adjust internal padding for height
-                // '& .MuiOutlinedInput-input': {
-                //   padding: '0.5rem 0.5rem',
-                // },
+                // "Properly Rounded"
+                borderRadius: '2rem',
+                // Adjust internal padding for height
+                '& .MuiOutlinedInput-input': {
+                  padding: '0.5rem 0.5rem',
+                },
               },
             }}}
           />
