@@ -40,9 +40,10 @@ const TopBar: React.FC = () => {
     <ThemeProvider theme={theme}>
     <AppBar
       position="fixed"
-      color="default" // Prevent AppBar from using the theme's primary color by default
+      elevation={4}
       sx={
         {
+          backgroundColor: theme.palette.background.paper,
           mt: M3,
           borderRadius: '2rem',
           width: 'calc(100% - 2rem)',
