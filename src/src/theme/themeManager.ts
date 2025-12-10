@@ -7,6 +7,10 @@ import {
 } from '../zustand/useThemeStore';
 import useInfoStore, { SnackbarUpdateImpl } from '../zustand/InfoStore';
 import { defaultTheme } from '../zustand/defaultTheme';
+import "@fontsource/open-sans/300.css";
+import "@fontsource/open-sans/400.css";
+import "@fontsource/open-sans/600.css";
+import "@fontsource/open-sans/700.css";
 
 // Augment MUI's Theme to include extra custom properties.
 declare module '@mui/material/styles' {
@@ -95,6 +99,24 @@ export class ThemeManager {
     return ThemeManager.instance;
   }
 
+  public getThemeSync(themeName: string): CustomTheme | null {
+    let theme;
+    switch (themeName) {
+      case 'docsTheme':
+        theme = docsTheme;
+        break;
+      case 'default':
+        theme = defaultTheme;
+        break;
+      default:
+        theme = defaultTheme;
+    }
+    return createTheme({
+      ...theme,
+      ...themechanges
+    })
+  };
+
   /**
    * Asynchronously generates an MUI theme.
    * Always runs Vibrant on the randomly chosen background.
@@ -103,13 +125,39 @@ export class ThemeManager {
    */
   public async generateTheme(themeName: string): Promise<CustomTheme | null> {
     const background = useThemeStore.getState().theme.custom.backgroundImage;
+    let theme;
     switch (themeName) {
       case 'docsTheme':
-        return docsTheme;
+        theme = docsTheme;
+        break;
       case 'default':
-        return defaultTheme;
+        theme = defaultTheme;
+        break;
       default:
-        return defaultTheme;
+        theme = defaultTheme;
     }
-  }
+    return createTheme({
+      ...theme,
+      ...themechanges
+    })
+}
+}
+
+const themechanges = {
+        typography: {
+        fontFamily: "Open Sans",
+      },
+      components: {
+        MuiOutlinedInput: {
+          styleOverrides: {
+            root: {
+              borderRadius: "4rem",
+            },
+            input: {
+              padding: "0.5rem 0.5rem",
+              fontSize: "1.5rem",
+            },
+          },
+        },
+      }
 }
