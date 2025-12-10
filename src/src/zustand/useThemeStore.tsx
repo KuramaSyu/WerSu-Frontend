@@ -53,10 +53,15 @@ interface ThemeState {
 }
 
 export const useThemeStore = create<ThemeState>((set, get) => ({
-  theme: defaultTheme,
+  theme: ThemeManager.getInstance().getThemeSync('default') || defaultTheme,
   themeName: defaultTheme.custom.themeName,
   themeLongName: defaultTheme.custom.longName,
 
+  init: async () => {
+      const initialThemeName = 'default'; 
+      await get().setTheme(initialThemeName);
+    },
+    
   setTheme: async (themeName: string) => {
     console.log(`set theme to ${themeName}`);
     //set({ themeName: themeName });
