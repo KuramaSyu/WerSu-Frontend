@@ -1,8 +1,8 @@
-import { BACKEND_BASE } from '../statics';
-import type { DiscordUser } from '../components/DiscordLogin';
+import { BACKEND_BASE } from '../../statics';
+import type { DiscordUser } from '../../components/DiscordLogin';
 
-import { DiscordUserImpl } from '../components/DiscordLogin';
-import { useUserStore } from '../zustand/userStore';
+import { DiscordUserImpl } from '../../components/DiscordLogin';
+import { useUserStore } from '../../zustand/userStore';
 
 export interface BackendApiInterface {}
 export interface UserApiInterface {
