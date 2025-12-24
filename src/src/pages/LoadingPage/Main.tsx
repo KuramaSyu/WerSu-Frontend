@@ -26,6 +26,7 @@ import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { Title } from './Title';
 import { useMinSquareSize } from './minSquareSize';
 import { defaultTheme } from '../../zustand/defaultTheme';
+import { ApiRequirement, ApiRequirementsBuilder } from '../../utils/api/ApiRequirementsBuilder';
 
 interface LogoSvgComponentProps {
   style?: React.CSSProperties;
@@ -129,6 +130,7 @@ export const LoadingPage: React.FC = () => {
   const MIN_STARTUP_TIME_S = MIN_STARTUP_TIME / 1000;
   const initialLoadingMap = new Map<string, LoadingComponent>([
     ['You', new LoadingComponent(false, 0)],
+    ['Theme', new LoadingComponent(false, 0)],
   ]);
   const [loadingMap, setLoadingMap] = React.useState(initialLoadingMap);
   const { isMobile } = useBreakpoint();
@@ -136,7 +138,23 @@ export const LoadingPage: React.FC = () => {
   // Initialize theme
   useEffect(() => {
     const startTime = Date.now();
+    new ApiRequirementsBuilder()
+      .add(ApiRequirement.User)
+      .forceFetch()
+      .then(() => {
+          setLoadingMap((prev) => {
+          const comp = prev.get('You');
+          if (comp) {
+            comp.loaded = true;
+            comp.time = Date.now() - startTime;
+            comp.setStatus(LoadingStatus.Success);
+            prev.set('You', comp);
+          }
+          return new Map(prev);
+        });
+      }
 
+    )
     setLoadingMap((prev) => {
             const comp = prev.get('Theme');
             if (comp) {
