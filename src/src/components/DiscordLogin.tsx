@@ -27,6 +27,7 @@ interface DiscordUser {
 // Create a DiscordUser class that implements the interface
 class DiscordUserImpl implements DiscordUser {
   id: string;
+  discord_id: string;
   username: string;
   discriminator: string;
   avatar: string;
@@ -37,12 +38,14 @@ class DiscordUserImpl implements DiscordUser {
 
   constructor(data: {
     id: string;
+    discord_id: string;
     username: string;
     discriminator: string;
     avatar: string;
     email: string;
   }) {
     this.id = data.id;
+    this.discord_id = data.discord_id;
     this.username = data.username;
     this.discriminator = data.discriminator;
     this.avatar = data.avatar;
@@ -58,7 +61,7 @@ class DiscordUserImpl implements DiscordUser {
         : 0;
       return `https://cdn.discordapp.com/embed/avatars/${defaultAvatarIndex}.png`;
     }
-    return `https://cdn.discordapp.com/avatars/${this.id}/${this.avatar}.png`;
+    return `https://cdn.discordapp.com/avatars/${this.discord_id}/${this.avatar}.png`;
   }
 }
 
