@@ -1,17 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
   ThemeProvider,
-  CssBaseline,
   Button,
   Box,
-  Avatar,
-  Tooltip,
-  Typography,
-  useMediaQuery,
+
 } from '@mui/material';
-import { useThemeStore } from '../../zustand/useThemeStore';
 import { BACKEND_BASE } from '../../statics';
-import LogoutIcon from '@mui/icons-material/Logout';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { defaultTheme } from '../../zustand/defaultTheme';
 import { useUserStore } from '../../zustand/userStore';
@@ -22,6 +16,7 @@ export const DiscordLoginBig: React.FC = () => {
   const { isMobile } = useBreakpoint();
 
   const handleLogin = (): void => {
+    console.log(`redirect to ${BACKEND_BASE}/api/auth/discord`)
     window.location.href = `${BACKEND_BASE}/api/auth/discord`;
   };
 
