@@ -44,8 +44,8 @@ const TopBar: React.FC = () => {
   const {user} = useUserStore();
   const [userDrawerOpen, setUserDrawerOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
-  const isActive = searchText.length > 0;
-  const [searchType, setSearchType] = useState<SearchType>(SearchType.KEYWORD);
+  const [searchActive, setSearchActive] = useState(false);
+  const [searchType, setSearchType] = useState<SearchType>(SearchType.CONTEXT);
 
   const UserDrawerContents = () => {
 
@@ -173,8 +173,8 @@ const TopBar: React.FC = () => {
               Wersu
             </Button>
           </Box>
-          <Box minWidth={3/10} sx={{display: 'flex', justifyContent: 'flex-end'}}>
-            <Collapse in={searchText !== ""} timeout={500} orientation="horizontal">
+          <Box minWidth={3/10} sx={{display: 'flex', justifyContent: 'center'}}>
+            <Collapse in={searchText !== "" || searchActive} timeout={300} orientation="horizontal">
               <Box>
             <ToggleButtonGroup
               value={searchType}
@@ -213,6 +213,8 @@ const TopBar: React.FC = () => {
             variant="outlined"
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
+            onFocus={() => setSearchActive(true)}
+            onBlur={() => setSearchActive(false)}
             slotProps={{input: {
               startAdornment: (
                 <InputAdornment position="start">
@@ -224,7 +226,7 @@ const TopBar: React.FC = () => {
                 borderRadius: M4,
                 // Adjust internal padding for height
                 '& .MuiOutlinedInput-input': {
-                  padding: '0.5rem 0.5rem',
+                  padding: 'calc(1em / 1.6) 0.5rem',
                 },
               },
             }}}
