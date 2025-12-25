@@ -132,7 +132,6 @@ export const MainPage: React.FC = () => {
 
 export const CreateNote: React.FC = () => {
   const { theme } = useThemeStore();
-  const [noteText, setNoteText] = useState('');
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
