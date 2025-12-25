@@ -156,6 +156,20 @@ export const CreateNote: React.FC = () => {
                 )
               }
             }}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                '& fieldset': {
+                  borderColor: theme.palette.primary.main,
+                  borderWidth: 2,
+                },
+                '&:hover fieldset': {
+                  borderColor: theme.palette.primary.light,
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: theme.palette.primary.light,
+                },
+              },            
+            }}
         > 
         </TextField>
       )}
@@ -191,6 +205,7 @@ export const CreateNote: React.FC = () => {
             fullWidth
             value={title}
             onChange={(e) => setTitle(e.target.value)}
+            color='primary'
           />
 
           <TextField
@@ -202,6 +217,7 @@ export const CreateNote: React.FC = () => {
             fullWidth
             value={content}
             onChange={(e) => setContent(e.target.value)}
+            color='secondary'
           />
         </Paper>
         </motion.div>
