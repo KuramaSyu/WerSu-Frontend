@@ -7,6 +7,7 @@ import { useThemeStore } from './zustand/useThemeStore';
 import './App.css';
 import { MainPage } from './pages/MainPage/Main';
 import { Box } from '@mui/material';
+import { SwaggerDocs } from './pages/docs/Main';
 
 function App() {
   const { theme } = useThemeStore();
@@ -28,6 +29,7 @@ function App() {
         >
           <Routes>
             <Route path="/" element={<MainPage />} />
+            <Route path="/docs/*" element={<SwaggerDocs />} />
           </Routes>
         </Box>
       </Router>
