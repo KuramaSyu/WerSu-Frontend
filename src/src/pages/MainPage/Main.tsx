@@ -63,7 +63,7 @@ export const MainPage: React.FC = () => {
       <Box sx={{pt: `calc(${M4} + ${M5} + ${M3})`, height: 'calc(100% - 8rem)', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
         <CreateNote></CreateNote>
         <Grid container spacing={M3} p={M4} width={'100%'} size={{ xs: 2, sm: 4, md: 4 }}>
-          {cards.map((c) => (<Grid>{c}</Grid>))}
+          {cards.map((c) => (<Grid key={c.key}>{c}</Grid>))}
         </Grid>
       
       </Box>
