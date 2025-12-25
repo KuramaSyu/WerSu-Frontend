@@ -3,16 +3,18 @@ import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import Box from '@mui/material/Box';
 import { useThemeStore } from '../zustand/useThemeStore';
-import { alpha, Avatar, Button, CssBaseline, Divider, IconButton, InputAdornment, Stack, TextField, ThemeProvider, Typography } from '@mui/material';
+import { alpha, Avatar, Button, Collapse, CssBaseline, Divider, IconButton, InputAdornment, Stack, TextField, ThemeProvider, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
 import { useLocation, useNavigate } from 'react-router-dom';
 import SettingsIcon from '@mui/icons-material/Settings';
 import PeopleIcon from '@mui/icons-material/People';
 import SearchIcon from '@mui/icons-material/Search';
 
 import HomeIcon from '@mui/icons-material/Home';
-import { M2, M3 } from '../statics';
-import { LocalFireDepartment } from '@mui/icons-material';
+import { M2, M3, M4 } from '../statics';
+import { LocalFireDepartment, Search } from '@mui/icons-material';
 import { useUserStore } from '../zustand/userStore';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import ManageSearchIcon from '@mui/icons-material/ManageSearch';
 
 export const Pages = {
   HOME: '/',
@@ -29,6 +31,12 @@ function containedIfSelected(page: Page) {
   return location.pathname === page ? 'contained' : 'outlined';
 }
 
+enum SearchType {
+  KEYWORD = 'Keyword',
+  TYPO_TOLERANT = 'Typo Tolerant',
+  CONTEXT = 'Context',
+
+}
 const TopBar: React.FC = () => {
   const { theme } = useThemeStore();
   const navigate = useNavigate();
@@ -37,6 +45,7 @@ const TopBar: React.FC = () => {
   const [userDrawerOpen, setUserDrawerOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
   const isActive = searchText.length > 0;
+  const [searchType, setSearchType] = useState<SearchType>(SearchType.KEYWORD);
 
   const UserDrawerContents = () => {
 
@@ -157,13 +166,46 @@ const TopBar: React.FC = () => {
           fontFamily="Open Sans"
         >
           {/* Title */}
-          <Box minWidth={1/4}>
+          <Box minWidth={1/10}>
             <Button
              onClick={() => navigate('/')} 
              sx={{ fontSize: '2rem', fontWeight: 300, color: theme.palette.text.primary }}>
               Wersu
             </Button>
           </Box>
+          <Box minWidth={3/10} sx={{display: 'flex', justifyContent: 'flex-end'}}>
+            <Collapse in={searchText !== ""} timeout={500} orientation="horizontal">
+              <Box>
+            <ToggleButtonGroup
+              value={searchType}
+              exclusive
+              onChange={(_event, newSearchType) => {
+                if (newSearchType !== null) {
+                  setSearchType(newSearchType);
+                }
+              }}
+              aria-label="search type"
+              sx={{
+                borderRadius: M4, 
+                '& .MuiToggleButton-root': {
+                  whiteSpace: 'nowrap',
+                }
+              }}
+              color='secondary'
+            >
+              <ToggleButton color='secondary' value={SearchType.KEYWORD} aria-label="keyword" sx={{borderTopLeftRadius: M4, borderBottomLeftRadius: M4, gap: 1}}>
+                <SearchIcon /> keyword
+              </ToggleButton>
+              <ToggleButton value={SearchType.TYPO_TOLERANT} aria-label="typo tolerant" sx={{gap: 1}}>
+                <ManageSearchIcon /> typo tolerant
+              </ToggleButton>
+              <ToggleButton value={SearchType.CONTEXT} aria-label="context" sx={{borderTopRightRadius: M4, borderBottomRightRadius: M4, gap: 1}}>
+                <AutoAwesomeIcon /> context
+              </ToggleButton>
+            </ToggleButtonGroup>
+              </Box>
+            </Collapse>
+          </Box> 
           <Box>
           <TextField
             fullWidth
@@ -174,14 +216,12 @@ const TopBar: React.FC = () => {
             slotProps={{input: {
               startAdornment: (
                 <InputAdornment position="start">
-                  <SearchIcon sx={{ fontSize: '1.5rem' }} />
+                  <SearchIcon sx={{ fontSize: '1rem' }} />
                 </InputAdornment>
               ),
               sx: {
-                // "BIG"
-                fontSize: '1.5rem',
                 // "Properly Rounded"
-                borderRadius: '2rem',
+                borderRadius: M4,
                 // Adjust internal padding for height
                 '& .MuiOutlinedInput-input': {
                   padding: '0.5rem 0.5rem',
@@ -197,7 +237,8 @@ const TopBar: React.FC = () => {
               display: 'flex',
               flexDirection: 'row',
               alignItems: 'center',
-              minWidth: 1/4
+              justifyContent: 'flex-end',
+              minWidth: 2/5
             }}
           >
             <Button
@@ -223,7 +264,7 @@ const TopBar: React.FC = () => {
             </Button>
                 <IconButton onClick={() => setUserDrawerOpen(true)}>
                   <Avatar
-                    sx={{ width: 40, height: 40 }}
+                    sx={{ width: 50, height: 50 }}
                     src={user ? user.getAvatarUrl() : undefined}
                     alt={user ? user.username : ''}
                   ></Avatar>
