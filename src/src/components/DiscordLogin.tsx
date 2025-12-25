@@ -18,6 +18,7 @@ import { useBreakpoint } from '../hooks/useBreakpoint';
 // Define TypeScript interface for Discord user data
 interface DiscordUser {
   id: string;
+  discord_id: string;
   username: string;
   discriminator: string;
   avatar: string;
