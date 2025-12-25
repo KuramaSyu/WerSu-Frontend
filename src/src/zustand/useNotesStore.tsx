@@ -1,12 +1,16 @@
 import { create } from 'zustand';
-import type { MinimalNote } from '../api/SearchNotesApi';
+import type { MinimalNote, Note } from '../api/models/search';
 
-interface SearchNotesState {
-  notes: MinimalNote[];
-  setNotes: (notes: MinimalNote[]) => void;
+interface NotesState {
+  // mapping id -> Note
+  notes: Record<number, Note>;
+  updateNote: (note: Note) => void;
 }
 
-export const useNotesStore = create<SearchNotesState>((set) => ({
-  notes: [],
-  setNotes: (notes: MinimalNote[]) => set({ notes: notes }),
+export const useNotesStore = create<NotesState>((set) => ({
+  notes: {},
+  updateNote: (note: Note) =>
+    set((state) => ({
+      notes: { ...state.notes, [note.id]: note },
+    })),
 }));
