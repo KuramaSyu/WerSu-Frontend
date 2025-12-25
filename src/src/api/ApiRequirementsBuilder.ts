@@ -1,7 +1,5 @@
-
-import { useUserStore } from '../../zustand/userStore';
+import { useUserStore } from '../zustand/userStore';
 import { UserApi } from './UserApi';
-
 
 interface IApiReuqirement {
   needsFetch(): Boolean;
@@ -106,7 +104,6 @@ export class UserRequirement extends ApiRequirementABC {
     return 0; // User requirement has the highest priority
   }
 }
-
 
 export enum ApiRequirement {
   User,
