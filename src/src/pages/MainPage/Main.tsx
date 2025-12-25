@@ -10,7 +10,7 @@ import CreateIcon from '@mui/icons-material/Create';
 import { TestSearchNotesApi, type SearchNotesApi } from '../../api/SearchNotesApi';
 import { useNotesStore } from '../../zustand/useNotesStore';
 import { NoteCard } from './NoteCard';
-import { M2, M3, M4, M5, M6 } from '../../statics';
+import { M1, M2, M3, M4, M5, M6 } from '../../statics';
 import { useUserStore } from '../../zustand/userStore';
 import { useLoadingStore } from '../../zustand/loadingStore';
 import { LoadingPage } from '../LoadingPage/Main';
@@ -111,7 +111,7 @@ export const MainPage: React.FC = () => {
           flexDirection: 'row',
           height: '100%',
           overflow: 'hidden', // Prevents overflow
-          paddingTop: user !== null && !isMobile ? '6px' : undefined,
+          paddingTop: user !== null && !isMobile ? M1 : undefined,
         }}
       >
         {user !== null || isLoading ? (
