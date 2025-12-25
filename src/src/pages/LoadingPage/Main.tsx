@@ -138,33 +138,33 @@ export const LoadingPage: React.FC = () => {
   // Initialize theme
   useEffect(() => {
     const startTime = Date.now();
-    new ApiRequirementsBuilder()
-      .add(ApiRequirement.User)
-      .forceFetch()
-      .then(() => {
-          setLoadingMap((prev) => {
-          const comp = prev.get('You');
-          if (comp) {
-            comp.loaded = true;
-            comp.time = Date.now() - startTime;
-            comp.setStatus(LoadingStatus.Success);
-            prev.set('You', comp);
-          }
-          return new Map(prev);
-        });
-      }
+    async function init() {
+      await new ApiRequirementsBuilder()
+        .add(ApiRequirement.User)
+        .forceFetch()
+      setLoadingMap((prev) => {
+        const comp = prev.get('You');
+        if (comp) {
+          comp.loaded = true;
+          comp.time = Date.now() - startTime;
+          comp.setStatus(LoadingStatus.Success);
+          prev.set('You', comp);
+        }
+        return new Map(prev);
+      });
 
-    )
-    setLoadingMap((prev) => {
-            const comp = prev.get('Theme');
-            if (comp) {
-              comp.loaded = true;
-              comp.time = Date.now() - startTime;
-              comp.setStatus(LoadingStatus.Success);
-              prev.set('Theme', comp);
-            }
-            return new Map(prev);
-          });
+      setLoadingMap((prev) => {
+        const comp = prev.get('Theme');
+        if (comp) {
+          comp.loaded = true;
+          comp.time = Date.now() - startTime;
+          comp.setStatus(LoadingStatus.Success);
+          prev.set('Theme', comp);
+        }
+        return new Map(prev);
+      });
+    }
+    init();
   }, []);
 
   // set isLoading to false, when everthing is initialized
@@ -185,11 +185,7 @@ export const LoadingPage: React.FC = () => {
     }
   }, [loadingMap]);
 
-  // load Api requirements
-  useEffect(() => {
-    const init = async () => {}
-     
-    }, []);
+
 
   const getStatusIcon = (status: typeof LoadingStatus[keyof typeof LoadingStatus]) => {
     switch (status) {
