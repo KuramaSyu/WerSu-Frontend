@@ -26,7 +26,10 @@ import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { Title } from './Title';
 import { useMinSquareSize } from './minSquareSize';
 import { defaultTheme } from '../../zustand/defaultTheme';
-import { ApiRequirement, ApiRequirementsBuilder } from '../../utils/api/ApiRequirementsBuilder';
+import {
+  ApiRequirement,
+  ApiRequirementsBuilder,
+} from '../../api/ApiRequirementsBuilder';
 
 interface LogoSvgComponentProps {
   style?: React.CSSProperties;
@@ -102,9 +105,13 @@ const LoadingStatus = {
 class LoadingComponent {
   loaded: boolean;
   time: number;
-  status: typeof LoadingStatus[keyof typeof LoadingStatus];
+  status: (typeof LoadingStatus)[keyof typeof LoadingStatus];
 
-  constructor(loaded: boolean, time: number, status?: typeof LoadingStatus[keyof typeof LoadingStatus]) {
+  constructor(
+    loaded: boolean,
+    time: number,
+    status?: (typeof LoadingStatus)[keyof typeof LoadingStatus]
+  ) {
     this.loaded = loaded;
     this.time = time;
     this.status =
@@ -115,7 +122,7 @@ class LoadingComponent {
         : LoadingStatus.Loading;
   }
 
-  setStatus(status: typeof LoadingStatus[keyof typeof LoadingStatus]) {
+  setStatus(status: (typeof LoadingStatus)[keyof typeof LoadingStatus]) {
     this.status = status;
     this.loaded = status === LoadingStatus.Success;
   }
@@ -139,9 +146,7 @@ export const LoadingPage: React.FC = () => {
   useEffect(() => {
     const startTime = Date.now();
     async function init() {
-      await new ApiRequirementsBuilder()
-        .add(ApiRequirement.User)
-        .forceFetch()
+      await new ApiRequirementsBuilder().add(ApiRequirement.User).forceFetch();
       setLoadingMap((prev) => {
         const comp = prev.get('You');
         if (comp) {
@@ -185,9 +190,9 @@ export const LoadingPage: React.FC = () => {
     }
   }, [loadingMap]);
 
-
-
-  const getStatusIcon = (status: typeof LoadingStatus[keyof typeof LoadingStatus]) => {
+  const getStatusIcon = (
+    status: (typeof LoadingStatus)[keyof typeof LoadingStatus]
+  ) => {
     switch (status) {
       case LoadingStatus.Success:
         return (
