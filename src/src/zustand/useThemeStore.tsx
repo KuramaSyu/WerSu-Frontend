@@ -47,7 +47,7 @@ interface ThemeState {
   /**
    * setTheme accepts a theme string, asynchronously generates the MUI theme (including Vibrant extraction),
    * and updates the store with the theme and its names.
-   * static themes: 'brightNord', 'default'
+   * static themes: 'docsTheme', 'default'
    */
   setTheme: (themeName: string) => Promise<void>;
 }
