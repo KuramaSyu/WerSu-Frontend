@@ -1,4 +1,4 @@
-import { Grid } from '@mui/material';
+import { Box, Grid } from '@mui/material';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useSearchNotesStore } from '../../zustand/useSearchNotesStore';
@@ -11,23 +11,27 @@ export const CardGrid: React.FC = () => {
   const { isLoading } = useLoadingStore();
 
   const cards = useMemo(() => {
-    return notes.map((note) => <NoteCard key={note.id} note={note}></NoteCard>);
+    return notes.map((note, index) => (
+      <NoteCard key={note.id} note={note} index={index}></NoteCard>
+    ));
   }, [notes]);
 
   if (isLoading) {
     return <></>;
   }
   return (
-    <Grid
-      container
-      spacing={M3}
-      p={M4}
-      width={'100%'}
-      size={{ xs: 2, sm: 4, md: 4 }}
+    <Box
+      sx={{
+        columnCount: { xs: 1, sm: 2, md: 3, lg: 4 },
+        gap: M2,
+        width: '100%',
+      }}
     >
       {cards.map((c) => (
-        <Grid key={c.key}>{c}</Grid>
+        <Box key={c.key} sx={{ breakInside: 'avoid', mb: M2 }}>
+          {c}
+        </Box>
       ))}
-    </Grid>
+    </Box>
   );
 };
