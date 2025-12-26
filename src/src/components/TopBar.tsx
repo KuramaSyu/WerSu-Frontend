@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
 import Box from '@mui/material/Box';
@@ -37,6 +37,8 @@ import { useUserStore } from '../zustand/userStore';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import ManageSearchIcon from '@mui/icons-material/ManageSearch';
 import { useBreakpoint } from '../hooks/useBreakpoint';
+import { SearchNotesApi } from '../api/SearchNotesApi';
+import { RestNotesSearchType } from '../api/models/search';
 
 export const Pages = {
   HOME: '/',
@@ -57,6 +59,7 @@ enum SearchType {
   KEYWORD = 'Keyword',
   TYPO_TOLERANT = 'Typo Tolerant',
   CONTEXT = 'Context',
+  LATEST = 'Latest',
 }
 const TopBar: React.FC = () => {
   const { theme } = useThemeStore();
@@ -66,8 +69,41 @@ const TopBar: React.FC = () => {
   const [userDrawerOpen, setUserDrawerOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [searchActive, setSearchActive] = useState(false);
-  const [searchType, setSearchType] = useState<SearchType>(SearchType.CONTEXT);
+  const [searchType, setSearchType] = useState<RestNotesSearchType>(
+    RestNotesSearchType.CONTEXT
+  );
   const { isMobile } = useBreakpoint();
+
+  // initial search
+  useEffect(() => {
+    const SEARCH_LIMIT = 50;
+    async function search() {
+      const api = new SearchNotesApi();
+      await api.search(RestNotesSearchType.LATEST, searchText, SEARCH_LIMIT, 0);
+    }
+    search();
+  }, []);
+
+  // perform search
+  useEffect(() => {
+    const SEARCH_LIMIT = 50;
+    async function search() {
+      const api = new SearchNotesApi();
+      if (searchText === '') {
+        await api.search(
+          RestNotesSearchType.LATEST,
+          searchText,
+          SEARCH_LIMIT,
+          0
+        );
+      } else {
+        await api.search(searchType, searchText, SEARCH_LIMIT, 0);
+      }
+    }
+    if (searchActive) {
+      search();
+    }
+  }, [searchText, searchType, searchActive]);
 
   const UserDrawerContents = () => {
     const dragHandle = (
@@ -211,7 +247,7 @@ const TopBar: React.FC = () => {
                   >
                     <ToggleButton
                       color="secondary"
-                      value={SearchType.KEYWORD}
+                      value={RestNotesSearchType.KEYWORD}
                       aria-label="keyword"
                       sx={{
                         borderTopLeftRadius: M4,
@@ -222,14 +258,14 @@ const TopBar: React.FC = () => {
                       <SearchIcon /> keyword
                     </ToggleButton>
                     <ToggleButton
-                      value={SearchType.TYPO_TOLERANT}
+                      value={RestNotesSearchType.TYPO_TOLERANT}
                       aria-label="typo tolerant"
                       sx={{ gap: 1 }}
                     >
                       <ManageSearchIcon /> typo tolerant
                     </ToggleButton>
                     <ToggleButton
-                      value={SearchType.CONTEXT}
+                      value={RestNotesSearchType.CONTEXT}
                       aria-label="context"
                       sx={{
                         borderTopRightRadius: M4,
