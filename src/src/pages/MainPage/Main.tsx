@@ -34,11 +34,11 @@ import { RestNotesSearchType } from '../../api/models/search';
 import { note_of_date_at_hour } from '../../utils/NoteTitleTemplates';
 import { NoteApi } from '../../api/NoteApi';
 import { useNotesStore } from '../../zustand/useNotesStore';
+import { CardGrid } from './CardGrid';
+import { MainContent } from './MainContent';
 
 export const MainPage: React.FC = () => {
   const { theme } = useThemeStore();
-  const [searchText, setSearchText] = useState('');
-  const { notes, setNotes } = useSearchNotesStore();
   const { user } = useUserStore();
   const { isLoading } = useLoadingStore();
   const { isMobile } = useBreakpoint();
@@ -46,65 +46,6 @@ export const MainPage: React.FC = () => {
     Math.round(Math.random() * 100)
   );
   const oneOrZero = Math.round(exitPercentage / 100) * 100;
-
-  // fetch notes
-  useEffect(() => {
-    async function fetchNotes() {
-      console.log('fetching notes');
-      const api_service: ISearchNotesApi = new SearchNotesApi();
-      const notes = await api_service.search(
-        RestNotesSearchType.LATEST,
-        'all',
-        50,
-        0
-      );
-      console.log(notes);
-    }
-    fetchNotes();
-  }, []);
-
-  const cards = useMemo(() => {
-    return notes.map((note) => <NoteCard key={note.id} note={note}></NoteCard>);
-  }, [notes]);
-
-  const MainContent = () => (
-    <Box
-      sx={{
-        height: '100%',
-        width: '100%',
-        alignSelf: 'center',
-        fontFamily: 'Open Sans',
-        display: 'flex',
-        overflow: 'auto',
-      }}
-    >
-      <TopBar></TopBar>
-      {/* add padding of the actual margin, topbar, and margin of top bar */}
-      <Box
-        sx={{
-          pt: `calc(${M4} + ${M5} + ${M3})`,
-          height: 'calc(100% - 8rem)',
-          width: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-        }}
-      >
-        <CreateNote></CreateNote>
-        <Grid
-          container
-          spacing={M3}
-          p={M4}
-          width={'100%'}
-          size={{ xs: 2, sm: 4, md: 4 }}
-        >
-          {cards.map((c) => (
-            <Grid key={c.key}>{c}</Grid>
-          ))}
-        </Grid>
-      </Box>
-    </Box>
-  );
 
   return (
     <ThemeProvider theme={theme}>
@@ -151,9 +92,7 @@ export const MainPage: React.FC = () => {
         }}
       >
         {user !== null || isLoading ? (
-          <>
-            <MainContent></MainContent>
-          </>
+          <MainContent></MainContent>
         ) : (
           <>
             {console.log('render login page')}
@@ -162,139 +101,5 @@ export const MainPage: React.FC = () => {
         )}
       </Box>
     </ThemeProvider>
-  );
-};
-
-export const CreateNote: React.FC = () => {
-  const { theme } = useThemeStore();
-  const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState(note_of_date_at_hour());
-  const [content, setContent] = useState('');
-  const { updateNote } = useNotesStore();
-  const [snackbarState, setSnackbarState] = useState({
-    open: false,
-  });
-
-  // store when component lost focus
-  useEffect(() => {
-    if (!open) {
-      save_note();
-    }
-  }, [open]);
-
-  // saves note to backend and updates store
-  async function save_note() {
-    const api = new NoteApi();
-    const note = await api.post(title, content);
-    if (note !== undefined) {
-      setSnackbarState({ open: true });
-      updateNote(note);
-    }
-  }
-  return (
-    <Stack
-      width={1 / 3}
-      spacing={'1rem'}
-      sx={{
-        backgroundColor: theme.palette.background.paper,
-        padding: '1rem',
-        borderRadius: '1rem',
-      }}
-    >
-      <AnimatePresence mode="wait" initial={false}>
-        {!open && (
-          <TextField
-            variant="outlined"
-            defaultValue={'New Note'}
-            onClick={() => setOpen(true)}
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <CreateIcon
-                      sx={{
-                        fontSize: '1.5rem',
-                        color: theme.palette.primary.light,
-                      }}
-                    />
-                  </InputAdornment>
-                ),
-              },
-            }}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                '& fieldset': {
-                  borderColor: theme.palette.primary.main,
-                  borderWidth: 2,
-                },
-                '&:hover fieldset': {
-                  borderColor: theme.palette.primary.light,
-                },
-                '&.Mui-focused fieldset': {
-                  borderColor: theme.palette.primary.light,
-                },
-              },
-            }}
-          ></TextField>
-        )}
-
-        {open && (
-          <motion.div
-            key="expanded"
-            initial={{ opacity: 0, y: 0 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.2 }}
-          >
-            <Paper
-              elevation={3}
-              // tab index and onBlur to close when clicking outside
-              tabIndex={-1}
-              onBlur={(e) => {
-                if (!e.currentTarget.contains(e.relatedTarget)) {
-                  setOpen(false);
-                }
-              }}
-              sx={{
-                p: 2,
-                borderRadius: '1rem',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 1.5,
-              }}
-            >
-              <TextField
-                placeholder={title}
-                variant="standard"
-                fullWidth
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                color="primary"
-              />
-
-              <TextField
-                autoFocus
-                placeholder="Take a note..."
-                variant="outlined"
-                minRows={3}
-                multiline
-                fullWidth
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                color="secondary"
-              />
-            </Paper>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      <Snackbar
-        open={snackbarState.open}
-        onClose={() => setSnackbarState({ open: false })}
-        slots={{ transition: Slide }}
-        message="Uploaded Note"
-        key={Slide.name}
-        autoHideDuration={1200}
-      />
-    </Stack>
   );
 };
