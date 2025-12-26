@@ -3,6 +3,7 @@ import {
   ButtonBase,
   Grid,
   InputAdornment,
+  ListItem,
   Paper,
   Slide,
   Snackbar,
@@ -45,10 +46,14 @@ export const MainContent: React.FC = () => {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
+          gap: M4,
         }}
       >
         <CreateNote key="create-note"></CreateNote>
-        <CardGrid></CardGrid>
+
+        <Box px={M4}>
+          <CardGrid></CardGrid>
+        </Box>
       </Box>
     </Box>
   );
