@@ -5,14 +5,15 @@ import { blendWithContrast } from '../../utils/blendWithContrast';
 import type { MinimalNote } from '../../api/models/search';
 import { useSortable } from '@dnd-kit/react/sortable';
 
-export const NoteCard: React.FC<{ note: MinimalNote; index: number }> = ({
-  note,
-  index,
-}) => {
+export const NoteCard: React.FC<{
+  note: MinimalNote;
+  index: number;
+  sx?: object;
+}> = ({ note, index, sx }) => {
   const { ref } = useSortable({ id: note.id, index: index });
   const { theme } = useThemeStore();
   return (
-    <Card sx={{ minWidth: '4rem' }} variant="outlined" ref={ref}>
+    <Card sx={{ minWidth: '4rem', ...sx }} variant="outlined" ref={ref}>
       <CardContent>
         <Typography
           variant="subtitle2"

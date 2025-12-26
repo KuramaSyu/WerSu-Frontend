@@ -12,7 +12,12 @@ export const CardGrid: React.FC = () => {
 
   const cards = useMemo(() => {
     return notes.map((note, index) => (
-      <NoteCard key={note.id} note={note} index={index}></NoteCard>
+      <NoteCard
+        key={note.id}
+        note={note}
+        index={index}
+        sx={{ mb: M2 }}
+      ></NoteCard>
     ));
   }, [notes]);
 
@@ -27,11 +32,8 @@ export const CardGrid: React.FC = () => {
         width: '100%',
       }}
     >
-      {cards.map((c) => (
-        <Box key={c.key} sx={{ breakInside: 'avoid', mb: M2 }}>
-          {c}
-        </Box>
-      ))}
+      {' '}
+      {cards}
     </Box>
   );
 };
