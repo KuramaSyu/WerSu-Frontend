@@ -33,7 +33,6 @@ import {
   BoldItalicUnderlineToggles,
   toolbarPlugin,
 } from '@mdxeditor/editor';
-import { MdxEditorMuiTheme } from './MxEditorMuiTheme';
 
 interface NoteEditorModalProps {
   open: boolean;
@@ -66,7 +65,7 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
           justifyContent: 'space-between',
           alignItems: 'center',
           backgroundColor: theme.palette.background.paper,
-          padding: M2,
+          padding: M3,
         }}
       >
         {title}
@@ -81,7 +80,18 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
           // display: 'flex',
         }}
       >
-        <MdxEditorMuiTheme sx={{ py: M3 }}>
+        <Box
+          sx={{
+            my: M3,
+            /* Update Toolbar of MDXEditor */
+            '& .mdxeditor-toolbar': {
+              backgroundColor: theme.palette.background.paper,
+            },
+            '& .mdxeditor-toolbar button': {
+              color: theme.palette.primary.light,
+            },
+          }}
+        >
           <MDXEditor
             markdown={content}
             onChange={onSave}
@@ -104,26 +114,8 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
               markdownShortcutPlugin(),
             ]}
             className={theme.palette.mode === 'dark' ? 'dark-theme' : ''}
-            style={
-              {
-                /* Accent (primary) */
-                '--accentSolid': theme.palette.primary.main,
-                '--accentSolidHover': theme.palette.primary.light,
-                '--accentText': theme.palette.primary.contrastText,
-
-                /* Base (background / surfaces) */
-                '--baseBg': theme.palette.background.paper,
-                '--basePageBg': theme.palette.background.default,
-                '--baseBorder': theme.palette.divider,
-                '--baseText': theme.palette.text.primary,
-
-                /* Typography */
-                fontFamily: theme.typography.fontFamily,
-                '--font-mono': theme.typography.fontFamilyMonospace,
-              } as React.CSSProperties
-            }
           />
-        </MdxEditorMuiTheme>
+        </Box>
       </DialogContent>
     </Dialog>
   );

@@ -7,10 +7,10 @@ import {
 } from '../zustand/useThemeStore';
 import useInfoStore, { SnackbarUpdateImpl } from '../zustand/InfoStore';
 import { defaultTheme } from '../zustand/defaultTheme';
-import "@fontsource/open-sans/300.css";
-import "@fontsource/open-sans/400.css";
-import "@fontsource/open-sans/600.css";
-import "@fontsource/open-sans/700.css";
+import '@fontsource/open-sans/300.css';
+import '@fontsource/open-sans/400.css';
+import '@fontsource/open-sans/600.css';
+import '@fontsource/open-sans/700.css';
 
 // Augment MUI's Theme to include extra custom properties.
 declare module '@mui/material/styles' {
@@ -113,9 +113,9 @@ export class ThemeManager {
     }
     return createTheme({
       ...theme,
-      ...themechanges
-    })
-  };
+      ...themechanges,
+    });
+  }
 
   /**
    * Asynchronously generates an MUI theme.
@@ -138,26 +138,27 @@ export class ThemeManager {
     }
     return createTheme({
       ...theme,
-      ...themechanges
-    })
-}
+      ...themechanges,
+    });
+  }
 }
 
 const themechanges = {
-        typography: {
-        fontFamily: "Open Sans",
-      },
-      // components: {
-      //   MuiOutlinedInput: {
-      //     styleOverrides: {
-      //       root: {
-      //         borderRadius: "4rem",
-      //       },
-      //       input: {
-      //         padding: "0.5rem 0.5rem",
-      //         //fontSize: "1.5rem",
-      //       },
-      //     },
-      //   },
-      // }
-}
+  typography: {
+    fontFamily: 'Open Sans',
+  },
+
+  // components: {
+  //   MuiOutlinedInput: {
+  //     styleOverrides: {
+  //       root: {
+  //         borderRadius: "4rem",
+  //       },
+  //       input: {
+  //         padding: "0.5rem 0.5rem",
+  //         //fontSize: "1.5rem",
+  //       },
+  //     },
+  //   },
+  // }
+};

@@ -8,6 +8,7 @@ import './App.css';
 import { MainPage } from './pages/MainPage/Main';
 import { Box } from '@mui/material';
 import { SwaggerDocs } from './pages/docs/Main';
+import { EditorGlobalStyles } from './theme/GlobalStyles';
 
 function App() {
   const { theme } = useThemeStore();
@@ -15,6 +16,7 @@ function App() {
 
   return (
     <ThemeProvider theme={theme}>
+      <EditorGlobalStyles />
       {/* <CssBaseline /> */}
       <Router>
         <Box
