@@ -22,6 +22,7 @@ import {
   InsertCodeBlock,
   InsertImage,
   InsertSandpack,
+  InsertTable,
   linkDialogPlugin,
   linkPlugin,
   MDXEditor,
@@ -33,6 +34,7 @@ import {
   type SandpackConfig,
 } from '@mdxeditor/editor';
 import '@mdxeditor/editor/style.css';
+import { nord } from '@uiw/codemirror-theme-nord';
 
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
@@ -139,6 +141,11 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
           <MDXEditor
             markdown={content}
             onChange={onSave}
+            className={
+              theme.palette.mode === 'dark'
+                ? 'dark-theme dark-editor'
+                : 'dark-theme dark-editor'
+            }
             plugins={[
               imagePlugin({
                 imageUploadHandler: () => {
@@ -155,6 +162,7 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
                     <UndoRedo />
                     <BoldItalicUnderlineToggles />
                     <InsertImage />
+                    <InsertTable />
                     <ConditionalContents
                       options={[
                         {
@@ -185,18 +193,36 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
               quotePlugin(),
               thematicBreakPlugin(),
               markdownShortcutPlugin(),
-              codeBlockPlugin({ defaultCodeBlockLanguage: 'py' }),
+              codeBlockPlugin({
+                defaultCodeBlockLanguage: 'py',
+                codeMirrorExtensions: [nord],
+              }),
               codeMirrorPlugin({
-                codeBlockLanguages: { js: 'JavaScript', css: 'CSS' },
+                codeBlockLanguages: {
+                  js: 'JavaScript',
+                  css: 'CSS',
+                  py: 'Python',
+                  ts: 'TypeScript',
+                  rs: 'Rust',
+                  go: 'Go',
+                },
               }),
               sandpackPlugin({ sandpackConfig: simpleSandpackConfig }),
               linkPlugin(),
               linkDialogPlugin(),
-              imagePlugin(),
+              imagePlugin({
+                imageUploadHandler: () => {
+                  return Promise.resolve('https://picsum.photos/200/300');
+                },
+                imageAutocompleteSuggestions: [
+                  'https://picsum.photos/200/300',
+                  'https://picsum.photos/200',
+                ],
+              }),
               tablePlugin(),
               searchPlugin(),
             ]}
-            className={theme.palette.mode === 'dark' ? 'dark-theme' : ''}
+            //className={theme.palette.mode === 'dark' ? 'dark-theme' : ''}
           />
         </Box>
       </DialogContent>

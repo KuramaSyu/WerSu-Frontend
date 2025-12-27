@@ -21,6 +21,7 @@
     "@tiptap/extension-table": "^3.14.0",
     "@tiptap/react": "^3.14.0",
     "@tiptap/starter-kit": "^3.14.0",
+    "@uiw/codemirror-theme-nord": "^4.25.4",
     "framer-motion": "^12.23.25",
     "katex": "^0.16.27",
     "mui-tiptap": "^1.28.1",
