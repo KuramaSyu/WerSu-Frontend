@@ -1,4 +1,5 @@
 import {
+  Box,
   Button,
   Dialog,
   DialogContent,
@@ -12,28 +13,28 @@ import CloseIcon from '@mui/icons-material/Close';
 import { useEffect, useRef } from 'react';
 import { useThemeStore } from '../../../zustand/useThemeStore';
 import { M1, M2, M3, M4 } from '../../../statics';
+import { MDXEditor } from '@mdxeditor/editor';
+import '@mdxeditor/editor/style.css';
+
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 import {
-  MenuButtonAddTable,
-  MenuButtonBold,
-  MenuButtonBulletedList,
-  MenuButtonCode,
-  MenuButtonCodeBlock,
-  MenuButtonItalic,
-  MenuButtonOrderedList,
-  MenuButtonTaskList,
-  MenuControlsContainer,
-  MenuDivider,
-  MenuSelectHeading,
-  RichTextEditor,
-  TableBubbleMenu,
-  type RichTextEditorRef,
-} from 'mui-tiptap';
+  headingsPlugin,
+  listsPlugin,
+  quotePlugin,
+  thematicBreakPlugin,
+  markdownShortcutPlugin,
+  type MDXEditorMethods,
+  type MDXEditorProps,
+} from '@mdxeditor/editor';
+import '@mdxeditor/editor/style.css';
 import {
-  Table,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from '@tiptap/extension-table';
+  UndoRedo,
+  BoldItalicUnderlineToggles,
+  toolbarPlugin,
+} from '@mdxeditor/editor';
+import { MdxEditorMuiTheme } from './MxEditorMuiTheme';
+
 interface NoteEditorModalProps {
   open: boolean;
   onClose: () => void;
@@ -50,7 +51,6 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
   onSave,
 }) => {
   const { theme } = useThemeStore();
-  const rteRef = useRef<RichTextEditorRef>(null);
 
   return (
     <Dialog
@@ -77,44 +77,53 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
       <DialogContent
         sx={{
           backgroundColor: theme.palette.background.default,
-          padding: M3,
           minHeight: '40vh',
-          display: 'flex',
+          // display: 'flex',
         }}
       >
-        <RichTextEditor
-          ref={rteRef}
-          sx={{ height: '100%', width: '100%', mt: M3 }}
-          extensions={[
-            StarterKit,
-            Table.configure({
-              resizable: true,
-            }),
-            TableRow,
-            TableCell,
-            TableHeader,
-          ]}
-          content={content}
-          renderControls={() => (
-            <MenuControlsContainer>
-              <MenuSelectHeading />
-              <MenuDivider />
-              <MenuButtonBold />
-              <MenuButtonItalic />
-              <MenuButtonCodeBlock />
-              <MenuButtonBulletedList />
-              <MenuButtonOrderedList />
-              {/* <MenuButtonTaskList /> */}
-              <MenuButtonAddTable />
-            </MenuControlsContainer>
-          )}
-        >
-          {() => (
-            <>
-              <TableBubbleMenu />
-            </>
-          )}
-        </RichTextEditor>
+        <MdxEditorMuiTheme sx={{ py: M3 }}>
+          <MDXEditor
+            markdown={content}
+            onChange={onSave}
+            plugins={[
+              toolbarPlugin({
+                toolbarClassName: 'my-classname',
+                toolbarContents: () => (
+                  <>
+                    <UndoRedo />
+                    <BoldItalicUnderlineToggles />
+                  </>
+                ),
+              }),
+
+              // Example Plugin Usage
+              headingsPlugin(),
+              listsPlugin(),
+              quotePlugin(),
+              thematicBreakPlugin(),
+              markdownShortcutPlugin(),
+            ]}
+            className={theme.palette.mode === 'dark' ? 'dark-theme' : ''}
+            style={
+              {
+                /* Accent (primary) */
+                '--accentSolid': theme.palette.primary.main,
+                '--accentSolidHover': theme.palette.primary.light,
+                '--accentText': theme.palette.primary.contrastText,
+
+                /* Base (background / surfaces) */
+                '--baseBg': theme.palette.background.paper,
+                '--basePageBg': theme.palette.background.default,
+                '--baseBorder': theme.palette.divider,
+                '--baseText': theme.palette.text.primary,
+
+                /* Typography */
+                fontFamily: theme.typography.fontFamily,
+                '--font-mono': theme.typography.fontFamilyMonospace,
+              } as React.CSSProperties
+            }
+          />
+        </MdxEditorMuiTheme>
       </DialogContent>
     </Dialog>
   );
