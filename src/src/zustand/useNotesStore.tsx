@@ -5,6 +5,7 @@ interface NotesState {
   // mapping id -> Note
   notes: Record<number, Note>;
   updateNote: (note: Note) => void;
+  removeNote: (id: number) => void;
 }
 
 export const useNotesStore = create<NotesState>((set) => ({
@@ -13,4 +14,10 @@ export const useNotesStore = create<NotesState>((set) => ({
     set((state) => ({
       notes: { ...state.notes, [note.id]: note },
     })),
+  removeNote: (id: number) =>
+    set((state) => {
+      const newNotes = { ...state.notes };
+      delete newNotes[id];
+      return { notes: newNotes };
+    }),
 }));
