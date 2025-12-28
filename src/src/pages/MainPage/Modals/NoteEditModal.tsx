@@ -58,7 +58,6 @@ import {
   BoldItalicUnderlineToggles,
   toolbarPlugin,
 } from '@mdxeditor/editor';
-import { BadgeSharp } from '@mui/icons-material';
 import {
   HighlightStyle,
   tags,
@@ -66,28 +65,6 @@ import {
   type TagStyle,
 } from '@codemirror/highlight';
 import { EditorView } from '@codemirror/view';
-
-const PlainTextCodeEditorDescriptor: CodeBlockEditorDescriptor = {
-  // always use the editor, no matter the language or the meta of the code block
-  match: (language, meta) => true,
-  // You can have multiple editors with different priorities, so that there's a "catch-all" editor (with the lowest priority)
-  priority: 0,
-  // The Editor is a React component
-  Editor: (props) => {
-    const cb = useCodeBlockEditorContext();
-    // stops the propagation so that the parent lexical editor does not handle certain events.
-    return (
-      <div onKeyDown={(e) => e.nativeEvent.stopImmediatePropagation()}>
-        <textarea
-          rows={3}
-          cols={20}
-          defaultValue={props.code}
-          onChange={(e) => cb.setCode(e.target.value)}
-        />
-      </div>
-    );
-  },
-};
 
 const muiCodeMirrorTheme = (muiTheme: Theme) =>
   EditorView.theme(
@@ -180,17 +157,6 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
   const { theme } = useThemeStore();
   const editorRef = useRef<MDXEditorMethods>(null);
 
-  const tagColorMap = new Map<Tag, Omit<TagStyle, 'tag'>>([
-    [tags.angleBracket, { color: theme.palette.primary.light }],
-    /* ... */
-  ]);
-  const specs = Array.from(tagColorMap.entries()).map(([tag, style]) => ({
-    tag,
-    ...style,
-  }));
-
-  const highlightStyle = HighlightStyle.define(specs);
-
   return (
     <Dialog
       open={open}
@@ -212,7 +178,13 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
         }}
       >
         {title}
-        <IconButton onClick={onClose} size="small">
+        <IconButton
+          onClick={() => {
+            onSave(title, editorRef.current?.getMarkdown() || '');
+            onClose();
+          }}
+          size="small"
+        >
           <CloseIcon />
         </IconButton>
       </DialogTitle>
@@ -228,18 +200,12 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
         <Box
           sx={{
             my: M3,
-            /* Update Toolbar of MDXEditor */
+            /* remove padding and border arround the codeblock */
             '& [class^="_codeMirrorWrapper"]': {
-              p: 0, // remove padding
-              border: 'none', // remove border
-              borderRadius: 0, // remove border radius
-              background: 'transparent',
-            },
-
-            // Target the toolbar
-            '& ._codeMirrorToolbar_1e2ox_409': {
               p: 0,
-              borderBottom: 'none',
+              border: 'none',
+              borderRadius: 0,
+              background: 'transparent',
             },
 
             '& .mdxeditor [class*="codeMirrorToolbar"]': {
@@ -286,7 +252,6 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
               border: `2px solid ${theme.palette.muted.light}`,
               borderRadius: theme.shape.borderRadius,
               padding: theme.spacing(0.5),
-              //gap: theme.spacing(0.5),
             },
 
             /* Buttons inside the code toolbar */
@@ -405,7 +370,6 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
               tablePlugin(),
               searchPlugin(),
             ]}
-            //className={theme.palette.mode === 'dark' ? 'dark-theme' : ''}
           />
         </Box>
       </DialogContent>
