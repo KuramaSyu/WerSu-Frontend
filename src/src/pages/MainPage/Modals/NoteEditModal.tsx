@@ -53,6 +53,7 @@ import {
   BoldItalicUnderlineToggles,
   toolbarPlugin,
 } from '@mdxeditor/editor';
+import { BadgeSharp } from '@mui/icons-material';
 
 const defaultSnippetContent = `
 export default function App() {
@@ -85,7 +86,7 @@ interface NoteEditorModalProps {
   onClose: () => void;
   title: string;
   content: string;
-  onSave: (content: string) => void;
+  onSave: (title: string, content: string) => void;
 }
 
 export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
@@ -96,11 +97,15 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
   onSave,
 }) => {
   const { theme } = useThemeStore();
+  const editorRef = useRef<MDXEditorMethods>(null);
 
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={() => {
+        onClose();
+        onSave(title, editorRef.current?.getMarkdown() || '');
+      }}
       maxWidth="md"
       sx={{ color: theme.palette.text.primary }}
       fullWidth
@@ -140,7 +145,8 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
         >
           <MDXEditor
             markdown={content}
-            onChange={onSave}
+            //onChange={onSave}
+            ref={editorRef}
             className={
               theme.palette.mode === 'dark'
                 ? 'dark-theme dark-editor'
@@ -195,7 +201,6 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
               markdownShortcutPlugin(),
               codeBlockPlugin({
                 defaultCodeBlockLanguage: 'py',
-                codeMirrorExtensions: [nord],
               }),
               codeMirrorPlugin({
                 codeBlockLanguages: {
@@ -205,6 +210,8 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
                   ts: 'TypeScript',
                   rs: 'Rust',
                   go: 'Go',
+                  sh: 'Shell',
+                  bash: 'Bash',
                 },
               }),
               sandpackPlugin({ sandpackConfig: simpleSandpackConfig }),
