@@ -6,6 +6,8 @@ import type { MinimalNote } from '../../api/models/search';
 import { useSortable } from '@dnd-kit/react/sortable';
 import { useState } from 'react';
 import { NoteEditorModal } from './Modals/NoteEditModal';
+import { NoteApi, type INoteApi } from '../../api/NoteApi';
+import type { string } from 'zod';
 
 export const NoteCard: React.FC<{
   note: MinimalNote;
@@ -51,8 +53,18 @@ export const NoteCard: React.FC<{
         onClose={() => setModalOpen(false)}
         title={note.title}
         content={note.stripped_content}
-        onSave={(newContent) => {
-          // save logic
+        onSave={(title: string, content: string) => {
+          const api: INoteApi = new NoteApi();
+          api
+            .patch(note.id, title, content)
+            .then((_) => {
+              console.log(`saved note ${note.id} - ${title}`);
+            })
+            .catch((err) => {
+              console.error(
+                `failed to save note ${note.id} - ${title}: ${err}`
+              );
+            });
         }}
       />
     </Box>
