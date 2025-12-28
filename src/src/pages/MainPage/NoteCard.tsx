@@ -1,5 +1,5 @@
 import { Box, Button, Card, CardContent, Typography } from '@mui/material';
-import { M2, M3, M4 } from '../../statics';
+import { M1, M2, M3, M4 } from '../../statics';
 import { useThemeStore } from '../../zustand/useThemeStore';
 import { blendWithContrast } from '../../utils/blendWithContrast';
 import type { MinimalNote } from '../../api/models/search';
@@ -22,7 +22,20 @@ export const NoteCard: React.FC<{
     <Box ref={ref}>
       <Card
         ref={ref}
-        sx={{ minWidth: '4rem', ...sx }}
+        sx={{
+          minWidth: '4rem',
+          transition: 'all 0.2s ease-in-out',
+          '&:hover': {
+            transform: 'scale(1.04)',
+            boxShadow: theme.shadows[4],
+            borderColor: blendWithContrast(
+              theme.palette.primary.main,
+              theme,
+              1 / 2
+            ),
+          },
+          ...sx,
+        }}
         variant="outlined"
         onClick={() => setModalOpen(true)}
       >
