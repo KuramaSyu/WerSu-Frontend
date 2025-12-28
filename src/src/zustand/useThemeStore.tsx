@@ -2,8 +2,6 @@ import { create } from 'zustand';
 import { createTheme } from '@mui/material/styles';
 import { ThemeManager } from '../theme/themeManager';
 import type { CustomTheme, CustomThemeConfig } from '../theme/customTheme';
-import customThemeData from '../theme/themes.json';
-import usePreferenceStore from './PreferenceStore';
 import { loadPreferencesFromCookie } from '../utils/cookiePreferences';
 import { defaultTheme } from './defaultTheme';
 
@@ -29,13 +27,6 @@ export const docsTheme = createTheme({
   },
 } as CustomTheme);
 
-// Define our available custom themes.
-export const customThemes: CustomThemeConfig[] = customThemeData;
-
-export const getThemeNames = () => {
-  return customThemes.map((theme) => theme.name);
-};
-
 // Instantiate our ThemeManager with the custom configurations.
 const themeManager = ThemeManager.getInstance();
 
@@ -58,10 +49,10 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   themeLongName: defaultTheme.custom.longName,
 
   init: async () => {
-      const initialThemeName = 'default'; 
-      await get().setTheme(initialThemeName);
-    },
-    
+    const initialThemeName = 'default';
+    await get().setTheme(initialThemeName);
+  },
+
   setTheme: async (themeName: string) => {
     console.log(`set theme to ${themeName}`);
     //set({ themeName: themeName });
