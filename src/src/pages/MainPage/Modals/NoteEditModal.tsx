@@ -5,6 +5,8 @@ import {
   DialogContent,
   DialogTitle,
   IconButton,
+  lighten,
+  type Theme,
 } from '@mui/material';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -16,6 +18,7 @@ import { M1, M2, M3, M4 } from '../../../statics';
 import {
   ChangeCodeMirrorLanguage,
   codeBlockPlugin,
+  codeMirrorExtensions$,
   codeMirrorPlugin,
   ConditionalContents,
   imagePlugin,
@@ -31,6 +34,8 @@ import {
   searchPlugin,
   ShowSandpackInfo,
   tablePlugin,
+  useCodeBlockEditorContext,
+  type CodeBlockEditorDescriptor,
   type SandpackConfig,
 } from '@mdxeditor/editor';
 import '@mdxeditor/editor/style.css';
@@ -54,6 +59,82 @@ import {
   toolbarPlugin,
 } from '@mdxeditor/editor';
 import { BadgeSharp } from '@mui/icons-material';
+import {
+  HighlightStyle,
+  tags,
+  type Tag,
+  type TagStyle,
+} from '@codemirror/highlight';
+import { EditorView } from '@codemirror/view';
+
+const PlainTextCodeEditorDescriptor: CodeBlockEditorDescriptor = {
+  // always use the editor, no matter the language or the meta of the code block
+  match: (language, meta) => true,
+  // You can have multiple editors with different priorities, so that there's a "catch-all" editor (with the lowest priority)
+  priority: 0,
+  // The Editor is a React component
+  Editor: (props) => {
+    const cb = useCodeBlockEditorContext();
+    // stops the propagation so that the parent lexical editor does not handle certain events.
+    return (
+      <div onKeyDown={(e) => e.nativeEvent.stopImmediatePropagation()}>
+        <textarea
+          rows={3}
+          cols={20}
+          defaultValue={props.code}
+          onChange={(e) => cb.setCode(e.target.value)}
+        />
+      </div>
+    );
+  },
+};
+
+const muiCodeMirrorTheme = (muiTheme: Theme) =>
+  EditorView.theme(
+    {
+      '&': {
+        backgroundColor: muiTheme.palette.background.paper,
+        color: muiTheme.palette.text.primary,
+        //fontFamily: muiTheme.typography.fontFamily,
+      },
+      '.cm-matchingBracket *,.cm-content .cm-matchingBracket': {
+        backgroundColor: muiTheme.palette.muted.dark,
+        color: muiTheme.palette.vibrant.light,
+      },
+      '.cm-content': {
+        caretColor: muiTheme.palette.primary.main,
+      },
+      '.cm-scroller': {
+        padding: 0,
+        margin: 0,
+      },
+      // cursor
+      '&.cm-focused .cm-cursor': {
+        borderLeftColor: muiTheme.palette.text.secondary,
+      },
+
+      '&.cm-focused .cm-selectionBackground, ::selection': {
+        backgroundColor: muiTheme.palette.muted.light,
+      },
+      /* find results */
+      '.cm-selectionMatch': {
+        backgroundColor: muiTheme.palette.action.hover,
+        color: muiTheme.palette.text.primary,
+      },
+
+      /* Active line */
+      '.cm-activeLineGutter': {
+        backgroundColor: muiTheme.palette.action.hover,
+      },
+
+      // line numbers
+      '.cm-gutters': {
+        backgroundColor: muiTheme.palette.background.default,
+        color: muiTheme.palette.text.secondary,
+      },
+    },
+    { dark: muiTheme.palette.mode === 'dark' }
+  );
 
 const defaultSnippetContent = `
 export default function App() {
@@ -99,6 +180,17 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
   const { theme } = useThemeStore();
   const editorRef = useRef<MDXEditorMethods>(null);
 
+  const tagColorMap = new Map<Tag, Omit<TagStyle, 'tag'>>([
+    [tags.angleBracket, { color: theme.palette.primary.light }],
+    /* ... */
+  ]);
+  const specs = Array.from(tagColorMap.entries()).map(([tag, style]) => ({
+    tag,
+    ...style,
+  }));
+
+  const highlightStyle = HighlightStyle.define(specs);
+
   return (
     <Dialog
       open={open}
@@ -131,15 +223,105 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
           // display: 'flex',
         }}
       >
+        {/* this is a very nasty workaround 
+        to map the mdxeditor styles to mui theme colors */}
         <Box
           sx={{
             my: M3,
             /* Update Toolbar of MDXEditor */
+            '& [class^="_codeMirrorWrapper"]': {
+              p: 0, // remove padding
+              border: 'none', // remove border
+              borderRadius: 0, // remove border radius
+              background: 'transparent',
+            },
+
+            // Target the toolbar
+            '& ._codeMirrorToolbar_1e2ox_409': {
+              p: 0,
+              borderBottom: 'none',
+            },
+
+            '& .mdxeditor [class*="codeMirrorToolbar"]': {
+              display: 'none',
+            },
             '& .mdxeditor-toolbar': {
               backgroundColor: theme.palette.background.paper,
+              '& button': {
+                color: theme.palette.text.primary,
+              },
+
+              /* Activated buttons */
+              '& button[data-state="on"]': {
+                backgroundColor: theme.palette.muted.light,
+                color: theme.palette.primary.light,
+              },
+
+              /* button icons */
+              '& span': {
+                color: theme.palette.primary.light,
+              },
+              '& button span': {
+                color: 'inherit',
+              },
+              '& button span svg': {
+                color: 'inherit',
+              },
+
+              /* Disabled buttons */
+              '& button:disabled, & button:disabled span': {
+                opacity: 0.5,
+              },
+
+              /* button hover effect */
+              '& button:hover, & button:focus': {
+                backgroundColor: theme.palette.action.hover,
+                color: theme.palette.primary.main,
+              },
             },
-            '& .mdxeditor-toolbar button': {
-              color: theme.palette.primary.light,
+
+            /* Code block toolbar container */
+            '& [class*="codeMirrorToolbar"]': {
+              backgroundColor: theme.palette.background.paper,
+              border: `2px solid ${theme.palette.muted.light}`,
+              borderRadius: theme.shape.borderRadius,
+              padding: theme.spacing(0.5),
+              //gap: theme.spacing(0.5),
+            },
+
+            /* Buttons inside the code toolbar */
+            '& [class*="codeMirrorToolbar"] button': {
+              color: theme.palette.text.primary,
+              backgroundColor: 'transparent',
+              borderRadius: theme.shape.borderRadius,
+            },
+
+            '& [class*="codeMirrorToolbar"] button:hover': {
+              backgroundColor: theme.palette.action.hover,
+            },
+            // content area, background and text colors
+            '& .mdxeditor-root-contenteditable': {
+              backgroundColor: theme.palette.background.default,
+              color: theme.palette.text.primary,
+
+              // normal text
+              '& h1, & h2, & h3, & h4, & h5, & h6, & strong, & em, & li, & blockquote, & p':
+                {
+                  color: theme.palette.text.primary,
+                },
+
+              // links
+              '& a': {
+                color: theme.palette.primary.main,
+              },
+
+              // code blocks
+              '& code, & code span, & code strong': {
+                color: lighten(theme.palette.secondary.main, 1 / 4),
+                backgroundColor: theme.palette.muted.light,
+                borderRadius: M1,
+                fontFamily: 'Monospace',
+              },
             },
           }}
         >
@@ -147,11 +329,6 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
             markdown={content}
             //onChange={onSave}
             ref={editorRef}
-            className={
-              theme.palette.mode === 'dark'
-                ? 'dark-theme dark-editor'
-                : 'dark-theme dark-editor'
-            }
             plugins={[
               imagePlugin({
                 imageUploadHandler: () => {
@@ -171,10 +348,6 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
                     <InsertTable />
                     <ConditionalContents
                       options={[
-                        {
-                          when: (editor) => editor?.editorType === 'codeblock',
-                          contents: () => <ChangeCodeMirrorLanguage />,
-                        },
                         {
                           when: (editor) => editor?.editorType === 'sandpack',
                           contents: () => <ShowSandpackInfo />,
@@ -200,9 +373,10 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
               thematicBreakPlugin(),
               markdownShortcutPlugin(),
               codeBlockPlugin({
-                defaultCodeBlockLanguage: 'py',
+                defaultCodeBlockLanguage: '',
               }),
               codeMirrorPlugin({
+                codeMirrorExtensions: [muiCodeMirrorTheme(theme)],
                 codeBlockLanguages: {
                   js: 'JavaScript',
                   css: 'CSS',
@@ -212,6 +386,8 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
                   go: 'Go',
                   sh: 'Shell',
                   bash: 'Bash',
+                  java: 'Java',
+                  ['']: 'Plain Text',
                 },
               }),
               sandpackPlugin({ sandpackConfig: simpleSandpackConfig }),
