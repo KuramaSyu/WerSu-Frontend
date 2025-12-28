@@ -1,10 +1,6 @@
 import { createTheme } from '@mui/material/styles';
 import type { CustomThemeConfig, CustomTheme } from '../theme/customTheme';
-import {
-  docsTheme,
-  customThemes,
-  useThemeStore,
-} from '../zustand/useThemeStore';
+import { docsTheme, useThemeStore } from '../zustand/useThemeStore';
 import useInfoStore, { SnackbarUpdateImpl } from '../zustand/InfoStore';
 import { defaultTheme } from '../zustand/defaultTheme';
 import '@fontsource/open-sans/300.css';
@@ -94,7 +90,7 @@ export class ThemeManager {
 
   public static getInstance(): ThemeManager {
     if (ThemeManager.instance === undefined) {
-      ThemeManager.instance = new ThemeManager(customThemes);
+      ThemeManager.instance = new ThemeManager([]);
     }
     return ThemeManager.instance;
   }
