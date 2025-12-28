@@ -1,0 +1,37 @@
+/* src/theme/mdxeditor.css */
+
+.mdxeditor-mui.mdxeditor {
+  background: var(--baseBg);
+  color: var(--baseText);
+  font-family: var(--font-sans);
+}
+
+/* Toolbar and buttons */
+.mdxeditor-mui .mdxeditor-toolbar {
+  background: var(--baseBg);
+  border-bottom: 1px solid var(--borderSubtle);
+}
+
+.mdxeditor-mui .mdxeditor-toolbar button {
+  color: var(--baseText);
+}
+
+.mdxeditor-mui .mdxeditor-toolbar button[data-state='on'],
+.mdxeditor-mui .mdxeditor-toolbar button:focus-visible {
+  background: var(--accentBg);
+  color: var(--accentTextContrast);
+}
+
+/* Content area */
+.mdxeditor-mui .mdxeditor-root-contenteditable {
+  background: var(--baseBg);
+  color: var(--baseText);
+}
+
+/* Source editor / CodeMirror container */
+.mdxeditor-mui .mdxeditor-source-editor,
+.mdxeditor-mui .mdxeditor-code-block {
+  background: var(--baseBg);
+  color: var(--baseText);
+  border: 1px solid var(--borderSubtle);
+}
