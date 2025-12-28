@@ -10,6 +10,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@codemirror/highlight": "^0.19.8",
+    "@codemirror/lang-javascript": "^6.2.4",
+    "@codemirror/matchbrackets": "^0.19.4",
     "@dnd-kit/react": "^0.2.1",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
