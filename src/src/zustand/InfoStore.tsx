@@ -27,11 +27,11 @@ export class SnackbarUpdateImpl implements SnackbarUpdate {
 
   geDefaultDuration(): number {
     if (this.severity === 'info') {
-      return 5;
+      return 1;
     } else if (this.severity === 'warning' || this.severity === 'error') {
       return 6;
     } else {
-      return 4;
+      return 1;
     }
   }
 }
