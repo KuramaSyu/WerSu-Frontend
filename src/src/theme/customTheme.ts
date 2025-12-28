@@ -1,8 +1,8 @@
-import type { Theme, Palette } from "@mui/material/styles";
+import type { Theme, Palette } from '@mui/material/styles';
 
 export interface CustomTheme extends Theme {
   palette: Palette & {
-  //palette: Theme['palette'] & {
+    //palette: Theme['palette'] & {
     vibrant: {
       main: string;
       light: string;
