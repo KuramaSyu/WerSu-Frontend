@@ -65,6 +65,7 @@ import {
   type TagStyle,
 } from '@codemirror/highlight';
 import { EditorView } from '@codemirror/view';
+import TablePopoverStyles from './TablePopoverStyles';
 
 const muiCodeMirrorTheme = (muiTheme: Theme) =>
   EditorView.theme(
@@ -208,12 +209,19 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
               background: 'transparent',
             },
 
+            // to deactivate the codeblock toolbar
             '& .mdxeditor [class*="codeMirrorToolbar"]': {
-              display: 'none',
+              //display: 'none',
             },
+
             '& .mdxeditor-toolbar': {
               backgroundColor: theme.palette.background.paper,
-              '& button': {
+              '& [class*="selectTrigger"]': {
+                color: theme.palette.text.primary,
+                backgroundColor: theme.palette.muted.light,
+              },
+
+              '& label': {
                 color: theme.palette.text.primary,
               },
 
@@ -228,7 +236,7 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
                 color: theme.palette.primary.light,
               },
               '& button span': {
-                color: 'inherit',
+                color: theme.palette.primary.light,
               },
               '& button span svg': {
                 color: 'inherit',
@@ -246,12 +254,12 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
               },
             },
 
-            /* Code block toolbar container */
+            /* Code block toolbar  */
             '& [class*="codeMirrorToolbar"]': {
-              backgroundColor: theme.palette.background.paper,
-              border: `2px solid ${theme.palette.muted.light}`,
+              backgroundColor: theme.palette.muted.light,
+              //border: `1px solid ${theme.palette.muted.light}`,
               borderRadius: theme.shape.borderRadius,
-              padding: theme.spacing(0.5),
+              padding: 0,
             },
 
             /* Buttons inside the code toolbar */
@@ -288,10 +296,62 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
                 fontFamily: 'Monospace',
               },
             },
+
+            /* Table container - any class starting with _tableEditor_ */
+            // '[class^="_tableEditor_"]': {
+            //   borderCollapse: 'collapse',
+            //   width: '100%',
+            //   backgroundColor: theme.palette.background.paper,
+            //   color: theme.palette.text.primary,
+            // },
+
+            /* Table cells*/
+            // '[class*="Cell_"]': {
+            //   //border: `1px solid ${theme.palette.muted.light}`,
+            //   padding: theme.spacing(1),
+            //   // textAlign: 'left',
+            //   // verticalAlign: 'middle',
+            //   // color: theme.palette.text.primary,
+            //   // backgroundColor: theme.palette.background.default,
+            // },
+
+            /* Table add row/col buttons */
+            '[class^="_table"] button': {
+              color: theme.palette.text.primary,
+              backgroundColor: theme.palette.muted.light,
+              borderRadius: theme.shape.borderRadius,
+              padding: theme.spacing(0.5),
+              minWidth: 0,
+            },
+            '[class^="_table"] button svg': {
+              color: theme.palette.secondary.light,
+            },
+
+            /* Hover state */
+            // '[class^="_table"] button:hover': {
+            //   backgroundColor: theme.palette.action.selected,
+            // },
+
+            /* Disabled buttons */
+            // '[class^="_table"] button:disabled': {
+            //   //color: theme.palette.text.disabled,
+            //   //backgroundColor: 'transparent',
+            // },
+
+            /* SVG icons inside buttons */
+            // '[class^="_table"] button svg path': {
+            //   fill: theme.palette.text.primary,
+            // },
+
+            '[class*="_tableColumnEditorTrigger_"]': {
+              backgroundColor: theme.palette.muted.light,
+              color: theme.palette.primary.main,
+            },
           }}
         >
+          <TablePopoverStyles />
           <MDXEditor
-            markdown={content}
+            markdown={content.replace(/<([#\/\w]+)/g, '&lt;$1')}
             //onChange={onSave}
             ref={editorRef}
             plugins={[
@@ -313,6 +373,10 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
                     <InsertTable />
                     <ConditionalContents
                       options={[
+                        {
+                          when: (editor) => editor?.editorType === 'codeblock',
+                          contents: () => <ChangeCodeMirrorLanguage />,
+                        },
                         {
                           when: (editor) => editor?.editorType === 'sandpack',
                           contents: () => <ShowSandpackInfo />,
