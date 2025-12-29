@@ -10,9 +10,6 @@ import { useEffect, useRef } from 'react';
 import { useThemeStore } from '../../../zustand/useThemeStore';
 import { M1, M2, M3, M4 } from '../../../statics';
 
-import '@mdxeditor/editor/style.css';
-import '@mdxeditor/editor/style.css';
-
 interface NoteEditorModalProps {
   open: boolean;
   onClose: () => void;
