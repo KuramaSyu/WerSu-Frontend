@@ -7,16 +7,16 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { useEffect, useRef } from 'react';
-import { useThemeStore } from '../../../zustand/useThemeStore';
-import { M1, M2, M3, M4 } from '../../../statics';
+import { useThemeStore } from '../../../../zustand/useThemeStore';
+import { M1, M2, M3, M4 } from '../../../../statics';
 import 'katex/dist/katex.min.css';
 
 import { createBlockMarkdownSpec, Node } from '@tiptap/core';
-import {
-  Details,
-  DetailsContent,
-  DetailsSummary,
-} from '@tiptap/extension-details';
+// import {
+//   Details,
+//   DetailsContent,
+//   DetailsSummary,
+// } from '@tiptap/extension-details';
 import { Highlight } from '@tiptap/extension-highlight';
 import { Image } from '@tiptap/extension-image';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
@@ -35,7 +35,10 @@ import {
 } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import React, { useState } from 'react';
-import useInfoStore, { SnackbarUpdateImpl } from '../../../zustand/InfoStore';
+import useInfoStore, {
+  SnackbarUpdateImpl,
+} from '../../../../zustand/InfoStore';
+import { EditorBubbleMenu } from './EditorBubbleMenu';
 
 // Custom React component for demonstration
 const CustomReactComponent = ({ node }: any) => {
@@ -123,14 +126,18 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
 }) => {
   const { theme } = useThemeStore();
   const { setMessage } = useInfoStore();
+  const [showBubbleMenu, setShowBubbleMenu] = useState(true);
 
+  useEffect(() => {
+    parseAndSetMarkdown();
+  }, [content]);
   const editor = useEditor({
     extensions: [
       Markdown,
       StarterKit,
-      Details,
-      DetailsSummary,
-      DetailsContent,
+      // Details,
+      // DetailsSummary,
+      // DetailsContent,
       TaskList,
       TaskItem.configure({
         nested: true,
@@ -149,50 +156,7 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
       Image,
       TableKit,
       Highlight,
-      Mention.configure({
-        HTMLAttributes: {
-          class: 'mention',
-        },
-        suggestions: [
-          {
-            char: '@',
-            items: ({ query }) => {
-              return [
-                'Lea Thompson',
-                'Cyndi Lauper',
-                'Tom Cruise',
-                'Madonna',
-                'Jerry Hall',
-                'Joan Collins',
-                'Winona Ryder',
-                'Christina Applegate',
-              ]
-                .filter((item) =>
-                  item.toLowerCase().startsWith(query.toLowerCase())
-                )
-                .slice(0, 5);
-            },
-          },
-          {
-            char: '#',
-            items: ({ query }) => {
-              return [
-                'bug',
-                'feature',
-                'enhancement',
-                'documentation',
-                'help-wanted',
-                'priority-high',
-                'priority-low',
-              ]
-                .filter((item) =>
-                  item.toLowerCase().startsWith(query.toLowerCase())
-                )
-                .slice(0, 5);
-            },
-          },
-        ],
-      }),
+
       Mathematics,
       CustomReactNode,
     ],
@@ -201,7 +165,7 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
     contentType: 'markdown',
   });
 
-  const parseMarkdown = () => {
+  const parseAndSetMarkdown = () => {
     if (!editor || !editor.markdown) {
       setMessage(
         new SnackbarUpdateImpl(
@@ -280,7 +244,7 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
             <div className="button-group">
               <button
                 type="button"
-                onClick={parseMarkdown}
+                onClick={parseAndSetMarkdown}
                 disabled={!editor || !content.trim()}
               >
                 Parse Markdown →
@@ -315,7 +279,10 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
               <div className="panel-label">Tiptap Editor</div>
               <div className="editor-container">
                 {editor ? (
-                  <EditorContent editor={editor} />
+                  <>
+                    <EditorBubbleMenu editor={editor} />
+                    <EditorContent editor={editor} />
+                  </>
                 ) : (
                   <div>Loading editor…</div>
                 )}
