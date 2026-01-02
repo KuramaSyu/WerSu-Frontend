@@ -39,6 +39,7 @@ import useInfoStore, {
   SnackbarUpdateImpl,
 } from '../../../../zustand/InfoStore';
 import { EditorBubbleMenu } from './EditorBubbleMenu';
+import { EditorStaticMenu } from './EditorStaticMenu';
 
 // Custom React component for demonstration
 const CustomReactComponent = ({ node }: any) => {
@@ -280,6 +281,7 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
               <div className="editor-container">
                 {editor ? (
                   <>
+                    <EditorStaticMenu editor={editor} />
                     <EditorBubbleMenu editor={editor} />
                     <EditorContent editor={editor} />
                   </>
