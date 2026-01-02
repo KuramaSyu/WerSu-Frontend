@@ -5,7 +5,7 @@ import { blendWithContrast } from '../../utils/blendWithContrast';
 import type { MinimalNote } from '../../api/models/search';
 import { useSortable } from '@dnd-kit/react/sortable';
 import { useState } from 'react';
-import { NoteEditorModal } from './Modals/NoteEditModal';
+import { NoteEditorModal } from './Modals/Editor/NoteEditModal';
 import { NoteApi, type INoteApi } from '../../api/NoteApi';
 import type { string } from 'zod';
 import useInfoStore, { SnackbarUpdateImpl } from '../../zustand/InfoStore';
