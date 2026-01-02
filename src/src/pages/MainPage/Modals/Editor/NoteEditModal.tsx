@@ -22,7 +22,13 @@ import { Image } from '@tiptap/extension-image';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
 import { Mathematics } from '@tiptap/extension-mathematics';
 import { Mention } from '@tiptap/extension-mention';
-import { TableKit } from '@tiptap/extension-table';
+import {
+  Table,
+  TableCell,
+  TableHeader,
+  TableKit,
+  TableRow,
+} from '@tiptap/extension-table';
 import { Twitch } from '@tiptap/extension-twitch';
 import { Youtube } from '@tiptap/extension-youtube';
 import { Markdown } from '@tiptap/markdown';
@@ -41,6 +47,9 @@ import useInfoStore, {
 import { EditorBubbleMenu } from './EditorBubbleMenu';
 import { EditorStaticMenu } from './EditorStaticMenu';
 import { ThemedEditorBox } from './ThemedEditorBox';
+import { CellSelection } from '@tiptap/pm/tables';
+import '../../../../styles/tiptap.css';
+import { TableWithControls } from './TableControlls';
 
 // Custom React component for demonstration
 const CustomReactComponent = ({ node }: any) => {
@@ -135,7 +144,6 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
   }, [content]);
   const editor = useEditor({
     extensions: [
-      Markdown,
       StarterKit,
       // Details,
       // DetailsSummary,
@@ -156,13 +164,17 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
         parent: window.location.hostname,
       }),
       Image,
-      TableKit.configure({
-        table: { resizable: false },
+      //Table,
+      TableRow,
+      TableCell,
+      TableHeader,
+      TableWithControls.configure({
+        resizable: false,
       }),
       Highlight,
-
       Mathematics,
       CustomReactNode,
+      Markdown,
     ],
     content:
       '# Markdown Test\n\nClick **"Parse Markdown"** to load content from the left panel.',
@@ -287,7 +299,7 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
                     <EditorStaticMenu editor={editor} />
                     <EditorBubbleMenu editor={editor} />
                     <ThemedEditorBox>
-                      <EditorContent editor={editor} />
+                      <EditorContent editor={editor} className="tiptap" />
                     </ThemedEditorBox>
                   </>
                 ) : (

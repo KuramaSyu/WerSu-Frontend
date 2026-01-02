@@ -9,7 +9,7 @@ import StrikeThroughIcon from '@mui/icons-material/FormatStrikethrough';
 import { useEditorState } from '@tiptap/react';
 import { useThemeStore } from '../../../../zustand/useThemeStore';
 import { BoldItalicMenu } from './BoldItalicMenu';
-import { TableButtonGroup } from './BoldItalicMenu copy';
+import { TableButtonGroup } from './TableButtonGroup';
 
 export interface EditorBubbleMenuProps {
   editor: Editor;
