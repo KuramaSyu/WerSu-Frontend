@@ -9,10 +9,16 @@ import StrikeThroughIcon from '@mui/icons-material/FormatStrikethrough';
 import { useEditorState } from '@tiptap/react';
 import { useThemeStore } from '../../../../zustand/useThemeStore';
 import { BoldItalicMenu } from './BoldItalicMenu';
+import { TableButtonGroup } from './BoldItalicMenu copy';
 
 export interface EditorBubbleMenuProps {
   editor: Editor;
 }
 export const EditorStaticMenu = ({ editor }: EditorBubbleMenuProps) => {
-  return <BoldItalicMenu editor={editor} />;
+  return (
+    <Stack direction="row">
+      <BoldItalicMenu editor={editor} />
+      <TableButtonGroup editor={editor} />
+    </Stack>
+  );
 };
