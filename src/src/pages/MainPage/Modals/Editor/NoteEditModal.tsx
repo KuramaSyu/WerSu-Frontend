@@ -40,6 +40,7 @@ import useInfoStore, {
 } from '../../../../zustand/InfoStore';
 import { EditorBubbleMenu } from './EditorBubbleMenu';
 import { EditorStaticMenu } from './EditorStaticMenu';
+import { ThemedEditorBox } from './ThemedEditorBox';
 
 // Custom React component for demonstration
 const CustomReactComponent = ({ node }: any) => {
@@ -155,7 +156,9 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
         parent: window.location.hostname,
       }),
       Image,
-      TableKit,
+      TableKit.configure({
+        table: { resizable: false },
+      }),
       Highlight,
 
       Mathematics,
@@ -283,7 +286,9 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
                   <>
                     <EditorStaticMenu editor={editor} />
                     <EditorBubbleMenu editor={editor} />
-                    <EditorContent editor={editor} />
+                    <ThemedEditorBox>
+                      <EditorContent editor={editor} />
+                    </ThemedEditorBox>
                   </>
                 ) : (
                   <div>Loading editor…</div>
