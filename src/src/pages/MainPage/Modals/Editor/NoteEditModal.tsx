@@ -187,6 +187,19 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
     content:
       '# Markdown Test\n\nClick **"Parse Markdown"** to load content from the left panel.',
     contentType: 'markdown',
+    editorProps: {
+      handleKeyDown(view, event) {
+        if (event.key === 'Tab' && editor?.isActive('codeBlock')) {
+          event.preventDefault();
+          const tab = '    ';
+          const { state, dispatch } = view;
+          const { selection } = state;
+          dispatch(state.tr.insertText(tab, selection.from, selection.to));
+          return true;
+        }
+        return false;
+      },
+    },
   });
 
   const parseAndSetMarkdown = () => {
