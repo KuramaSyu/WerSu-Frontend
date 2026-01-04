@@ -1,5 +1,6 @@
 import { Box, darken, lighten } from '@mui/material';
 import { M1, M2 } from '../../../../statics';
+import { CodeBlockThemer } from './CodeBlockThemer';
 
 export const ThemedEditorBox = ({
   children,
@@ -55,7 +56,7 @@ export const ThemedEditorBox = ({
         },
       })}
     >
-      {children}
+      <CodeBlockThemer className="tiptap">{children}</CodeBlockThemer>
     </Box>
   );
 };
