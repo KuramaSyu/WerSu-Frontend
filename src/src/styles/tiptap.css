@@ -1,34 +1,3 @@
-/* .ProseMirror {
-  outline: none;
-} */
-
-/* .ProseMirror p.is-editor-empty:first-child::before {
-  content: attr(data-placeholder);
-  float: left;
-  color: #adb5bd;
-  pointer-events: none;
-  height: 0;
-} */
-
-/* .ProseMirror h1 { font-size: 2em; font-weight: bold; margin: 0.67em 0; }
-.ProseMirror h2 { font-size: 1.5em; font-weight: bold; margin: 0.75em 0; }
-.ProseMirror h3 { font-size: 1.17em; font-weight: bold; margin: 0.83em 0; }
-.ProseMirror ul, .ProseMirror ol { padding-left: 1.5em; }
-.ProseMirror code { background-color: #f4f4f4; padding: 2px 4px; border-radius: 3px; }
-.ProseMirror pre { background-color: #f4f4f4; padding: 12px; border-radius: 6px; }
-.ProseMirror blockquote { border-left: 3px solid #ddd; padding-left: 1em; margin-left: 0; } */
-/* 
-.tiptap table {
-  border-collapse: collapse;
-  width: 100%;
-} */
-
-/* .tiptap th, */
-/* .tiptap td {
-  border: 1px solid rgba(0, 0, 0, 0.6);
-  padding: 6px 8px;
-} */
-
 .tiptap table {
   width: 95%;
   table-layout: fixed; /* optional, ensures columns shrink to fit */
@@ -42,3 +11,4 @@
 .table-nodeview {
   position: relative;
 }
+
