@@ -51,6 +51,12 @@ import { CellSelection } from '@tiptap/pm/tables';
 import '../../../../styles/tiptap.css';
 import { TableWithControls } from './TableControlls';
 
+// codeblock extension + all languages
+import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+import { all, createLowlight } from 'lowlight';
+
+const lowlight = createLowlight(all);
+
 // Custom React component for demonstration
 const CustomReactComponent = ({ node }: any) => {
   return (
@@ -144,7 +150,8 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
   }, [content]);
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({ codeBlock: false }),
+      CodeBlockLowlight.configure({ lowlight }),
       // Details,
       // DetailsSummary,
       // DetailsContent,
@@ -174,6 +181,7 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
       Highlight,
       Mathematics,
       CustomReactNode,
+
       Markdown,
     ],
     content:
@@ -289,6 +297,24 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
                 onChange={(e) => {}}
                 placeholder="Enter markdown here..."
               />
+              <div className="control-group">
+                <div className="button-group">
+                  <button
+                    onClick={() =>
+                      editor.chain().focus().toggleCodeBlock().run()
+                    }
+                    className={editor.isActive('codeBlock') ? 'is-active' : ''}
+                  >
+                    Toggle code block
+                  </button>
+                  <button
+                    onClick={() => editor.chain().focus().setCodeBlock().run()}
+                    disabled={editor.isActive('codeBlock')}
+                  >
+                    Set code block
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="editor-panel">
@@ -298,6 +324,7 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
                   <>
                     <EditorStaticMenu editor={editor} />
                     <EditorBubbleMenu editor={editor} />
+
                     <ThemedEditorBox>
                       <EditorContent editor={editor} className="tiptap" />
                     </ThemedEditorBox>
