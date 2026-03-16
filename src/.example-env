@@ -1,5 +1,5 @@
 # where is your frontend hosted on the web? which domain should be accepted by Gin?
-FRONTEND_URL=http://localhost:5173
+# FRONTEND_URL=http://localhost:5173
 
 
 # how the backend is reachable from view of user

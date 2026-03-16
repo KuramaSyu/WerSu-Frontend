@@ -1,14 +1,13 @@
-import { Box, Button, Card, CardContent, Typography } from '@mui/material';
-import { M1, M2, M3, M4 } from '../../statics';
-import { useThemeStore } from '../../zustand/useThemeStore';
-import { blendWithContrast } from '../../utils/blendWithContrast';
-import type { MinimalNote } from '../../api/models/search';
-import { useSortable } from '@dnd-kit/react/sortable';
-import { useState } from 'react';
-import { NoteEditorModal } from './Modals/Editor/NoteEditModal';
-import { NoteApi, type INoteApi } from '../../api/NoteApi';
-import type { string } from 'zod';
-import useInfoStore, { SnackbarUpdateImpl } from '../../zustand/InfoStore';
+import { Box, Button, Card, CardContent, Typography } from "@mui/material";
+import { M1, M2, M3, M4 } from "../../statics";
+import { useThemeStore } from "../../zustand/useThemeStore";
+import { blendWithContrast } from "../../utils/blendWithContrast";
+import type { MinimalNote } from "../../api/models/search";
+import { useSortable } from "@dnd-kit/react/sortable";
+import { useState } from "react";
+import { NoteEditorModal } from "./Modals/Editor/NoteEditModal";
+import { NoteApi, type INoteApi } from "../../api/NoteApi";
+import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 
 export const NoteCard: React.FC<{
   note: MinimalNote;
@@ -25,15 +24,15 @@ export const NoteCard: React.FC<{
       <Card
         ref={ref}
         sx={{
-          minWidth: '4rem',
-          transition: 'all 0.2s ease-in-out',
-          '&:hover': {
-            transform: 'scale(1.04)',
+          minWidth: "4rem",
+          transition: "all 0.2s ease-in-out",
+          "&:hover": {
+            transform: "scale(1.04)",
             boxShadow: theme.shadows[4],
             borderColor: blendWithContrast(
               theme.palette.primary.main,
               theme,
-              1 / 2
+              1 / 2,
             ),
           },
           ...sx,
@@ -53,12 +52,12 @@ export const NoteCard: React.FC<{
             variant="h5"
             gutterBottom
             sx={{
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              display: '-webkit-box',
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              display: "-webkit-box",
               WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
-              wordBreak: 'break-word',
+              WebkitBoxOrient: "vertical",
+              wordBreak: "break-word",
             }}
           >
             {note.title}
@@ -67,12 +66,12 @@ export const NoteCard: React.FC<{
             variant="body2"
             color={theme.palette.text.secondary}
             sx={{
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              display: '-webkit-box',
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              display: "-webkit-box",
               WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
-              wordBreak: 'break-word',
+              WebkitBoxOrient: "vertical",
+              wordBreak: "break-word",
             }}
           >
             {note.stripped_content.substring(0, 100)}
@@ -92,14 +91,14 @@ export const NoteCard: React.FC<{
             .patch(note.id, title, content)
             .then((_) => {
               console.log(`saved note ${note.id} - ${title}`);
-              setMessage(new SnackbarUpdateImpl('Note saved', 'success'));
+              setMessage(new SnackbarUpdateImpl("Note saved", "success"));
             })
             .catch((err) => {
               console.error(
-                `failed to save note ${note.id} - ${title}: ${err}`
+                `failed to save note ${note.id} - ${title}: ${err}`,
               );
               setMessage(
-                new SnackbarUpdateImpl('Failed to save note', 'error')
+                new SnackbarUpdateImpl("Failed to save note", "error"),
               );
             });
         }}
