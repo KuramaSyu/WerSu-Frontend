@@ -1,0 +1,48 @@
+service:
+  wersu-grpc:
+    image: kuramasyu/wersu-grpc:dev
+    ports:
+      - "50052:50052"
+    environment:
+      GRPC_HOST: localhost
+      GRPC_PORT: 50052
+      GRPC_SPICEDB_CREDENTIALS: "558568b6e7603e3033a0737e2ba3a00b9371b0e962ef13df8f731366b94ae778"
+      GRPC_SPICEDB_ADDRESS: "spicedb:50051"
+
+  postgres:
+    image: pgvector/pgvector:0.8.1-pg18-trixie
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: db
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./data/pgvector:/var/lib/postgresql
+
+  pgweb:
+    container_name: pgweb_helper
+    restart: always
+    image: sosedoff/pgweb
+    ports: 
+      - "8081:8081" 
+    links: 
+      - postgres:postgres  # my database container is called postgres, not db
+    environment:
+      - PGWEB_DATABASE_URL=postgres://postgres:postgres@postgres:5432/db?sslmode=disable
+    depends_on:
+      - postgres
+      
+  spicedb:
+    image: authzed/spicedb:latest
+    container_name: spicedb
+    command:
+      - serve
+      - --http-enabled=true
+      - --grpc-preshared-key=somerandomkeyhere
+    ports:
+      - "50051:50051" # gRPC
+      - "8443:8443"   # HTTP
+    restart: unless-stopped
