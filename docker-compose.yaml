@@ -4,7 +4,7 @@ services:
     ports:
       - "50052:50052"
     environment:
-      GRPC_HOST: localhost
+      GRPC_HOST: 0.0.0.0
       GRPC_PORT: 50052
       GRPC_SPICEDB_CREDENTIALS: "558568b6e7603e3033a0737e2ba3a00b9371b0e962ef13df8f731366b94ae778"
       GRPC_SPICEDB_ADDRESS: "spicedb:50051"
@@ -14,13 +14,19 @@ services:
       - pgweb
 
   wersu-rest:
-    image: kuramasyu/wersu-rest:dev
+    image: ghcr.io/kuramasyu/wersu-rest:dev
     ports:
       - "8080:8080"
     environment:
       REST_HOST: localhost
       REST_PORT: 8080
-      REST_GRPC_ADDRESS: "wersu-grpc:50052"
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
+      SESSION_SECRET: ${SESSION_SECRET}
+      DISCORD_REDIRECT_URI: ${DISCORD_REDIRECT_URI}
+      FRONTEND_URL: ${FRONTEND_URL}
+      GRPC_SERVER_ADDRESS: "wersu-grpc:50052"  # how the GRPC server is internal reachable
+      BACKEND_URL: http://localhost:8080  # how the backend is reachable from view of user
     depends_on:
       - wersu-grpc
 
