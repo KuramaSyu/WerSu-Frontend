@@ -1,20 +1,26 @@
-import { Box, Grid, useMediaQuery } from '@mui/material';
-import { useEffect, useMemo, useRef, useState, type JSX } from 'react';
+import { Box, Grid, useMediaQuery } from "@mui/material";
+import { useEffect, useMemo, useRef, useState, type JSX } from "react";
 
-import { useSearchNotesStore } from '../../zustand/useSearchNotesStore';
-import { NoteCard } from './NoteCard';
-import { M1, M2, M3, M4, M5, M6 } from '../../statics';
-import { useLoadingStore } from '../../zustand/loadingStore';
-import { useThemeStore } from '../../zustand/useThemeStore';
+import { useSearchNotesStore } from "../../zustand/useSearchNotesStore";
+import { NoteCard } from "./NoteCard";
+import { M1, M2, M3, M4, M5, M6 } from "../../statics";
+import { useLoadingStore } from "../../zustand/loadingStore";
+import { useThemeStore } from "../../zustand/useThemeStore";
+import { string } from "zod";
+import type { MinimalNote, Note } from "../../api/models/search";
 
-export const CardGrid: React.FC = () => {
-  const { notes, setNotes } = useSearchNotesStore();
+export interface CardGridProps {
+  title: string;
+  notes: Array<MinimalNote>;
+}
+
+export const CardGrid: React.FC<CardGridProps> = ({ title, notes }) => {
   const { isLoading } = useLoadingStore();
 
   const { theme } = useThemeStore();
-  const isXs = useMediaQuery(theme.breakpoints.only('xs'));
-  const isSm = useMediaQuery(theme.breakpoints.only('sm'));
-  const isMd = useMediaQuery(theme.breakpoints.only('md'));
+  const isXs = useMediaQuery(theme.breakpoints.only("xs"));
+  const isSm = useMediaQuery(theme.breakpoints.only("sm"));
+  const isMd = useMediaQuery(theme.breakpoints.only("md"));
 
   const columnCount = isXs ? 1 : isSm ? 2 : isMd ? 3 : 4;
 
@@ -23,7 +29,7 @@ export const CardGrid: React.FC = () => {
     // craete x empty columns
     const columns: (typeof notes)[] = Array.from(
       { length: columnCount },
-      () => []
+      () => [],
     );
 
     // distribute notes into columns.
@@ -56,7 +62,7 @@ export const CardGrid: React.FC = () => {
             key={note.id}
             note={note}
             index={originalIndex}
-            sx={{ mb: M2, breakInside: 'avoid' }}
+            sx={{ mb: M2, breakInside: "avoid" }}
           />
         );
       })}
