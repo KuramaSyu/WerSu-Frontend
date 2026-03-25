@@ -23,15 +23,23 @@ import { NoteApi } from "../../api/NoteApi";
 import { useNotesStore } from "../../zustand/useNotesStore";
 import { CardGrid } from "./CardGrid";
 import { CreateNote } from "./CreateNote";
-import type { Note } from "../../api/models/search";
+import { Note, type NoteData } from "../../api/models/search";
+import { useSearchNotesStore } from "../../zustand/useSearchNotesStore";
 
 export const MainContent: React.FC = () => {
-  const { notes } = useNotesStore();
+  const { notes } = useSearchNotesStore();
 
   // reange into a Dict[note-directory, List[Note]]
   const notesByDirectory = useMemo(() => {
     const dict: Record<string, Note[]> = {};
-    Object.values(notes).forEach((note) => {
+    Object.values(notes).forEach((noteData) => {
+      // cast to Note
+      const notedata: NoteData = {
+        ...noteData,
+        content: noteData.stripped_content,
+        permissions: [],
+      };
+      const note = new Note(notedata);
       const dir = note.get_dir() || "root";
       if (!dict[dir]) {
         dict[dir] = [];
@@ -40,6 +48,13 @@ export const MainContent: React.FC = () => {
     });
     return dict;
   }, [notes]);
+
+  // log notesByDirectory for debugging
+  useEffect(() => {
+    console.log(
+      `notesByDirectory ${JSON.stringify(notesByDirectory, null, 2)}`,
+    );
+  }, [notesByDirectory]);
 
   return (
     <Box
