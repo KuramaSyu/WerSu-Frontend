@@ -1,6 +1,6 @@
 import { BACKEND_BASE } from "../statics";
 import { useNotesStore } from "../zustand/useNotesStore";
-import type { Note } from "./models/search";
+import { Note, type NoteData } from "./models/search";
 
 export interface INoteApi {
   get(id: string): Promise<Note | undefined>;
@@ -29,10 +29,14 @@ export class NoteApi implements INoteApi {
       credentials: "include",
     });
     if (response.ok) {
-      const note: Note = await response.json().catch((e) => {
+      const noteData: NoteData = await response.json().catch((e) => {
         this.logError(`/api/notes/${id}`, e);
         return null;
       });
+      if (noteData === null) {
+        return undefined;
+      }
+      const note = Note.fromJson(noteData);
       updateNote(note);
       return note;
     }
@@ -50,10 +54,14 @@ export class NoteApi implements INoteApi {
       body: JSON.stringify({ title, content }),
     });
     if (response.ok) {
-      const note: Note = await response.json().catch((e) => {
+      const noteData: NoteData = await response.json().catch((e) => {
         this.logError(`/api/notes`, e);
         return null;
       });
+      if (noteData === null) {
+        return undefined;
+      }
+      const note = Note.fromJson(noteData);
       updateNote(note);
       return note;
     }
@@ -75,10 +83,14 @@ export class NoteApi implements INoteApi {
       body: JSON.stringify({ id, title, content }),
     });
     if (response.ok) {
-      const note: Note = await response.json().catch((e) => {
+      const noteData: NoteData = await response.json().catch((e) => {
         this.logError(`/api/notes`, e);
         return null;
       });
+      if (noteData === null) {
+        return undefined;
+      }
+      const note = Note.fromJson(noteData);
       updateNote(note);
       return note;
     }
