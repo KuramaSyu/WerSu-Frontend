@@ -1,4 +1,4 @@
-import { Box, Grid, useMediaQuery } from "@mui/material";
+import { Box, Grid, Paper, Typography, useMediaQuery } from "@mui/material";
 import { useEffect, useMemo, useRef, useState, type JSX } from "react";
 
 import { useSearchNotesStore } from "../../zustand/useSearchNotesStore";
@@ -49,23 +49,28 @@ export const CardGrid: React.FC<CardGridProps> = ({ title, notes }) => {
   }
 
   return (
-    <Box
-      sx={{
-        columnCount: { xs: 1, sm: 2, md: 3, lg: 4 },
-        columnGap: M2,
-      }}
-    >
-      {displayNotes.map((note) => {
-        const originalIndex = notes.findIndex((n) => n.id === note.id);
-        return (
-          <NoteCard
-            key={note.id}
-            note={note}
-            index={originalIndex}
-            sx={{ mb: M2, breakInside: "avoid" }}
-          />
-        );
-      })}
-    </Box>
+    <Paper sx={{ p: M4 }} elevation={1}>
+      <Typography variant="h2" mb={M4}>
+        {title}
+      </Typography>
+      <Box
+        sx={{
+          columnCount: { xs: 1, sm: 2, md: 3, lg: 4 },
+          columnGap: M2,
+        }}
+      >
+        {displayNotes.map((note) => {
+          const originalIndex = notes.findIndex((n) => n.id === note.id);
+          return (
+            <NoteCard
+              key={note.id}
+              note={note}
+              index={originalIndex}
+              sx={{ mb: M2, breakInside: "avoid" }}
+            />
+          );
+        })}
+      </Box>
+    </Paper>
   );
 };
