@@ -1,16 +1,17 @@
-import { IconButton, Box, useTheme, Button } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
-import { NodeViewWrapper, NodeViewContent, Editor } from '@tiptap/react';
-import { Table } from '@tiptap/extension-table';
-import { ReactNodeViewRenderer } from '@tiptap/react';
-import { Padding } from '@mui/icons-material';
+import { Box, useTheme, Button } from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import {
+  NodeViewWrapper,
+  NodeViewContent,
+  ReactNodeViewRenderer,
+  type ReactNodeViewProps,
+} from "@tiptap/react";
+import { Table } from "@tiptap/extension-table";
+import { TextSelection } from "@tiptap/pm/state";
 
-export const TableNodeView = ({
+export const TableNodeView: React.FC<ReactNodeViewProps> = ({
   editor,
   getPos,
-}: {
-  editor: Editor;
-  getPos: () => number;
 }) => {
   const theme = useTheme();
 
@@ -34,9 +35,7 @@ export const TableNodeView = ({
     const resolvedPos = editor.state.doc.resolve(lastCellPos);
 
     editor.view.dispatch(
-      editor.state.tr.setSelection(
-        editor.state.selection.constructor.near(resolvedPos)
-      )
+      editor.state.tr.setSelection(TextSelection.near(resolvedPos)),
     );
     editor.chain().focus().addColumnAfter().run();
   };
@@ -57,9 +56,7 @@ export const TableNodeView = ({
     const resolvedPos = editor.state.doc.resolve(lastRowPos);
 
     editor.view.dispatch(
-      editor.state.tr.setSelection(
-        editor.state.selection.constructor.near(resolvedPos)
-      )
+      editor.state.tr.setSelection(TextSelection.near(resolvedPos)),
     );
     editor.chain().focus().addRowAfter().run();
   };
@@ -67,22 +64,22 @@ export const TableNodeView = ({
     <NodeViewWrapper
       className="table-nodeview"
       style={{
-        position: 'relative',
-        display: 'inline-block',
-        marginBottom: '10px',
+        position: "relative",
+        display: "inline-block",
+        marginBottom: "10px",
       }}
     >
       <Box
         sx={{
-          '.table-nodeview:hover & .hoverBox': {
+          ".table-nodeview:hover & .hoverBox": {
             opacity: 1,
-            pointerEvents: 'auto',
-            transition: 'opacity 0.3s ease',
+            pointerEvents: "auto",
+            transition: "opacity 0.3s ease",
           },
-          '& .hoverBox': {
+          "& .hoverBox": {
             opacity: 0,
-            pointerEvents: 'none',
-            transition: 'opacity 0.3s ease',
+            pointerEvents: "none",
+            transition: "opacity 0.3s ease",
           },
         }}
       >
@@ -95,17 +92,17 @@ export const TableNodeView = ({
               className="hoverBox"
               key={i}
               size="small"
-              onClick={() => addColumnAfter(i)}
+              onClick={addColumnAfter}
               sx={(theme) => ({
-                position: 'absolute',
-                display: 'flex',
-                flexDirection: 'column',
+                position: "absolute",
+                display: "flex",
+                flexDirection: "column",
                 top: 0,
-                left: '100%',
-                width: '30px',
-                height: '100% !important',
+                left: "100%",
+                width: "30px",
+                height: "100% !important",
                 zIndex: 10,
-                minWidth: '0',
+                minWidth: "0",
                 backgroundColor: theme.palette.background.paper,
                 border: `1px solid ${theme.palette.divider}`,
               })}
@@ -122,12 +119,12 @@ export const TableNodeView = ({
             size="small"
             onClick={() => addRowAfter()}
             sx={{
-              position: 'absolute',
-              display: 'flex',
-              flexDirection: 'row',
+              position: "absolute",
+              display: "flex",
+              flexDirection: "row",
               bottom: -30,
               left: 0,
-              width: '100% !important',
+              width: "100% !important",
               backgroundColor: theme.palette.background.paper,
               border: `1px solid ${theme.palette.divider}`,
               flexGrow: 1,
