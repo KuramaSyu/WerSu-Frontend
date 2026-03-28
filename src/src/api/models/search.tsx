@@ -18,11 +18,11 @@ export interface MinimalNote {
   author_id: string;
   updated_at: string; // Or Date, depending on how it's deserialized
   stripped_content: string;
+  permissions: PermissionRelationshipReply[];
 }
 
 export interface NoteData extends MinimalNote {
   content: string;
-  permissions: PermissionRelationshipReply[];
 }
 
 export class Note implements NoteData {
