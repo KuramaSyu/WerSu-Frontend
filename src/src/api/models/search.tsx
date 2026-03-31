@@ -18,7 +18,7 @@ export interface MinimalNote {
   author_id: string;
   updated_at: string; // Or Date, depending on how it's deserialized
   stripped_content: string;
-  permissions: PermissionRelationshipReply[];
+  permissions?: PermissionRelationshipReply[];
 }
 
 export interface NoteData extends MinimalNote {
@@ -41,7 +41,7 @@ export class Note implements NoteData {
     this.content = data.content;
     this.author_id = data.author_id;
     this.updated_at = data.updated_at;
-    this.permissions = data.permissions;
+    this.permissions = data.permissions ?? [];
   }
 
   static fromJson(data: NoteData): Note {
@@ -68,7 +68,14 @@ export class Note implements NoteData {
   }
 }
 
-export type PermissionObjectType = "note" | "directory" | "user";
+export type PermissionObjectType =
+  | "note"
+  | "directory"
+  | "user"
+  | "PERMISSION_OBJECT_TYPE_USER"
+  | "PERMISSION_OBJECT_TYPE_UNSPECIFIED"
+  | "PERMISSION_OBJECT_TYPE_NOTE"
+  | "PERMISSION_OBJECT_TYPE_DIRECTORY";
 
 export interface PermissionResourceReply {
   object_id: string;
@@ -84,4 +91,53 @@ export interface PermissionRelationshipReply {
   relation: string;
   resource: PermissionResourceReply;
   subject: PermissionSubjectReply;
+}
+
+export interface PermissionResourceRequest {
+  object_id: string;
+  object_type: "note" | "directory";
+}
+
+export interface PermissionSubjectRequest {
+  object_id: string;
+  object_type: "user" | "PERMISSION_OBJECT_TYPE_USER";
+}
+
+export interface PermissionRelationshipRequest {
+  relation:
+    | "owner"
+    | "admin"
+    | "writer"
+    | "reader"
+    | "parent"
+    | "parent_directory";
+  resource?: PermissionResourceRequest;
+  subject?: PermissionSubjectRequest;
+}
+
+export interface PermissionsReply {
+  object_id: string;
+  object_type:
+    | "PERMISSION_OBJECT_TYPE_UNSPECIFIED"
+    | "PERMISSION_OBJECT_TYPE_NOTE"
+    | "PERMISSION_OBJECT_TYPE_DIRECTORY";
+  relationships: PermissionRelationshipReply[];
+}
+
+export interface ReplacePermissionsBody {
+  object_id: string;
+  object_type: "note" | "directory";
+  relationships: PermissionRelationshipRequest[];
+}
+
+export interface CreatePermissionBody {
+  object_id: string;
+  object_type: "note" | "directory";
+  relationship: PermissionRelationshipRequest;
+}
+
+export interface DeletePermissionBody {
+  object_id: string;
+  object_type: "note" | "directory";
+  relationship: PermissionRelationshipRequest;
 }
