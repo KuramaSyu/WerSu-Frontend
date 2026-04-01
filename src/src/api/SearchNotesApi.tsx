@@ -1,11 +1,6 @@
 import { BACKEND_BASE } from "../statics";
 import { useSearchNotesStore } from "../zustand/useSearchNotesStore";
-import { useUserStore } from "../zustand/userStore";
-import type {
-  MinimalNote,
-  GetSearchNotesRequest,
-  RestNotesSearchType,
-} from "./models/search";
+import type { MinimalNote, RestNotesSearchType } from "./models/search";
 
 export interface ISearchNotesApi {
   search(
@@ -32,6 +27,7 @@ export class TestSearchNotesApi implements ISearchNotesApi {
         author_id: "1",
         updated_at: new Date().toISOString(),
         stripped_content: `This is the content of Test Note ${i + 1}`,
+        permissions: [],
       });
     }
     return results;
