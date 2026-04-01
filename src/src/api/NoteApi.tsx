@@ -5,7 +5,11 @@ import { Note, type NoteData } from "./models/search";
 export interface INoteApi {
   get(id: string): Promise<Note | undefined>;
   post(title: string, content: string): Promise<Note | undefined>;
-  patch(id: string, title: string, content: string): Promise<Note | undefined>;
+  patch(
+    id: string,
+    title?: string,
+    content?: string,
+  ): Promise<Note | undefined>;
   delete(id: string): Promise<boolean>;
 }
 
@@ -70,17 +74,25 @@ export class NoteApi implements INoteApi {
 
   async patch(
     id: string,
-    title: string,
-    content: string,
+    title?: string,
+    content?: string,
   ): Promise<Note | undefined> {
     const updateNote = useNotesStore.getState().updateNote;
+    const body: { id: string; title?: string; content?: string } = { id };
+    if (title !== undefined) {
+      body.title = title;
+    }
+    if (content !== undefined) {
+      body.content = content;
+    }
+
     const response = await fetch(`${BACKEND_BASE}/api/notes`, {
       method: "PATCH",
       credentials: "include",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ id, title, content }),
+      body: JSON.stringify(body),
     });
     if (response.ok) {
       const noteData: NoteData = await response.json().catch((e) => {
