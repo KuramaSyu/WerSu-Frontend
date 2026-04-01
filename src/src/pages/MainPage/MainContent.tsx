@@ -28,6 +28,7 @@ import { useSearchNotesStore } from "../../zustand/useSearchNotesStore";
 import type { ListDirectoriesQuery } from "../../api/DirectoryApi";
 import { useDirectoriesQuery } from "../../api/queries/directoryQueries";
 import { useDirectoryStore } from "../../zustand/useDirectoryStore";
+import { DirectorySideView } from "./DirectorySideView";
 
 export const MainContent: React.FC = () => {
   const { notes } = useSearchNotesStore();
@@ -123,20 +124,27 @@ export const MainContent: React.FC = () => {
         }}
       >
         <CreateNote key="create-note"></CreateNote>
-        {Object.entries(notesByDirectory).map(([dir, notes]) => (
-          <Box px={M4}>
-            <CardGrid
-              notes={notes}
-              title={
-                dir === "root"
-                  ? "Root"
-                  : directoriesById[dir]?.display_name ||
-                    directoriesById[dir]?.name ||
-                    dir
-              }
-            ></CardGrid>
+        <Stack direction={"row"} gap={M4} alignItems={"center"}>
+          <Box sx={{ width: "20%" }}>
+            <DirectorySideView />
           </Box>
-        ))}
+          <Box>
+            {Object.entries(notesByDirectory).map(([dir, notes]) => (
+              <Box px={M4}>
+                <CardGrid
+                  notes={notes}
+                  title={
+                    dir === "root"
+                      ? "Root"
+                      : directoriesById[dir]?.display_name ||
+                        directoriesById[dir]?.name ||
+                        dir
+                  }
+                ></CardGrid>
+              </Box>
+            ))}
+          </Box>
+        </Stack>
       </Box>
     </Box>
   );
