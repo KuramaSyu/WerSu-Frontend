@@ -56,10 +56,9 @@ export class Note implements NoteData {
     );
 
     for (const permission of parentRelations) {
-      if (permission.resource.object_type === "directory") {
-        return permission.resource.object_id;
-      }
-      if (permission.subject.object_type === "directory") {
+      if (
+        permission.subject.object_type === "PERMISSION_OBJECT_TYPE_DIRECTORY"
+      ) {
         return permission.subject.object_id;
       }
     }
