@@ -4,56 +4,58 @@ import {
   DialogTitle,
   IconButton,
   type Theme,
-} from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
-import { useEffect, useRef } from 'react';
-import { useThemeStore } from '../../../../zustand/useThemeStore';
-import { M1, M2, M3, M4 } from '../../../../statics';
-import 'katex/dist/katex.min.css';
+} from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
+import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
+import { useEffect, useRef } from "react";
+import { useThemeStore } from "../../../../zustand/useThemeStore";
+import { M1, M2, M3, M4 } from "../../../../statics";
+import "katex/dist/katex.min.css";
 
-import { createBlockMarkdownSpec, Node } from '@tiptap/core';
+import { createBlockMarkdownSpec, Node } from "@tiptap/core";
 // import {
 //   Details,
 //   DetailsContent,
 //   DetailsSummary,
 // } from '@tiptap/extension-details';
-import { Highlight } from '@tiptap/extension-highlight';
-import { Image } from '@tiptap/extension-image';
-import { TaskItem, TaskList } from '@tiptap/extension-list';
-import { Mathematics } from '@tiptap/extension-mathematics';
-import { Mention } from '@tiptap/extension-mention';
+import { Highlight } from "@tiptap/extension-highlight";
+import { Image } from "@tiptap/extension-image";
+import { TaskItem, TaskList } from "@tiptap/extension-list";
+import { Mathematics } from "@tiptap/extension-mathematics";
+import { Mention } from "@tiptap/extension-mention";
 import {
   Table,
   TableCell,
   TableHeader,
   TableKit,
   TableRow,
-} from '@tiptap/extension-table';
-import { Twitch } from '@tiptap/extension-twitch';
-import { Youtube } from '@tiptap/extension-youtube';
-import { Markdown } from '@tiptap/markdown';
+} from "@tiptap/extension-table";
+import { Twitch } from "@tiptap/extension-twitch";
+import { Youtube } from "@tiptap/extension-youtube";
+import { Markdown } from "@tiptap/markdown";
 import {
   EditorContent,
   NodeViewContent,
   NodeViewWrapper,
   ReactNodeViewRenderer,
   useEditor,
-} from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import React, { useState } from 'react';
+} from "@tiptap/react";
+import DragHandle from "@tiptap/extension-drag-handle-react";
+import StarterKit from "@tiptap/starter-kit";
+import React, { useState } from "react";
 import useInfoStore, {
   SnackbarUpdateImpl,
-} from '../../../../zustand/InfoStore';
-import { EditorBubbleMenu } from './EditorBubbleMenu';
-import { EditorStaticMenu } from './EditorStaticMenu';
-import { ThemedEditorBox } from './ThemedEditorBox';
-import { CellSelection } from '@tiptap/pm/tables';
-import '../../../../styles/tiptap.css';
-import { TableWithControls } from './TableControlls';
+} from "../../../../zustand/InfoStore";
+import { EditorBubbleMenu } from "./EditorBubbleMenu";
+import { EditorStaticMenu } from "./EditorStaticMenu";
+import { ThemedEditorBox } from "./ThemedEditorBox";
+import { CellSelection } from "@tiptap/pm/tables";
+import "../../../../styles/tiptap.css";
+import { TableWithControls } from "./TableControlls";
 
 // codeblock extension + all languages
-import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
-import { all, createLowlight } from 'lowlight';
+import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
+import { all, createLowlight } from "lowlight";
 
 const lowlight = createLowlight(all);
 
@@ -63,18 +65,18 @@ const CustomReactComponent = ({ node }: any) => {
     <NodeViewWrapper className="custom-react-node">
       <div
         style={{
-          border: '2px solid #3b82f6',
-          borderRadius: '8px',
-          padding: '16px',
-          margin: '8px 0',
-          backgroundColor: '#eff6ff',
+          border: "2px solid #3b82f6",
+          borderRadius: "8px",
+          padding: "16px",
+          margin: "8px 0",
+          backgroundColor: "#eff6ff",
         }}
       >
-        <h4 style={{ margin: '0 0 8px 0', color: '#1e40af' }}>
+        <h4 style={{ margin: "0 0 8px 0", color: "#1e40af" }}>
           Custom React Component
         </h4>
-        <p style={{ margin: 0, color: '#374151' }}>
-          {node.attrs.content || 'This is a custom React node view!'}
+        <p style={{ margin: 0, color: "#374151" }}>
+          {node.attrs.content || "This is a custom React node view!"}
         </p>
         <div>
           <NodeViewContent />
@@ -86,16 +88,16 @@ const CustomReactComponent = ({ node }: any) => {
 
 // Custom node extension with React node view
 const CustomReactNode = Node.create({
-  name: 'customReactNode',
+  name: "customReactNode",
 
-  group: 'block',
+  group: "block",
 
-  content: 'block+',
+  content: "block+",
 
   addAttributes() {
     return {
       content: {
-        default: 'This is a custom React node view!',
+        default: "This is a custom React node view!",
       },
     };
   },
@@ -109,18 +111,18 @@ const CustomReactNode = Node.create({
   },
 
   renderHTML({ HTMLAttributes }) {
-    return ['div', { 'data-type': 'custom-react-node', ...HTMLAttributes }, 0];
+    return ["div", { "data-type": "custom-react-node", ...HTMLAttributes }, 0];
   },
 
   addNodeView() {
     return ReactNodeViewRenderer(CustomReactComponent);
   },
 
-  markdownTokenName: 'customReactNode',
+  markdownTokenName: "customReactNode",
 
   ...createBlockMarkdownSpec({
-    nodeName: 'customReactNode',
-    name: 'react',
+    nodeName: "customReactNode",
+    name: "react",
   }),
 });
 
@@ -186,12 +188,12 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
     ],
     content:
       '# Markdown Test\n\nClick **"Parse Markdown"** to load content from the left panel.',
-    contentType: 'markdown',
+    contentType: "markdown",
     editorProps: {
       handleKeyDown(view, event) {
-        if (event.key === 'Tab' && editor?.isActive('codeBlock')) {
+        if (event.key === "Tab" && editor?.isActive("codeBlock")) {
           event.preventDefault();
-          const tab = '    ';
+          const tab = "    ";
           const { state, dispatch } = view;
           const { selection } = state;
           dispatch(state.tr.insertText(tab, selection.from, selection.to));
@@ -206,15 +208,15 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
     if (!editor || !editor.markdown) {
       setMessage(
         new SnackbarUpdateImpl(
-          'Editor or MarkdownManager not available',
-          'error'
-        )
+          "Editor or MarkdownManager not available",
+          "error",
+        ),
       );
       return;
     }
 
     try {
-      editor.commands.setContent(content, { contentType: 'markdown' });
+      editor.commands.setContent(content, { contentType: "markdown" });
     } catch (err) {
       console.error(err);
       setMessage(
@@ -222,15 +224,15 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
           `Error parsing markdown: ${
             err instanceof Error ? err.message : String(err)
           }`,
-          'error'
-        )
+          "error",
+        ),
       );
     }
   };
 
   const getEditorAsMarkdown = () => {
     if (!editor) {
-      return '';
+      return "";
     }
 
     try {
@@ -238,6 +240,32 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
     } catch {
       return editor.getText();
     }
+  };
+
+  /**
+   * Align the browser drag preview with the cursor while dragging TipTap blocks.
+   * This keeps the dragged line visually to the right of the cursor instead of offsetting left.
+   */
+  const handleElementDragStart = (event: DragEvent) => {
+    if (!editor || !event.dataTransfer) {
+      return;
+    }
+
+    // TipTap marks the dragged block as selected right before dragstart.
+    const selectedNode = editor.view.dom.querySelector(
+      ".ProseMirror-selectednode",
+    );
+    if (!(selectedNode instanceof HTMLElement)) {
+      return;
+    }
+
+    const rect = selectedNode.getBoundingClientRect();
+    // Keep the drag ghost aligned to the left edge so content appears right of the cursor.
+    const offsetY = Math.max(
+      0,
+      Math.min(event.clientY - rect.top, rect.height - 1),
+    );
+    event.dataTransfer.setDragImage(selectedNode, 0, offsetY);
   };
 
   return (
@@ -252,9 +280,9 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
     >
       <DialogTitle
         sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
           backgroundColor: theme.palette.background.paper,
           padding: M3,
         }}
@@ -272,11 +300,21 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
       <DialogContent
         sx={{
           backgroundColor: theme.palette.background.default,
-          minHeight: '40vh',
+          minHeight: "40vh",
           // display: 'flex',
         }}
       >
         <div className="markdown-parser-demo">
+          {editor && (
+            <DragHandle
+              editor={editor}
+              className="note-block-drag-handle"
+              nested
+              onElementDragStart={handleElementDragStart}
+            >
+              <DragIndicatorIcon fontSize="small" />
+            </DragHandle>
+          )}
           <div className="control-group">
             <div className="button-group">
               <button
@@ -316,13 +354,13 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
                     onClick={() =>
                       editor.chain().focus().toggleCodeBlock().run()
                     }
-                    className={editor.isActive('codeBlock') ? 'is-active' : ''}
+                    className={editor.isActive("codeBlock") ? "is-active" : ""}
                   >
                     Toggle code block
                   </button>
                   <button
                     onClick={() => editor.chain().focus().setCodeBlock().run()}
-                    disabled={editor.isActive('codeBlock')}
+                    disabled={editor.isActive("codeBlock")}
                   >
                     Set code block
                   </button>

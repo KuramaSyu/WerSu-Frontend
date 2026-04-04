@@ -9,7 +9,9 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import { useEditor, EditorContent } from "@tiptap/react";
+import DragHandle from "@tiptap/extension-drag-handle-react";
 import StarterKit from "@tiptap/starter-kit";
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
 import { all, createLowlight } from "lowlight";
@@ -22,6 +24,7 @@ import { Highlight } from "@tiptap/extension-highlight";
 import { Mathematics } from "@tiptap/extension-mathematics";
 import { Markdown } from "@tiptap/markdown";
 import "katex/dist/katex.min.css";
+import "../../styles/tiptap.css";
 
 import TopBar from "../../components/TopBar";
 import { LeftSideView } from "../MainPage/LeftSideView";
@@ -272,6 +275,13 @@ export const NotePage: React.FC = () => {
             <>
               <EditorStaticMenu editor={editor} />
               <EditorBubbleMenu editor={editor} />
+              <DragHandle
+                editor={editor}
+                className="note-block-drag-handle"
+                nested
+              >
+                <DragIndicatorIcon fontSize="small" />
+              </DragHandle>
               <ThemedEditorBox>
                 <EditorContent editor={editor} className="tiptap" />
               </ThemedEditorBox>

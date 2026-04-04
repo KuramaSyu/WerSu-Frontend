@@ -12,3 +12,41 @@
   position: relative;
 }
 
+.note-block-drag-handle {
+  position: absolute;
+  width: 28px;
+  height: 30px;
+  border: 0;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: color-mix(in srgb, currentColor 75%, transparent);
+  cursor: grab;
+  z-index: 20;
+  transform: translateX(-16px);
+}
+
+.note-block-drag-handle:hover {
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  color: color-mix(in srgb, currentColor 90%, transparent);
+}
+
+.note-block-drag-handle[data-dragging='true'] {
+  cursor: grabbing;
+}
+
+.note-block-drag-handle > span {
+  letter-spacing: -1px;
+  line-height: 1;
+  font-size: 18px;
+  font-weight: 700;
+  user-select: none;
+}
+
+.tiptap ul,
+.tiptap ol {
+  padding-left: 1.8rem;
+}
+
