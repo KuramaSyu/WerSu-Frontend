@@ -1,9 +1,9 @@
-import { Box, Button, Card, CardContent, Typography } from "@mui/material";
-import { M1, M2, M3, M4 } from "../../statics";
+import { Box, Card, CardContent, Typography } from "@mui/material";
+import { M3 } from "../../statics";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { blendWithContrast } from "../../utils/blendWithContrast";
 import type { MinimalNote } from "../../api/models/search";
-import { useSortable } from "@dnd-kit/react/sortable";
+import { useDraggable } from "@dnd-kit/react";
 import { useState } from "react";
 import { NoteEditorModal } from "./Modals/Editor/NoteEditModal";
 import { NoteApi, type INoteApi } from "../../api/NoteApi";
@@ -11,10 +11,15 @@ import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 
 export const NoteCard: React.FC<{
   note: MinimalNote;
-  index: number;
   sx?: object;
-}> = ({ note, index, sx }) => {
-  const { ref } = useSortable({ id: note.id, index: index });
+}> = ({ note, sx }) => {
+  const { ref, isDragging } = useDraggable({
+    id: note.id,
+    type: "note",
+    data: {
+      noteId: note.id,
+    },
+  });
   const { theme } = useThemeStore();
   const [modalOpen, setModalOpen] = useState(false);
   const { setMessage } = useInfoStore();
@@ -25,6 +30,8 @@ export const NoteCard: React.FC<{
         ref={ref}
         sx={{
           minWidth: "4rem",
+          cursor: "grab",
+          opacity: isDragging ? 0.6 : 1,
           transition: "all 0.2s ease-in-out",
           "&:hover": {
             transform: "scale(1.04)",
@@ -89,7 +96,7 @@ export const NoteCard: React.FC<{
           const api: INoteApi = new NoteApi();
           api
             .patch(note.id, title, content)
-            .then((_) => {
+            .then(() => {
               console.log(`saved note ${note.id} - ${title}`);
               setMessage(new SnackbarUpdateImpl("Note saved", "success"));
             })
