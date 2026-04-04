@@ -32,6 +32,7 @@ import { EditorBubbleMenu } from "../MainPage/Modals/Editor/EditorBubbleMenu";
 import { EditorStaticMenu } from "../MainPage/Modals/Editor/EditorStaticMenu";
 import { TableWithControls } from "../MainPage/Modals/Editor/TableControlls";
 import { ThemedEditorBox } from "../MainPage/Modals/Editor/ThemedEditorBox";
+import { BlockDropHighlight } from "../MainPage/Modals/Editor/BlockDropHighlight";
 import { LoginPage } from "../LoginPage/Main";
 import { LoadingPage } from "../LoadingPage/Main";
 import { M1, M2, M3, M4, M5 } from "../../statics";
@@ -127,7 +128,7 @@ export const NotePage: React.FC = () => {
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ codeBlock: false }),
+      StarterKit.configure({ codeBlock: false, dropcursor: false }),
       CodeBlockLowlight.configure({ lowlight }),
       TaskList,
       TaskItem.configure({ nested: true }),
@@ -146,6 +147,7 @@ export const NotePage: React.FC = () => {
       Highlight,
       Mathematics,
       Markdown,
+      BlockDropHighlight,
     ],
     content: "",
     contentType: "markdown",
