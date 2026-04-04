@@ -257,33 +257,101 @@ export class NoteHierarchyBuilder {
    * Creates a hierarchy rooted at `RootHirarchyItem` and groups notes by their
    * parent directory relation (`parent` / `parent_directory`) when available.
    */
-  build(rootName = "Root"): RootHirarchyItem {
+  build(
+    rootName = "Root",
+    directoryLookup: Record<string, DirectoryReply> | null = null,
+  ): RootHirarchyItem {
     const root = new RootHirarchyItem(rootName);
     const directoryNodes = new Map<string, DirectoryHirarchyItem>();
 
+    /**
+     * helper lookup by id function. construct directory node from lookup map, or
+     * create a synthetic one with only IDs
+     */
+    const getDirectoryNode = (id: string): DirectoryHirarchyItem => {
+      if (directoryLookup && directoryLookup[id]) {
+        return DirectoryHirarchyItem.fromDirectoryReply(directoryLookup[id]);
+      }
+      return new DirectoryHirarchyItem({
+        id,
+        name: id,
+        display_name: id,
+        parent_id: undefined,
+      });
+    };
+
+    // iterate over all notes
     for (const note of this.notes) {
       const noteNode = NoteHirarchyItem.fromNoteData(note);
       const parentDirectoryId = noteNode.getParent();
 
+      // if note has no parent, then add it as child of root
       if (!parentDirectoryId) {
         root.addChild(noteNode);
         continue;
       }
 
+      // check if a parent is found via permissions
       let parentDirectoryNode = directoryNodes.get(parentDirectoryId);
 
+      // if the parent don't exist yet, create it first
       if (!parentDirectoryNode) {
-        parentDirectoryNode = new DirectoryHirarchyItem({
-          id: parentDirectoryId,
-          name: parentDirectoryId,
-          display_name: parentDirectoryId,
-          parent_id: undefined,
-        });
+        parentDirectoryNode = getDirectoryNode(parentDirectoryId);
         directoryNodes.set(parentDirectoryId, parentDirectoryNode);
         root.addChild(parentDirectoryNode);
       }
 
+      // add the note as child of the parent directory node
       parentDirectoryNode.addChild(noteNode);
+    }
+
+    return root;
+  }
+}
+
+/**
+ * Builds a hierarchy tree from directories only.
+ *
+ * Directories are attached to their parent when `parent_id` points to another
+ * directory present in the lookup map. Directories with missing parents are
+ * attached directly to the root.
+ */
+export class DirectoryHierarchyBuilder {
+  private readonly directoryLookup: Record<string, DirectoryReply>;
+
+  constructor(directoryLookup: Record<string, DirectoryReply>) {
+    this.directoryLookup = directoryLookup;
+  }
+
+  /**
+   * Creates a hierarchy rooted at `RootHirarchyItem` from `directoryLookup`.
+   */
+  build(rootName = "Root"): RootHirarchyItem {
+    const root = new RootHirarchyItem(rootName);
+    const directoryNodes = new Map<string, DirectoryHirarchyItem>();
+
+    for (const directory of Object.values(this.directoryLookup)) {
+      directoryNodes.set(
+        directory.id,
+        DirectoryHirarchyItem.fromDirectoryReply(directory),
+      );
+    }
+
+    for (const directoryNode of directoryNodes.values()) {
+      const parentId = directoryNode.getParent();
+
+      if (!parentId || parentId === directoryNode.getId()) {
+        root.addChild(directoryNode);
+        continue;
+      }
+
+      const parentDirectoryNode = directoryNodes.get(parentId);
+      if (!parentDirectoryNode) {
+        root.addChild(directoryNode);
+        continue;
+      }
+
+      parentDirectoryNode.addChild(directoryNode);
     }
 
     return root;
