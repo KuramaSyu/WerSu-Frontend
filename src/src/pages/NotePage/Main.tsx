@@ -291,12 +291,6 @@ export const NotePage: React.FC = () => {
           {!editor && (
             <Typography color="text.secondary">Loading editor...</Typography>
           )}
-
-          <Stack direction="row" spacing={2}>
-            <Button variant="text" onClick={() => navigate("/")}>
-              Back to overview
-            </Button>
-          </Stack>
         </Paper>
       </Box>
     </Box>
