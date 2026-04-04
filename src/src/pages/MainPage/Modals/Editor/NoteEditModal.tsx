@@ -6,7 +6,6 @@ import {
   type Theme,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import { useEffect, useRef } from "react";
 import { useThemeStore } from "../../../../zustand/useThemeStore";
 import { M1, M2, M3, M4 } from "../../../../statics";
@@ -40,7 +39,6 @@ import {
   ReactNodeViewRenderer,
   useEditor,
 } from "@tiptap/react";
-import DragHandle from "@tiptap/extension-drag-handle-react";
 import StarterKit from "@tiptap/starter-kit";
 import React, { useState } from "react";
 import useInfoStore, {
@@ -242,32 +240,6 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
     }
   };
 
-  /**
-   * Align the browser drag preview with the cursor while dragging TipTap blocks.
-   * This keeps the dragged line visually to the right of the cursor instead of offsetting left.
-   */
-  const handleElementDragStart = (event: DragEvent) => {
-    if (!editor || !event.dataTransfer) {
-      return;
-    }
-
-    // TipTap marks the dragged block as selected right before dragstart.
-    const selectedNode = editor.view.dom.querySelector(
-      ".ProseMirror-selectednode",
-    );
-    if (!(selectedNode instanceof HTMLElement)) {
-      return;
-    }
-
-    const rect = selectedNode.getBoundingClientRect();
-    // Keep the drag ghost aligned to the left edge so content appears right of the cursor.
-    const offsetY = Math.max(
-      0,
-      Math.min(event.clientY - rect.top, rect.height - 1),
-    );
-    event.dataTransfer.setDragImage(selectedNode, 0, offsetY);
-  };
-
   return (
     <Dialog
       open={open}
@@ -305,16 +277,6 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
         }}
       >
         <div className="markdown-parser-demo">
-          {editor && (
-            <DragHandle
-              editor={editor}
-              className="note-block-drag-handle"
-              nested
-              onElementDragStart={handleElementDragStart}
-            >
-              <DragIndicatorIcon fontSize="small" />
-            </DragHandle>
-          )}
           <div className="control-group">
             <div className="button-group">
               <button
