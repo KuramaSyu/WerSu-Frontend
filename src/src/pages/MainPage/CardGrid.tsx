@@ -60,12 +60,10 @@ export const CardGrid: React.FC<CardGridProps> = ({ title, notes }) => {
         }}
       >
         {displayNotes.map((note) => {
-          const originalIndex = notes.findIndex((n) => n.id === note.id);
           return (
             <NoteCard
               key={note.id}
               note={note}
-              index={originalIndex}
               sx={{ mb: M2, breakInside: "avoid" }}
             />
           );
