@@ -99,7 +99,7 @@ export interface PermissionResourceRequest {
 
 export interface PermissionSubjectRequest {
   object_id: string;
-  object_type: "user" | "PERMISSION_OBJECT_TYPE_USER";
+  object_type: "user" | "directory";
 }
 
 export interface PermissionRelationshipRequest {
