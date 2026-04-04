@@ -1,23 +1,28 @@
-import { Button, Stack, ToggleButton, ToggleButtonGroup } from '@mui/material';
-import type { Editor } from '@tiptap/core';
-import { BubbleMenu } from '@tiptap/react/menus';
-import { useEffect, useState } from 'react';
-import FormatBoldIcon from '@mui/icons-material/FormatBold';
-import FormatItalicIcon from '@mui/icons-material/FormatItalic';
-import FormatUnderlinedIcon from '@mui/icons-material/FormatUnderlined';
-import StrikeThroughIcon from '@mui/icons-material/FormatStrikethrough';
-import { useEditorState } from '@tiptap/react';
-import { useThemeStore } from '../../../../zustand/useThemeStore';
-import { BoldItalicMenu } from './BoldItalicMenu';
+import { Button, Stack, ToggleButton, ToggleButtonGroup } from "@mui/material";
+import type { Editor } from "@tiptap/core";
+import { BubbleMenu } from "@tiptap/react/menus";
+import { useEffect, useState } from "react";
+import FormatBoldIcon from "@mui/icons-material/FormatBold";
+import FormatItalicIcon from "@mui/icons-material/FormatItalic";
+import FormatUnderlinedIcon from "@mui/icons-material/FormatUnderlined";
+import StrikeThroughIcon from "@mui/icons-material/FormatStrikethrough";
+import { useEditorState } from "@tiptap/react";
+import { useThemeStore } from "../../../../zustand/useThemeStore";
+import { BoldItalicMenu } from "./BoldItalicMenu";
 
 export interface EditorBubbleMenuProps {
   editor: Editor;
+  enabled?: boolean;
 }
-export const EditorBubbleMenu = ({ editor }: EditorBubbleMenuProps) => {
+export const EditorBubbleMenu = ({
+  editor,
+  enabled = true,
+}: EditorBubbleMenuProps) => {
   return (
     <BubbleMenu
-      options={{ placement: 'bottom', offset: 8, flip: true }}
+      options={{ placement: "bottom", offset: 8, flip: true }}
       editor={editor}
+      shouldShow={() => enabled && editor.isEditable}
     >
       <BoldItalicMenu editor={editor} />
     </BubbleMenu>

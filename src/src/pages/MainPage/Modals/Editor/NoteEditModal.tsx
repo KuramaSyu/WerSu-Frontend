@@ -3,6 +3,7 @@ import {
   DialogContent,
   DialogTitle,
   IconButton,
+  TextField,
   type Theme,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
@@ -38,6 +39,7 @@ import {
   NodeViewWrapper,
   ReactNodeViewRenderer,
   useEditor,
+  useEditorState,
 } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import React, { useState } from "react";
@@ -144,6 +146,8 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
 }) => {
   const { theme } = useThemeStore();
   const { setMessage } = useInfoStore();
+  const [isSourceMode, setIsSourceMode] = useState(false);
+  const [sourceValue, setSourceValue] = useState("");
   const [showBubbleMenu, setShowBubbleMenu] = useState(true);
 
   useEffect(() => {
@@ -204,6 +208,11 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
     },
   });
 
+  const isEditable = useEditorState({
+    editor,
+    selector: (context) => context.editor.isEditable,
+  });
+
   const parseAndSetMarkdown = () => {
     if (!editor || !editor.markdown) {
       setMessage(
@@ -240,6 +249,21 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
     } catch {
       return editor.getText();
     }
+  };
+
+  const toggleSourceMode = () => {
+    if (!editor) {
+      return;
+    }
+
+    if (!isSourceMode) {
+      setSourceValue(editor.getMarkdown());
+      setIsSourceMode(true);
+      return;
+    }
+
+    editor.commands.setContent(sourceValue, { contentType: "markdown" });
+    setIsSourceMode(false);
   };
 
   return (
@@ -337,12 +361,30 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
               <div className="editor-container">
                 {editor ? (
                   <>
-                    <EditorStaticMenu editor={editor} />
-                    <EditorBubbleMenu editor={editor} />
+                    <EditorStaticMenu
+                      editor={editor}
+                      isSourceMode={isSourceMode}
+                      onToggleSourceMode={toggleSourceMode}
+                    />
+                    <EditorBubbleMenu editor={editor} enabled={isEditable && !isSourceMode} />
 
-                    <ThemedEditorBox>
-                      <EditorContent editor={editor} className="tiptap" />
-                    </ThemedEditorBox>
+                    {!isSourceMode && (
+                      <ThemedEditorBox>
+                        <EditorContent editor={editor} className="tiptap" />
+                      </ThemedEditorBox>
+                    )}
+                    {isSourceMode && (
+                      <TextField
+                        multiline
+                        minRows={16}
+                        fullWidth
+                        value={sourceValue}
+                        onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                          setSourceValue(event.target.value)
+                        }
+                        placeholder="Edit markdown source"
+                      />
+                    )}
                   </>
                 ) : (
                   <div>Loading editor…</div>

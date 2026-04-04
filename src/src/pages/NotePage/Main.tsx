@@ -10,7 +10,7 @@ import {
   Typography,
 } from "@mui/material";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
-import { useEditor, EditorContent } from "@tiptap/react";
+import { useEditor, EditorContent, useEditorState } from "@tiptap/react";
 import DragHandle from "@tiptap/extension-drag-handle-react";
 import StarterKit from "@tiptap/starter-kit";
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
@@ -67,6 +67,8 @@ export const NotePage: React.FC = () => {
   );
   const [note, setNote] = useState<Note | undefined>(cachedNote);
   const [noteTitle, setNoteTitle] = useState(cachedNote?.title ?? "");
+  const [isSourceMode, setIsSourceMode] = useState(false);
+  const [sourceValue, setSourceValue] = useState("");
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -166,6 +168,11 @@ export const NotePage: React.FC = () => {
     },
   });
 
+  const isEditable = useEditorState({
+    editor,
+    selector: (context) => context.editor.isEditable,
+  });
+
   useEffect(() => {
     if (!editor || !note) {
       return;
@@ -173,7 +180,25 @@ export const NotePage: React.FC = () => {
 
     const markdownContent = note.content || note.stripped_content || "";
     editor.commands.setContent(markdownContent, { contentType: "markdown" });
-  }, [editor, note?.id]);
+    if (!isSourceMode) {
+      setSourceValue(markdownContent);
+    }
+  }, [editor, note?.id, isSourceMode]);
+
+  const toggleSourceMode = () => {
+    if (!editor) {
+      return;
+    }
+
+    if (!isSourceMode) {
+      setSourceValue(editor.getMarkdown());
+      setIsSourceMode(true);
+      return;
+    }
+
+    editor.commands.setContent(sourceValue, { contentType: "markdown" });
+    setIsSourceMode(false);
+  };
 
   const handleSave = async () => {
     if (!id || !editor) {
@@ -275,18 +300,34 @@ export const NotePage: React.FC = () => {
 
           {editor && (
             <>
-              <EditorStaticMenu editor={editor} />
-              <EditorBubbleMenu editor={editor} />
+              <EditorStaticMenu
+                editor={editor}
+                isSourceMode={isSourceMode}
+                onToggleSourceMode={toggleSourceMode}
+              />
+              <EditorBubbleMenu editor={editor} enabled={isEditable && !isSourceMode} />
               <DragHandle
                 editor={editor}
-                className="note-block-drag-handle"
+                className={`note-block-drag-handle ${isEditable && !isSourceMode ? "" : "note-block-drag-handle--hidden"}`}
                 nested
               >
                 <DragIndicatorIcon fontSize="small" />
               </DragHandle>
-              <ThemedEditorBox>
-                <EditorContent editor={editor} className="tiptap" />
-              </ThemedEditorBox>
+              {!isSourceMode && (
+                <ThemedEditorBox>
+                  <EditorContent editor={editor} className="tiptap" />
+                </ThemedEditorBox>
+              )}
+              {isSourceMode && (
+                <TextField
+                  multiline
+                  minRows={20}
+                  fullWidth
+                  value={sourceValue}
+                  onChange={(event) => setSourceValue(event.target.value)}
+                  placeholder="Edit markdown source"
+                />
+              )}
             </>
           )}
 

@@ -42,6 +42,10 @@
   cursor: grabbing;
 }
 
+.note-block-drag-handle--hidden {
+  display: none !important;
+}
+
 .note-block-drag-handle > span {
   letter-spacing: -1px;
   line-height: 1;
