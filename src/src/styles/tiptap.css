@@ -63,12 +63,12 @@
   background: color-mix(in srgb, currentColor 8%, transparent);
 }
 
-.tiptap .tiptap-drop-target-block::before {
+.tiptap .tiptap-drop-target-block[data-drop-side='above']::before,
+.tiptap .tiptap-drop-target-block[data-drop-side='below']::after {
   content: attr(data-drop-label);
   position: absolute;
   left: 0;
   right: 0;
-  top: -36px;
   z-index: 3;
   border: 2px dashed color-mix(in srgb, currentColor 45%, transparent);
   border-radius: 8px;
@@ -80,5 +80,13 @@
   background: color-mix(in srgb, currentColor 6%, transparent);
   user-select: none;
   pointer-events: none;
+}
+
+.tiptap .tiptap-drop-target-block[data-drop-side='above']::before {
+  top: -36px;
+}
+
+.tiptap .tiptap-drop-target-block[data-drop-side='below']::after {
+  top: calc(100% + 8px);
 }
 
