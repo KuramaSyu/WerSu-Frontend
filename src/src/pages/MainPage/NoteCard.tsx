@@ -1,9 +1,18 @@
-import { Box, Card, CardContent, Typography } from "@mui/material";
+import {
+  Box,
+  Card,
+  CardContent,
+  IconButton,
+  Tooltip,
+  Typography,
+} from "@mui/material";
 import { M3 } from "../../statics";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { blendWithContrast } from "../../utils/blendWithContrast";
 import type { MinimalNote } from "../../api/models/search";
 import { useDraggable } from "@dnd-kit/react";
+import { useNavigate } from "react-router-dom";
+import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import { useState } from "react";
 import { NoteEditorModal } from "./Modals/Editor/NoteEditModal";
 import { NoteApi, type INoteApi } from "../../api/NoteApi";
@@ -21,6 +30,7 @@ export const NoteCard: React.FC<{
     },
   });
   const { theme } = useThemeStore();
+  const navigate = useNavigate();
   const [modalOpen, setModalOpen] = useState(false);
   const { setMessage } = useInfoStore();
 
@@ -29,6 +39,7 @@ export const NoteCard: React.FC<{
       <Card
         ref={ref}
         sx={{
+          position: "relative",
           minWidth: "4rem",
           cursor: "grab",
           opacity: isDragging ? 0.6 : 1,
@@ -47,6 +58,38 @@ export const NoteCard: React.FC<{
         variant="outlined"
         onClick={() => setModalOpen(true)}
       >
+        <Tooltip title="Open fullscreen">
+          <IconButton
+            size="small"
+            aria-label="Open note fullscreen"
+            onClick={(event) => {
+              event.stopPropagation();
+              navigate(`/n/${note.id}`);
+            }}
+            onMouseDown={(event) => {
+              // Prevent drag start when the hover action is clicked.
+              event.stopPropagation();
+            }}
+            sx={{
+              position: "absolute",
+              top: 8,
+              right: 8,
+              opacity: 0,
+              transform: "translateY(-2px)",
+              transition: "opacity 0.18s ease, transform 0.18s ease",
+              backgroundColor: theme.palette.background.paper,
+              border: `1px solid ${theme.palette.divider}`,
+              zIndex: 2,
+              ".MuiCard-root:hover &": {
+                opacity: 1,
+                transform: "translateY(0)",
+              },
+            }}
+          >
+            <OpenInFullIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+
         <CardContent>
           <Typography
             variant="subtitle2"
@@ -86,7 +129,6 @@ export const NoteCard: React.FC<{
         </CardContent>
       </Card>
 
-      {/* modal is outside of card to keep functionality to close it on blur */}
       <NoteEditorModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -97,13 +139,9 @@ export const NoteCard: React.FC<{
           api
             .patch(note.id, title, content)
             .then(() => {
-              console.log(`saved note ${note.id} - ${title}`);
               setMessage(new SnackbarUpdateImpl("Note saved", "success"));
             })
-            .catch((err) => {
-              console.error(
-                `failed to save note ${note.id} - ${title}: ${err}`,
-              );
+            .catch(() => {
               setMessage(
                 new SnackbarUpdateImpl("Failed to save note", "error"),
               );
