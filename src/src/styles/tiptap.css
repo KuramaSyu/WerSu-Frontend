@@ -1,3 +1,8 @@
+.tiptap .ProseMirror {
+  /* Reserve a stable left gutter so drag handles stay reachable for wide blocks (tables). */
+  padding-left: 1.5rem;
+}
+
 .tiptap table {
   width: 95%;
   table-layout: fixed; /* optional, ensures columns shrink to fit */
@@ -25,7 +30,7 @@
   color: color-mix(in srgb, currentColor 75%, transparent);
   cursor: grab;
   z-index: 20;
-  transform: translateX(-16px);
+  transform: translateX(-10px);
 }
 
 .note-block-drag-handle:hover {
@@ -47,6 +52,6 @@
 
 .tiptap ul,
 .tiptap ol {
-  padding-left: 1.8rem;
+  padding-left: 1.6rem;
 }
 
