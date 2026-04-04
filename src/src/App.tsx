@@ -10,6 +10,7 @@ import { Box } from '@mui/material';
 import { SwaggerDocs } from './pages/docs/Main';
 import { EditorGlobalStyles } from './theme/GlobalStyles';
 import InfoDisplay from './pages/MainPage/InfoDisplay';
+import { NotePage } from './pages/NotePage/Main';
 
 function App() {
   const { theme } = useThemeStore();
@@ -32,6 +33,7 @@ function App() {
         >
           <Routes>
             <Route path="/" element={<MainPage />} />
+            <Route path="/n/:id" element={<NotePage />} />
             <Route path="/docs/*" element={<SwaggerDocs />} />
           </Routes>
           <InfoDisplay />
