@@ -1,5 +1,18 @@
-import { Box, useTheme, Button } from "@mui/material";
+import {
+  Box,
+  useTheme,
+  Button,
+  IconButton,
+  Stack,
+  Tooltip,
+} from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import WestIcon from "@mui/icons-material/West";
+import EastIcon from "@mui/icons-material/East";
+import VerticalAlignTopIcon from "@mui/icons-material/VerticalAlignTop";
+import VerticalAlignBottomIcon from "@mui/icons-material/VerticalAlignBottom";
+import ViewWeekIcon from "@mui/icons-material/ViewWeek";
+import TableRowsIcon from "@mui/icons-material/TableRows";
 import {
   NodeViewWrapper,
   NodeViewContent,
@@ -67,6 +80,7 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
         position: "relative",
         display: "inline-block",
         marginBottom: "10px",
+        overflow: "visible",
       }}
     >
       <Box
@@ -76,6 +90,10 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
             pointerEvents: "auto",
             transition: "opacity 0.3s ease",
           },
+          "& .hoverBox:hover": {
+            opacity: 1,
+            pointerEvents: "auto",
+          },
           "& .hoverBox": {
             opacity: 0,
             pointerEvents: "none",
@@ -83,6 +101,101 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
           },
         }}
       >
+        <Stack
+          className="hoverBox"
+          direction="row"
+          spacing={1}
+          sx={{
+            position: "absolute",
+            left: 0,
+            bottom: "calc(100% + 6px)",
+            width: "max-content",
+            padding: 0.75,
+            borderRadius: 1,
+            zIndex: 25,
+            border: `1px solid ${theme.palette.divider}`,
+            backgroundColor: theme.palette.background.paper,
+            "&::after": {
+              content: '""',
+              position: "absolute",
+              top: "100%",
+              left: 0,
+              right: 0,
+              height: "10px",
+            },
+          }}
+        >
+          <Tooltip title="Add column at left">
+            <span>
+              <IconButton
+                size="small"
+                onClick={() => editor.chain().focus().addColumnBefore().run()}
+              >
+                <WestIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+
+          <Tooltip title="Add column at right">
+            <span>
+              <IconButton
+                size="small"
+                onClick={() => editor.chain().focus().addColumnAfter().run()}
+              >
+                <EastIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+
+          <Tooltip title="Remove current column">
+            <span>
+              <IconButton
+                size="small"
+                color="error"
+                onClick={() => editor.chain().focus().deleteColumn().run()}
+                disabled={!editor.can().chain().focus().deleteColumn().run()}
+              >
+                <ViewWeekIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+
+          <Tooltip title="Add row at top">
+            <span>
+              <IconButton
+                size="small"
+                onClick={() => editor.chain().focus().addRowBefore().run()}
+              >
+                <VerticalAlignTopIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+
+          <Tooltip title="Add row at bottom">
+            <span>
+              <IconButton
+                size="small"
+                onClick={() => editor.chain().focus().addRowAfter().run()}
+              >
+                <VerticalAlignBottomIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+
+          <Tooltip title="Remove current row">
+            <span>
+              <IconButton
+                size="small"
+                color="error"
+                onClick={() => editor.chain().focus().deleteRow().run()}
+                disabled={!editor.can().chain().focus().deleteRow().run()}
+              >
+                <TableRowsIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+        </Stack>
+
         {/* Column add */}
         <Box className="table-col-control">
           {Array.from({

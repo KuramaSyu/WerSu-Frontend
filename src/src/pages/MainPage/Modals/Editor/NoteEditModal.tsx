@@ -366,7 +366,10 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
                       isSourceMode={isSourceMode}
                       onToggleSourceMode={toggleSourceMode}
                     />
-                    <EditorBubbleMenu editor={editor} enabled={isEditable && !isSourceMode} />
+                    <EditorBubbleMenu
+                      editor={editor}
+                      enabled={isEditable && !isSourceMode}
+                    />
 
                     {!isSourceMode && (
                       <ThemedEditorBox>
@@ -379,9 +382,9 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
                         minRows={16}
                         fullWidth
                         value={sourceValue}
-                        onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                          setSourceValue(event.target.value)
-                        }
+                        onChange={(
+                          event: React.ChangeEvent<HTMLInputElement>,
+                        ) => setSourceValue(event.target.value)}
                         placeholder="Edit markdown source"
                       />
                     )}

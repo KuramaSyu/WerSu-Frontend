@@ -22,7 +22,9 @@ export const EditorBubbleMenu = ({
     <BubbleMenu
       options={{ placement: "bottom", offset: 8, flip: true }}
       editor={editor}
-      shouldShow={() => enabled && editor.isEditable}
+      shouldShow={() =>
+        enabled && editor.isEditable && !editor.isActive("table")
+      }
     >
       <BoldItalicMenu editor={editor} />
     </BubbleMenu>

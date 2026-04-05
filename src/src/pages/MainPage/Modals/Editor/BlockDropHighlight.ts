@@ -17,6 +17,7 @@ interface BlockDropHighlightState {
   side: "above" | "below";
   draggedKind: "none" | "top-level" | "list-item";
   draggedPos: number | null;
+  draggedLabel: string;
 }
 
 const blockDropHighlightKey = new PluginKey<BlockDropHighlightState>(
@@ -82,7 +83,10 @@ const getDragKindFromSelection = (
   doc: ProseMirrorNode,
 ): BlockDropHighlightState["draggedKind"] => {
   if (!(selection instanceof NodeSelection) || !selection.node.isBlock) {
-    return "none";
+    // Fallback for selections like CellSelection (tables): infer top-level block from cursor.
+    const topLevelPos = findTopLevelBlockPos(selection.from, doc);
+    const topLevelNode = topLevelPos === null ? null : doc.nodeAt(topLevelPos);
+    return topLevelNode?.isBlock ? "top-level" : "none";
   }
 
   if (selection.node.type.name === "listItem") {
@@ -101,6 +105,14 @@ const getDragSourceFromSelection = (
   doc: ProseMirrorNode,
 ): Pick<BlockDropHighlightState, "draggedKind" | "draggedPos"> => {
   if (!(selection instanceof NodeSelection) || !selection.node.isBlock) {
+    // Fallback for selections like table CellSelection.
+    const topLevelPos = findTopLevelBlockPos(selection.from, doc);
+    if (topLevelPos !== null) {
+      const topNode = doc.nodeAt(topLevelPos);
+      if (topNode?.isBlock) {
+        return { draggedKind: "top-level", draggedPos: topLevelPos };
+      }
+    }
     return { draggedKind: "none", draggedPos: null };
   }
 
@@ -204,17 +216,38 @@ const inferDragSource = (
   };
 };
 
-const inferDraggedPosFromDom = (view: EditorView): number | null => {
-  const selectedDom = view.dom.querySelector(".ProseMirror-selectednode");
-  if (!(selectedDom instanceof Node)) {
-    return null;
+const normalizePosForKind = (
+  rawPos: number,
+  doc: ProseMirrorNode,
+  draggedKind: BlockDropHighlightState["draggedKind"],
+): number | null => {
+  if (draggedKind === "top-level") {
+    return findTopLevelBlockPos(rawPos, doc);
   }
 
-  try {
-    return view.posAtDOM(selectedDom, 0);
-  } catch {
-    return null;
+  if (draggedKind === "list-item") {
+    return findNearestPosByType(rawPos, doc, "listItem");
   }
+
+  return null;
+};
+
+const inferDraggedPosFromDom = (
+  view: EditorView,
+  draggedKind: BlockDropHighlightState["draggedKind"],
+): number | null => {
+  let selectedDom = view.dom.querySelector(".ProseMirror-selectednode");
+
+  while (selectedDom instanceof HTMLElement) {
+    try {
+      const rawPos = view.posAtDOM(selectedDom, 0);
+      return normalizePosForKind(rawPos, view.state.doc, draggedKind);
+    } catch {
+      selectedDom = selectedDom.parentElement;
+    }
+  }
+
+  return null;
 };
 
 const resolveTargetPos = (
@@ -231,6 +264,78 @@ const resolveTargetPos = (
   }
 
   return null;
+};
+
+const getTableSize = (
+  tableNode: ProseMirrorNode,
+): { rows: number; cols: number } => {
+  const rows = tableNode.childCount;
+  const firstRow = rows > 0 ? tableNode.child(0) : null;
+  const cols = firstRow ? firstRow.childCount : 0;
+  return { rows, cols };
+};
+
+const getDraggedElementLabel = (
+  draggedNode: ProseMirrorNode | null,
+  draggedKind: BlockDropHighlightState["draggedKind"],
+): string => {
+  if (!draggedNode) {
+    return "Element";
+  }
+
+  if (draggedNode.type.name === "table") {
+    const { rows, cols } = getTableSize(draggedNode);
+    return `${rows}x${cols} table`;
+  }
+
+  if (
+    draggedNode.type.name === "bulletList" ||
+    draggedNode.type.name === "orderedList"
+  ) {
+    const count = draggedNode.childCount;
+    return `${count} bullet points`;
+  }
+
+  if (draggedNode.type.name === "listItem" || draggedKind === "list-item") {
+    return "Bullet point";
+  }
+
+  if (draggedNode.type.name === "paragraph") {
+    return "Paragraph";
+  }
+
+  if (draggedNode.type.name === "heading") {
+    return "Heading";
+  }
+
+  if (draggedNode.type.name === "codeBlock") {
+    return "Code block";
+  }
+
+  if (draggedNode.type.name === "image") {
+    return "Image";
+  }
+
+  return "Element";
+};
+
+const inferDraggedNodeFromView = (view: EditorView): ProseMirrorNode | null => {
+  const selection = view.state.selection;
+  if (selection instanceof NodeSelection && selection.node.isBlock) {
+    return selection.node;
+  }
+
+  const draggingSlice = (
+    view as unknown as {
+      dragging?: {
+        slice?: {
+          content?: { firstChild?: ProseMirrorNode };
+        };
+      };
+    }
+  ).dragging?.slice;
+
+  return draggingSlice?.content?.firstChild ?? null;
 };
 
 const moveBlockByPos = (
@@ -278,6 +383,17 @@ const moveBlockByPos = (
   return true;
 };
 
+const clearDropPreview = (view: EditorView) => {
+  view.dispatch(
+    view.state.tr.setMeta(blockDropHighlightKey, {
+      pos: null,
+      side: "above",
+      draggedKind: "none",
+      draggedPos: null,
+    }),
+  );
+};
+
 /**
  * Highlights the whole destination block while dragging content in TipTap.
  *
@@ -307,6 +423,7 @@ export const BlockDropHighlight = Extension.create({
             side: "above",
             draggedKind: "none",
             draggedPos: null,
+            draggedLabel: "Element",
           }),
           apply(tr, oldState) {
             const meta = tr.getMeta(blockDropHighlightKey) as
@@ -350,8 +467,8 @@ export const BlockDropHighlight = Extension.create({
 
             const label =
               node.type.name === "listItem"
-                ? `- Element will be inserted ${pluginState.side === "above" ? "above" : "below"} this item`
-                : `Element will be inserted ${pluginState.side === "above" ? "above" : "below"} this block`;
+                ? `- ${pluginState.draggedLabel} will be inserted ${pluginState.side === "above" ? "above" : "below"} this item`
+                : `${pluginState.draggedLabel} will be inserted ${pluginState.side === "above" ? "above" : "below"} this block`;
 
             // Decorate the whole hovered block and expose an insertion label for CSS.
             return DecorationSet.create(state.doc, [
@@ -372,6 +489,14 @@ export const BlockDropHighlight = Extension.create({
                 view.state.selection,
                 view.state.doc,
               );
+              const draggedNode =
+                dragSource.draggedPos === null
+                  ? inferDraggedNodeFromView(view)
+                  : view.state.doc.nodeAt(dragSource.draggedPos);
+              const draggedLabel = getDraggedElementLabel(
+                draggedNode,
+                dragSource.draggedKind,
+              );
 
               view.dispatch(
                 view.state.tr.setMeta(blockDropHighlightKey, {
@@ -379,6 +504,7 @@ export const BlockDropHighlight = Extension.create({
                   side: "above",
                   draggedKind: dragSource.draggedKind,
                   draggedPos: dragSource.draggedPos,
+                  draggedLabel,
                 }),
               );
               return false;
@@ -403,8 +529,25 @@ export const BlockDropHighlight = Extension.create({
                 draggedPos = fromSelection.draggedPos;
               }
               if (draggedPos === null) {
-                draggedPos = inferDraggedPosFromDom(view);
+                draggedPos = inferDraggedPosFromDom(view, draggedKind);
               }
+
+              if (draggedPos !== null) {
+                draggedPos = normalizePosForKind(
+                  draggedPos,
+                  view.state.doc,
+                  draggedKind,
+                );
+              }
+
+              const draggedNode =
+                draggedPos === null
+                  ? inferDraggedNodeFromView(view)
+                  : view.state.doc.nodeAt(draggedPos);
+              const draggedLabel = getDraggedElementLabel(
+                draggedNode,
+                draggedKind,
+              );
 
               const nextPos = coords
                 ? resolveTargetPos(coords.pos, view.state.doc, draggedKind)
@@ -433,6 +576,7 @@ export const BlockDropHighlight = Extension.create({
                   side,
                   draggedKind,
                   draggedPos,
+                  draggedLabel,
                 }),
               );
               return false;
@@ -452,6 +596,7 @@ export const BlockDropHighlight = Extension.create({
                     side: "above",
                     draggedKind: currentState?.draggedKind ?? "none",
                     draggedPos: currentState?.draggedPos ?? null,
+                    draggedLabel: currentState?.draggedLabel ?? "Element",
                   }),
                 );
               }
@@ -464,16 +609,16 @@ export const BlockDropHighlight = Extension.create({
                 return false;
               }
 
-              event.preventDefault();
-
               const fromPos =
                 pluginState.draggedPos ??
                 (view.state.selection instanceof NodeSelection
                   ? view.state.selection.from
                   : null);
 
+              let handled = false;
+
               if (pluginState.pos !== null && fromPos !== null) {
-                moveBlockByPos(
+                handled = moveBlockByPos(
                   view,
                   fromPos,
                   pluginState.pos,
@@ -481,16 +626,20 @@ export const BlockDropHighlight = Extension.create({
                 );
               }
 
-              view.dispatch(
-                view.state.tr.setMeta(blockDropHighlightKey, {
-                  pos: null,
-                  side: "above",
-                  draggedKind: "none",
-                  draggedPos: null,
-                }),
-              );
+              if (handled) {
+                // Only cancel native drop if manual move succeeded.
+                event.preventDefault();
+                clearDropPreview(view);
+                return true;
+              }
 
-              return true;
+              // Fall back to ProseMirror native drop handling (more robust for tables).
+              requestAnimationFrame(() => {
+                if (!view.isDestroyed) {
+                  clearDropPreview(view);
+                }
+              });
+              return false;
             },
             dragend(view) {
               const current = blockDropHighlightKey.getState(view.state)?.pos;
@@ -506,6 +655,7 @@ export const BlockDropHighlight = Extension.create({
                     side: "above",
                     draggedKind: "none",
                     draggedPos: null,
+                    draggedLabel: "Element",
                   }),
                 );
               }
