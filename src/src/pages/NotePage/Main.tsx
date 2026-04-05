@@ -28,7 +28,6 @@ import "../../styles/tiptap.css";
 
 import TopBar from "../../components/TopBar";
 import { LeftSideView } from "../MainPage/LeftSideView";
-import { EditorBubbleMenu } from "../MainPage/Modals/Editor/EditorBubbleMenu";
 import { EditorStaticMenu } from "../MainPage/Modals/Editor/EditorStaticMenu";
 import { TableWithControls } from "../MainPage/Modals/Editor/TableControlls";
 import { ThemedEditorBox } from "../MainPage/Modals/Editor/ThemedEditorBox";
@@ -179,11 +178,11 @@ export const NotePage: React.FC = () => {
     }
 
     const markdownContent = note.content || note.stripped_content || "";
+    // Intentionally only sync when a different note/editor instance loads.
+    // Including mode state here would re-apply persisted content on toggle and wipe unsaved source edits.
     editor.commands.setContent(markdownContent, { contentType: "markdown" });
-    if (!isSourceMode) {
-      setSourceValue(markdownContent);
-    }
-  }, [editor, note?.id, isSourceMode]);
+    setSourceValue(markdownContent);
+  }, [editor, note?.id]);
 
   const toggleSourceMode = () => {
     if (!editor) {
@@ -196,8 +195,16 @@ export const NotePage: React.FC = () => {
       return;
     }
 
-    editor.commands.setContent(sourceValue, { contentType: "markdown" });
+    const nextMarkdown = sourceValue;
     setIsSourceMode(false);
+    // Defer setContent until after React/Tiptap finish switching views.
+    // Running this synchronously during the toggle can trigger React flushSync lifecycle errors.
+    queueMicrotask(() => {
+      if (editor.isDestroyed) {
+        return;
+      }
+      editor.commands.setContent(nextMarkdown, { contentType: "markdown" });
+    });
   };
 
   const handleSave = async () => {
@@ -305,7 +312,7 @@ export const NotePage: React.FC = () => {
                 isSourceMode={isSourceMode}
                 onToggleSourceMode={toggleSourceMode}
               />
-              <EditorBubbleMenu editor={editor} enabled={isEditable && !isSourceMode} />
+              {/* <EditorBubbleMenu editor={editor} enabled={isEditable && !isSourceMode} /> */}
               <DragHandle
                 editor={editor}
                 className={`note-block-drag-handle ${isEditable && !isSourceMode ? "" : "note-block-drag-handle--hidden"}`}

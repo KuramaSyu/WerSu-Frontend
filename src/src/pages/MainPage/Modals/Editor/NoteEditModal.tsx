@@ -262,8 +262,16 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
       return;
     }
 
-    editor.commands.setContent(sourceValue, { contentType: "markdown" });
+    const nextMarkdown = sourceValue;
     setIsSourceMode(false);
+    // Defer setContent until after the source/rich view switch commits.
+    // This avoids React flushSync lifecycle conflicts from synchronous node-view updates.
+    queueMicrotask(() => {
+      if (editor.isDestroyed) {
+        return;
+      }
+      editor.commands.setContent(nextMarkdown, { contentType: "markdown" });
+    });
   };
 
   return (

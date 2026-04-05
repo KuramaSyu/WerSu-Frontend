@@ -18,6 +18,7 @@ interface BlockDropHighlightState {
   draggedKind: "none" | "top-level" | "list-item";
   draggedPos: number | null;
   draggedLabel: string;
+  isTableDrag: boolean;
 }
 
 const blockDropHighlightKey = new PluginKey<BlockDropHighlightState>(
@@ -376,7 +377,13 @@ const moveBlockByPos = (
     Math.min(insertPos, tr.doc.content.size),
   );
   tr = tr.insert(clampedInsertPos, draggedNode);
-  if (clampedInsertPos < tr.doc.content.size) {
+  // NodeSelection.create expects a real node at the position.
+  // During complex drags (e.g. nested list items), the insert boundary can be valid
+  // while still not exposing a direct node at that exact pos.
+  if (
+    clampedInsertPos < tr.doc.content.size &&
+    tr.doc.nodeAt(clampedInsertPos)
+  ) {
     tr = tr.setSelection(NodeSelection.create(tr.doc, clampedInsertPos));
   }
   view.dispatch(tr.scrollIntoView());
@@ -390,6 +397,8 @@ const clearDropPreview = (view: EditorView) => {
       side: "above",
       draggedKind: "none",
       draggedPos: null,
+      draggedLabel: "Element",
+      isTableDrag: false,
     }),
   );
 };
@@ -424,6 +433,7 @@ export const BlockDropHighlight = Extension.create({
             draggedKind: "none",
             draggedPos: null,
             draggedLabel: "Element",
+            isTableDrag: false,
           }),
           apply(tr, oldState) {
             const meta = tr.getMeta(blockDropHighlightKey) as
@@ -505,6 +515,7 @@ export const BlockDropHighlight = Extension.create({
                   draggedKind: dragSource.draggedKind,
                   draggedPos: dragSource.draggedPos,
                   draggedLabel,
+                  isTableDrag: draggedNode?.type.name === "table",
                 }),
               );
               return false;
@@ -518,7 +529,7 @@ export const BlockDropHighlight = Extension.create({
 
               const currentState = blockDropHighlightKey.getState(view.state);
               const dragSource = inferDragSource(view, currentState);
-              const draggedKind = dragSource.draggedKind;
+              let draggedKind = dragSource.draggedKind;
 
               let draggedPos = dragSource.draggedPos;
               if (draggedPos === null) {
@@ -544,6 +555,22 @@ export const BlockDropHighlight = Extension.create({
                 draggedPos === null
                   ? inferDraggedNodeFromView(view)
                   : view.state.doc.nodeAt(draggedPos);
+              const isTableDrag =
+                draggedNode?.type.name === "table" ||
+                currentState?.isTableDrag === true;
+
+              if (isTableDrag) {
+                // Tables must always be treated as top-level blocks while dragging.
+                draggedKind = "top-level";
+                if (draggedPos !== null) {
+                  draggedPos = normalizePosForKind(
+                    draggedPos,
+                    view.state.doc,
+                    "top-level",
+                  );
+                }
+              }
+
               const draggedLabel = getDraggedElementLabel(
                 draggedNode,
                 draggedKind,
@@ -577,6 +604,7 @@ export const BlockDropHighlight = Extension.create({
                   draggedKind,
                   draggedPos,
                   draggedLabel,
+                  isTableDrag,
                 }),
               );
               return false;
@@ -597,6 +625,7 @@ export const BlockDropHighlight = Extension.create({
                     draggedKind: currentState?.draggedKind ?? "none",
                     draggedPos: currentState?.draggedPos ?? null,
                     draggedLabel: currentState?.draggedLabel ?? "Element",
+                    isTableDrag: currentState?.isTableDrag ?? false,
                   }),
                 );
               }
@@ -615,19 +644,57 @@ export const BlockDropHighlight = Extension.create({
                   ? view.state.selection.from
                   : null);
 
+              const normalizedFromPos =
+                pluginState.isTableDrag && fromPos !== null
+                  ? normalizePosForKind(fromPos, view.state.doc, "top-level")
+                  : fromPos;
+
+              let targetPos = pluginState.pos;
+              if (pluginState.isTableDrag) {
+                // Re-normalize positions on drop to avoid stale list-item targets.
+                targetPos =
+                  targetPos === null
+                    ? null
+                    : normalizePosForKind(
+                        targetPos,
+                        view.state.doc,
+                        "top-level",
+                      );
+
+                if (targetPos === null) {
+                  const coords = view.posAtCoords({
+                    left: event.clientX,
+                    top: event.clientY,
+                  });
+                  if (coords) {
+                    targetPos = findTopLevelBlockPos(
+                      coords.pos,
+                      view.state.doc,
+                    );
+                  }
+                }
+              }
+
               let handled = false;
 
-              if (pluginState.pos !== null && fromPos !== null) {
+              if (targetPos !== null && normalizedFromPos !== null) {
                 handled = moveBlockByPos(
                   view,
-                  fromPos,
-                  pluginState.pos,
+                  normalizedFromPos,
+                  targetPos,
                   pluginState.side,
                 );
               }
 
               if (handled) {
                 // Only cancel native drop if manual move succeeded.
+                event.preventDefault();
+                clearDropPreview(view);
+                return true;
+              }
+
+              if (pluginState.isTableDrag) {
+                // Never let native table drop place the table inside list items.
                 event.preventDefault();
                 clearDropPreview(view);
                 return true;
@@ -656,6 +723,7 @@ export const BlockDropHighlight = Extension.create({
                     draggedKind: "none",
                     draggedPos: null,
                     draggedLabel: "Element",
+                    isTableDrag: false,
                   }),
                 );
               }
