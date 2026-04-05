@@ -52,7 +52,6 @@ import { ThemedEditorBox } from "./ThemedEditorBox";
 import { CellSelection } from "@tiptap/pm/tables";
 import "../../../../styles/tiptap.css";
 import { TableWithControls } from "./TableControlls";
-import { BlockDropHighlight } from "./BlockDropHighlight";
 
 // codeblock extension + all languages
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
@@ -155,7 +154,7 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
   }, [content]);
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ codeBlock: false, dropcursor: false }),
+      StarterKit.configure({ codeBlock: false, dropcursor: {} }),
       CodeBlockLowlight.configure({ lowlight }),
       // Details,
       // DetailsSummary,
@@ -188,7 +187,6 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
       CustomReactNode,
 
       Markdown,
-      BlockDropHighlight,
     ],
     content:
       '# Markdown Test\n\nClick **"Parse Markdown"** to load content from the left panel.',

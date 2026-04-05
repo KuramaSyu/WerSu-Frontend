@@ -3,6 +3,10 @@
   padding-left: 1.5rem;
 }
 
+.tiptap .ProseMirror .ProseMirror-dropcursor {
+  border-top: 2px solid color-mix(in srgb, currentColor 65%, transparent);
+}
+
 .tiptap table {
   width: 95%;
   table-layout: fixed; /* optional, ensures columns shrink to fit */
@@ -31,6 +35,17 @@
   cursor: grab;
   z-index: 20;
   transform: translateX(-10px);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease;
+}
+
+.editor-drag-region:hover .note-block-drag-handle {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .note-block-drag-handle:hover {
@@ -46,6 +61,11 @@
   display: none !important;
 }
 
+.note-block-drag-handle--suppressed {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 .note-block-drag-handle > span {
   letter-spacing: -1px;
   line-height: 1;
@@ -57,40 +77,5 @@
 .tiptap ul,
 .tiptap ol {
   padding-left: 1.6rem;
-}
-
-.tiptap .tiptap-drop-target-block {
-  position: relative;
-  outline: 2px solid color-mix(in srgb, currentColor 45%, transparent);
-  outline-offset: 2px;
-  border-radius: 8px;
-  background: color-mix(in srgb, currentColor 8%, transparent);
-}
-
-.tiptap .tiptap-drop-target-block[data-drop-side='above']::before,
-.tiptap .tiptap-drop-target-block[data-drop-side='below']::after {
-  content: attr(data-drop-label);
-  position: absolute;
-  left: 0;
-  right: 0;
-  z-index: 3;
-  border: 2px dashed color-mix(in srgb, currentColor 45%, transparent);
-  border-radius: 8px;
-  padding: 6px 10px;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  color: color-mix(in srgb, currentColor 58%, transparent);
-  background: color-mix(in srgb, currentColor 6%, transparent);
-  user-select: none;
-  pointer-events: none;
-}
-
-.tiptap .tiptap-drop-target-block[data-drop-side='above']::before {
-  top: -36px;
-}
-
-.tiptap .tiptap-drop-target-block[data-drop-side='below']::after {
-  top: calc(100% + 8px);
 }
 

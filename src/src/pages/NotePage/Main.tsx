@@ -31,7 +31,6 @@ import { LeftSideView } from "../MainPage/LeftSideView";
 import { EditorStaticMenu } from "../MainPage/Modals/Editor/EditorStaticMenu";
 import { TableWithControls } from "../MainPage/Modals/Editor/TableControlls";
 import { ThemedEditorBox } from "../MainPage/Modals/Editor/ThemedEditorBox";
-import { BlockDropHighlight } from "../MainPage/Modals/Editor/BlockDropHighlight";
 import { LoginPage } from "../LoginPage/Main";
 import { LoadingPage } from "../LoadingPage/Main";
 import { M1, M2, M3, M4, M5 } from "../../statics";
@@ -129,7 +128,7 @@ export const NotePage: React.FC = () => {
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ codeBlock: false, dropcursor: false }),
+      StarterKit.configure({ codeBlock: false, dropcursor: {} }),
       CodeBlockLowlight.configure({ lowlight }),
       TaskList,
       TaskItem.configure({ nested: true }),
@@ -148,7 +147,6 @@ export const NotePage: React.FC = () => {
       Highlight,
       Mathematics,
       Markdown,
-      BlockDropHighlight,
     ],
     content: "",
     contentType: "markdown",
@@ -170,6 +168,11 @@ export const NotePage: React.FC = () => {
   const isEditable = useEditorState({
     editor,
     selector: (context) => context.editor.isEditable,
+  });
+
+  const isEditorFocused = useEditorState({
+    editor,
+    selector: (context) => context.editor.isFocused,
   });
 
   useEffect(() => {
@@ -313,18 +316,20 @@ export const NotePage: React.FC = () => {
                 onToggleSourceMode={toggleSourceMode}
               />
               {/* <EditorBubbleMenu editor={editor} enabled={isEditable && !isSourceMode} /> */}
-              <DragHandle
-                editor={editor}
-                className={`note-block-drag-handle ${isEditable && !isSourceMode ? "" : "note-block-drag-handle--hidden"}`}
-                nested
-              >
-                <DragIndicatorIcon fontSize="small" />
-              </DragHandle>
-              {!isSourceMode && (
-                <ThemedEditorBox>
-                  <EditorContent editor={editor} className="tiptap" />
-                </ThemedEditorBox>
-              )}
+              <Box className="editor-drag-region">
+                <DragHandle
+                  editor={editor}
+                  className={`note-block-drag-handle ${isEditable && !isSourceMode ? "" : "note-block-drag-handle--hidden"} ${isEditorFocused ? "note-block-drag-handle--suppressed" : ""}`}
+                  nested={false}
+                >
+                  <DragIndicatorIcon fontSize="small" />
+                </DragHandle>
+                {!isSourceMode && (
+                  <ThemedEditorBox>
+                    <EditorContent editor={editor} className="tiptap" />
+                  </ThemedEditorBox>
+                )}
+              </Box>
               {isSourceMode && (
                 <TextField
                   multiline
