@@ -21,6 +21,10 @@
   position: relative;
 }
 
+.editor-drag-region {
+  position: relative;
+}
+
 .note-block-drag-handle {
   position: absolute;
   width: 28px;
@@ -43,7 +47,8 @@
     color 180ms ease;
 }
 
-.editor-drag-region:hover .note-block-drag-handle {
+.note-block-drag-handle--active,
+.note-block-drag-handle:hover {
   opacity: 1;
   pointer-events: auto;
 }

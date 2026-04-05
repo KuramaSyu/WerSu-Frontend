@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Alert,
@@ -46,6 +46,7 @@ import { useDirectoryStore } from "../../zustand/useDirectoryStore";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 
 const lowlight = createLowlight(all);
+const DRAG_HANDLE_GUTTER_PX = 28;
 
 export const NotePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -69,6 +70,7 @@ export const NotePage: React.FC = () => {
   const [sourceValue, setSourceValue] = useState("");
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isInDragHandleArea, setIsInDragHandleArea] = useState(false);
 
   const directoryListQuery = useMemo<ListDirectoriesQuery>(
     () => ({ limit: 500, offset: 0 }),
@@ -234,6 +236,16 @@ export const NotePage: React.FC = () => {
     }
   };
 
+  const handleDragRegionMouseMove = (event: MouseEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const xInRegion = event.clientX - rect.left;
+    setIsInDragHandleArea(xInRegion >= 0 && xInRegion <= DRAG_HANDLE_GUTTER_PX);
+  };
+
+  const handleDragRegionMouseLeave = () => {
+    setIsInDragHandleArea(false);
+  };
+
   if (isLoading) {
     return <LoadingPage />;
   }
@@ -316,10 +328,14 @@ export const NotePage: React.FC = () => {
                 onToggleSourceMode={toggleSourceMode}
               />
               {/* <EditorBubbleMenu editor={editor} enabled={isEditable && !isSourceMode} /> */}
-              <Box className="editor-drag-region">
+              <Box
+                className="editor-drag-region"
+                onMouseMove={handleDragRegionMouseMove}
+                onMouseLeave={handleDragRegionMouseLeave}
+              >
                 <DragHandle
                   editor={editor}
-                  className={`note-block-drag-handle ${isEditable && !isSourceMode ? "" : "note-block-drag-handle--hidden"} ${isEditorFocused ? "note-block-drag-handle--suppressed" : ""}`}
+                  className={`note-block-drag-handle ${isEditable && !isSourceMode ? "" : "note-block-drag-handle--hidden"} ${isInDragHandleArea ? "note-block-drag-handle--active" : ""} ${isEditorFocused && !isInDragHandleArea ? "note-block-drag-handle--suppressed" : ""}`}
                   nested={false}
                 >
                   <DragIndicatorIcon fontSize="small" />
