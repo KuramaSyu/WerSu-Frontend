@@ -23,7 +23,7 @@ export const LeftSideView: React.FC<LeftSideViewProps> = ({
   return (
     <>
       <Paper
-        elevation={8}
+        elevation={0}
         sx={{
           width: `${leftWidth}px`,
           flex: `0 0 ${leftWidth}px`,
