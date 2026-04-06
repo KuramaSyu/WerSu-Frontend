@@ -44,12 +44,14 @@ import { useDirectoriesQuery } from "../../api/queries/directoryQueries";
 import type { ListDirectoriesQuery } from "../../api/DirectoryApi";
 import { useDirectoryStore } from "../../zustand/useDirectoryStore";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
+import { useThemeStore } from "../../zustand/useThemeStore";
 
 const lowlight = createLowlight(all);
 const DRAG_HANDLE_GUTTER_PX = 28;
 
 export const NotePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const { theme } = useThemeStore();
   const navigate = useNavigate();
   const { user } = useUserStore();
   const { isLoading } = useLoadingStore();
@@ -282,7 +284,7 @@ export const NotePage: React.FC = () => {
         <LeftSideView open={leftPaneOpen} setOpen={setLeftPaneOpen} />
 
         <Paper
-          elevation={8}
+          elevation={1}
           sx={{
             minHeight: "100%",
             flex: 1,
@@ -291,6 +293,7 @@ export const NotePage: React.FC = () => {
             display: "flex",
             flexDirection: "column",
             gap: M3,
+            backgroundColor: "background.default",
           }}
         >
           <Stack
