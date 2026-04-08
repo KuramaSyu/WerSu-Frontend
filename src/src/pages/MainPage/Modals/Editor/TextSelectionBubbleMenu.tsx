@@ -17,6 +17,23 @@ interface TextSelectionBubbleMenuProps {
   enabled?: boolean;
 }
 
+const isTextSelectionMenuVisibleNow = (editor: Editor, enabled: boolean) => {
+  // Menu is disabled globally or editor is read-only.
+  if (!enabled || !editor.isEditable) {
+    return false;
+  }
+
+  const { from, to, empty } = editor.state.selection;
+  // Hide menu for collapsed caret selections.
+  if (empty || from === to) {
+    return false;
+  }
+
+  // Only show when real text is selected (not pure whitespace).
+  const selectedText = editor.state.doc.textBetween(from, to).trim();
+  return selectedText.length > 0;
+};
+
 export const TextSelectionBubbleMenu = ({
   editor,
   enabled = true,
@@ -32,31 +49,21 @@ export const TextSelectionBubbleMenu = ({
     isCode,
     isHighlight,
     isTextSelectionMenuVisible,
-  } =
-    useEditorState({
-      editor,
-      selector: (ctx) => ({
-        isBold: ctx.editor.isActive("bold"),
-        isItalic: ctx.editor.isActive("italic"),
-        isStrikethrough: ctx.editor.isActive("strike"),
-        isCode: ctx.editor.isActive("code"),
-        isHighlight: ctx.editor.isActive("highlight"),
-        // Same condition used by BubbleMenu visibility to keep store state in sync.
-        isTextSelectionMenuVisible: (() => {
-          if (!enabled || !ctx.editor.isEditable) {
-            return false;
-          }
-
-          const { from, to } = ctx.editor.state.selection;
-          if (from === to) {
-            return false;
-          }
-
-          const selectedText = ctx.editor.state.doc.textBetween(from, to).trim();
-          return selectedText.length > 0;
-        })(),
-      }),
-    });
+  } = useEditorState({
+    editor,
+    selector: (ctx) => ({
+      isBold: ctx.editor.isActive("bold"),
+      isItalic: ctx.editor.isActive("italic"),
+      isStrikethrough: ctx.editor.isActive("strike"),
+      isCode: ctx.editor.isActive("code"),
+      isHighlight: ctx.editor.isActive("highlight"),
+      // Keep formatting-state selection and visibility state in one editor snapshot.
+      isTextSelectionMenuVisible: isTextSelectionMenuVisibleNow(
+        ctx.editor,
+        enabled,
+      ),
+    }),
+  });
 
   useEffect(() => {
     // Publish menu visibility so competing menus (e.g., table controls) can hide immediately.
@@ -66,6 +73,25 @@ export const TextSelectionBubbleMenu = ({
       setTextSelectionMenuOpen(false);
     };
   }, [isTextSelectionMenuVisible, setTextSelectionMenuOpen]);
+
+  useEffect(() => {
+    const syncVisibility = () => {
+      // Sync immediately on editor events to avoid one-click lag when selection collapses.
+      setTextSelectionMenuOpen(isTextSelectionMenuVisibleNow(editor, enabled));
+    };
+
+    editor.on("selectionUpdate", syncVisibility);
+    editor.on("transaction", syncVisibility);
+    editor.on("blur", syncVisibility);
+    // Run once on mount/config changes.
+    syncVisibility();
+
+    return () => {
+      editor.off("selectionUpdate", syncVisibility);
+      editor.off("transaction", syncVisibility);
+      editor.off("blur", syncVisibility);
+    };
+  }, [editor, enabled, setTextSelectionMenuOpen]);
 
   const formats = [
     ...(isBold ? ["bold"] : []),
@@ -79,8 +105,8 @@ export const TextSelectionBubbleMenu = ({
     <BubbleMenu
       editor={editor}
       options={{ placement: "top", offset: 8, flip: true }}
-      // Reuse derived state so render condition and published store state stay consistent.
-      shouldShow={() => isTextSelectionMenuVisible}
+      // Read live editor state so menu closes immediately when selection collapses.
+      shouldShow={() => isTextSelectionMenuVisibleNow(editor, enabled)}
     >
       <Stack
         direction="row"
