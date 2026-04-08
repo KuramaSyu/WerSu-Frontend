@@ -18,6 +18,7 @@ import {
   NodeViewContent,
   ReactNodeViewRenderer,
   type ReactNodeViewProps,
+  useEditorState,
 } from "@tiptap/react";
 import { Table } from "@tiptap/extension-table";
 import { TextSelection } from "@tiptap/pm/state";
@@ -27,6 +28,15 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
   getPos,
 }) => {
   const theme = useTheme();
+  // Global selection state from the editor.
+  // We use this to suppress table hover controls while text is selected,
+  // so the text-format BubbleMenu can take precedence (especially on double-click selection).
+  const { hasSelection } = useEditorState({
+    editor,
+    selector: (ctx) => ({
+      hasSelection: !ctx.editor.state.selection.empty,
+    }),
+  });
 
   /**
    * Adds a column at the end of the hovered table
@@ -115,6 +125,14 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
             zIndex: 25,
             border: `1px solid ${theme.palette.divider}`,
             backgroundColor: theme.palette.background.paper,
+            // If user is actively selecting text, hide table controls to avoid
+            // competing overlays and accidental clicks while formatting text.
+            ...(hasSelection
+              ? {
+                  opacity: 0,
+                  pointerEvents: "none",
+                }
+              : {}),
             "&::after": {
               content: '""',
               position: "absolute",
