@@ -18,12 +18,30 @@
 }
 
 .tiptap table {
-  width: 95%;
-  table-layout: fixed; /* optional, ensures columns shrink to fit */
+  width: 100%;
+  table-layout: fixed;
 }
+
+.tiptap .table-nodeview [data-node-view-content-react][data-node-view-wrapper] {
+  /* Runtime table rows are mounted into a div contentDOM. Treat it as table layout. */
+  display: table !important;
+  width: 100% !important;
+  table-layout: fixed !important;
+  border-collapse: collapse !important;
+}
+
+.tiptap .table-nodeview [data-node-view-content-react][data-node-view-wrapper] > tr {
+  display: table-row !important;
+}
+
+.tiptap .table-nodeview [data-node-view-content-react][data-node-view-wrapper] > tr > td,
+.tiptap .table-nodeview [data-node-view-content-react][data-node-view-wrapper] > tr > th,
 .tiptap td,
 .tiptap th {
   white-space: normal; /* allow multi-line content */
+  display: table-cell;
+  width: auto !important;
+  min-width: 0 !important;
   word-break: break-word;
 }
 
