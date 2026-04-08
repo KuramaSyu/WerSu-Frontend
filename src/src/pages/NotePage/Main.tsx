@@ -28,9 +28,9 @@ import "../../styles/tiptap.css";
 
 import TopBar from "../../components/TopBar";
 import { LeftSideView } from "../MainPage/LeftSideView";
-import { EditorStaticMenu } from "../MainPage/Modals/Editor/EditorStaticMenu";
 import { TableWithControls } from "../MainPage/Modals/Editor/TableControlls";
 import { ThemedEditorBox } from "../MainPage/Modals/Editor/ThemedEditorBox";
+import { TextSelectionBubbleMenu } from "../MainPage/Modals/Editor/TextSelectionBubbleMenu";
 import { LoginPage } from "../LoginPage/Main";
 import { LoadingPage } from "../LoadingPage/Main";
 import { M1, M2, M3, M4, M5 } from "../../statics";
@@ -68,8 +68,6 @@ export const NotePage: React.FC = () => {
   );
   const [note, setNote] = useState<Note | undefined>(cachedNote);
   const [noteTitle, setNoteTitle] = useState(cachedNote?.title ?? "");
-  const [isSourceMode, setIsSourceMode] = useState(false);
-  const [sourceValue, setSourceValue] = useState("");
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isInDragHandleArea, setIsInDragHandleArea] = useState(false);
@@ -185,34 +183,8 @@ export const NotePage: React.FC = () => {
     }
 
     const markdownContent = note.content || note.stripped_content || "";
-    // Intentionally only sync when a different note/editor instance loads.
-    // Including mode state here would re-apply persisted content on toggle and wipe unsaved source edits.
     editor.commands.setContent(markdownContent, { contentType: "markdown" });
-    setSourceValue(markdownContent);
   }, [editor, note?.id]);
-
-  const toggleSourceMode = () => {
-    if (!editor) {
-      return;
-    }
-
-    if (!isSourceMode) {
-      setSourceValue(editor.getMarkdown());
-      setIsSourceMode(true);
-      return;
-    }
-
-    const nextMarkdown = sourceValue;
-    setIsSourceMode(false);
-    // Defer setContent until after React/Tiptap finish switching views.
-    // Running this synchronously during the toggle can trigger React flushSync lifecycle errors.
-    queueMicrotask(() => {
-      if (editor.isDestroyed) {
-        return;
-      }
-      editor.commands.setContent(nextMarkdown, { contentType: "markdown" });
-    });
-  };
 
   const handleSave = async () => {
     if (!id || !editor) {
@@ -325,12 +297,7 @@ export const NotePage: React.FC = () => {
 
           {editor && (
             <>
-              <EditorStaticMenu
-                editor={editor}
-                isSourceMode={isSourceMode}
-                onToggleSourceMode={toggleSourceMode}
-              />
-              {/* <EditorBubbleMenu editor={editor} enabled={isEditable && !isSourceMode} /> */}
+              <TextSelectionBubbleMenu editor={editor} enabled={isEditable} />
               <Box
                 className="editor-drag-region"
                 onMouseMove={handleDragRegionMouseMove}
@@ -338,27 +305,15 @@ export const NotePage: React.FC = () => {
               >
                 <DragHandle
                   editor={editor}
-                  className={`note-block-drag-handle ${isEditable && !isSourceMode ? "" : "note-block-drag-handle--hidden"} ${isInDragHandleArea ? "note-block-drag-handle--active" : ""} ${isEditorFocused && !isInDragHandleArea ? "note-block-drag-handle--suppressed" : ""}`}
+                  className={`note-block-drag-handle ${isEditable ? "" : "note-block-drag-handle--hidden"} ${isInDragHandleArea ? "note-block-drag-handle--active" : ""} ${isEditorFocused && !isInDragHandleArea ? "note-block-drag-handle--suppressed" : ""}`}
                   nested={false}
                 >
                   <DragIndicatorIcon fontSize="small" />
                 </DragHandle>
-                {!isSourceMode && (
-                  <ThemedEditorBox>
-                    <EditorContent editor={editor} className="tiptap" />
-                  </ThemedEditorBox>
-                )}
+                <ThemedEditorBox>
+                  <EditorContent editor={editor} className="tiptap" />
+                </ThemedEditorBox>
               </Box>
-              {isSourceMode && (
-                <TextField
-                  multiline
-                  minRows={20}
-                  fullWidth
-                  value={sourceValue}
-                  onChange={(event) => setSourceValue(event.target.value)}
-                  placeholder="Edit markdown source"
-                />
-              )}
             </>
           )}
 
