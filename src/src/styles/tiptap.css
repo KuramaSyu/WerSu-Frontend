@@ -3,6 +3,16 @@
   padding-left: 1.5rem;
 }
 
+.tiptap .ProseMirror p.is-empty::before {
+  /* TipTap placeholder text comes from data-placeholder attribute. */
+  content: attr(data-placeholder);
+  /* Keep placeholder aligned like normal text but visually muted. */
+  color: color-mix(in srgb, currentColor 45%, transparent);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
 .tiptap .ProseMirror .ProseMirror-dropcursor {
   border-top: 2px solid color-mix(in srgb, currentColor 65%, transparent);
 }

@@ -22,6 +22,7 @@ import { Image } from "@tiptap/extension-image";
 import { TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
 import { Highlight } from "@tiptap/extension-highlight";
 import { Mathematics } from "@tiptap/extension-mathematics";
+import Placeholder from "@tiptap/extension-placeholder";
 import { Markdown } from "@tiptap/markdown";
 import "katex/dist/katex.min.css";
 import "../../styles/tiptap.css";
@@ -31,6 +32,7 @@ import { LeftSideView } from "../MainPage/LeftSideView";
 import { TableWithControls } from "../MainPage/Modals/Editor/TableControlls";
 import { ThemedEditorBox } from "../MainPage/Modals/Editor/ThemedEditorBox";
 import { TextSelectionBubbleMenu } from "../MainPage/Modals/Editor/TextSelectionBubbleMenu";
+import { SlashCommandMenu } from "../MainPage/Modals/Editor/SlashCommandMenu";
 import { LoginPage } from "../LoginPage/Main";
 import { LoadingPage } from "../LoadingPage/Main";
 import { M1, M2, M3, M4, M5 } from "../../statics";
@@ -148,6 +150,31 @@ export const NotePage: React.FC = () => {
       TableWithControls.configure({ resizable: false }),
       Highlight,
       Mathematics,
+      Placeholder.configure({
+        // Show hint only for the currently focused empty paragraph.
+        showOnlyCurrent: true,
+        includeChildren: false,
+        placeholder: ({ node, editor: placeholderEditor }) => {
+          // Restrict placeholder to standard paragraph lines.
+          if (node.type.name !== "paragraph") {
+            return "";
+          }
+
+          if (
+            // Avoid showing this hint in structured block contexts.
+            placeholderEditor.isActive("table") ||
+            placeholderEditor.isActive("bulletList") ||
+            placeholderEditor.isActive("orderedList") ||
+            placeholderEditor.isActive("taskList") ||
+            placeholderEditor.isActive("codeBlock")
+          ) {
+            return "";
+          }
+
+          // Main inline guidance for slash command discoverability.
+          return "Write anything or use / for commands";
+        },
+      }),
       Markdown,
     ],
     content: "",
@@ -162,6 +189,7 @@ export const NotePage: React.FC = () => {
           dispatch(state.tr.insertText(tab, selection.from, selection.to));
           return true;
         }
+
         return false;
       },
     },
@@ -298,6 +326,7 @@ export const NotePage: React.FC = () => {
           {editor && (
             <>
               <TextSelectionBubbleMenu editor={editor} enabled={isEditable} />
+              <SlashCommandMenu editor={editor} enabled={isEditable} />
               <Box
                 className="editor-drag-region"
                 onMouseMove={handleDragRegionMouseMove}
