@@ -1,6 +1,7 @@
 import type { Editor } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
+import { useEffect } from "react";
 import { Stack, ToggleButton, ToggleButtonGroup, Tooltip } from "@mui/material";
 import FormatBoldIcon from "@mui/icons-material/FormatBold";
 import FormatItalicIcon from "@mui/icons-material/FormatItalic";
@@ -9,6 +10,7 @@ import CodeIcon from "@mui/icons-material/Code";
 import BorderColorIcon from "@mui/icons-material/BorderColor";
 import FormatClearIcon from "@mui/icons-material/FormatClear";
 import { useThemeStore } from "../../../../zustand/useThemeStore";
+import { useEditorMenuStore } from "../../../../zustand/editorMenuStore";
 
 interface TextSelectionBubbleMenuProps {
   editor: Editor;
@@ -20,7 +22,17 @@ export const TextSelectionBubbleMenu = ({
   enabled = true,
 }: TextSelectionBubbleMenuProps) => {
   const { theme } = useThemeStore();
-  const { isBold, isItalic, isStrikethrough, isCode, isHighlight } =
+  const setTextSelectionMenuOpen = useEditorMenuStore(
+    (state) => state.setTextSelectionMenuOpen,
+  );
+  const {
+    isBold,
+    isItalic,
+    isStrikethrough,
+    isCode,
+    isHighlight,
+    isTextSelectionMenuVisible,
+  } =
     useEditorState({
       editor,
       selector: (ctx) => ({
@@ -29,8 +41,31 @@ export const TextSelectionBubbleMenu = ({
         isStrikethrough: ctx.editor.isActive("strike"),
         isCode: ctx.editor.isActive("code"),
         isHighlight: ctx.editor.isActive("highlight"),
+        // Same condition used by BubbleMenu visibility to keep store state in sync.
+        isTextSelectionMenuVisible: (() => {
+          if (!enabled || !ctx.editor.isEditable) {
+            return false;
+          }
+
+          const { from, to } = ctx.editor.state.selection;
+          if (from === to) {
+            return false;
+          }
+
+          const selectedText = ctx.editor.state.doc.textBetween(from, to).trim();
+          return selectedText.length > 0;
+        })(),
       }),
     });
+
+  useEffect(() => {
+    // Publish menu visibility so competing menus (e.g., table controls) can hide immediately.
+    setTextSelectionMenuOpen(isTextSelectionMenuVisible);
+    return () => {
+      // Reset global menu state when component unmounts.
+      setTextSelectionMenuOpen(false);
+    };
+  }, [isTextSelectionMenuVisible, setTextSelectionMenuOpen]);
 
   const formats = [
     ...(isBold ? ["bold"] : []),
@@ -44,20 +79,8 @@ export const TextSelectionBubbleMenu = ({
     <BubbleMenu
       editor={editor}
       options={{ placement: "top", offset: 8, flip: true }}
-      shouldShow={({ editor: activeEditor, from, to }) => {
-        if (!enabled || !activeEditor.isEditable) {
-          return false;
-        }
-
-        if (from === to) {
-          return false;
-        }
-
-        const selectedText = activeEditor.state.doc
-          .textBetween(from, to)
-          .trim();
-        return selectedText.length > 0;
-      }}
+      // Reuse derived state so render condition and published store state stay consistent.
+      shouldShow={() => isTextSelectionMenuVisible}
     >
       <Stack
         direction="row"

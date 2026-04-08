@@ -22,12 +22,17 @@ import {
 } from "@tiptap/react";
 import { Table } from "@tiptap/extension-table";
 import { TextSelection } from "@tiptap/pm/state";
+import { useEditorMenuStore } from "../../../../zustand/editorMenuStore";
 
 export const TableNodeView: React.FC<ReactNodeViewProps> = ({
   editor,
   getPos,
 }) => {
   const theme = useTheme();
+  // Shared menu state allows instant suppression when text BubbleMenu opens.
+  const isTextSelectionMenuOpen = useEditorMenuStore(
+    (state) => state.isTextSelectionMenuOpen,
+  );
   // Global selection state from the editor.
   // We use this to suppress table hover controls while text is selected,
   // so the text-format BubbleMenu can take precedence (especially on double-click selection).
@@ -37,6 +42,8 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
       hasSelection: !ctx.editor.state.selection.empty,
     }),
   });
+  // One shared flag to hide every hover-based table control immediately.
+  const shouldHideTableControls = hasSelection || isTextSelectionMenuOpen;
 
   /**
    * Adds a column at the end of the hovered table
@@ -95,18 +102,30 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
     >
       <Box
         sx={{
-          ".table-nodeview:hover & .hoverBox": {
-            opacity: 1,
-            pointerEvents: "auto",
-            transition: "opacity 0.3s ease",
-          },
-          "& .hoverBox:hover": {
-            opacity: 1,
-            pointerEvents: "auto",
-          },
+          // While text formatting UI is active, force all table hover controls hidden.
+          ".table-nodeview:hover & .hoverBox": shouldHideTableControls
+            ? {
+                opacity: "0 !important",
+                pointerEvents: "none !important",
+                transition: "opacity 0.3s ease",
+              }
+            : {
+                opacity: 1,
+                pointerEvents: "auto",
+                transition: "opacity 0.3s ease",
+              },
+          "& .hoverBox:hover": shouldHideTableControls
+            ? {
+                opacity: "0 !important",
+                pointerEvents: "none !important",
+              }
+            : {
+                opacity: 1,
+                pointerEvents: "auto",
+              },
           "& .hoverBox": {
-            opacity: 0,
-            pointerEvents: "none",
+            opacity: shouldHideTableControls ? "0 !important" : 0,
+            pointerEvents: shouldHideTableControls ? "none !important" : "none",
             transition: "opacity 0.3s ease",
           },
         }}
@@ -125,14 +144,6 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
             zIndex: 25,
             border: `1px solid ${theme.palette.divider}`,
             backgroundColor: theme.palette.background.paper,
-            // If user is actively selecting text, hide table controls to avoid
-            // competing overlays and accidental clicks while formatting text.
-            ...(hasSelection
-              ? {
-                  opacity: 0,
-                  pointerEvents: "none",
-                }
-              : {}),
             "&::after": {
               content: '""',
               position: "absolute",
