@@ -22,12 +22,16 @@ import {
 } from "@tiptap/react";
 import { Table } from "@tiptap/extension-table";
 import { TextSelection } from "@tiptap/pm/state";
+import { useState } from "react";
 import { useEditorMenuStore } from "../../../../zustand/editorMenuStore";
 
 export const TableNodeView: React.FC<ReactNodeViewProps> = ({
   editor,
   getPos,
 }) => {
+  const [isTableHovered, setIsTableHovered] = useState(false);
+  const [showAddRowControl, setShowAddRowControl] = useState(false);
+  const [showAddColControl, setShowAddColControl] = useState(false);
   const theme = useTheme();
   // Shared menu state allows instant suppression when text BubbleMenu opens.
   const isTextSelectionMenuOpen = useEditorMenuStore(
@@ -90,9 +94,64 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
     );
     editor.chain().focus().addRowAfter().run();
   };
+
+  const handleTableMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+
+    // keep controls when handlers iteself are hovered
+    if (target.closest(".table-col-control")) {
+      setShowAddColControl(true);
+      return;
+    }
+
+    if (target.closest(".table-row-control")) {
+      setShowAddRowControl(true);
+      return;
+    }
+
+    const cell = target.closest("td, th") as HTMLTableCellElement | null;
+    if (!cell) {
+      setShowAddRowControl(false);
+      setShowAddColControl(false);
+      return;
+    }
+
+    const row = cell.parentElement as HTMLTableRowElement | null;
+    const rowContainer = row?.parentElement;
+    if (!row || !rowContainer) {
+      setShowAddRowControl(false);
+      setShowAddColControl(false);
+      return;
+    }
+
+    const rows = Array.from(rowContainer.children).filter(
+      (child) => child.tagName.toLowerCase() === "tr",
+    ) as HTMLTableRowElement[];
+
+    if (rows.length === 0) {
+      setShowAddRowControl(false);
+      setShowAddColControl(false);
+      return;
+    }
+
+    const rowIndex = rows.indexOf(row);
+    const isLastRow = rowIndex === rows.length - 1;
+    const isLastCol = cell.cellIndex === row.cells.length - 1;
+
+    setShowAddRowControl(isLastRow);
+    setShowAddColControl(isLastCol);
+  };
+
   return (
     <NodeViewWrapper
       className="table-nodeview"
+      onMouseEnter={() => setIsTableHovered(true)}
+      onMouseLeave={() => {
+        setIsTableHovered(false);
+        setShowAddRowControl(false);
+        setShowAddColControl(false);
+      }}
+      onMouseMove={handleTableMouseMove}
       style={{
         position: "relative",
         marginBottom: "16px",
@@ -228,13 +287,10 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
         </Stack>
 
         {/* Column add */}
-        <Box className="table-col-control">
-          {Array.from({
-            length: editor?.state.doc.firstChild?.childCount || 0,
-          }).map((_, i) => (
+        {isTableHovered && showAddColControl && (
+          <Box className="table-col-control">
             <Button
               className="hoverBox"
-              key={i}
               size="small"
               onClick={addColumnAfter}
               sx={(theme) => ({
@@ -253,30 +309,32 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
             >
               <AddIcon fontSize="small" />
             </Button>
-          ))}
-        </Box>
+          </Box>
+        )}
 
         {/* Row add */}
-        <Box className="table-row-control">
-          <Button
-            className="hoverBox"
-            size="small"
-            onClick={() => addRowAfter()}
-            sx={{
-              position: "absolute",
-              display: "flex",
-              flexDirection: "row",
-              bottom: -30,
-              left: 0,
-              width: "100% !important",
-              backgroundColor: theme.palette.background.paper,
-              border: `1px solid ${theme.palette.divider}`,
-              flexGrow: 1,
-            }}
-          >
-            <AddIcon fontSize="small" />
-          </Button>
-        </Box>
+        {isTableHovered && showAddRowControl && (
+          <Box className="table-row-control">
+            <Button
+              className="hoverBox"
+              size="small"
+              onClick={() => addRowAfter()}
+              sx={{
+                position: "absolute",
+                display: "flex",
+                flexDirection: "row",
+                bottom: -30,
+                left: 0,
+                width: "100% !important",
+                backgroundColor: theme.palette.background.paper,
+                border: `1px solid ${theme.palette.divider}`,
+                flexGrow: 1,
+              }}
+            >
+              <AddIcon fontSize="small" />
+            </Button>
+          </Box>
+        )}
       </Box>
 
       <NodeViewContent />
