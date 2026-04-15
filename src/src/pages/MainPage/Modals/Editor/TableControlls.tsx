@@ -5,6 +5,7 @@ import {
   IconButton,
   Stack,
   Tooltip,
+  Fade,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import WestIcon from "@mui/icons-material/West";
@@ -183,7 +184,7 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
           //       pointerEvents: "auto",
           //     },
 
-          // proper hiding of the table when not overed
+          // proper hiding of the table when not hovered
           "& .hoverBox": {
             opacity: shouldHideTableControls ? "0 !important" : 0,
             pointerEvents: shouldHideTableControls ? "none !important" : "none",
@@ -191,13 +192,13 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
           },
         }}
       >
+        {/* Main hover controls - add/remove rows/columns */}
         <Stack
           className="hoverBox"
           direction="row"
           spacing={1}
           sx={{
             position: "absolute",
-            left: 0,
             bottom: "calc(100% + 6px)",
             width: "max-content",
             padding: 0.75,
@@ -287,7 +288,7 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
         </Stack>
 
         {/* Column add */}
-        {isTableHovered && showAddColControl && (
+        <Fade in={isTableHovered && showAddColControl}>
           <Box className="table-col-control">
             <Button
               className="hoverBox"
@@ -310,10 +311,10 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
               <AddIcon fontSize="small" />
             </Button>
           </Box>
-        )}
+        </Fade>
 
         {/* Row add */}
-        {isTableHovered && showAddRowControl && (
+        <Fade in={isTableHovered && showAddRowControl}>
           <Box className="table-row-control">
             <Button
               className="hoverBox"
@@ -334,7 +335,7 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
               <AddIcon fontSize="small" />
             </Button>
           </Box>
-        )}
+        </Fade>
       </Box>
 
       <NodeViewContent />
