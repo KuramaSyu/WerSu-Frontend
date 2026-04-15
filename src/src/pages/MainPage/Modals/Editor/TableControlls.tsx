@@ -95,10 +95,6 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
       className="table-nodeview"
       style={{
         position: "relative",
-        // Use block layout so table content can fill the editor row.
-        // display: "block",
-        // width: "100%",
-        // maxWidth: "100%",
         marginBottom: "16px",
         overflow: "visible",
       }}
@@ -118,15 +114,17 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
                 pointerEvents: "auto",
                 transition: "opacity 0.3s ease",
               },
-          "& .hoverBox:hover": shouldHideTableControls
-            ? {
-                opacity: "0 !important",
-                pointerEvents: "none !important",
-              }
-            : {
-                opacity: 1,
-                pointerEvents: "auto",
-              },
+          // "& .hoverBox:hover": shouldHideTableControls
+          //   ? {
+          //       opacity: "0 !important",
+          //       pointerEvents: "none !important",
+          //     }
+          //   : {
+          //       opacity: 1,
+          //       pointerEvents: "auto",
+          //     },
+
+          // proper hiding of the table when not overed
           "& .hoverBox": {
             opacity: shouldHideTableControls ? "0 !important" : 0,
             pointerEvents: shouldHideTableControls ? "none !important" : "none",
