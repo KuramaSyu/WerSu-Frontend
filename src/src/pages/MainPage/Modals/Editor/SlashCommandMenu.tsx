@@ -271,7 +271,7 @@ export const SlashCommandMenu = ({
         enabled && editor.isEditable && isSlashCommandContext(editor)
       }
     >
-      <Paper elevation={4} sx={{ minWidth: 220, maxWidth: 320, py: 0.5 }}>
+      <Paper elevation={1} sx={{ minWidth: 220, maxWidth: 320, py: 0.5 }}>
         <Typography variant="caption" sx={{ px: 1.5, color: "text.secondary" }}>
           Slash commands
         </Typography>
