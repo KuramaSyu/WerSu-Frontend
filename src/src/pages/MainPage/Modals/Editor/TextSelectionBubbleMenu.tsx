@@ -17,9 +17,29 @@ interface TextSelectionBubbleMenuProps {
   enabled?: boolean;
 }
 
+/**
+ * Determines whether the text selection bubble menu should be visible.
+ *
+ * @param editor - The editor instance to check the selection state from
+ * @param enabled - Whether the text selection menu feature is globally enabled
+ * @returns `true` if the menu should be visible, `false` otherwise
+ *
+ * @remarks
+ * The menu will be hidden if:
+ * - The menu is disabled globally or the editor is read-only
+ * - No text is selected (collapsed caret selection)
+ * - Only whitespace is selected
+ *
+ * The menu will only be shown when a non-empty text selection containing at least one non-whitespace character exists.
+ */
 const isTextSelectionMenuVisibleNow = (editor: Editor, enabled: boolean) => {
   // Menu is disabled globally or editor is read-only.
   if (!enabled || !editor.isEditable) {
+    return false;
+  }
+
+  // Keep menu hidden until the editor actually has focus.
+  if (!editor.isFocused) {
     return false;
   }
 
