@@ -271,12 +271,28 @@ export const SlashCommandMenu = ({
         enabled && editor.isEditable && isSlashCommandContext(editor)
       }
     >
-      <Paper elevation={1} sx={{ minWidth: 220, maxWidth: 320, py: 0.5 }}>
+      <Paper
+        elevation={1}
+        sx={{
+          minWidth: 220,
+          maxWidth: 320,
+          py: 1,
+        }}
+      >
         <Typography variant="caption" sx={{ px: 1.5, color: "text.secondary" }}>
           Slash commands
         </Typography>
 
-        <List dense disablePadding>
+        <List
+          dense
+          disablePadding
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            maxHeight: 300,
+            overflow: "scroll",
+          }}
+        >
           {matchingCommands.map((command) => (
             <ListItemButton
               key={command.id}
