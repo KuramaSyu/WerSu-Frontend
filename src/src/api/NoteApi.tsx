@@ -1,6 +1,7 @@
 import { BACKEND_BASE } from "../statics";
 import { useNotesStore } from "../zustand/useNotesStore";
 import { Note, type NoteData } from "./models/search";
+import { UserError } from "./models/UserError";
 import { PermissionsApi } from "./PermissionsApi";
 
 export interface INoteApi {
@@ -24,6 +25,18 @@ export class NoteApi implements INoteApi {
     );
   }
 
+  private async buildUserError(
+    response: Response,
+    title = "Request failed",
+  ): Promise<UserError> {
+    const description = await response.text().catch(() => "");
+    return new UserError(
+      title,
+      description || response.statusText || "Unknown error",
+      response.status,
+    );
+  }
+
   /**
    * tries to authenticate a user by coockie.
    * It sets `useUserStore` to the authenticated user
@@ -34,6 +47,9 @@ export class NoteApi implements INoteApi {
       method: "GET",
       credentials: "include",
     });
+    if (!response.ok) {
+      throw await this.buildUserError(response);
+    }
     if (response.ok) {
       const noteData: NoteData = await response.json().catch((e) => {
         this.logError(`/api/notes/${id}`, e);
@@ -59,10 +75,17 @@ export class NoteApi implements INoteApi {
       },
       body: JSON.stringify({ title, content }),
     });
+    if (!response.ok) {
+      throw await this.buildUserError(response, "Failed to create note");
+    }
     if (response.ok) {
       const noteData: NoteData = await response.json().catch((e) => {
         this.logError(`/api/notes`, e);
-        return null;
+        throw new UserError(
+          "Failed to create note",
+          `Reason: ${JSON.stringify(e)}`,
+          response.status,
+        );
       });
       if (noteData === null) {
         return undefined;
@@ -96,6 +119,9 @@ export class NoteApi implements INoteApi {
       },
       body: JSON.stringify(body),
     });
+    if (!response.ok) {
+      throw await this.buildUserError(response, "Failed to update note");
+    }
     if (response.ok) {
       const noteData: NoteData = await response.json().catch((e) => {
         this.logError(`/api/notes`, e);
@@ -192,6 +218,9 @@ export class NoteApi implements INoteApi {
       method: "DELETE",
       credentials: "include",
     });
+    if (!response.ok) {
+      throw await this.buildUserError(response, "Failed to delete note");
+    }
     if (response.ok) {
       removeNote(id);
       return true;
