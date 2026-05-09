@@ -9,31 +9,44 @@ import {
   Stack,
   TextField,
   ThemeProvider,
-} from '@mui/material';
-import { useThemeStore } from '../../zustand/useThemeStore';
-import { AnimatePresence, motion } from 'framer-motion';
+} from "@mui/material";
+import { useThemeStore } from "../../zustand/useThemeStore";
+import { AnimatePresence, motion } from "framer-motion";
 
-import { useState } from 'react';
-import CreateIcon from '@mui/icons-material/Create';
+import { useState } from "react";
+import CreateIcon from "@mui/icons-material/Create";
 
-import { note_of_date_at_hour } from '../../utils/NoteTitleTemplates';
-import { NoteApi } from '../../api/NoteApi';
-import { useNotesStore } from '../../zustand/useNotesStore';
+import { note_of_date_at_hour } from "../../utils/NoteTitleTemplates";
+import { NoteApi } from "../../api/NoteApi";
+import { UserError } from "../../api/models/UserError";
+import { useNotesStore } from "../../zustand/useNotesStore";
+import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 
 export const CreateNote: React.FC = () => {
   const { theme } = useThemeStore();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(note_of_date_at_hour());
-  const [content, setContent] = useState('');
+  const [content, setContent] = useState("");
   const { updateNote } = useNotesStore();
   const [snackbarState, setSnackbarState] = useState({
     open: false,
   });
+  const { setMessage } = useInfoStore();
 
   // saves note to backend and updates store
   async function save_note() {
     const api = new NoteApi();
-    const note = await api.post(title, content);
+    let note: Awaited<ReturnType<NoteApi["post"]>>;
+    try {
+      note = await api.post(title, content);
+    } catch (e) {
+      if (e instanceof UserError) {
+        setMessage(new SnackbarUpdateImpl(e.title, "error", undefined, e.description));
+        return;
+      }
+      setMessage(new SnackbarUpdateImpl("Unexpected error"));
+      return;
+    }
     if (note !== undefined) {
       setSnackbarState({ open: true });
       updateNote(note);
@@ -42,18 +55,18 @@ export const CreateNote: React.FC = () => {
   return (
     <Stack
       width={1 / 3}
-      spacing={'1rem'}
+      spacing={"1rem"}
       sx={{
         backgroundColor: theme.palette.background.paper,
-        padding: '1rem',
-        borderRadius: '1rem',
+        padding: "1rem",
+        borderRadius: "1rem",
       }}
     >
       <AnimatePresence mode="wait" initial={false}>
         {!open && (
           <TextField
             variant="outlined"
-            defaultValue={'New Note'}
+            defaultValue={"New Note"}
             onClick={() => setOpen(true)}
             slotProps={{
               input: {
@@ -61,7 +74,7 @@ export const CreateNote: React.FC = () => {
                   <InputAdornment position="start">
                     <CreateIcon
                       sx={{
-                        fontSize: '1.5rem',
+                        fontSize: "1.5rem",
                         color: theme.palette.primary.light,
                       }}
                     />
@@ -70,15 +83,15 @@ export const CreateNote: React.FC = () => {
               },
             }}
             sx={{
-              '& .MuiOutlinedInput-root': {
-                '& fieldset': {
+              "& .MuiOutlinedInput-root": {
+                "& fieldset": {
                   borderColor: theme.palette.primary.main,
                   borderWidth: 2,
                 },
-                '&:hover fieldset': {
+                "&:hover fieldset": {
                   borderColor: theme.palette.primary.light,
                 },
-                '&.Mui-focused fieldset': {
+                "&.Mui-focused fieldset": {
                   borderColor: theme.palette.primary.light,
                 },
               },
@@ -106,9 +119,9 @@ export const CreateNote: React.FC = () => {
               }}
               sx={{
                 p: 2,
-                borderRadius: '1rem',
-                display: 'flex',
-                flexDirection: 'column',
+                borderRadius: "1rem",
+                display: "flex",
+                flexDirection: "column",
                 gap: 1.5,
               }}
             >
