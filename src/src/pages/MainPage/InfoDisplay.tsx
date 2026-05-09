@@ -1,60 +1,59 @@
-import React, { useState, useEffect, use } from 'react';
+import React, { useEffect, useRef, useState } from "react";
 import {
   Snackbar,
   Alert,
   Typography,
   Button,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  AccordionActions,
   Box,
-  LinearProgress,
-} from '@mui/material';
-import useInfoStore, { SnackbarUpdateImpl } from '../../zustand/InfoStore';
-import { useBreakpoint } from '../../hooks/useBreakpoint';
-import { set } from 'zod';
-import { useThemeStore } from '../../zustand/useThemeStore';
+} from "@mui/material";
+import useInfoStore from "../../zustand/InfoStore";
+import { useBreakpoint } from "../../hooks/useBreakpoint";
+import { useThemeStore } from "../../zustand/useThemeStore";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { SimpleTimeBasedProgressBar } from "../../components/SimpleTimebasedProgressBar";
 
 const InfoDisplay: React.FC = () => {
   const { Message } = useInfoStore();
   const [open, setOpen] = useState(false);
-  const [progress, setProgress] = useState(0); // 0 to 100
-  const INTERVAL = 100;
+  const [showDetails, setShowDetails] = useState(false);
+  const closeTimeoutRef = useRef<number | null>(null);
   const { isMobile } = useBreakpoint();
   const { theme } = useThemeStore();
 
   useEffect(() => {
-    if (Message && Message.message !== '') {
+    if (Message && Message.message !== "") {
       setOpen(true);
     }
-
-    const steps = Message.getDurationMs() / INTERVAL;
-    const increment = 100 / steps;
-
-    // timer which increases
-    const timer = window.setInterval(() => {
-      setProgress((prev) => {
-        const next = prev + increment;
-        if (next >= 100) {
-          clearInterval(timer);
-          window.setTimeout(() => {
-            // this delay is used, that the loading bar
-            // actually reaches the end due to animations
-            setOpen(false);
-            setProgress(0);
-          }, INTERVAL * 3);
-          return 100;
-        }
-        return next;
-      });
-    }, INTERVAL);
-    // close when timer is done
-
-    return () => clearInterval(timer);
+    setShowDetails(false);
   }, [Message]);
+
+  // closes the snackbar after the duration of the message,
+  // unless the user has expanded it to show details
+  useEffect(() => {
+    if (!open || showDetails) {
+      return;
+    }
+    closeTimeoutRef.current = window.setTimeout(() => {
+      setOpen(false);
+    }, Message.getDurationMs());
+
+    return () => {
+      if (closeTimeoutRef.current !== null) {
+        clearTimeout(closeTimeoutRef.current);
+        closeTimeoutRef.current = null;
+      }
+    };
+  }, [Message, open, showDetails]);
 
   const handleClose = (
     _event?: React.SyntheticEvent | Event,
-    reason?: string
+    reason?: string,
   ) => {
-    if (reason === 'clickaway') return;
+    if (reason === "clickaway") return;
     setOpen(false);
   };
 
@@ -62,46 +61,49 @@ const InfoDisplay: React.FC = () => {
     <Snackbar
       open={open}
       onClose={handleClose}
-      anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       key={Message.message}
     >
-      <Alert
-        severity={Message.severity}
+      <Box
         sx={{
-          '& .MuiAlert-icon': {
-            alignItems: 'center',
-          },
-          backgroundColor: theme.palette.muted.main,
+          display: "grid",
+          gridTemplateRows: "auto auto",
+          width: isMobile ? "90vw" : 420,
+          maxWidth: "90vw",
         }}
       >
-        <Box
-          sx={{
-            display: 'flex',
-            minWidth: '20vw',
-            maxWidth: '50vw',
-            flexDirection: isMobile ? 'column' : 'row',
-            alignItems: 'center',
-            justifyContent: isMobile ? 'flex-start' : 'space-between',
-          }}
+        <Accordion
+          expanded={showDetails}
+          onChange={(_event, expanded) => setShowDetails(expanded)}
+          sx={{ width: "100%" }}
         >
-          <Typography variant="body1">{Message.message}</Typography>
-          <Button onClick={() => setOpen(false)}>ok</Button>
-        </Box>
-        <Box
-          sx={{
-            position: 'absolute',
-            width: '100%',
-            bottom: 0,
-            left: 0,
-          }}
-        >
-          <LinearProgress
-            variant="determinate"
-            value={progress}
-            sx={{ height: 4 }}
-          />
-        </Box>
-      </Alert>
+          <AccordionSummary
+            expandIcon={<ExpandMoreIcon />}
+            aria-controls={`${Message.message}-panel2-content`}
+            id={`${Message.message}-panel2-header`}
+          >
+            <Alert
+              severity={Message.severity}
+              sx={{
+                "& .MuiAlert-icon": {
+                  alignItems: "center",
+                },
+                backgroundColor: theme.palette.muted.main,
+                width: "100%",
+              }}
+            >
+              <Typography component="span">{Message.message}</Typography>
+            </Alert>
+          </AccordionSummary>
+          <AccordionDetails>{Message.description}</AccordionDetails>
+          <AccordionActions>
+            <Button onClick={() => setOpen(false)}>ok</Button>
+          </AccordionActions>
+        </Accordion>
+        {!showDetails && (
+          <SimpleTimeBasedProgressBar durationMs={Message.getDurationMs()} />
+        )}
+      </Box>
     </Snackbar>
   );
 };
