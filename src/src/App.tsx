@@ -1,16 +1,17 @@
-import { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ThemeProvider } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
-import { useThemeStore } from './zustand/useThemeStore';
+import { useState } from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { ThemeProvider } from "@mui/material/styles";
+import CssBaseline from "@mui/material/CssBaseline";
+import { useThemeStore } from "./zustand/useThemeStore";
 
-import './App.css';
-import { MainPage } from './pages/MainPage/Main';
-import { Box } from '@mui/material';
-import { SwaggerDocs } from './pages/docs/Main';
-import { EditorGlobalStyles } from './theme/GlobalStyles';
-import InfoDisplay from './pages/MainPage/InfoDisplay';
-import { NotePage } from './pages/NotePage/Main';
+import "./App.css";
+import { MainPage } from "./pages/MainPage/Main";
+import { Box } from "@mui/material";
+import { SwaggerDocs } from "./pages/docs/Main";
+import { EditorGlobalStyles } from "./theme/GlobalStyles";
+import InfoDisplay from "./pages/MainPage/InfoDisplay";
+import { NotePage } from "./pages/NotePage/Main";
+import { DirectoryView } from "./pages/DirectoryView/Main";
 
 function App() {
   const { theme } = useThemeStore();
@@ -23,17 +24,18 @@ function App() {
       <Router>
         <Box
           sx={{
-            width: '100vw',
-            height: '100vh',
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden', // Prevents content from growing beyond 100vh
+            width: "100vw",
+            height: "100vh",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden", // Prevents content from growing beyond 100vh
             backgroundColor: theme.palette.background.default,
           }}
         >
           <Routes>
             <Route path="/" element={<MainPage />} />
             <Route path="/n/:id" element={<NotePage />} />
+            <Route path="/d/:id" element={<DirectoryView />} />
             <Route path="/docs/*" element={<SwaggerDocs />} />
           </Routes>
           <InfoDisplay />

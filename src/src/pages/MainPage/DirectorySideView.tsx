@@ -1,6 +1,8 @@
 import * as React from "react";
 import { useDroppable } from "@dnd-kit/react";
 import { SimpleTreeView, TreeItem } from "@mui/x-tree-view";
+import { ButtonBase, Stack, Typography } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 import { useDirectoryStore } from "../../zustand/useDirectoryStore";
 import {
   DirectoryHierarchyBuilder,
@@ -16,6 +18,7 @@ interface DirectoryTreeNodeProps {
  * droppable target.
  */
 const DirectoryTreeNode: React.FC<DirectoryTreeNodeProps> = ({ item }) => {
+  const navigate = useNavigate();
   const itemId = item.getId();
   const { ref, isDropTarget } = useDroppable({
     id: itemId,
@@ -33,7 +36,29 @@ const DirectoryTreeNode: React.FC<DirectoryTreeNodeProps> = ({ item }) => {
       key={itemId}
       itemId={itemId}
       ref={ref}
-      label={item.getName()}
+      label={
+        <ButtonBase
+          onClick={(event) => {
+            event.stopPropagation();
+            navigate(`/d/${itemId}`);
+          }}
+          sx={{
+            width: "100%",
+            justifyContent: "flex-start",
+            textAlign: "left",
+            py: 0.5,
+            px: 1,
+            borderRadius: 1,
+            color: "inherit",
+          }}
+        >
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Typography variant="body2" fontWeight={500}>
+              {item.getName()}
+            </Typography>
+          </Stack>
+        </ButtonBase>
+      }
       sx={{
         "& > .MuiTreeItem-content": {
           minHeight: 50,
