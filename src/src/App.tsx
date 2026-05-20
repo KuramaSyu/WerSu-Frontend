@@ -1,5 +1,10 @@
-import { useState } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { useEffect, useState } from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useLocation,
+} from "react-router-dom";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import { useThemeStore } from "./zustand/useThemeStore";
@@ -12,6 +17,18 @@ import { EditorGlobalStyles } from "./theme/GlobalStyles";
 import InfoDisplay from "./pages/MainPage/InfoDisplay";
 import { NotePage } from "./pages/NotePage/Main";
 import { DirectoryView } from "./pages/DirectoryView/Main";
+import { recordNavigation } from "./utils/navigationMemento";
+
+const NavigationRecorder: React.FC = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    const path = `${location.pathname}${location.search}${location.hash}`;
+    recordNavigation(path);
+  }, [location]);
+
+  return null;
+};
 
 function App() {
   const { theme } = useThemeStore();
@@ -32,6 +49,7 @@ function App() {
             backgroundColor: theme.palette.background.default,
           }}
         >
+          <NavigationRecorder />
           <Routes>
             <Route path="/" element={<MainPage />} />
             <Route path="/n/:id" element={<NotePage />} />
