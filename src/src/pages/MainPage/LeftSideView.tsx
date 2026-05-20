@@ -1,10 +1,12 @@
-import { Box, Stack } from "@mui/material";
+import { Box, IconButton, Paper, Stack, Tooltip } from "@mui/material";
 import { DirectorySideView } from "./DirectorySideView";
-import { M4 } from "../../statics";
-import { IconButton, Paper } from "@mui/material";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import { useState } from "react";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { navigationMemento } from "../../utils/navigationMemento";
 
 const LEFT_OPEN = 280;
 const LEFT_CLOSED = 0; // fully hidden pane
@@ -13,12 +15,48 @@ const TOGGLE_SIZE = 30;
 export interface LeftSideViewProps {
   open: boolean;
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  children?: React.ReactNode;
 }
 export const LeftSideView: React.FC<LeftSideViewProps> = ({
   open,
   setOpen,
+  children,
 }) => {
   const leftWidth = open ? LEFT_OPEN : LEFT_CLOSED;
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
+  // Update button states whenever the location changes.
+  useEffect(() => {
+    setCanUndo(navigationMemento.canUndo());
+    setCanRedo(navigationMemento.canRedo());
+  }, [location]);
+
+  const handleUndo = () => {
+    const target = navigationMemento.undo();
+    if (!target) {
+      return;
+    }
+
+    navigationMemento.skipNextRecord();
+    setCanUndo(navigationMemento.canUndo());
+    setCanRedo(navigationMemento.canRedo());
+    navigate(target);
+  };
+
+  const handleRedo = () => {
+    const target = navigationMemento.redo();
+    if (!target) {
+      return;
+    }
+
+    navigationMemento.skipNextRecord();
+    setCanUndo(navigationMemento.canUndo());
+    setCanRedo(navigationMemento.canRedo());
+    navigate(target);
+  };
 
   return (
     <>
@@ -34,7 +72,44 @@ export const LeftSideView: React.FC<LeftSideViewProps> = ({
           alignSelf: "flex-start",
         }}
       >
-        <DirectorySideView />
+        <Box
+          sx={{
+            height: "100%",
+            width: "100%",
+            overflowY: "auto",
+          }}
+        >
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            sx={{ p: 1.5, borderBottom: "1px solid", borderColor: "divider" }}
+          >
+            <Tooltip title="Back">
+              <span>
+                <IconButton
+                  onClick={handleUndo}
+                  size="small"
+                  disabled={!canUndo}
+                >
+                  <ArrowBackIcon fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip title="Forward">
+              <span>
+                <IconButton
+                  onClick={handleRedo}
+                  size="small"
+                  disabled={!canRedo}
+                >
+                  <ArrowForwardIcon fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+          </Stack>
+          {children ?? <DirectorySideView />}
+        </Box>
       </Paper>
 
       <IconButton
