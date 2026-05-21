@@ -90,6 +90,7 @@ export class NoteApi implements INoteApi {
       if (noteData === null) {
         return undefined;
       }
+      console.log(`Created note: ${JSON.stringify(noteData)}`);
       const note = Note.fromJson(noteData);
       updateNote(note);
       return note;

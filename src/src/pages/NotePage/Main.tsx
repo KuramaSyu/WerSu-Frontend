@@ -47,6 +47,7 @@ import type { ListDirectoriesQuery } from "../../api/DirectoryApi";
 import { useDirectoryStore } from "../../zustand/useDirectoryStore";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { useThemeStore } from "../../zustand/useThemeStore";
+import { RecentActivityPanel } from "../../components/RecentActivityPanel";
 
 const lowlight = createLowlight(all);
 const DRAG_HANDLE_GUTTER_PX = 28;
@@ -281,7 +282,13 @@ export const NotePage: React.FC = () => {
           alignItems: "flex-start",
         }}
       >
-        <LeftSideView open={leftPaneOpen} setOpen={setLeftPaneOpen} />
+        <LeftSideView open={leftPaneOpen} setOpen={setLeftPaneOpen}>
+          <Stack spacing={2} sx={{ p: 2 }}>
+            <RecentActivityPanel
+              target={id ? { type: "note", id } : { type: "root" }}
+            />
+          </Stack>
+        </LeftSideView>
 
         <Paper
           elevation={1}

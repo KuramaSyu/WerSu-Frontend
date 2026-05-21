@@ -33,6 +33,7 @@ import { note_of_date_at_hour } from "../../utils/NoteTitleTemplates";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { UserError } from "../../api/models/UserError";
 import { DirectoryApi } from "../../api/DirectoryApi";
+import { RecentActivityPanel } from "../../components/RecentActivityPanel";
 
 const getNoteDirectoryId = (
   permissions?: PermissionRelationshipReply[],
@@ -310,6 +311,14 @@ export const DirectoryView: React.FC = () => {
                     Create note
                   </Button>
                 </Stack>
+                <Divider sx={{ opacity: 0.3 }} />
+                <RecentActivityPanel
+                  target={
+                    currentNode.getId() === "root"
+                      ? { type: "root" }
+                      : { type: "directory", id: currentNode.getId() }
+                  }
+                />
                 <Divider sx={{ opacity: 0.3 }} />
                 <DirectorySideView />
               </Stack>
