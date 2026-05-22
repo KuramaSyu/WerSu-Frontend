@@ -51,7 +51,9 @@ const formatActivityLabel = (activity: NoteVersionSummaryReply): string => {
   // return `Edited ${note?.title || activity.note_id}`;
   // return `Edit v${activity.version_index}`;
   return (
-    `${note?.title || activity.note_id} ` + (v > 1 ? `activity(v${v})` : "")
+    (v == 1 ? `Created ` : ``) +
+    `${note?.title || activity.note_id} ` +
+    (v > 1 ? `(v${v})` : "")
   );
 };
 
@@ -66,6 +68,12 @@ export const RecentActivityPanel: React.FC<RecentActivityPanelProps> = ({
 }) => {
   // Keep API instance stable to avoid unnecessary effect re-runs.
   const api = useMemo(() => new ActivityApi(), []);
+  // Use a stable key so identical targets don't re-trigger the fetch effect
+  // when parent re-renders (e.g., hover or focus state changes).
+  const targetKey = useMemo(
+    () => `${target.type}:${"id" in target ? target.id : "root"}`,
+    [target],
+  );
   const [activity, setActivity] = useState<NoteVersionSummaryReply[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -122,7 +130,7 @@ export const RecentActivityPanel: React.FC<RecentActivityPanelProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [api, target, limit, maxDepth]);
+  }, [api, targetKey, limit, maxDepth]);
 
   return (
     <Box sx={{ px: 2, py: 2 }}>
