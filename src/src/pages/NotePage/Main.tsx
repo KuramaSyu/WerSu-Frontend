@@ -5,11 +5,18 @@ import {
   Box,
   Button,
   Paper,
+  SpeedDial,
+  SpeedDialAction,
+  SpeedDialIcon,
   Stack,
   TextField,
   Typography,
 } from "@mui/material";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
+import CodeIcon from "@mui/icons-material/Code";
+import EditIcon from "@mui/icons-material/Edit";
+import HistoryIcon from "@mui/icons-material/History";
+import SaveIcon from "@mui/icons-material/Save";
 import { useEditor, EditorContent, useEditorState } from "@tiptap/react";
 import DragHandle from "@tiptap/extension-drag-handle-react";
 import StarterKit from "@tiptap/starter-kit";
@@ -48,6 +55,8 @@ import { useDirectoryStore } from "../../zustand/useDirectoryStore";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { RecentActivityPanel } from "../../components/RecentActivityPanel";
+import { NoteVersionsDrawer } from "../../components/NoteVersionsDrawer";
+import type { NoteVersionSummaryReply } from "../../api/models/activity";
 
 const lowlight = createLowlight(all);
 const DRAG_HANDLE_GUTTER_PX = 28;
@@ -74,6 +83,22 @@ export const NotePage: React.FC = () => {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isInDragHandleArea, setIsInDragHandleArea] = useState(false);
+  // Tracks which editor surface is active.
+  const [editorMode, setEditorMode] = useState<"rich" | "source">("rich");
+  // Holds the markdown for source-mode editing.
+  const [sourceMarkdown, setSourceMarkdown] = useState("");
+  // Controls the version history drawer.
+  const [versionsOpen, setVersionsOpen] = useState(false);
+  // Currently selected version metadata + content snapshot.
+  const [selectedVersion, setSelectedVersion] =
+    useState<NoteVersionSummaryReply | null>(null);
+  const [selectedVersionContent, setSelectedVersionContent] = useState<
+    string | null
+  >(null);
+  // Loading state for fetching a specific version.
+  const [isFetchingVersion, setIsFetchingVersion] = useState(false);
+  // Loading state for restore flow.
+  const [isRestoringVersion, setIsRestoringVersion] = useState(false);
 
   const directoryListQuery = useMemo<ListDirectoriesQuery>(
     () => ({ limit: 500, offset: 0 }),
@@ -93,6 +118,9 @@ export const NotePage: React.FC = () => {
       setNote(undefined);
       return;
     }
+
+    setSelectedVersion(null);
+    setSelectedVersionContent(null);
 
     if (cachedNote) {
       setNote(cachedNote);
@@ -117,6 +145,7 @@ export const NotePage: React.FC = () => {
         setFetchError(null);
         setNote(loadedNote);
         setNoteTitle(loadedNote.title);
+        setSourceMarkdown(loadedNote.content || loadedNote.stripped_content);
       })
       .catch((error) => {
         if (!isMounted) {
@@ -130,6 +159,12 @@ export const NotePage: React.FC = () => {
       isMounted = false;
     };
   }, [id, cachedNote]);
+
+  useEffect(() => {
+    if (note) {
+      setSourceMarkdown(note.content || note.stripped_content || "");
+    }
+  }, [note?.id]);
 
   const editor = useEditor({
     extensions: [
@@ -215,14 +250,20 @@ export const NotePage: React.FC = () => {
     editor.commands.setContent(markdownContent, { contentType: "markdown" });
   }, [editor, note?.id]);
 
+  // Saves either the rich editor markdown or the source editor content.
   const handleSave = async () => {
-    if (!id || !editor) {
+    if (!id || (editorMode === "rich" && !editor)) {
       return;
+    }
+
+    const markdown =
+      editorMode === "source" ? sourceMarkdown : (editor?.getMarkdown() ?? "");
+    if (editorMode === "source" && editor) {
+      editor.commands.setContent(markdown, { contentType: "markdown" });
     }
 
     setIsSaving(true);
     try {
-      const markdown = editor.getMarkdown();
       const saved = await new NoteApi().patch(id, noteTitle, markdown);
       if (!saved) {
         setMessage(new SnackbarUpdateImpl("Failed to save note", "error"));
@@ -236,6 +277,79 @@ export const NotePage: React.FC = () => {
       setMessage(new SnackbarUpdateImpl("Failed to save note", "error"));
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Loads the content for a selected version into the preview panel.
+  const handleSelectVersion = async (version: NoteVersionSummaryReply) => {
+    if (!id) {
+      return;
+    }
+    setSelectedVersion(version);
+    setIsFetchingVersion(true);
+    try {
+      const versionNote = await new NoteApi().getVersion(
+        id,
+        version.version_index,
+      );
+      if (!versionNote) {
+        setMessage(new SnackbarUpdateImpl("Version not available", "error"));
+        return;
+      }
+      setSelectedVersionContent(
+        versionNote.content || versionNote.stripped_content || "",
+      );
+    } catch (error) {
+      console.error("Failed to load version", error);
+      setMessage(new SnackbarUpdateImpl("Failed to load version", "error"));
+    } finally {
+      setIsFetchingVersion(false);
+    }
+  };
+
+  // Restores a version by saving its content as the latest note state.
+  const handleRestoreVersion = async (version: NoteVersionSummaryReply) => {
+    if (!id) {
+      return;
+    }
+    setIsRestoringVersion(true);
+    try {
+      let content = selectedVersionContent;
+      let restoredTitle = noteTitle;
+      if (selectedVersion?.version_id !== version.version_id || !content) {
+        const versionNote = await new NoteApi().getVersion(
+          id,
+          version.version_index,
+        );
+        if (!versionNote) {
+          setMessage(new SnackbarUpdateImpl("Version not available", "error"));
+          return;
+        }
+        content = versionNote.content || versionNote.stripped_content || "";
+        restoredTitle = versionNote.title || restoredTitle;
+        setSelectedVersionContent(content);
+      }
+
+      if (editor) {
+        editor.commands.setContent(content ?? "", { contentType: "markdown" });
+      }
+      setSourceMarkdown(content ?? "");
+
+      const saved = await new NoteApi().patch(id, restoredTitle, content ?? "");
+      if (!saved) {
+        setMessage(
+          new SnackbarUpdateImpl("Failed to restore version", "error"),
+        );
+        return;
+      }
+      setNote(saved);
+      setNoteTitle(saved.title);
+      setMessage(new SnackbarUpdateImpl("Version restored", "success"));
+    } catch (error) {
+      console.error("Restore failed", error);
+      setMessage(new SnackbarUpdateImpl("Failed to restore version", "error"));
+    } finally {
+      setIsRestoringVersion(false);
     }
   };
 
@@ -318,7 +432,7 @@ export const NotePage: React.FC = () => {
             <Button
               onClick={() => void handleSave()}
               variant="contained"
-              disabled={!editor || isSaving || !id}
+              disabled={!id || isSaving || (editorMode === "rich" && !editor)}
             >
               {isSaving ? "Saving..." : "Save"}
             </Button>
@@ -330,7 +444,7 @@ export const NotePage: React.FC = () => {
             <Typography color="text.secondary">Loading note...</Typography>
           )}
 
-          {editor && (
+          {editor && editorMode === "rich" && (
             <>
               <TextSelectionBubbleMenu editor={editor} enabled={isEditable} />
               <SlashCommandMenu editor={editor} enabled={isEditable} />
@@ -353,11 +467,86 @@ export const NotePage: React.FC = () => {
             </>
           )}
 
+          {editorMode === "source" && (
+            <TextField
+              value={sourceMarkdown}
+              onChange={(event) => setSourceMarkdown(event.target.value)}
+              multiline
+              minRows={16}
+              placeholder="Markdown source"
+              fullWidth
+              sx={{
+                fontFamily: "monospace",
+                "& .MuiInputBase-input": { fontFamily: "monospace" },
+              }}
+            />
+          )}
+
           {!editor && (
             <Typography color="text.secondary">Loading editor...</Typography>
           )}
         </Paper>
       </Box>
+
+      {/* Floating editor actions */}
+      <SpeedDial
+        ariaLabel="Editor actions"
+        sx={{ position: "fixed", bottom: M4, right: M4, zIndex: 1300 }}
+        icon={<SpeedDialIcon />}
+      >
+        <SpeedDialAction
+          icon={<SaveIcon />}
+          tooltipTitle="Save"
+          onClick={() => void handleSave()}
+        />
+        {editorMode === "rich" ? (
+          <SpeedDialAction
+            icon={<CodeIcon />}
+            tooltipTitle="Source view"
+            onClick={() => {
+              const markdown = editor?.getMarkdown() ?? sourceMarkdown;
+              setSourceMarkdown(markdown);
+              setEditorMode("source");
+            }}
+          />
+        ) : (
+          <SpeedDialAction
+            icon={<EditIcon />}
+            tooltipTitle="Rich editor"
+            onClick={() => {
+              if (editor) {
+                editor.commands.setContent(sourceMarkdown, {
+                  contentType: "markdown",
+                });
+              }
+              setEditorMode("rich");
+            }}
+          />
+        )}
+        <SpeedDialAction
+          icon={<HistoryIcon />}
+          tooltipTitle="Versions"
+          onClick={() => setVersionsOpen(true)}
+        />
+      </SpeedDial>
+
+      {/* Right-side version history drawer */}
+      <NoteVersionsDrawer
+        open={versionsOpen}
+        noteId={id}
+        onClose={() => setVersionsOpen(false)}
+        onSelectVersion={handleSelectVersion}
+        onRestoreVersion={handleRestoreVersion}
+        selectedVersion={selectedVersion}
+        selectedContent={selectedVersionContent}
+        currentContent={
+          editorMode === "source"
+            ? sourceMarkdown
+            : (editor?.getMarkdown() ?? "")
+        }
+        isFetchingVersion={isFetchingVersion}
+        isRestoring={isRestoringVersion}
+      />
     </Box>
   );
 };
