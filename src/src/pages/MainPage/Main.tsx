@@ -36,7 +36,7 @@ import { NoteApi } from "../../api/NoteApi";
 import { useNotesStore } from "../../zustand/useNotesStore";
 import { CardGrid } from "./CardGrid";
 import { MainContent } from "./MainContent";
-import { TopBar } from "../../components/TopBar";
+import TopBar from "../../components/TopBar";
 
 export const MainPage: React.FC = () => {
   const { theme } = useThemeStore();

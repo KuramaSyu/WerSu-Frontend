@@ -69,7 +69,7 @@ export interface TopBarProps {
   scrollContainer?: HTMLElement | null;
 }
 
-export const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
+const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
   const [showBar, setShowBar] = useState(true);
   const lastYRef = useRef(0);
 
@@ -107,7 +107,7 @@ export const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
 
     const timeoutId = window.setTimeout(() => {
       setDebouncedSearchText(searchText);
-    }, 250);
+    }, 125);
 
     return () => window.clearTimeout(timeoutId);
   }, [searchText, searchActive]);
@@ -248,170 +248,167 @@ export const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
   return (
     <>
       <Slide appear={false} direction="down" in={showBar}>
-        <div>
-          <AppBar
-            position="fixed"
-            elevation={4}
-            sx={{
-              backgroundColor: theme.palette.background.paper,
-              mt: M3,
-              borderRadius: "2rem",
+        <AppBar
+          position="fixed"
+          elevation={4}
+          sx={{
+            backgroundColor: theme.palette.background.paper,
+            mt: M3,
+            borderRadius: "2rem",
 
-              left: "1rem",
-              right: "1rem",
-              width: "auto",
-            }}
-          >
-            <Toolbar>
-              <Stack
-                flexGrow={1}
-                direction="row"
-                spacing={2}
-                alignItems="center"
-                justifyContent="space-between"
-                fontFamily="Open Sans"
-              >
-                {/* Title */}
-                <Box minWidth={1 / 10}>
-                  <Button
-                    onClick={() => navigate("/")}
-                    sx={{
-                      fontSize: "2rem",
-                      fontWeight: 300,
-                      color: theme.palette.text.primary,
-                    }}
-                  >
-                    Wersu
-                  </Button>
-                </Box>
-                <Box
-                  minWidth={3 / 10}
-                  sx={{ display: "flex", justifyContent: "center" }}
-                >
-                  <Collapse
-                    in={searchText !== "" || searchActive}
-                    timeout={300}
-                    orientation="horizontal"
-                  >
-                    <Box>
-                      <SearchStrategySelect
-                        searchType={searchType}
-                        setSearchType={setSearchType}
-                      />
-                    </Box>
-                  </Collapse>
-                </Box>
-                <Box sx={{ zIndex: 1000 }}>
-                  <TextField
-                    fullWidth
-                    placeholder="Search"
-                    variant="outlined"
-                    value={searchText}
-                    onChange={(e) => {
-                      setSearchText(e.target.value);
-                      if (e.target.value && searchActive) {
-                        setIsModalOpen(true);
-                      }
-                    }}
-                    onFocus={() => {
-                      setSearchActive(true);
-                      if (searchText) {
-                        setIsModalOpen(true);
-                      }
-                    }}
-                    onBlur={() => setSearchActive(false)}
-                    slotProps={{
-                      input: {
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <SearchIcon sx={{ fontSize: "1rem" }} />
-                          </InputAdornment>
-                        ),
-                        sx: {
-                          // "Properly Rounded"
-                          borderRadius: M4,
-                          // Adjust internal padding for height
-                          "& .MuiOutlinedInput-input": {
-                            padding: "calc(1em / 1.6) 0.5rem",
-                          },
-                        },
-                      },
-                    }}
-                  />
-                </Box>
-                {/* Home, Friends, Settings, Discord Login or Profile */}
-                <Box
+            left: "1rem",
+            right: "1rem",
+            width: "auto",
+          }}
+        >
+          <Toolbar>
+            <Stack
+              flexGrow={1}
+              direction="row"
+              spacing={2}
+              alignItems="center"
+              justifyContent="space-between"
+              fontFamily="Open Sans"
+            >
+              {/* Title */}
+              <Box minWidth={1 / 10}>
+                <Button
+                  onClick={() => navigate("/")}
                   sx={{
-                    gap: 1,
-                    display: "flex",
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "flex-end",
-                    minWidth: 2 / 5,
+                    fontSize: "2rem",
+                    fontWeight: 300,
+                    color: theme.palette.text.primary,
                   }}
                 >
-                  <FormControl size="small" sx={{ minWidth: 150 }}>
-                    <Select
-                      value={themeName}
-                      onChange={(event) => void setTheme(event.target.value)}
-                      displayEmpty
-                      sx={{
+                  Wersu
+                </Button>
+              </Box>
+              <Box
+                minWidth={3 / 10}
+                sx={{ display: "flex", justifyContent: "center" }}
+              >
+                <Collapse
+                  in={searchText !== "" || searchActive}
+                  timeout={300}
+                  orientation="horizontal"
+                >
+                  <Box>
+                    <SearchStrategySelect
+                      searchType={searchType}
+                      setSearchType={setSearchType}
+                    />
+                  </Box>
+                </Collapse>
+              </Box>
+              <Box sx={{ zIndex: 1000 }}>
+                <TextField
+                  fullWidth
+                  placeholder="Search"
+                  variant="outlined"
+                  value={searchText}
+                  onChange={(e) => {
+                    setSearchText(e.target.value);
+                    if (e.target.value && searchActive) {
+                      setIsModalOpen(true);
+                    }
+                  }}
+                  onFocus={() => {
+                    setSearchActive(true);
+                    if (searchText) {
+                      setIsModalOpen(true);
+                    }
+                  }}
+                  onBlur={() => setSearchActive(false)}
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon sx={{ fontSize: "1rem" }} />
+                        </InputAdornment>
+                      ),
+                      sx: {
+                        // "Properly Rounded"
                         borderRadius: M4,
-                        "& .MuiSelect-select": {
-                          py: "0.35rem",
+                        // Adjust internal padding for height
+                        "& .MuiOutlinedInput-input": {
+                          padding: "calc(1em / 1.6) 0.5rem",
                         },
-                      }}
-                      inputProps={{ "aria-label": "Select theme" }}
-                    >
-                      <MenuItem value="default">Nord Dark</MenuItem>
-                      <MenuItem value="docsTheme">Nord Bright</MenuItem>
-                      <MenuItem value="github">GitHub Light</MenuItem>
-                      <MenuItem value="github-dark">GitHub Dark</MenuItem>
-                      <MenuItem value="bright">Bright Theme</MenuItem>
-                      <MenuItem value="midnight">Midnight Blue</MenuItem>
-                    </Select>
-                  </FormControl>
-                  <Button
-                    variant={containedIfSelected(Pages.HOME)}
-                    onClick={() => navigate(Pages.HOME)}
-                    color="inherit"
+                      },
+                    },
+                  }}
+                />
+              </Box>
+              {/* Home, Friends, Settings, Discord Login or Profile */}
+              <Box
+                sx={{
+                  gap: 1,
+                  display: "flex",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "flex-end",
+                  minWidth: 2 / 5,
+                }}
+              >
+                <FormControl size="small" sx={{ minWidth: 150 }}>
+                  <Select
+                    value={themeName}
+                    onChange={(event) => void setTheme(event.target.value)}
+                    displayEmpty
+                    sx={{
+                      borderRadius: M4,
+                      "& .MuiSelect-select": {
+                        py: "0.35rem",
+                      },
+                    }}
+                    inputProps={{ "aria-label": "Select theme" }}
                   >
-                    <HomeIcon />
-                  </Button>
-                  <Button
-                    variant={containedIfSelected(Pages.FRIENDS)}
-                    onClick={() => navigate(Pages.FRIENDS)}
-                    color="inherit"
-                  >
-                    <PeopleIcon />
-                  </Button>
-                  <Button
-                    variant={containedIfSelected(Pages.SETTINGSV2)}
-                    onClick={() => navigate(Pages.SETTINGSV2)}
-                    color="inherit"
-                  >
-                    <SettingsIcon />
-                  </Button>
-                  <IconButton onClick={() => setUserDrawerOpen(true)}>
-                    <Avatar
-                      sx={{ width: 50, height: 50 }}
-                      src={user ? user.getAvatarUrl() : undefined}
-                      alt={user ? user.username : ""}
-                    ></Avatar>
-                  </IconButton>
-                </Box>
-              </Stack>
-            </Toolbar>
-            <SwipeableDrawer
-              anchor="right"
-              onOpen={() => setUserDrawerOpen(true)}
-              open={userDrawerOpen}
-              onClose={() => setUserDrawerOpen(false)}
-            >
-              <UserDrawerContents />
-            </SwipeableDrawer>
-          </AppBar>
-        </div>
+                    <MenuItem value="default">Nord Dark</MenuItem>
+                    <MenuItem value="github">GitHub Light</MenuItem>
+                    <MenuItem value="github-dark">GitHub Dark</MenuItem>
+                    <MenuItem value="bright">Bright Theme</MenuItem>
+                    <MenuItem value="midnight">Midnight Blue</MenuItem>
+                  </Select>
+                </FormControl>
+                <Button
+                  variant={containedIfSelected(Pages.HOME)}
+                  onClick={() => navigate(Pages.HOME)}
+                  color="inherit"
+                >
+                  <HomeIcon />
+                </Button>
+                <Button
+                  variant={containedIfSelected(Pages.FRIENDS)}
+                  onClick={() => navigate(Pages.FRIENDS)}
+                  color="inherit"
+                >
+                  <PeopleIcon />
+                </Button>
+                <Button
+                  variant={containedIfSelected(Pages.SETTINGSV2)}
+                  onClick={() => navigate(Pages.SETTINGSV2)}
+                  color="inherit"
+                >
+                  <SettingsIcon />
+                </Button>
+                <IconButton onClick={() => setUserDrawerOpen(true)}>
+                  <Avatar
+                    sx={{ width: 50, height: 50 }}
+                    src={user ? user.getAvatarUrl() : undefined}
+                    alt={user ? user.username : ""}
+                  ></Avatar>
+                </IconButton>
+              </Box>
+            </Stack>
+          </Toolbar>
+          <SwipeableDrawer
+            anchor="right"
+            onOpen={() => setUserDrawerOpen(true)}
+            open={userDrawerOpen}
+            onClose={() => setUserDrawerOpen(false)}
+          >
+            <UserDrawerContents />
+          </SwipeableDrawer>
+        </AppBar>
       </Slide>
       <SearchResultsOverlay
         open={isModalOpen}
@@ -423,3 +420,5 @@ export const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
     </>
   );
 };
+
+export default TopBar;

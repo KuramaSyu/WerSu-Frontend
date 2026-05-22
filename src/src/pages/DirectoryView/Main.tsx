@@ -23,7 +23,7 @@ import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { UserError } from "../../api/models/UserError";
 import { DirectoryApi } from "../../api/DirectoryApi";
 import { DirectoryActions } from "./DirectoryActions";
-import { TopBar } from "../../components/TopBar";
+import TopBar from "../../components/TopBar";
 // RecentActivityPanel now rendered by DirectoryActions
 
 const getNoteDirectoryId = (

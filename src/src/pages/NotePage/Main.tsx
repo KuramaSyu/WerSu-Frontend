@@ -56,7 +56,7 @@ import { useThemeStore } from "../../zustand/useThemeStore";
 import { RecentActivityPanel } from "../../components/RecentActivityPanel";
 import { NoteVersionsDrawer } from "../../components/NoteVersionsDrawer";
 import type { NoteVersionSummaryReply } from "../../api/models/activity";
-import { TopBar } from "../../components/TopBar";
+import TopBar from "../../components/TopBar";
 
 const lowlight = createLowlight(all);
 const DRAG_HANDLE_GUTTER_PX = 28;
