@@ -1,11 +1,4 @@
-import {
-  Box,
-  Button,
-  ButtonBase,
-  Divider,
-  Stack,
-  Typography,
-} from "@mui/material";
+import { Box, ButtonBase, Divider, Stack, Typography } from "@mui/material";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -24,16 +17,14 @@ import type {
   PermissionRelationshipReply,
 } from "../../api/models/search";
 import { LeftSideView } from "../MainPage/LeftSideView";
-import { DirectorySideView } from "../MainPage/DirectorySideView";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import MenuBookIcon from "@mui/icons-material/MenuBook";
-import CreateIcon from "@mui/icons-material/Create";
+// Directory action UI moved to `DirectoryActions` component
 import { NoteApi } from "../../api/NoteApi";
 import { note_of_date_at_hour } from "../../utils/NoteTitleTemplates";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { UserError } from "../../api/models/UserError";
 import { DirectoryApi } from "../../api/DirectoryApi";
-import { RecentActivityPanel } from "../../components/RecentActivityPanel";
+import { DirectoryActions } from "./DirectoryActions";
+// RecentActivityPanel now rendered by DirectoryActions
 
 const getNoteDirectoryId = (
   permissions?: PermissionRelationshipReply[],
@@ -122,6 +113,19 @@ const buildNotesByDirectory = (
   return dict;
 };
 
+/**
+ * Renders the directory view UI, including breadcrumb navigation, child
+ * directories, and notes for the current directory.
+ *
+ * This component:
+ * - Loads directory data into the store and builds a hierarchy tree.
+ * - Resolves the current directory from the route and computes its breadcrumb path.
+ * - Groups notes by directory for efficient rendering.
+ * - Provides actions to create a note and rename the current directory.
+ * - Displays a left sidebar with navigation, recent activity, and directory tree.
+ *
+ * Error and status feedback are reported via the info snackbar.
+ */
 export const DirectoryView: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -287,41 +291,12 @@ export const DirectoryView: React.FC = () => {
         <DragDropProvider onDragEnd={() => undefined}>
           <Stack direction="row" spacing={M4} alignItems="flex-start">
             <LeftSideView open={leftPaneOpen} setOpen={setLeftPaneOpen}>
-              <Stack spacing={2} sx={{ p: 2 }}>
-                <Stack spacing={1}>
-                  <Button
-                    variant="outlined"
-                    startIcon={<ArrowBackIcon />}
-                    onClick={() => navigate(-1)}
-                  >
-                    Back
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    startIcon={<MenuBookIcon />}
-                    onClick={() => void handleRenameDirectory()}
-                  >
-                    Edit directory
-                  </Button>
-                  <Button
-                    variant="contained"
-                    startIcon={<CreateIcon />}
-                    onClick={() => void handleCreateNote()}
-                  >
-                    Create note
-                  </Button>
-                </Stack>
-                <Divider sx={{ opacity: 0.3 }} />
-                <RecentActivityPanel
-                  target={
-                    currentNode.getId() === "root"
-                      ? { type: "root" }
-                      : { type: "directory", id: currentNode.getId() }
-                  }
-                />
-                <Divider sx={{ opacity: 0.3 }} />
-                <DirectorySideView />
-              </Stack>
+              <DirectoryActions
+                currentNode={currentNode}
+                navigate={navigate}
+                handleCreateNote={handleCreateNote}
+                handleRenameDirectory={handleRenameDirectory}
+              />
             </LeftSideView>
 
             <Box flex={1}>
