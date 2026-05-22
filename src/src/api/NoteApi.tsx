@@ -6,6 +6,8 @@ import { PermissionsApi } from "./PermissionsApi";
 
 export interface INoteApi {
   get(id: string): Promise<Note | undefined>;
+  /** Fetch a specific note version by its monotonic version index. */
+  getVersion(id: string, versionIndex: number): Promise<Note | undefined>;
   post(title: string, content: string): Promise<Note | undefined>;
   patch(
     id: string,
@@ -63,6 +65,35 @@ export class NoteApi implements INoteApi {
       return note;
     }
     return undefined;
+  }
+
+  /**
+   * Fetches a specific version of a note using the version index (not id).
+   */
+  async getVersion(
+    id: string,
+    versionIndex: number,
+  ): Promise<Note | undefined> {
+    const response = await fetch(
+      `${BACKEND_BASE}/api/notes/${id}/versions/${versionIndex}`,
+      {
+        method: "GET",
+        credentials: "include",
+      },
+    );
+    if (!response.ok) {
+      throw await this.buildUserError(response, "Failed to load version");
+    }
+
+    const noteData: NoteData = await response.json().catch((e) => {
+      this.logError(`/api/notes/${id}/versions/${versionIndex}`, e);
+      return null;
+    });
+    if (noteData === null) {
+      return undefined;
+    }
+
+    return Note.fromJson(noteData);
   }
 
   async post(title: string, content: string): Promise<Note | undefined> {
