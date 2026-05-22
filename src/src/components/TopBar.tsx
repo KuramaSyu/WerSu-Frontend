@@ -25,8 +25,6 @@ import {
   SwipeableDrawer,
   TextField,
   ThemeProvider,
-  ToggleButton,
-  ToggleButtonGroup,
   Typography,
 } from "@mui/material";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -38,13 +36,14 @@ import HomeIcon from "@mui/icons-material/Home";
 import { M2, M3, M4 } from "../statics";
 import { LocalFireDepartment, Logout, Search } from "@mui/icons-material";
 import { useUserStore } from "../zustand/userStore";
-import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
-import ManageSearchIcon from "@mui/icons-material/ManageSearch";
 import { useBreakpoint } from "../hooks/useBreakpoint";
 import { SearchNotesApi } from "../api/SearchNotesApi";
 import { RestNotesSearchType } from "../api/models/search";
+import { useSearchNotesStore } from "../zustand/useSearchNotesStore";
+import SearchResultsOverlay from "./SearchResultsOverlay";
+import SearchStrategySelect from "./SearchStrategySelect";
 
-export const Pages = {
+const Pages = {
   HOME: "/",
   FRIENDS: "/friends",
   SETTINGS: "/settings",
@@ -70,7 +69,7 @@ export interface TopBarProps {
   scrollContainer?: HTMLElement | null;
 }
 
-const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
+export const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
   const [showBar, setShowBar] = useState(true);
   const lastYRef = useRef(0);
 
@@ -80,11 +79,14 @@ const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
   const { user, setUser } = useUserStore();
   const [userDrawerOpen, setUserDrawerOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
+  const [debouncedSearchText, setDebouncedSearchText] = useState("");
   const [searchActive, setSearchActive] = useState(false);
   const [searchType, setSearchType] = useState<RestNotesSearchType>(
     RestNotesSearchType.CONTEXT,
   );
   const { isMobile } = useBreakpoint();
+  const { isModalOpen, setIsModalOpen, isSearching, setIsSearching } =
+    useSearchNotesStore();
 
   // initial search
   useEffect(() => {
@@ -96,10 +98,25 @@ const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
     search();
   }, []);
 
+  // debounce search input so typing stays responsive
+  useEffect(() => {
+    if (!searchActive) {
+      setDebouncedSearchText(searchText);
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearchText(searchText);
+    }, 250);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [searchText, searchActive]);
+
   // perform search
   useEffect(() => {
     const SEARCH_LIMIT = 50;
     async function search() {
+      setIsSearching(true);
       const api = new SearchNotesApi();
       if (searchText === "") {
         await api.search(
@@ -109,13 +126,14 @@ const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
           0,
         );
       } else {
-        await api.search(searchType, searchText, SEARCH_LIMIT, 0);
+        await api.search(searchType, debouncedSearchText, SEARCH_LIMIT, 0);
       }
+      setIsSearching(false);
     }
     if (searchActive) {
       search();
     }
-  }, [searchText, searchType, searchActive]);
+  }, [debouncedSearchText, searchType, searchActive, setIsSearching]);
 
   // watchdog to hide/show top bar depending on scroll direction
   useEffect(() => {
@@ -228,205 +246,180 @@ const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
 
   // Desktop view
   return (
-    <Slide appear={false} direction="down" in={showBar}>
-      <AppBar
-        position="fixed"
-        elevation={4}
-        sx={{
-          backgroundColor: theme.palette.background.paper,
-          mt: M3,
-          borderRadius: "2rem",
+    <>
+      <Slide appear={false} direction="down" in={showBar}>
+        <div>
+          <AppBar
+            position="fixed"
+            elevation={4}
+            sx={{
+              backgroundColor: theme.palette.background.paper,
+              mt: M3,
+              borderRadius: "2rem",
 
-          left: "1rem",
-          right: "1rem",
-          width: "auto",
-        }}
-      >
-        <Toolbar>
-          <Stack
-            flexGrow={1}
-            direction="row"
-            spacing={2}
-            alignItems="center"
-            justifyContent="space-between"
-            fontFamily="Open Sans"
+              left: "1rem",
+              right: "1rem",
+              width: "auto",
+            }}
           >
-            {/* Title */}
-            <Box minWidth={1 / 10}>
-              <Button
-                onClick={() => navigate("/")}
-                sx={{
-                  fontSize: "2rem",
-                  fontWeight: 300,
-                  color: theme.palette.text.primary,
-                }}
+            <Toolbar>
+              <Stack
+                flexGrow={1}
+                direction="row"
+                spacing={2}
+                alignItems="center"
+                justifyContent="space-between"
+                fontFamily="Open Sans"
               >
-                Wersu
-              </Button>
-            </Box>
-            <Box
-              minWidth={3 / 10}
-              sx={{ display: "flex", justifyContent: "center" }}
-            >
-              <Collapse
-                in={searchText !== "" || searchActive}
-                timeout={300}
-                orientation="horizontal"
-              >
-                <Box>
-                  <ToggleButtonGroup
-                    value={searchType}
-                    exclusive
-                    onChange={(_event, newSearchType) => {
-                      if (newSearchType !== null) {
-                        setSearchType(newSearchType);
+                {/* Title */}
+                <Box minWidth={1 / 10}>
+                  <Button
+                    onClick={() => navigate("/")}
+                    sx={{
+                      fontSize: "2rem",
+                      fontWeight: 300,
+                      color: theme.palette.text.primary,
+                    }}
+                  >
+                    Wersu
+                  </Button>
+                </Box>
+                <Box
+                  minWidth={3 / 10}
+                  sx={{ display: "flex", justifyContent: "center" }}
+                >
+                  <Collapse
+                    in={searchText !== "" || searchActive}
+                    timeout={300}
+                    orientation="horizontal"
+                  >
+                    <Box>
+                      <SearchStrategySelect
+                        searchType={searchType}
+                        setSearchType={setSearchType}
+                      />
+                    </Box>
+                  </Collapse>
+                </Box>
+                <Box sx={{ zIndex: 1000 }}>
+                  <TextField
+                    fullWidth
+                    placeholder="Search"
+                    variant="outlined"
+                    value={searchText}
+                    onChange={(e) => {
+                      setSearchText(e.target.value);
+                      if (e.target.value && searchActive) {
+                        setIsModalOpen(true);
                       }
                     }}
-                    aria-label="search type"
-                    sx={{
-                      borderRadius: M4,
-                      "& .MuiToggleButton-root": {
-                        whiteSpace: "nowrap",
+                    onFocus={() => {
+                      setSearchActive(true);
+                      if (searchText) {
+                        setIsModalOpen(true);
+                      }
+                    }}
+                    onBlur={() => setSearchActive(false)}
+                    slotProps={{
+                      input: {
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <SearchIcon sx={{ fontSize: "1rem" }} />
+                          </InputAdornment>
+                        ),
+                        sx: {
+                          // "Properly Rounded"
+                          borderRadius: M4,
+                          // Adjust internal padding for height
+                          "& .MuiOutlinedInput-input": {
+                            padding: "calc(1em / 1.6) 0.5rem",
+                          },
+                        },
                       },
                     }}
-                    color="secondary"
-                  >
-                    <ToggleButton
-                      color="secondary"
-                      value={RestNotesSearchType.KEYWORD}
-                      aria-label="keyword"
-                      sx={{
-                        borderTopLeftRadius: M4,
-                        borderBottomLeftRadius: M4,
-                        gap: 1,
-                      }}
-                    >
-                      <SearchIcon /> keyword
-                    </ToggleButton>
-                    <ToggleButton
-                      value={RestNotesSearchType.TYPO_TOLERANT}
-                      aria-label="typo tolerant"
-                      sx={{ gap: 1 }}
-                    >
-                      <ManageSearchIcon /> typo tolerant
-                    </ToggleButton>
-                    <ToggleButton
-                      value={RestNotesSearchType.CONTEXT}
-                      aria-label="context"
-                      sx={{
-                        borderTopRightRadius: M4,
-                        borderBottomRightRadius: M4,
-                        gap: 1,
-                      }}
-                    >
-                      <AutoAwesomeIcon /> context
-                    </ToggleButton>
-                  </ToggleButtonGroup>
+                  />
                 </Box>
-              </Collapse>
-            </Box>
-            <Box>
-              <TextField
-                fullWidth
-                placeholder="Search"
-                variant="outlined"
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                onFocus={() => setSearchActive(true)}
-                onBlur={() => setSearchActive(false)}
-                slotProps={{
-                  input: {
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon sx={{ fontSize: "1rem" }} />
-                      </InputAdornment>
-                    ),
-                    sx: {
-                      // "Properly Rounded"
-                      borderRadius: M4,
-                      // Adjust internal padding for height
-                      "& .MuiOutlinedInput-input": {
-                        padding: "calc(1em / 1.6) 0.5rem",
-                      },
-                    },
-                  },
-                }}
-              />
-            </Box>
-            {/* Home, Friends, Settings, Discord Login or Profile */}
-            <Box
-              sx={{
-                gap: 1,
-                display: "flex",
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "flex-end",
-                minWidth: 2 / 5,
-              }}
-            >
-              <FormControl size="small" sx={{ minWidth: 150 }}>
-                <Select
-                  value={themeName}
-                  onChange={(event) => void setTheme(event.target.value)}
-                  displayEmpty
+                {/* Home, Friends, Settings, Discord Login or Profile */}
+                <Box
                   sx={{
-                    borderRadius: M4,
-                    "& .MuiSelect-select": {
-                      py: "0.35rem",
-                    },
+                    gap: 1,
+                    display: "flex",
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "flex-end",
+                    minWidth: 2 / 5,
                   }}
-                  inputProps={{ "aria-label": "Select theme" }}
                 >
-                  <MenuItem value="default">Nord Dark</MenuItem>
-                  <MenuItem value="docsTheme">Nord Bright</MenuItem>
-                  <MenuItem value="github">GitHub Light</MenuItem>
-                  <MenuItem value="github-dark">GitHub Dark</MenuItem>
-                  <MenuItem value="bright">Bright Theme</MenuItem>
-                  <MenuItem value="midnight">Midnight Blue</MenuItem>
-                </Select>
-              </FormControl>
-              <Button
-                variant={containedIfSelected(Pages.HOME)}
-                onClick={() => navigate(Pages.HOME)}
-                color="inherit"
-              >
-                <HomeIcon />
-              </Button>
-              <Button
-                variant={containedIfSelected(Pages.FRIENDS)}
-                onClick={() => navigate(Pages.FRIENDS)}
-                color="inherit"
-              >
-                <PeopleIcon />
-              </Button>
-              <Button
-                variant={containedIfSelected(Pages.SETTINGSV2)}
-                onClick={() => navigate(Pages.SETTINGSV2)}
-                color="inherit"
-              >
-                <SettingsIcon />
-              </Button>
-              <IconButton onClick={() => setUserDrawerOpen(true)}>
-                <Avatar
-                  sx={{ width: 50, height: 50 }}
-                  src={user ? user.getAvatarUrl() : undefined}
-                  alt={user ? user.username : ""}
-                ></Avatar>
-              </IconButton>
-            </Box>
-          </Stack>
-        </Toolbar>
-        <SwipeableDrawer
-          anchor="right"
-          onOpen={() => setUserDrawerOpen(true)}
-          open={userDrawerOpen}
-          onClose={() => setUserDrawerOpen(false)}
-        >
-          <UserDrawerContents />
-        </SwipeableDrawer>
-      </AppBar>
-    </Slide>
+                  <FormControl size="small" sx={{ minWidth: 150 }}>
+                    <Select
+                      value={themeName}
+                      onChange={(event) => void setTheme(event.target.value)}
+                      displayEmpty
+                      sx={{
+                        borderRadius: M4,
+                        "& .MuiSelect-select": {
+                          py: "0.35rem",
+                        },
+                      }}
+                      inputProps={{ "aria-label": "Select theme" }}
+                    >
+                      <MenuItem value="default">Nord Dark</MenuItem>
+                      <MenuItem value="docsTheme">Nord Bright</MenuItem>
+                      <MenuItem value="github">GitHub Light</MenuItem>
+                      <MenuItem value="github-dark">GitHub Dark</MenuItem>
+                      <MenuItem value="bright">Bright Theme</MenuItem>
+                      <MenuItem value="midnight">Midnight Blue</MenuItem>
+                    </Select>
+                  </FormControl>
+                  <Button
+                    variant={containedIfSelected(Pages.HOME)}
+                    onClick={() => navigate(Pages.HOME)}
+                    color="inherit"
+                  >
+                    <HomeIcon />
+                  </Button>
+                  <Button
+                    variant={containedIfSelected(Pages.FRIENDS)}
+                    onClick={() => navigate(Pages.FRIENDS)}
+                    color="inherit"
+                  >
+                    <PeopleIcon />
+                  </Button>
+                  <Button
+                    variant={containedIfSelected(Pages.SETTINGSV2)}
+                    onClick={() => navigate(Pages.SETTINGSV2)}
+                    color="inherit"
+                  >
+                    <SettingsIcon />
+                  </Button>
+                  <IconButton onClick={() => setUserDrawerOpen(true)}>
+                    <Avatar
+                      sx={{ width: 50, height: 50 }}
+                      src={user ? user.getAvatarUrl() : undefined}
+                      alt={user ? user.username : ""}
+                    ></Avatar>
+                  </IconButton>
+                </Box>
+              </Stack>
+            </Toolbar>
+            <SwipeableDrawer
+              anchor="right"
+              onOpen={() => setUserDrawerOpen(true)}
+              open={userDrawerOpen}
+              onClose={() => setUserDrawerOpen(false)}
+            >
+              <UserDrawerContents />
+            </SwipeableDrawer>
+          </AppBar>
+        </div>
+      </Slide>
+      <SearchResultsOverlay
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        isLoading={isSearching}
+        searchQuery={debouncedSearchText}
+        searchType={searchType}
+      />
+    </>
   );
 };
-
-export default TopBar;

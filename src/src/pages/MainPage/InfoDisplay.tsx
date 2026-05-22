@@ -14,7 +14,7 @@ import useInfoStore from "../../zustand/InfoStore";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { SimpleTimeBasedProgressBar } from "../../components/SimpleTimebasedProgressBar";
+import { SimpleTimeBasedProgressBar } from "../../components/SimpleTimeBasedProgressBar";
 
 const InfoDisplay: React.FC = () => {
   const { Message } = useInfoStore();

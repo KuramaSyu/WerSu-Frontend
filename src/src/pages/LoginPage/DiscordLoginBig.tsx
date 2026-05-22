@@ -1,14 +1,9 @@
-import React from 'react';
-import {
-  ThemeProvider,
-  Button,
-  Box,
-
-} from '@mui/material';
-import { BACKEND_BASE } from '../../statics';
-import { useBreakpoint } from '../../hooks/useBreakpoint';
-import { defaultTheme } from '../../zustand/defaultTheme';
-import { useUserStore } from '../../zustand/userStore';
+import React from "react";
+import { ThemeProvider, Button, Box } from "@mui/material";
+import { BACKEND_BASE } from "../../statics";
+import { useBreakpoint } from "../../hooks/useBreakpoint";
+import { defaultTheme } from "../../zustand/defaultTheme";
+import { useUserStore } from "../../zustand/userStore";
 
 export const DiscordLoginBig: React.FC = () => {
   const { user } = useUserStore();
@@ -16,7 +11,7 @@ export const DiscordLoginBig: React.FC = () => {
   const { isMobile } = useBreakpoint();
 
   const handleLogin = (): void => {
-    console.log(`redirect to ${BACKEND_BASE}/api/auth/discord`)
+    console.log(`redirect to ${BACKEND_BASE}/api/auth/discord`);
     window.location.href = `${BACKEND_BASE}/api/auth/discord`;
   };
 
@@ -27,17 +22,17 @@ export const DiscordLoginBig: React.FC = () => {
         color="primary"
         onClick={handleLogin}
         sx={{
-          width: 'auto',
-          height: 'auto',
-          fontSize: isMobile ? '1rem' : '1.5rem',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
+          width: "auto",
+          height: "auto",
+          fontSize: isMobile ? "1rem" : "1.5rem",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
           color: theme.palette.text.primary,
           gap: 2,
-          borderRadius: '50px',
+          borderRadius: "50px",
 
-          px: '40px',
+          px: "40px",
         }}
         startIcon={
           <svg

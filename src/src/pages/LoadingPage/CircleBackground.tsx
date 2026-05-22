@@ -1,6 +1,6 @@
-import { Box, darken } from '@mui/material';
-import { useThemeStore } from '../../zustand/useThemeStore';
-import { AnimatePresence, motion } from 'framer-motion';
+import { Box, darken } from "@mui/material";
+import { useThemeStore } from "../../zustand/useThemeStore";
+import { AnimatePresence, motion } from "framer-motion";
 
 export interface ExpandingCircleBackgroundProps {
   color: string;
@@ -61,11 +61,11 @@ export const ExpandingCircleBackground: React.FC<
           ease: [0.4, 0, 0.2, 1], // cubic-bezier for a smoother, more natural feel
         }}
         sx={{
-          position: 'absolute',
+          position: "absolute",
           top: 0,
           left: 0,
-          width: '100%',
-          height: '100%',
+          width: "100%",
+          height: "100%",
           backgroundColor: color,
           // include the vendor prefix in sx:
           WebkitClipPath: `circle(0% at ${initialAtX}% ${initialAtY}%)`,
@@ -92,16 +92,16 @@ export const StaticCircleBackground: React.FC<StaticCircleBackgroundProps> = ({
 }) => (
   <Box
     sx={{
-      position: 'absolute',
+      position: "absolute",
       top: 0,
       left: 0,
-      width: '100%',
-      height: '100%',
+      width: "100%",
+      height: "100%",
       backgroundColor: color,
       opacity,
       clipPath: `circle(${sizePercent}% at ${atXPercent}% ${atYPercent}%)`,
       WebkitClipPath: `circle(${sizePercent}% at ${atXPercent}% ${atYPercent}%)`,
-      pointerEvents: 'none', // optional: let clicks pass through
+      pointerEvents: "none", // optional: let clicks pass through
     }}
   />
 );

@@ -15,7 +15,6 @@ import { useThemeStore } from "../../zustand/useThemeStore";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { Logo } from "../../components/logo";
-import TopBar from "../../components/TopBar";
 import { useEffect, useMemo, useRef, useState } from "react";
 import CreateIcon from "@mui/icons-material/Create";
 import {
@@ -37,6 +36,7 @@ import { NoteApi } from "../../api/NoteApi";
 import { useNotesStore } from "../../zustand/useNotesStore";
 import { CardGrid } from "./CardGrid";
 import { MainContent } from "./MainContent";
+import { TopBar } from "../../components/TopBar";
 
 export const MainPage: React.FC = () => {
   const { theme } = useThemeStore();

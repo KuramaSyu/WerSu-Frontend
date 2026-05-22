@@ -2,7 +2,6 @@ import { Box, ButtonBase, Divider, Stack, Typography } from "@mui/material";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import TopBar from "../../components/TopBar";
 import { useDirectoriesQuery } from "../../api/queries/directoryQueries";
 import type { ListDirectoriesQuery } from "../../api/DirectoryApi";
 import { useDirectoryStore } from "../../zustand/useDirectoryStore";
@@ -24,6 +23,7 @@ import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { UserError } from "../../api/models/UserError";
 import { DirectoryApi } from "../../api/DirectoryApi";
 import { DirectoryActions } from "./DirectoryActions";
+import { TopBar } from "../../components/TopBar";
 // RecentActivityPanel now rendered by DirectoryActions
 
 const getNoteDirectoryId = (

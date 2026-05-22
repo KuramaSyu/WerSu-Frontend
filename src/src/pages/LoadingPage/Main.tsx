@@ -1,6 +1,6 @@
-import { alpha, Box, darken, SvgIcon } from '@mui/material';
-import { useLoadingStore } from '../../zustand/loadingStore';
-import React, { useEffect } from 'react';
+import { alpha, Box, darken, SvgIcon } from "@mui/material";
+import { useLoadingStore } from "../../zustand/loadingStore";
+import React, { useEffect } from "react";
 
 import {
   Table,
@@ -11,25 +11,25 @@ import {
   TableRow,
   Paper,
   CircularProgress,
-} from '@mui/material';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import ErrorIcon from '@mui/icons-material/Error';
-import BlockIcon from '@mui/icons-material/Block';
-import Fade from '@mui/material/Fade';
-import { useThemeStore } from '../../zustand/useThemeStore';
-import { ThemeProvider } from '@emotion/react';
+} from "@mui/material";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import ErrorIcon from "@mui/icons-material/Error";
+import BlockIcon from "@mui/icons-material/Block";
+import Fade from "@mui/material/Fade";
+import { useThemeStore } from "../../zustand/useThemeStore";
+import { ThemeProvider } from "@emotion/react";
 import {
   ExpandingCircleBackground,
   StaticCircleBackground,
-} from './CircleBackground';
-import { useBreakpoint } from '../../hooks/useBreakpoint';
-import { Title } from './Title';
-import { useMinSquareSize } from './minSquareSize';
-import { defaultTheme } from '../../zustand/defaultTheme';
+} from "./CircleBackground";
+import { useBreakpoint } from "../../hooks/useBreakpoint";
+import { Title } from "./Title";
+import { useMinSquareSize } from "./minSquareSize";
+import { defaultTheme } from "../../zustand/defaultTheme";
 import {
   ApiRequirement,
   ApiRequirementsBuilder,
-} from '../../api/ApiRequirementsBuilder';
+} from "../../api/ApiRequirementsBuilder";
 
 interface LogoSvgComponentProps {
   style?: React.CSSProperties;
@@ -54,8 +54,8 @@ export const LogoSvgComponent: React.FC<LogoSvgComponentProps> = ({
       src="/assets/GoToHell-Icon.svg"
       alt="GoToHell Logo"
       style={{
-        width: '100%',
-        height: '100%',
+        width: "100%",
+        height: "100%",
         ...(style || {}),
         ...filterStyle,
       }}
@@ -81,8 +81,8 @@ export const SmallLogoSvgComponent: React.FC<LogoSvgComponentProps> = ({
       src="/assets/GoToHell-Icon-small.svg"
       alt="GoToHell Logo"
       style={{
-        width: '100%',
-        height: '100%',
+        width: "100%",
+        height: "100%",
         ...(style || {}),
         ...filterStyle,
       }}
@@ -96,10 +96,10 @@ interface LoadingMapValue {
 }
 
 const LoadingStatus = {
-  Loading: 'loading',
-  Success: 'success',
-  Error: 'error',
-  Skipped: 'skipped',
+  Loading: "loading",
+  Success: "success",
+  Error: "error",
+  Skipped: "skipped",
 } as const;
 
 class LoadingComponent {
@@ -110,7 +110,7 @@ class LoadingComponent {
   constructor(
     loaded: boolean,
     time: number,
-    status?: (typeof LoadingStatus)[keyof typeof LoadingStatus]
+    status?: (typeof LoadingStatus)[keyof typeof LoadingStatus],
   ) {
     this.loaded = loaded;
     this.time = time;
@@ -118,8 +118,8 @@ class LoadingComponent {
       status !== undefined
         ? status
         : loaded
-        ? LoadingStatus.Success
-        : LoadingStatus.Loading;
+          ? LoadingStatus.Success
+          : LoadingStatus.Loading;
   }
 
   setStatus(status: (typeof LoadingStatus)[keyof typeof LoadingStatus]) {
@@ -136,8 +136,8 @@ export const LoadingPage: React.FC = () => {
   const MIN_STARTUP_TIME = 750;
   const MIN_STARTUP_TIME_S = MIN_STARTUP_TIME / 1000;
   const initialLoadingMap = new Map<string, LoadingComponent>([
-    ['You', new LoadingComponent(false, 0)],
-    ['Theme', new LoadingComponent(false, 0)],
+    ["You", new LoadingComponent(false, 0)],
+    ["Theme", new LoadingComponent(false, 0)],
   ]);
   const [loadingMap, setLoadingMap] = React.useState(initialLoadingMap);
   const { isMobile } = useBreakpoint();
@@ -148,23 +148,23 @@ export const LoadingPage: React.FC = () => {
     async function init() {
       await new ApiRequirementsBuilder().add(ApiRequirement.User).forceFetch();
       setLoadingMap((prev) => {
-        const comp = prev.get('You');
+        const comp = prev.get("You");
         if (comp) {
           comp.loaded = true;
           comp.time = Date.now() - startTime;
           comp.setStatus(LoadingStatus.Success);
-          prev.set('You', comp);
+          prev.set("You", comp);
         }
         return new Map(prev);
       });
 
       setLoadingMap((prev) => {
-        const comp = prev.get('Theme');
+        const comp = prev.get("Theme");
         if (comp) {
           comp.loaded = true;
           comp.time = Date.now() - startTime;
           comp.setStatus(LoadingStatus.Success);
-          prev.set('Theme', comp);
+          prev.set("Theme", comp);
         }
         return new Map(prev);
       });
@@ -179,19 +179,22 @@ export const LoadingPage: React.FC = () => {
         (v) =>
           v.status === LoadingStatus.Success ||
           v.status === LoadingStatus.Skipped ||
-          v.status === LoadingStatus.Error
+          v.status === LoadingStatus.Error,
       )
       .every((loaded) => loaded === true);
     if (allLoaded) {
       const elapsedTime = Date.now() - startTime;
-      setTimeout(() => {
-        setLoading(false);
-      }, Math.max(MIN_STARTUP_TIME - elapsedTime, 125));
+      setTimeout(
+        () => {
+          setLoading(false);
+        },
+        Math.max(MIN_STARTUP_TIME - elapsedTime, 125),
+      );
     }
   }, [loadingMap]);
 
   const getStatusIcon = (
-    status: (typeof LoadingStatus)[keyof typeof LoadingStatus]
+    status: (typeof LoadingStatus)[keyof typeof LoadingStatus],
   ) => {
     switch (status) {
       case LoadingStatus.Success:
@@ -213,12 +216,12 @@ export const LoadingPage: React.FC = () => {
     <ThemeProvider theme={defaultTheme}>
       <Box
         sx={{
-          display: 'flex',
-          flexDirection: isMobile ? 'column' : 'row',
-          justifyContent: 'center',
-          alignItems: 'center',
-          height: '100%',
-          width: '100%',
+          display: "flex",
+          flexDirection: isMobile ? "column" : "row",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100%",
+          width: "100%",
           padding: 2,
           backgroundColor: defaultTheme.palette.muted.dark,
           zIndex: 5,
@@ -226,12 +229,12 @@ export const LoadingPage: React.FC = () => {
       >
         <Box
           sx={{
-            position: 'absolute',
+            position: "absolute",
             top: 0,
             left: 0,
             zIndex: 4,
-            width: '100vw',
-            height: '100vh',
+            width: "100vw",
+            height: "100vh",
           }}
         >
           <ExpandingCircleBackground
@@ -256,25 +259,25 @@ export const LoadingPage: React.FC = () => {
         <Box
           ref={containerRef}
           sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            justifyItems: 'center',
-            justifyContent: isMobile ? 'space-between' : 'center',
-            alignItems: 'center',
-            width: isMobile ? '100%' : 2 / 3,
-            height: '100%',
+            display: "flex",
+            flexDirection: "column",
+            justifyItems: "center",
+            justifyContent: isMobile ? "space-between" : "center",
+            alignItems: "center",
+            width: isMobile ? "100%" : 2 / 3,
+            height: "100%",
             zIndex: 5,
             pb: isMobile ? 10 : 0, // to keep the icon away from the table
           }}
         >
-          <Box sx={{ fontSize: isMobile ? '4rem' : '10vh' }}>
+          <Box sx={{ fontSize: isMobile ? "4rem" : "10vh" }}>
             <Title theme={defaultTheme} />
           </Box>
           <Box
             sx={{
               width: (size * 2) / 3,
               height: (size * 2) / 3,
-              display: 'flex',
+              display: "flex",
               zIndex: 5,
             }}
           >
@@ -286,9 +289,9 @@ export const LoadingPage: React.FC = () => {
           // component={Paper}
           sx={{
             borderRadius: 5,
-            display: 'flex',
-            width: isMobile ? '100%' : '33.33%',
-            maxHeight: isMobile ? '50%' : undefined,
+            display: "flex",
+            width: isMobile ? "100%" : "33.33%",
+            maxHeight: isMobile ? "50%" : undefined,
 
             padding: isMobile ? 1 : 2,
             zIndex: 5,
@@ -319,7 +322,7 @@ export const LoadingPage: React.FC = () => {
                       </span>
                     </TableCell>
                     <TableCell align="center">
-                      {comp && comp.time > 0 ? comp.time + ' ms' : '---'}
+                      {comp && comp.time > 0 ? comp.time + " ms" : "---"}
                     </TableCell>
                   </TableRow>
                 );

@@ -34,7 +34,6 @@ import { Markdown } from "@tiptap/markdown";
 import "katex/dist/katex.min.css";
 import "../../styles/tiptap.css";
 
-import TopBar from "../../components/TopBar";
 import { LeftSideView } from "../MainPage/LeftSideView";
 import { TableWithControls } from "../MainPage/Modals/Editor/TableControlls";
 import { ThemedEditorBox } from "../MainPage/Modals/Editor/ThemedEditorBox";
@@ -57,6 +56,7 @@ import { useThemeStore } from "../../zustand/useThemeStore";
 import { RecentActivityPanel } from "../../components/RecentActivityPanel";
 import { NoteVersionsDrawer } from "../../components/NoteVersionsDrawer";
 import type { NoteVersionSummaryReply } from "../../api/models/activity";
+import { TopBar } from "../../components/TopBar";
 
 const lowlight = createLowlight(all);
 const DRAG_HANDLE_GUTTER_PX = 28;

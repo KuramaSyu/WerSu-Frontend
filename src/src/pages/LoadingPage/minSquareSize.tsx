@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect } from "react";
 
 export const useMinSquareSize = (ref: React.RefObject<HTMLElement | null>) => {
   const [size, setSize] = React.useState(0);

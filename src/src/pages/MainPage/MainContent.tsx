@@ -17,7 +17,6 @@ import {
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { AnimatePresence, motion } from "framer-motion";
 
-import TopBar from "../../components/TopBar";
 import { useEffect, useMemo, useRef, useState } from "react";
 import CreateIcon from "@mui/icons-material/Create";
 import { M1, M2, M3, M4, M5, M6 } from "../../statics";
