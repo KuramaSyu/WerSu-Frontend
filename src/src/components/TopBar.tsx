@@ -10,6 +10,7 @@ import {
   Collapse,
   CssBaseline,
   Divider,
+  FormControl,
   IconButton,
   InputAdornment,
   List,
@@ -17,6 +18,8 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  MenuItem,
+  Select,
   Slide,
   Stack,
   SwipeableDrawer,
@@ -71,7 +74,7 @@ const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
   const [showBar, setShowBar] = useState(true);
   const lastYRef = useRef(0);
 
-  const { theme } = useThemeStore();
+  const { theme, themeName, setTheme } = useThemeStore();
   const navigate = useNavigate();
   const location = useLocation();
   const { user, setUser } = useUserStore();
@@ -361,6 +364,27 @@ const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
                 minWidth: 2 / 5,
               }}
             >
+              <FormControl size="small" sx={{ minWidth: 150 }}>
+                <Select
+                  value={themeName}
+                  onChange={(event) => void setTheme(event.target.value)}
+                  displayEmpty
+                  sx={{
+                    borderRadius: M4,
+                    "& .MuiSelect-select": {
+                      py: "0.35rem",
+                    },
+                  }}
+                  inputProps={{ "aria-label": "Select theme" }}
+                >
+                  <MenuItem value="default">Nord Dark</MenuItem>
+                  <MenuItem value="docsTheme">Nord Bright</MenuItem>
+                  <MenuItem value="github">GitHub Light</MenuItem>
+                  <MenuItem value="github-dark">GitHub Dark</MenuItem>
+                  <MenuItem value="bright">Bright Theme</MenuItem>
+                  <MenuItem value="midnight">Midnight Blue</MenuItem>
+                </Select>
+              </FormControl>
               <Button
                 variant={containedIfSelected(Pages.HOME)}
                 onClick={() => navigate(Pages.HOME)}

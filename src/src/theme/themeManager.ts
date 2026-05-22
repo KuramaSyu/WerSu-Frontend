@@ -1,15 +1,22 @@
-import { createTheme } from '@mui/material/styles';
-import type { CustomThemeConfig, CustomTheme } from '../theme/customTheme';
-import { docsTheme, useThemeStore } from '../zustand/useThemeStore';
-import useInfoStore, { SnackbarUpdateImpl } from '../zustand/InfoStore';
-import { defaultTheme } from '../zustand/defaultTheme';
-import '@fontsource/open-sans/300.css';
-import '@fontsource/open-sans/400.css';
-import '@fontsource/open-sans/600.css';
-import '@fontsource/open-sans/700.css';
+import { createTheme } from "@mui/material/styles";
+import type { CustomThemeConfig, CustomTheme } from "../theme/customTheme";
+import {
+  brightTheme,
+  docsTheme,
+  githubDarkTheme,
+  githubTheme,
+  midnightTheme,
+  useThemeStore,
+} from "../zustand/useThemeStore";
+import useInfoStore, { SnackbarUpdateImpl } from "../zustand/InfoStore";
+import { defaultTheme } from "../zustand/defaultTheme";
+import "@fontsource/open-sans/300.css";
+import "@fontsource/open-sans/400.css";
+import "@fontsource/open-sans/600.css";
+import "@fontsource/open-sans/700.css";
 
 // Augment MUI's Theme to include extra custom properties.
-declare module '@mui/material/styles' {
+declare module "@mui/material/styles" {
   interface Theme {
     palette: Palette;
     custom: {
@@ -38,11 +45,11 @@ export function buildCustomTheme(
   mutedHex: string,
   chosenBackground: string,
   config: { name: string; longName: string },
-  isDark: boolean
+  isDark: boolean,
 ): CustomTheme {
   return createTheme({
     palette: {
-      mode: isDark ? 'dark' : 'light',
+      mode: isDark ? "dark" : "light",
       primary: {
         main: primaryMain,
         light: lightVibrantHex,
@@ -98,10 +105,22 @@ export class ThemeManager {
   public getThemeSync(themeName: string): CustomTheme | null {
     let theme;
     switch (themeName) {
-      case 'docsTheme':
+      case "docsTheme":
         theme = docsTheme;
         break;
-      case 'default':
+      case "github":
+        theme = githubTheme;
+        break;
+      case "github-dark":
+        theme = githubDarkTheme;
+        break;
+      case "bright":
+        theme = brightTheme;
+        break;
+      case "midnight":
+        theme = midnightTheme;
+        break;
+      case "default":
         theme = defaultTheme;
         break;
       default:
@@ -123,10 +142,22 @@ export class ThemeManager {
     const background = useThemeStore.getState().theme.custom.backgroundImage;
     let theme;
     switch (themeName) {
-      case 'docsTheme':
+      case "docsTheme":
         theme = docsTheme;
         break;
-      case 'default':
+      case "github":
+        theme = githubTheme;
+        break;
+      case "github-dark":
+        theme = githubDarkTheme;
+        break;
+      case "bright":
+        theme = brightTheme;
+        break;
+      case "midnight":
+        theme = midnightTheme;
+        break;
+      case "default":
         theme = defaultTheme;
         break;
       default:
@@ -141,7 +172,7 @@ export class ThemeManager {
 
 const themechanges = {
   typography: {
-    fontFamily: 'Open Sans',
+    fontFamily: "Open Sans",
   },
 
   // components: {
