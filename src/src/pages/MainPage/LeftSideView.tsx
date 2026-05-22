@@ -82,61 +82,70 @@ export const LeftSideView: React.FC<LeftSideViewProps> = ({
           <Stack
             direction="row"
             spacing={1}
-            alignItems="center"
+            justifyContent={"space-between"}
             sx={{ p: 1.5, borderBottom: "1px solid", borderColor: "divider" }}
           >
-            <Tooltip title="Back">
-              <span>
-                <IconButton
-                  onClick={handleUndo}
-                  size="small"
-                  disabled={!canUndo}
-                >
-                  <ArrowBackIcon fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Tooltip title="Forward">
-              <span>
-                <IconButton
-                  onClick={handleRedo}
-                  size="small"
-                  disabled={!canRedo}
-                >
-                  <ArrowForwardIcon fontSize="small" />
-                </IconButton>
-              </span>
+            <Stack direction={"row"}>
+              <Tooltip title="Back">
+                <span>
+                  <IconButton
+                    onClick={handleUndo}
+                    size="small"
+                    disabled={!canUndo}
+                  >
+                    <ArrowBackIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <Tooltip title="Forward">
+                <span>
+                  <IconButton
+                    onClick={handleRedo}
+                    size="small"
+                    disabled={!canRedo}
+                  >
+                    <ArrowForwardIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            </Stack>
+            <Tooltip title={open ? "Collapse" : "Expand"}>
+              <IconButton onClick={() => setOpen((v) => !v)} size="small">
+                {open ? (
+                  <ChevronLeftIcon fontSize="small" />
+                ) : (
+                  <ChevronRightIcon fontSize="small" />
+                )}
+              </IconButton>
             </Tooltip>
           </Stack>
           {children ?? <DirectorySideView />}
         </Box>
       </Paper>
 
-      <IconButton
-        onClick={() => setOpen((v) => !v)}
-        size="small"
-        sx={{
-          position: "fixed",
-          top: "50vh",
-          transform: "translateY(-50%)",
-          left: `${Math.max(8, leftWidth - TOGGLE_SIZE / 2)}px`,
-          width: TOGGLE_SIZE,
-          height: TOGGLE_SIZE,
-          border: "1px solid",
-          borderColor: "divider",
-          bgcolor: "background.paper",
-          boxShadow: 2,
-          zIndex: (theme) => theme.zIndex.appBar + 1,
-          transition: "left 220ms ease, background-color 120ms ease",
-          "&:hover": { bgcolor: "action.hover" },
-        }}
-      >
-        {open ? (
-          <ChevronLeftIcon fontSize="small" />
-        ) : (
+      {!open && (
+        <IconButton
+          onClick={() => setOpen((v) => !v)}
+          size="small"
+          sx={{
+            position: "fixed",
+            top: "50vh",
+            transform: "translateY(-50%)",
+            left: `${Math.max(8, leftWidth - TOGGLE_SIZE / 2)}px`,
+            width: TOGGLE_SIZE,
+            height: TOGGLE_SIZE,
+            border: "1px solid",
+            borderColor: "divider",
+            bgcolor: "background.paper",
+            boxShadow: 2,
+            zIndex: (theme) => theme.zIndex.appBar + 1,
+            transition: "left 220ms ease, background-color 120ms ease",
+            "&:hover": { bgcolor: "action.hover" },
+          }}
+        >
           <ChevronRightIcon fontSize="small" />
-        )}
-      </IconButton>
+        </IconButton>
+      )}
     </>
   );
 };
