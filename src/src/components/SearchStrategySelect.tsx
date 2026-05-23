@@ -1,5 +1,5 @@
 import React, { memo } from "react";
-import { ToggleButtonGroup, ToggleButton } from "@mui/material";
+import { ToggleButtonGroup, ToggleButton, Tooltip } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import ManageSearchIcon from "@mui/icons-material/ManageSearch";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
@@ -33,36 +33,44 @@ const SearchStrategySelect: React.FC<Props> = ({
       }}
       color="secondary"
     >
-      <ToggleButton
-        color="secondary"
-        value={RestNotesSearchType.KEYWORD}
-        aria-label="keyword"
-        sx={{
-          borderTopLeftRadius: M4,
-          borderBottomLeftRadius: M4,
-          gap: 1,
-        }}
-      >
-        <SearchIcon /> keyword
-      </ToggleButton>
-      <ToggleButton
-        value={RestNotesSearchType.TYPO_TOLERANT}
-        aria-label="typo tolerant"
-        sx={{ gap: 1 }}
-      >
-        <ManageSearchIcon /> typo tolerant
-      </ToggleButton>
-      <ToggleButton
-        value={RestNotesSearchType.CONTEXT}
-        aria-label="context"
-        sx={{
-          borderTopRightRadius: M4,
-          borderBottomRightRadius: M4,
-          gap: 1,
-        }}
-      >
-        <AutoAwesomeIcon /> context
-      </ToggleButton>
+      <Tooltip title="Keyword: Search for exact matches">
+        <ToggleButton
+          color="secondary"
+          value={RestNotesSearchType.KEYWORD}
+          aria-label="keyword"
+          sx={{
+            borderTopLeftRadius: M4,
+            borderBottomLeftRadius: M4,
+            gap: 1,
+            minWidth: 80,
+          }}
+        >
+          <SearchIcon />
+        </ToggleButton>
+      </Tooltip>
+      <Tooltip title="Typo Tolerant: Search with typo tolerance">
+        <ToggleButton
+          value={RestNotesSearchType.TYPO_TOLERANT}
+          aria-label="typo tolerant"
+          sx={{ gap: 1, minWidth: 80 }}
+        >
+          <ManageSearchIcon />
+        </ToggleButton>
+      </Tooltip>
+      <Tooltip title="Context: Search for notes with similar content">
+        <ToggleButton
+          value={RestNotesSearchType.CONTEXT}
+          aria-label="context"
+          sx={{
+            borderTopRightRadius: M4,
+            borderBottomRightRadius: M4,
+            gap: 1,
+            minWidth: 80,
+          }}
+        >
+          <AutoAwesomeIcon />
+        </ToggleButton>
+      </Tooltip>
     </ToggleButtonGroup>
   );
 };
