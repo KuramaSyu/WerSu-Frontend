@@ -24,7 +24,6 @@ import { note_of_date_at_hour } from "../../utils/NoteTitleTemplates";
 import { NoteApi } from "../../api/NoteApi";
 import { useNotesStore } from "../../zustand/useNotesStore";
 import { CardGrid } from "./CardGrid";
-import { CreateNote } from "./CreateNote";
 import { Note, type NoteData } from "../../api/models/search";
 import { useSearchNotesStore } from "../../zustand/useSearchNotesStore";
 import type { ListDirectoriesQuery } from "../../api/DirectoryApi";
@@ -35,6 +34,7 @@ import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import MenuOpenIcon from "@mui/icons-material/MenuOpen";
 import MenuIcon from "@mui/icons-material/Menu";
 import { LeftSideView } from "./LeftSideView";
+import NewNoteSpeedDial from "../../components/NewNoteSpeedDial";
 
 export const MainContent: React.FC = () => {
   const { notes, updateNoteParentDirectory } = useSearchNotesStore();
@@ -179,7 +179,7 @@ export const MainContent: React.FC = () => {
             gap: M4,
           }}
         >
-          <CreateNote key="create-note"></CreateNote>
+          <NewNoteSpeedDial />
           <DragDropProvider onDragEnd={(event) => void handleDragEnd(event)}>
             <Stack direction={"row"} alignItems={"flex-start"}>
               <LeftSideView open={leftPaneOpen} setOpen={setLeftPaneOpen} />
