@@ -7,12 +7,9 @@ import {
   alpha,
   Avatar,
   Button,
-  Collapse,
-  CssBaseline,
   Divider,
   FormControl,
   IconButton,
-  InputAdornment,
   List,
   ListItem,
   ListItemButton,
@@ -23,25 +20,18 @@ import {
   Slide,
   Stack,
   SwipeableDrawer,
-  TextField,
-  ThemeProvider,
   Typography,
 } from "@mui/material";
 import { useLocation, useNavigate } from "react-router-dom";
 import SettingsIcon from "@mui/icons-material/Settings";
 import PeopleIcon from "@mui/icons-material/People";
-import SearchIcon from "@mui/icons-material/Search";
 
 import HomeIcon from "@mui/icons-material/Home";
 import { M2, M3, M4 } from "../statics";
 import { LocalFireDepartment, Logout, Search } from "@mui/icons-material";
 import { useUserStore } from "../zustand/userStore";
 import { useBreakpoint } from "../hooks/useBreakpoint";
-import { SearchNotesApi } from "../api/SearchNotesApi";
-import { RestNotesSearchType } from "../api/models/search";
-import { useSearchNotesStore } from "../zustand/useSearchNotesStore";
-import SearchResultsOverlay from "./SearchResultsOverlay";
-import SearchStrategySelect from "./SearchStrategySelect";
+import SearchBar from "./search/SearchBar";
 
 const Pages = {
   HOME: "/",
@@ -58,13 +48,6 @@ function containedIfSelected(page: Page) {
   return location.pathname === page ? "contained" : "outlined";
 }
 
-enum SearchType {
-  KEYWORD = "Keyword",
-  TYPO_TOLERANT = "Typo Tolerant",
-  CONTEXT = "Context",
-  LATEST = "Latest",
-}
-
 export interface TopBarProps {
   scrollContainer?: HTMLElement | null;
 }
@@ -78,62 +61,7 @@ const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
   const location = useLocation();
   const { user, setUser } = useUserStore();
   const [userDrawerOpen, setUserDrawerOpen] = useState(false);
-  const [searchText, setSearchText] = useState("");
-  const [debouncedSearchText, setDebouncedSearchText] = useState("");
-  const [searchActive, setSearchActive] = useState(false);
-  const [searchType, setSearchType] = useState<RestNotesSearchType>(
-    RestNotesSearchType.CONTEXT,
-  );
   const { isMobile } = useBreakpoint();
-  const { isModalOpen, setIsModalOpen, isSearching, setIsSearching } =
-    useSearchNotesStore();
-
-  // initial search
-  useEffect(() => {
-    const SEARCH_LIMIT = 50;
-    async function search() {
-      const api = new SearchNotesApi();
-      await api.search(RestNotesSearchType.LATEST, searchText, SEARCH_LIMIT, 0);
-    }
-    search();
-  }, []);
-
-  // debounce search input so typing stays responsive
-  useEffect(() => {
-    if (!searchActive) {
-      setDebouncedSearchText(searchText);
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setDebouncedSearchText(searchText);
-    }, 125);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [searchText, searchActive]);
-
-  // perform search
-  useEffect(() => {
-    const SEARCH_LIMIT = 50;
-    async function search() {
-      setIsSearching(true);
-      const api = new SearchNotesApi();
-      if (searchText === "") {
-        await api.search(
-          RestNotesSearchType.LATEST,
-          searchText,
-          SEARCH_LIMIT,
-          0,
-        );
-      } else {
-        await api.search(searchType, debouncedSearchText, SEARCH_LIMIT, 0);
-      }
-      setIsSearching(false);
-    }
-    if (searchActive) {
-      search();
-    }
-  }, [debouncedSearchText, searchType, searchActive, setIsSearching]);
 
   // watchdog to hide/show top bar depending on scroll direction
   useEffect(() => {
@@ -287,56 +215,7 @@ const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
                 minWidth={3 / 10}
                 sx={{ display: "flex", justifyContent: "center" }}
               >
-                <Collapse
-                  in={searchText !== "" || searchActive}
-                  timeout={300}
-                  orientation="horizontal"
-                >
-                  <Box>
-                    <SearchStrategySelect
-                      searchType={searchType}
-                      setSearchType={setSearchType}
-                    />
-                  </Box>
-                </Collapse>
-              </Box>
-              <Box sx={{ zIndex: 1000 }}>
-                <TextField
-                  fullWidth
-                  placeholder="Search"
-                  variant="outlined"
-                  value={searchText}
-                  onChange={(e) => {
-                    setSearchText(e.target.value);
-                    if (e.target.value && searchActive) {
-                      setIsModalOpen(true);
-                    }
-                  }}
-                  onFocus={() => {
-                    setSearchActive(true);
-                    if (searchText) {
-                      setIsModalOpen(true);
-                    }
-                  }}
-                  onBlur={() => setSearchActive(false)}
-                  slotProps={{
-                    input: {
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <SearchIcon sx={{ fontSize: "1rem" }} />
-                        </InputAdornment>
-                      ),
-                      sx: {
-                        // "Properly Rounded"
-                        borderRadius: M4,
-                        // Adjust internal padding for height
-                        "& .MuiOutlinedInput-input": {
-                          padding: "calc(1em / 1.6) 0.5rem",
-                        },
-                      },
-                    },
-                  }}
-                />
+                <SearchBar />
               </Box>
               {/* Home, Friends, Settings, Discord Login or Profile */}
               <Box
@@ -410,13 +289,6 @@ const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
           </SwipeableDrawer>
         </AppBar>
       </Slide>
-      <SearchResultsOverlay
-        open={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        isLoading={isSearching}
-        searchQuery={debouncedSearchText}
-        searchType={searchType}
-      />
     </>
   );
 };

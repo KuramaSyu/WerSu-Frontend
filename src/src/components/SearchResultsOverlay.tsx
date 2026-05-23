@@ -239,12 +239,19 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
             <Divider sx={{ my: M3 }} />
             {/* Highlight Box */}
 
-            {highlightSearchMatch({
-              content: note.stripped_content,
-              query: searchQuery,
-              searchType,
-              contextChars: 100,
-            })}
+            {searchQuery.length > 2 ? (
+              highlightSearchMatch({
+                content: note.stripped_content,
+                query: searchQuery,
+                searchType,
+                contextChars: 100,
+              })
+            ) : (
+              <>
+                {note.stripped_content.slice(0, 200) +
+                  (note.stripped_content.length > 200 ? "..." : "")}
+              </>
+            )}
           </Paper>
         ))}
       </Stack>
