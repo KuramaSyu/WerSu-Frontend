@@ -128,10 +128,8 @@ export const MainContent: React.FC = () => {
     [],
   );
 
-  const { data: directories } = useDirectoriesQuery(
-    directoryListQuery,
-    hasDirectoryReferences,
-  );
+  const { data: directories, isLoading: directoriesLoading } =
+    useDirectoriesQuery(directoryListQuery, hasDirectoryReferences);
 
   // Mirror the server-state cache into the local entity map store used by the
   // UI. This gives components O(1) ID lookups and a single shared source for
@@ -182,22 +180,28 @@ export const MainContent: React.FC = () => {
           <NewNoteSpeedDial />
           <DragDropProvider onDragEnd={(event) => void handleDragEnd(event)}>
             <Stack direction={"row"} alignItems={"flex-start"}>
-              <LeftSideView open={leftPaneOpen} setOpen={setLeftPaneOpen} />
+              <LeftSideView open={leftPaneOpen} setOpen={setLeftPaneOpen}>
+                <DirectorySideView isLoading={directoriesLoading} />
+              </LeftSideView>
               <Box>
-                {Object.entries(notesByDirectory).map(([dir, notes]) => (
-                  <Box px={M4}>
-                    <CardGrid
-                      notes={notes}
-                      title={
-                        dir === "root"
-                          ? "Root"
-                          : directoriesById[dir]?.display_name ||
-                            directoriesById[dir]?.name ||
-                            dir
-                      }
-                    ></CardGrid>
-                  </Box>
-                ))}
+                {Object.entries(notesByDirectory).map(([dir, notes]) => {
+                  const dirMeta = directoriesById[dir];
+                  const forceLoading = dir !== "root" && !dirMeta;
+                  const displayTitle =
+                    dir === "root"
+                      ? "Root"
+                      : dirMeta?.display_name || dirMeta?.name || dir;
+
+                  return (
+                    <Box px={M4} key={dir}>
+                      <CardGrid
+                        notes={notes}
+                        title={forceLoading ? "Loading..." : displayTitle}
+                        loading={forceLoading}
+                      />
+                    </Box>
+                  );
+                })}
               </Box>
             </Stack>
           </DragDropProvider>

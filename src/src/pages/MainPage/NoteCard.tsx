@@ -3,6 +3,7 @@ import {
   Card,
   CardContent,
   IconButton,
+  Skeleton,
   Tooltip,
   Typography,
 } from "@mui/material";
@@ -21,7 +22,8 @@ import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 export const NoteCard: React.FC<{
   note: MinimalNote;
   sx?: object;
-}> = ({ note, sx }) => {
+  loading?: boolean;
+}> = ({ note, sx, loading = false }) => {
   const { ref, isDragging } = useDraggable({
     id: note.id,
     type: "note",
@@ -34,13 +36,58 @@ export const NoteCard: React.FC<{
   const [modalOpen, setModalOpen] = useState(false);
   const { setMessage } = useInfoStore();
 
+  if (loading) {
+    return (
+      <Box ref={ref} sx={{ width: "100%" }}>
+        <Card
+          ref={ref}
+          sx={{
+            position: "relative",
+            width: "100%",
+            cursor: "wait",
+            opacity: 0.9,
+            transition: "all 0.2s ease-in-out",
+            ...sx,
+          }}
+          variant="outlined"
+        >
+          <CardContent>
+            <Skeleton
+              variant="text"
+              width="36%"
+              animation="wave"
+              sx={{ mb: M3 }}
+            />
+            <Skeleton
+              variant="text"
+              width="100%"
+              height={34}
+              animation="wave"
+              sx={{ mb: 0.5 }}
+            />
+            <Skeleton
+              variant="text"
+              width="84%"
+              height={34}
+              animation="wave"
+              sx={{ mb: 1.5 }}
+            />
+            <Skeleton variant="text" width="100%" animation="wave" />
+            <Skeleton variant="text" width="30%" animation="wave" />
+            <Skeleton variant="text" width="70%" animation="wave" />
+          </CardContent>
+        </Card>
+      </Box>
+    );
+  }
+
   return (
-    <Box ref={ref}>
+    <Box ref={ref} sx={{ width: "100%" }}>
       <Card
         ref={ref}
         sx={{
           position: "relative",
-          minWidth: "4rem",
+          width: "100%",
           cursor: "grab",
           opacity: isDragging ? 0.6 : 1,
           transition: "all 0.2s ease-in-out",

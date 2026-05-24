@@ -1,4 +1,11 @@
-import { Box, Grid, Paper, Typography, useMediaQuery } from "@mui/material";
+import {
+  Box,
+  Grid,
+  Paper,
+  Typography,
+  useMediaQuery,
+  Skeleton,
+} from "@mui/material";
 import { useEffect, useMemo, useRef, useState, type JSX } from "react";
 
 import { useSearchNotesStore } from "../../zustand/useSearchNotesStore";
@@ -12,10 +19,12 @@ import type { MinimalNote, Note } from "../../api/models/search";
 export interface CardGridProps {
   title: string;
   notes: Array<MinimalNote>;
+  loading?: boolean;
 }
 
-export const CardGrid: React.FC<CardGridProps> = ({ title, notes }) => {
+export const CardGrid: React.FC<CardGridProps> = ({ title, notes, loading = false }) => {
   const { isLoading } = useLoadingStore();
+  const { isSearching } = useSearchNotesStore();
 
   const { theme } = useThemeStore();
   const isXs = useMediaQuery(theme.breakpoints.only("xs"));
@@ -44,8 +53,50 @@ export const CardGrid: React.FC<CardGridProps> = ({ title, notes }) => {
     return columns.flat();
   }, [notes, columnCount]);
 
-  if (isLoading) {
-    return <></>;
+  if (loading || isLoading || isSearching) {
+    const placeholderCount = Math.max(4, columnCount * 2);
+    const loadingNotes = Array.from(
+      { length: placeholderCount },
+      (_, index) => ({
+        id: `loading-note-${index}`,
+        title: "Loading note",
+        author_id: "loading",
+        updated_at: new Date().toISOString(),
+        stripped_content: "Loading content",
+        permissions: [],
+      }),
+    );
+
+    return (
+      <Paper sx={{ p: M4 }} elevation={1}>
+        <Skeleton
+          variant="text"
+          width="100%"
+          animation="wave"
+          sx={{ mb: M4 }}
+        />
+        <Box
+          sx={{
+            columnCount: { xs: 1, sm: 2, md: 3, lg: 4 },
+            columnGap: M2,
+          }}
+        >
+          {loadingNotes.map((note) => (
+            <Box
+              key={note.id}
+              sx={{
+                mb: M2,
+                breakInside: "avoid",
+                display: "inline-block",
+                width: "100%",
+              }}
+            >
+              <NoteCard note={note} loading sx={{ width: "100%" }} />
+            </Box>
+          ))}
+        </Box>
+      </Paper>
+    );
   }
 
   return (
@@ -64,7 +115,12 @@ export const CardGrid: React.FC<CardGridProps> = ({ title, notes }) => {
             <NoteCard
               key={note.id}
               note={note}
-              sx={{ mb: M2, breakInside: "avoid" }}
+              sx={{
+                mb: M2,
+                breakInside: "avoid",
+                display: "inline-block",
+                width: "100%",
+              }}
             />
           );
         })}
