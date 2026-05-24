@@ -18,6 +18,7 @@ import InfoDisplay from "./pages/MainPage/InfoDisplay";
 import { NotePage } from "./pages/NotePage/Main";
 import { DirectoryView } from "./pages/DirectoryView/Main";
 import { recordNavigation } from "./utils/navigationMemento";
+import { Bootstrap } from "./Bootstrap";
 
 const NavigationRecorder: React.FC = () => {
   const location = useLocation();
@@ -36,6 +37,7 @@ function App() {
 
   return (
     <ThemeProvider theme={theme}>
+      <Bootstrap />
       <EditorGlobalStyles />
       {/* <CssBaseline /> */}
       <Router>
