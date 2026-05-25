@@ -1,7 +1,16 @@
 import * as React from "react";
 import { useDroppable } from "@dnd-kit/react";
 import { SimpleTreeView, TreeItem } from "@mui/x-tree-view";
-import { ButtonBase, Stack, Typography, Skeleton, Box } from "@mui/material";
+import {
+  ButtonBase,
+  Stack,
+  Typography,
+  Skeleton,
+  Box,
+  IconButton,
+  Tooltip,
+} from "@mui/material";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import { useNavigate } from "react-router-dom";
 import { useDirectoryStore } from "../../zustand/useDirectoryStore";
 import {
@@ -37,27 +46,42 @@ const DirectoryTreeNode: React.FC<DirectoryTreeNodeProps> = ({ item }) => {
       itemId={itemId}
       ref={ref}
       label={
-        <ButtonBase
-          onClick={(event) => {
-            event.stopPropagation();
-            navigate(`/d/${itemId}`);
-          }}
-          sx={{
-            width: "100%",
-            justifyContent: "flex-start",
-            textAlign: "left",
-            py: 0.5,
-            px: 1,
-            borderRadius: 1,
-            color: "inherit",
-          }}
-        >
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Typography variant="body2" fontWeight={500}>
-              {item.getName()}
-            </Typography>
-          </Stack>
-        </ButtonBase>
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ pr: 0.5 }}>
+          <ButtonBase
+            onClick={(event) => {
+              event.stopPropagation();
+              navigate(`/d/${itemId}`);
+            }}
+            sx={{
+              flex: 1,
+              justifyContent: "flex-start",
+              textAlign: "left",
+              py: 0.5,
+              px: 1,
+              borderRadius: 1,
+              color: "inherit",
+            }}
+          >
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography variant="body2" fontWeight={500}>
+                {item.getName()}
+              </Typography>
+            </Stack>
+          </ButtonBase>
+          {itemId !== "root" && (
+            <Tooltip title="Edit directory">
+              <IconButton
+                size="small"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  navigate(`/d/${itemId}/edit`);
+                }}
+              >
+                <EditOutlinedIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Stack>
       }
       sx={{
         "& > .MuiTreeItem-content": {
@@ -98,14 +122,40 @@ export const DirectorySideView: React.FC<{ isLoading?: boolean }> = ({
           {Array.from({ length: 3 }).map((_, i) => (
             <Box key={i}>
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <Skeleton variant="circular" width={24} height={24} animation="wave" />
-                <Skeleton variant="text" width={`${60 - i * 6}%`} animation="wave" />
+                <Skeleton
+                  variant="circular"
+                  width={24}
+                  height={24}
+                  animation="wave"
+                />
+                <Skeleton
+                  variant="text"
+                  width={`${60 - i * 6}%`}
+                  animation="wave"
+                />
               </Box>
               <Box sx={{ pl: 3, mt: 0.5 }}>
                 {Array.from({ length: 2 }).map((__, j) => (
-                  <Box key={j} sx={{ display: "flex", alignItems: "center", gap: 1, mt: 0.5 }}>
-                    <Skeleton variant="circular" width={18} height={18} animation="wave" />
-                    <Skeleton variant="text" width={`${50 - j * 12}%`} animation="wave" />
+                  <Box
+                    key={j}
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      mt: 0.5,
+                    }}
+                  >
+                    <Skeleton
+                      variant="circular"
+                      width={18}
+                      height={18}
+                      animation="wave"
+                    />
+                    <Skeleton
+                      variant="text"
+                      width={`${50 - j * 12}%`}
+                      animation="wave"
+                    />
                   </Box>
                 ))}
               </Box>
