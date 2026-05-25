@@ -18,6 +18,10 @@ export interface IDirectoryApi {
   get(id: string): Promise<DirectoryReply | undefined>;
   create(payload: CreateDirectoryBody): Promise<DirectoryReply | undefined>;
   patch(payload: PatchDirectoryBody): Promise<DirectoryReply | undefined>;
+  setParent(
+    id: string,
+    parentId: string | null,
+  ): Promise<DirectoryReply | undefined>;
   delete(id: string): Promise<DirectoryReply | undefined>;
 }
 
@@ -100,6 +104,16 @@ export class DirectoryApi implements IDirectoryApi {
     payload: PatchDirectoryBody,
   ): Promise<DirectoryReply | undefined> {
     return this.requestWithBody("PATCH", DIRECTORIES_API_PATH, payload);
+  }
+
+  async setParent(
+    id: string,
+    parentId: string | null,
+  ): Promise<DirectoryReply | undefined> {
+    return this.requestWithBody("PATCH", DIRECTORIES_API_PATH, {
+      id,
+      parent_id: parentId,
+    });
   }
 
   async delete(id: string): Promise<DirectoryReply | undefined> {
