@@ -21,7 +21,6 @@ import { NoteApi } from "../../api/NoteApi";
 import { note_of_date_at_hour } from "../../utils/NoteTitleTemplates";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { UserError } from "../../api/models/UserError";
-import { DirectoryApi } from "../../api/DirectoryApi";
 import { DirectoryActions } from "./DirectoryActions";
 import TopBar from "../../components/TopBar";
 // RecentActivityPanel now rendered by DirectoryActions
@@ -130,8 +129,7 @@ export const DirectoryView: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const directoryId = id ?? "root";
-  const { directoriesById, setDirectories, upsertDirectory } =
-    useDirectoryStore();
+  const { directoriesById, setDirectories } = useDirectoryStore();
   const { notes } = useSearchNotesStore();
   const { setMessage } = useInfoStore();
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(
@@ -231,35 +229,17 @@ export const DirectoryView: React.FC = () => {
   };
 
   /**
-   * Simple directory rename flow that updates the display name.
-   * Uses the REST patch endpoint and updates the local store to keep UI in sync.
+   * Sends the user to the full directory edit page.
    */
-  const handleRenameDirectory = async () => {
+  const handleRenameDirectory = () => {
     if (currentNode.getId() === "root") {
       setMessage(
-        new SnackbarUpdateImpl("Root directory cannot be renamed", "info"),
+        new SnackbarUpdateImpl("Root directory cannot be edited", "info"),
       );
       return;
     }
 
-    const currentName = currentNode.getName();
-    const nextName = window.prompt("Rename directory", currentName);
-    if (!nextName || nextName.trim() === "" || nextName === currentName) {
-      return;
-    }
-
-    const updated = await new DirectoryApi().patch({
-      id: currentNode.getId(),
-      display_name: nextName.trim(),
-    });
-
-    if (!updated) {
-      setMessage(new SnackbarUpdateImpl("Failed to update directory", "error"));
-      return;
-    }
-
-    upsertDirectory(updated);
-    setMessage(new SnackbarUpdateImpl("Directory updated", "success"));
+    navigate(`/d/${currentNode.getId()}/edit`);
   };
 
   return (
