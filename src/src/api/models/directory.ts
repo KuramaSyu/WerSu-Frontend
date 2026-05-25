@@ -6,7 +6,7 @@ export interface DirectoryReply {
   display_name?: string;
   description?: string;
   image_url?: string;
-  parent_id?: string;
+  parent_id?: string | null;
   relationships?: PermissionRelationshipReply[];
 }
 
@@ -15,7 +15,7 @@ export interface CreateDirectoryBody {
   display_name?: string;
   description?: string;
   image_url?: string;
-  parent_id?: string;
+  parent_id?: string | null;
 }
 
 export interface PatchDirectoryBody {
@@ -24,5 +24,5 @@ export interface PatchDirectoryBody {
   display_name?: string;
   description?: string;
   image_url?: string;
-  parent_id?: string;
+  parent_id?: string | null;
 }
