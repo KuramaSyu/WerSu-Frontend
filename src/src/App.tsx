@@ -17,6 +17,7 @@ import { EditorGlobalStyles } from "./theme/GlobalStyles";
 import InfoDisplay from "./pages/MainPage/InfoDisplay";
 import { NotePage } from "./pages/NotePage/Main";
 import { DirectoryView } from "./pages/DirectoryView/Main";
+import { DirectoryEditPage } from "./pages/DirectoryEdit/Main";
 import { recordNavigation } from "./utils/navigationMemento";
 import { Bootstrap } from "./Bootstrap";
 
@@ -56,6 +57,7 @@ function App() {
             <Route path="/" element={<MainPage />} />
             <Route path="/n/:id" element={<NotePage />} />
             <Route path="/d/:id" element={<DirectoryView />} />
+            <Route path="/d/:id/edit" element={<DirectoryEditPage />} />
             <Route path="/docs/*" element={<SwaggerDocs />} />
           </Routes>
           <InfoDisplay />
