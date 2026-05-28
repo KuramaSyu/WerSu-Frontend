@@ -25,6 +25,7 @@ import {
 import { useLocation, useNavigate } from "react-router-dom";
 import SettingsIcon from "@mui/icons-material/Settings";
 import PeopleIcon from "@mui/icons-material/People";
+import AccountTreeIcon from "@mui/icons-material/AccountTree";
 
 import HomeIcon from "@mui/icons-material/Home";
 import { M2, M3, M4 } from "../statics";
@@ -39,6 +40,7 @@ const Pages = {
   SETTINGS: "/settings",
   HISTORY: "/history",
   SETTINGSV2: "/settings-v2",
+  GRAPH: "/graph",
 } as const;
 
 type Page = (typeof Pages)[keyof typeof Pages];
@@ -268,6 +270,13 @@ const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
                   color="inherit"
                 >
                   <SettingsIcon />
+                </Button>
+                <Button
+                  variant={containedIfSelected(Pages.GRAPH)}
+                  onClick={() => navigate(Pages.GRAPH)}
+                  color="inherit"
+                >
+                  <AccountTreeIcon />
                 </Button>
                 <IconButton onClick={() => setUserDrawerOpen(true)}>
                   <Avatar
