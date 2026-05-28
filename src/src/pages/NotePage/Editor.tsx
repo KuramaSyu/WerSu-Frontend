@@ -33,7 +33,7 @@ import { Markdown } from "@tiptap/markdown";
 import "katex/dist/katex.min.css";
 import "../../styles/tiptap.css";
 
-import { TableWithControls } from "../MainPage/Modals/Editor/TableControlls";
+import { TableWithControls } from "../MainPage/Modals/Editor/TableControlls/TableControlls";
 import { ThemedEditorBox } from "../MainPage/Modals/Editor/ThemedEditorBox";
 import { TextSelectionBubbleMenu } from "../MainPage/Modals/Editor/TextSelectionBubbleMenu";
 import { SlashCommandMenu } from "../MainPage/Modals/Editor/SlashCommandMenu";
