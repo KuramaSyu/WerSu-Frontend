@@ -51,7 +51,7 @@ import { EditorStaticMenu } from "./EditorStaticMenu";
 import { ThemedEditorBox } from "./ThemedEditorBox";
 import { CellSelection } from "@tiptap/pm/tables";
 import "../../../../styles/tiptap.css";
-import { TableWithControls } from "./TableControlls";
+import { TableWithControls } from "./TableControlls/TableControlls";
 
 // codeblock extension + all languages
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
@@ -125,8 +125,6 @@ const CustomReactNode = Node.create({
     name: "react",
   }),
 });
-
-export default () => {};
 
 interface NoteEditorModalProps {
   open: boolean;
