@@ -330,6 +330,7 @@ export class DirectoryHierarchyBuilder {
     const root = new RootHirarchyItem(rootName);
     const directoryNodes = new Map<string, DirectoryHirarchyItem>();
 
+    // convert all directories into a Node, then insert it into a map for easy lookup when building the tree
     for (const directory of Object.values(this.directoryLookup)) {
       directoryNodes.set(
         directory.id,
@@ -337,14 +338,17 @@ export class DirectoryHierarchyBuilder {
       );
     }
 
+    // build the tree out of the Node-Map
     for (const directoryNode of directoryNodes.values()) {
       const parentId = directoryNode.getParent();
 
+      // note has no parent -> root
       if (!parentId || parentId === directoryNode.getId()) {
         root.addChild(directoryNode);
         continue;
       }
 
+      // note has parent -> get parent, and add it a child
       const parentDirectoryNode = directoryNodes.get(parentId);
       if (!parentDirectoryNode) {
         root.addChild(directoryNode);
