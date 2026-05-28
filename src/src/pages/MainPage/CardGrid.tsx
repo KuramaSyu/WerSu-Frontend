@@ -22,7 +22,11 @@ export interface CardGridProps {
   loading?: boolean;
 }
 
-export const CardGrid: React.FC<CardGridProps> = ({ title, notes, loading = false }) => {
+export const CardGrid: React.FC<CardGridProps> = ({
+  title,
+  notes,
+  loading = false,
+}) => {
   const { isLoading } = useLoadingStore();
   const { isSearching } = useSearchNotesStore();
 
