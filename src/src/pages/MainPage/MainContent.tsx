@@ -38,6 +38,7 @@ import MenuIcon from "@mui/icons-material/Menu";
 import { LeftSideView } from "./LeftSideView";
 import NewNoteSpeedDial from "../../components/NewNoteSpeedDial";
 import { useNavigate } from "react-router-dom";
+import { getNoteParentDirectoryIds } from "../../utils/fileGraphUtils";
 
 export const MainContent: React.FC = () => {
   const { notes, updateNoteParentDirectory } = useSearchNotesStore();
@@ -118,22 +119,25 @@ export const MainContent: React.FC = () => {
     navigate(`/d/${created.id}`);
   };
 
-  // reange into a Dict[note-directory, List[Note]]
+  // Arrange notes into a Dict[directoryId, List[Note]] with multi-parent support.
   const notesByDirectory = useMemo(() => {
     const dict: Record<string, Note[]> = {};
     Object.values(notes).forEach((noteData) => {
-      // cast to Note
       const notedata: NoteData = {
         ...noteData,
         content: noteData.stripped_content,
         permissions: noteData.permissions ?? [],
       };
       const note = new Note(notedata);
-      const dir = note.get_dir() || "root";
-      if (!dict[dir]) {
-        dict[dir] = [];
-      }
-      dict[dir].push(note);
+      const parentIds = getNoteParentDirectoryIds(note.permissions);
+
+      const targetDirs = parentIds.length === 0 ? ["root"] : parentIds;
+      targetDirs.forEach((dir) => {
+        if (!dict[dir]) {
+          dict[dir] = [];
+        }
+        dict[dir].push(note);
+      });
     });
     return dict;
   }, [notes]);

@@ -11,10 +11,8 @@ import {
   type HirarchyItem,
 } from "../../models/HirarchyItem";
 import { M3, M4, M5 } from "../../statics";
-import type {
-  MinimalNote,
-  PermissionRelationshipReply,
-} from "../../api/models/search";
+import type { MinimalNote } from "../../api/models/search";
+import { getNoteParentDirectoryIds } from "../../utils/fileGraphUtils";
 import { LeftSideView } from "../MainPage/LeftSideView";
 // Directory action UI moved to `DirectoryActions` component
 import { NoteApi } from "../../api/NoteApi";
@@ -24,28 +22,6 @@ import { UserError } from "../../api/models/UserError";
 import { DirectoryActions } from "./DirectoryActions";
 import TopBar from "../../components/TopBar";
 // RecentActivityPanel now rendered by DirectoryActions
-
-const getNoteDirectoryId = (
-  permissions?: PermissionRelationshipReply[],
-): string | undefined => {
-  if (!permissions) {
-    return undefined;
-  }
-
-  for (const permission of permissions) {
-    const isParentRelation =
-      permission.relation === "parent" ||
-      permission.relation === "parent_directory";
-    const isDirectorySubject =
-      permission.subject.object_type === "PERMISSION_OBJECT_TYPE_DIRECTORY";
-
-    if (isParentRelation && isDirectorySubject) {
-      return permission.subject.object_id;
-    }
-  }
-
-  return undefined;
-};
 
 const findNodeById = (root: HirarchyItem, id: string): HirarchyItem | null => {
   if (root.getId() === id) {
@@ -102,11 +78,14 @@ const buildNotesByDirectory = (
   const dict: Record<string, MinimalNote[]> = {};
 
   notes.forEach((note) => {
-    const dir = getNoteDirectoryId(note.permissions) ?? "root";
-    if (!dict[dir]) {
-      dict[dir] = [];
-    }
-    dict[dir].push(note);
+    const parentIds = getNoteParentDirectoryIds(note.permissions);
+    const targetDirs = parentIds.length === 0 ? ["root"] : parentIds;
+    targetDirs.forEach((dir) => {
+      if (!dict[dir]) {
+        dict[dir] = [];
+      }
+      dict[dir].push(note);
+    });
   });
 
   return dict;

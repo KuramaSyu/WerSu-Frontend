@@ -32,21 +32,40 @@ export const useSearchNotesStore = create<SearchNotesState>((set) => ({
           return note;
         }
 
-        const cleanedPermissions = (note.permissions ?? []).filter(
-          (permission) => {
-            const isParentRelation =
-              permission.relation === "parent" ||
-              permission.relation === "parent_directory";
-            const isDirectorySubject =
-              permission.subject.object_type ===
-              "PERMISSION_OBJECT_TYPE_DIRECTORY";
-            return !(isParentRelation && isDirectorySubject);
-          },
+        const existingPermissions = note.permissions ?? [];
+
+        const parentRelations = existingPermissions.filter((permission) => {
+          const isParentRelation =
+            permission.relation === "parent" ||
+            permission.relation === "parent_directory";
+          const isDirectorySubject =
+            permission.subject.object_type ===
+            "PERMISSION_OBJECT_TYPE_DIRECTORY";
+          return isParentRelation && isDirectorySubject;
+        });
+
+        // If no directory is provided, clear all parent relations (root).
+        if (!directoryId) {
+          const cleanedPermissions = existingPermissions.filter(
+            (permission) => {
+              const isParentRelation =
+                permission.relation === "parent" ||
+                permission.relation === "parent_directory";
+              const isDirectorySubject =
+                permission.subject.object_type ===
+                "PERMISSION_OBJECT_TYPE_DIRECTORY";
+              return !(isParentRelation && isDirectorySubject);
+            },
+          );
+          return { ...note, permissions: cleanedPermissions };
+        }
+
+        const hasParent = parentRelations.some(
+          (relation) => relation.subject.object_id === directoryId,
         );
 
-        // Keep note at root if no target directory was provided.
-        if (!directoryId) {
-          return { ...note, permissions: cleanedPermissions };
+        if (hasParent) {
+          return note;
         }
 
         const nextParentRelation: PermissionRelationshipReply = {
@@ -63,7 +82,7 @@ export const useSearchNotesStore = create<SearchNotesState>((set) => ({
 
         return {
           ...note,
-          permissions: [...cleanedPermissions, nextParentRelation],
+          permissions: [...existingPermissions, nextParentRelation],
         };
       }),
     })),
