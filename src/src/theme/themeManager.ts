@@ -139,7 +139,7 @@ export class ThemeManager {
    * The full extracted palette is used to populate primary, secondary, and extra palette keys.
    */
   public async generateTheme(themeName: string): Promise<CustomTheme | null> {
-    const background = useThemeStore.getState().theme.custom.backgroundImage;
+    // const background = useThemeStore.getState().theme.custom.backgroundImage;
     let theme;
     switch (themeName) {
       case "docsTheme":
