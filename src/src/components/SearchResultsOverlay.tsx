@@ -10,6 +10,8 @@ import {
   Portal,
   IconButton,
   Divider,
+  Fade,
+  Grow,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { useThemeStore } from "../zustand/useThemeStore";
@@ -258,108 +260,110 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
     );
   }, [isLoading, notesArray, searchQuery, searchType, theme]);
 
-  if (!open) return null;
-
   return (
     <>
       {/* Backdrop - click to close */}
-      <Box
-        onClick={onClose}
-        sx={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: alpha(theme.palette.common.black, 0.2),
-          zIndex: 900,
-        }}
-      />
+      <Fade in={open} timeout={400} mountOnEnter unmountOnExit>
+        <Box
+          onClick={onClose}
+          sx={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: alpha(theme.palette.common.black, 0.2),
+            zIndex: 900,
+          }}
+        />
+      </Fade>
 
       {/* Overlay panel */}
       <Portal>
-        <Box
-          sx={{
-            position: "fixed",
-            top: "140px", // Below the search bar
-            left: "15%",
-            right: "15%",
-            maxHeight: "66%",
-            backgroundColor: theme.palette.background.paper,
-            borderRadius: M4,
-            boxShadow: theme.shadows[8],
-            zIndex: 1300,
-            border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
-          {/* Header with close button */}
-          <Stack
-            direction="row"
-            justifyContent="space-between"
-            alignItems="center"
-            position={"sticky"}
-            m={M3}
-          >
-            <Box>
-              <Typography variant="h5" sx={{ fontWeight: "bold" }}>
-                Search Results
-              </Typography>
-              <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-                <Chip
-                  label={getSearchTypeLabel(searchType)}
-                  size="small"
-                  variant="outlined"
-                />
-                {searchQuery && (
-                  <Typography variant="caption" sx={{ alignSelf: "center" }}>
-                    for "{searchQuery}"
-                  </Typography>
-                )}
-              </Stack>
-            </Box>
-            {isLoading && (
-              <Box sx={{ display: "flex", justifyContent: "center" }}>
-                <CircularProgress />
-              </Box>
-            )}
-
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Typography variant="body2" color="textSecondary">
-                {isLoading ? "Searching..." : `${notesArray.length} results`}
-              </Typography>
-              <IconButton
-                size="medium"
-                onClick={onClose}
-                sx={{
-                  color: theme.palette.text.secondary,
-                  "&:hover": {
-                    backgroundColor: alpha(theme.palette.text.primary, 0.1),
-                  },
-                }}
-              >
-                <CloseIcon fontSize="medium" />
-              </IconButton>
-            </Stack>
-          </Stack>
+        <Grow in={open} timeout={180} mountOnEnter unmountOnExit>
           <Box
             sx={{
-              zIndex: 1301,
-              flex: 1,
-              m: M3,
-              overflowY: "auto",
-              scrollbarGutter: "stable",
-              position: "relative",
+              position: "fixed",
+              top: "140px", // Below the search bar
+              left: "15%",
+              right: "15%",
+              maxHeight: "66%",
+              backgroundColor: theme.palette.background.paper,
+              borderRadius: M4,
+              boxShadow: theme.shadows[8],
+              zIndex: 1300,
+              border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+              display: "flex",
+              flexDirection: "column",
             }}
           >
-            {/* scrollbar padding */}
-            <Box sx={{ width: "98%" }}>
-              {/* Results or Loading */}
-              {resultsContent}
+            {/* Header with close button */}
+            <Stack
+              direction="row"
+              justifyContent="space-between"
+              alignItems="center"
+              position={"sticky"}
+              m={M3}
+            >
+              <Box>
+                <Typography variant="h5" sx={{ fontWeight: "bold" }}>
+                  Search Results
+                </Typography>
+                <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                  <Chip
+                    label={getSearchTypeLabel(searchType)}
+                    size="small"
+                    variant="outlined"
+                  />
+                  {searchQuery && (
+                    <Typography variant="caption" sx={{ alignSelf: "center" }}>
+                      for "{searchQuery}"
+                    </Typography>
+                  )}
+                </Stack>
+              </Box>
+              {isLoading && (
+                <Box sx={{ display: "flex", justifyContent: "center" }}>
+                  <CircularProgress />
+                </Box>
+              )}
+
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Typography variant="body2" color="textSecondary">
+                  {isLoading ? "Searching..." : `${notesArray.length} results`}
+                </Typography>
+                <IconButton
+                  size="medium"
+                  onClick={onClose}
+                  sx={{
+                    color: theme.palette.text.secondary,
+                    "&:hover": {
+                      backgroundColor: alpha(theme.palette.text.primary, 0.1),
+                    },
+                  }}
+                >
+                  <CloseIcon fontSize="medium" />
+                </IconButton>
+              </Stack>
+            </Stack>
+            <Box
+              sx={{
+                zIndex: 1301,
+                flex: 1,
+                m: M3,
+                overflowY: "auto",
+                scrollbarGutter: "stable",
+                position: "relative",
+              }}
+            >
+              {/* scrollbar padding */}
+              <Box sx={{ width: "98%" }}>
+                {/* Results or Loading */}
+                {resultsContent}
+              </Box>
             </Box>
           </Box>
-        </Box>
+        </Grow>
       </Portal>
     </>
   );
