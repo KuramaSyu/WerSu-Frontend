@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Box, Collapse, InputAdornment, TextField } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import { M4 } from "../../statics";
@@ -21,6 +22,8 @@ const SearchBar: React.FC = () => {
 
   const { isModalOpen, setIsModalOpen, isSearching, setIsSearching } =
     useSearchNotesStore();
+  const location = useLocation();
+  const isMainPage = location.pathname === "/";
 
   // initial search
   //   useEffect(() => {
@@ -45,6 +48,12 @@ const SearchBar: React.FC = () => {
 
     return () => window.clearTimeout(timeoutId);
   }, [searchText, searchActive]);
+
+  useEffect(() => {
+    if (isMainPage && isModalOpen) {
+      setIsModalOpen(false);
+    }
+  }, [isMainPage, isModalOpen, setIsModalOpen]);
 
   // perform search
   useEffect(() => {
@@ -124,13 +133,15 @@ const SearchBar: React.FC = () => {
         />
       </Box>
 
-      <SearchResultsOverlay
-        open={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        isLoading={isSearching}
-        searchQuery={debouncedSearchText}
-        searchType={searchType}
-      />
+      {!isMainPage && (
+        <SearchResultsOverlay
+          open={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          isLoading={isSearching}
+          searchQuery={debouncedSearchText}
+          searchType={searchType}
+        />
+      )}
     </Box>
   );
 };
