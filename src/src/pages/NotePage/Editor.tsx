@@ -24,7 +24,6 @@ import { all, createLowlight } from "lowlight";
 import { TaskItem, TaskList } from "@tiptap/extension-list";
 import { Youtube } from "@tiptap/extension-youtube";
 import { Twitch } from "@tiptap/extension-twitch";
-import { Image } from "@tiptap/extension-image";
 import { TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
 import { Highlight } from "@tiptap/extension-highlight";
 import { Mathematics } from "@tiptap/extension-mathematics";
@@ -32,7 +31,6 @@ import Placeholder from "@tiptap/extension-placeholder";
 import { Markdown } from "@tiptap/markdown";
 import "katex/dist/katex.min.css";
 import "../../styles/tiptap.css";
-
 import { TableWithControls } from "../MainPage/Modals/Editor/TableControlls/TableControlls";
 import { ThemedEditorBox } from "../MainPage/Modals/Editor/ThemedEditorBox";
 import { TextSelectionBubbleMenu } from "../MainPage/Modals/Editor/TextSelectionBubbleMenu";
@@ -43,6 +41,9 @@ import type { Note } from "../../api/models/search";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { NoteVersionsDrawer } from "../../components/NoteVersionsDrawer";
 import type { NoteVersionSummaryReply } from "../../api/models/activity";
+import FileHandler from "@tiptap/extension-file-handler";
+import Image from "@tiptap/extension-image";
+import Document from "@tiptap/extension-document";
 
 const lowlight = createLowlight(all);
 const DRAG_HANDLE_GUTTER_PX = 28;
@@ -105,6 +106,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         parent: window.location.hostname,
       }),
       Image,
+      Document,
       TableRow,
       TableCell,
       TableHeader,
@@ -137,7 +139,63 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         },
       }),
       Markdown,
+
+      // upload extension mechanics
+      FileHandler.configure({
+        allowedMimeTypes: [
+          "image/png",
+          "image/jpeg",
+          "image/gif",
+          "image/webp",
+        ],
+        onDrop: (currentEditor, files, pos) => {
+          files.forEach((file) => {
+            const fileReader = new FileReader();
+
+            fileReader.readAsDataURL(file);
+            fileReader.onload = () => {
+              currentEditor
+                .chain()
+                .insertContentAt(pos, {
+                  type: "image",
+                  attrs: {
+                    src: fileReader.result,
+                  },
+                })
+                .focus()
+                .run();
+            };
+          });
+        },
+        onPaste: (currentEditor, files, htmlContent) => {
+          files.forEach((file) => {
+            if (htmlContent) {
+              // if there is htmlContent, stop manual insertion & let other extensions handle insertion via inputRule
+              // you could extract the pasted file from this url string and upload it to a server for example
+              console.log(htmlContent); // oxlint-disable-line no-console
+              return false;
+            }
+
+            const fileReader = new FileReader();
+
+            fileReader.readAsDataURL(file);
+            fileReader.onload = () => {
+              currentEditor
+                .chain()
+                .insertContentAt(currentEditor.state.selection.anchor, {
+                  type: "image",
+                  attrs: {
+                    src: fileReader.result,
+                  },
+                })
+                .focus()
+                .run();
+            };
+          });
+        },
+      }),
     ],
+
     content: "",
     contentType: "markdown",
     editorProps: {
