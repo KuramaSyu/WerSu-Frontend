@@ -35,7 +35,7 @@ import {
   type HirarchyItem,
 } from "../../models/HirarchyItem";
 import { RecentActivityPanel } from "../../components/RecentActivityPanel";
-import { LeftSideView } from "../MainPage/LeftSideView";
+import { LeftPanel } from "../MainPage/LeftPanel";
 import { NoteActionPanel } from "./NoteActionPanel";
 
 const ROOT_PARENT_ID = "root";
@@ -280,7 +280,7 @@ export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
 
   return (
     <>
-      <LeftSideView open={open} setOpen={setOpen}>
+      <LeftPanel open={open} setOpen={setOpen}>
         <Stack spacing={2} sx={{ p: 2 }}>
           <NoteActionPanel
             isLoading={!note}
@@ -300,7 +300,7 @@ export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
             target={noteId ? { type: "note", id: noteId } : { type: "root" }}
           />
         </Stack>
-      </LeftSideView>
+      </LeftPanel>
 
       <Dialog
         open={moveDialogOpen}

@@ -26,7 +26,7 @@ export const CodeBlockThemer = styled(Box)(({ theme }) => ({
 
       // Code block syntax highlighting using hljs classes
       ".hljs-comment, .hljs-quote": {
-        color: lighten(theme.palette.muted.dark, 0.5),
+        color: lighten(theme.palette.background.paper, 0.5),
       },
 
       // variables

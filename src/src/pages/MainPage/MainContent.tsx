@@ -13,6 +13,7 @@ import {
   Stack,
   TextField,
   ThemeProvider,
+  Toolbar,
 } from "@mui/material";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { AnimatePresence, motion } from "framer-motion";
@@ -35,10 +36,11 @@ import { DirectorySideView } from "./DirectorySideView";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import MenuOpenIcon from "@mui/icons-material/MenuOpen";
 import MenuIcon from "@mui/icons-material/Menu";
-import { LeftSideView } from "./LeftSideView";
+import { LeftPanel } from "./LeftPanel";
 import NewNoteSpeedDial from "../../components/NewNoteSpeedDial";
 import { useNavigate } from "react-router-dom";
 import { getNoteParentDirectoryIds } from "../../utils/fileGraphUtils";
+import TopBar from "../../components/TopBar";
 
 export const MainContent: React.FC = () => {
   const { notes, updateNoteParentDirectory } = useSearchNotesStore();
@@ -188,6 +190,7 @@ export const MainContent: React.FC = () => {
     <>
       <Box
         sx={{
+          px: M4,
           height: "100%",
           width: "100%",
           alignSelf: "center",
@@ -211,7 +214,7 @@ export const MainContent: React.FC = () => {
           <NewNoteSpeedDial />
           <DragDropProvider onDragEnd={(event) => void handleDragEnd(event)}>
             <Stack direction={"row"} alignItems={"flex-start"}>
-              <LeftSideView open={leftPaneOpen} setOpen={setLeftPaneOpen}>
+              <LeftPanel open={leftPaneOpen} setOpen={setLeftPaneOpen}>
                 <Stack
                   direction="row"
                   justifyContent="flex-end"
@@ -226,7 +229,7 @@ export const MainContent: React.FC = () => {
                   </IconButton>
                 </Stack>
                 <DirectorySideView isLoading={directoriesLoading} />
-              </LeftSideView>
+              </LeftPanel>
               <Box>
                 {Object.entries(notesByDirectory).map(([dir, notes]) => {
                   const dirMeta = directoriesById[dir];
