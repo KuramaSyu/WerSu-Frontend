@@ -1,4 +1,4 @@
-import { useEffect, useState, type MouseEvent } from "react";
+import { useCallback, useEffect, useState, type MouseEvent } from "react";
 import {
   Alert,
   Box,
@@ -44,6 +44,9 @@ import type { NoteVersionSummaryReply } from "../../api/models/activity";
 import FileHandler from "@tiptap/extension-file-handler";
 import Image from "@tiptap/extension-image";
 import Document from "@tiptap/extension-document";
+import { Dropcursor } from "@tiptap/extensions";
+import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
+import UploadFileDialog from "./UploadSpeedDialAction";
 
 const lowlight = createLowlight(all);
 const DRAG_HANDLE_GUTTER_PX = 28;
@@ -82,6 +85,9 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   // Loading state for restore flow.
   const [isRestoringVersion, setIsRestoringVersion] = useState(false);
 
+  // dialog open state for file upload
+  const [fileUploadDialogOpen, setFileUploadDialogOpen] = useState(false);
+
   useEffect(() => {
     setNoteTitle(note?.title ?? "");
   }, [note?.id, note?.title]);
@@ -106,6 +112,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         parent: window.location.hostname,
       }),
       Image,
+      Dropcursor,
       Document,
       TableRow,
       TableCell,
@@ -213,6 +220,22 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       },
     },
   });
+
+  /**
+   * callback for add image button, which adds an image block with the provided
+   * URL to the current editors focus position
+   */
+  const addImage = useCallback(() => {
+    const url = window.prompt("URL");
+
+    if (url) {
+      editor.chain().focus().setImage({ src: url }).run();
+    }
+  }, [editor]);
+
+  if (!editor) {
+    return null;
+  }
 
   const isEditable = useEditorState({
     editor,
@@ -365,6 +388,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           backgroundColor: "background.default",
         }}
       >
+        {/* Main content heading  with title and save button*/}
         <Stack
           direction="row"
           justifyContent="space-between"
@@ -386,12 +410,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           </Button>
         </Stack>
 
-        {fetchError && <Alert severity="error">{fetchError}</Alert>}
-
-        {!fetchError && !note && (
-          <Typography color="text.secondary">Loading note...</Typography>
-        )}
-
+        {/* Rich Editor */}
         {editor && editorMode === "rich" && (
           <>
             <TextSelectionBubbleMenu editor={editor} enabled={isEditable} />
@@ -401,9 +420,11 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
               onMouseMove={handleDragRegionMouseMove}
               onMouseLeave={handleDragRegionMouseLeave}
             >
+              {/* block drag drop handlers, which are hidden when not hovered and not active */}
               <DragHandle
                 editor={editor}
-                className={`note-block-drag-handle ${isEditable ? "" : "note-block-drag-handle--hidden"} ${isInDragHandleArea ? "note-block-drag-handle--active" : ""} ${isEditorFocused && !isInDragHandleArea ? "note-block-drag-handle--suppressed" : ""}`}
+                // ${isInDragHandleArea ? "note-block-drag-handle--active" : ""} ${isEditorFocused && !isInDragHandleArea ? "note-block-drag-handle--suppressed" : ""}
+                className={`note-block-drag-handle ${isEditable ? "" : "note-block-drag-handle--hidden"} `}
                 nested={false}
               >
                 <DragIndicatorIcon fontSize="small" />
@@ -415,6 +436,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           </>
         )}
 
+        {/* Source Editor */}
         {editorMode === "source" && (
           <TextField
             value={sourceMarkdown}
@@ -475,6 +497,12 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           tooltipTitle="Versions"
           onClick={() => setVersionsOpen(true)}
         />
+
+        <SpeedDialAction
+          icon={<AddPhotoAlternateIcon />}
+          tooltipTitle="Upload Image"
+          onClick={() => setFileUploadDialogOpen(true)}
+        />
       </SpeedDial>
 
       {/* Right-side version history drawer */}
@@ -493,6 +521,15 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         }
         isFetchingVersion={isFetchingVersion}
         isRestoring={isRestoringVersion}
+      />
+
+      {/* dialog which opens on file upload click */}
+      <UploadFileDialog
+        noteId={noteId!}
+        directoryId={note?.get_dir()!}
+        editor={editor}
+        dialogOpen={fileUploadDialogOpen}
+        setDialogOpen={setFileUploadDialogOpen}
       />
     </>
   );
