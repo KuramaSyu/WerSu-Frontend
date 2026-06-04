@@ -13,7 +13,6 @@ import "./App.css";
 import { MainPage } from "./pages/MainPage/Main";
 import { Box } from "@mui/material";
 import { SwaggerDocs } from "./pages/docs/Main";
-import { EditorGlobalStyles } from "./theme/GlobalStyles";
 import InfoDisplay from "./pages/MainPage/InfoDisplay";
 import { NotePage } from "./pages/NotePage/Main";
 import { DirectoryView } from "./pages/DirectoryView/Main";
@@ -40,7 +39,6 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <Bootstrap />
-      <EditorGlobalStyles />
       {/* <CssBaseline /> */}
       <Router>
         <Box
