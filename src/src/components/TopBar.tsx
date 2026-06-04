@@ -58,7 +58,7 @@ const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
   const [showBar, setShowBar] = useState(true);
   const lastYRef = useRef(0);
 
-  const { theme, themeName, setTheme } = useThemeStore();
+  const { theme, themeName, setTheme, customThemes } = useThemeStore();
   const navigate = useNavigate();
   const location = useLocation();
   const { user, setUser } = useUserStore();
@@ -174,6 +174,7 @@ const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
     );
   };
 
+  console.log(`custom themes: ${JSON.stringify(customThemes)}`);
   // Desktop view
   return (
     <>
@@ -233,7 +234,7 @@ const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
                 <FormControl size="small" sx={{ minWidth: 150 }}>
                   <Select
                     value={themeName}
-                    onChange={(event) => void setTheme(event.target.value)}
+                    onChange={(event) => setTheme(event.target.value)}
                     displayEmpty
                     sx={{
                       borderRadius: M4,
@@ -243,11 +244,14 @@ const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
                     }}
                     inputProps={{ "aria-label": "Select theme" }}
                   >
-                    <MenuItem value="default">Nord Dark</MenuItem>
-                    <MenuItem value="github">GitHub Light</MenuItem>
-                    <MenuItem value="github-dark">GitHub Dark</MenuItem>
-                    <MenuItem value="bright">Bright Theme</MenuItem>
-                    <MenuItem value="midnight">Midnight Blue</MenuItem>
+                    {customThemes.map((theme) => (
+                      <MenuItem
+                        key={theme.custom.themeName}
+                        value={theme.custom.themeName}
+                      >
+                        {theme.custom.longName}
+                      </MenuItem>
+                    ))}
                   </Select>
                 </FormControl>
                 <Button
@@ -256,20 +260,6 @@ const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
                   color="inherit"
                 >
                   <HomeIcon />
-                </Button>
-                <Button
-                  variant={containedIfSelected(Pages.FRIENDS)}
-                  onClick={() => navigate(Pages.FRIENDS)}
-                  color="inherit"
-                >
-                  <PeopleIcon />
-                </Button>
-                <Button
-                  variant={containedIfSelected(Pages.SETTINGSV2)}
-                  onClick={() => navigate(Pages.SETTINGSV2)}
-                  color="inherit"
-                >
-                  <SettingsIcon />
                 </Button>
                 <Button
                   variant={containedIfSelected(Pages.GRAPH)}
