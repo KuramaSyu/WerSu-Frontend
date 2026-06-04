@@ -8,9 +8,9 @@ import { Title } from "../LoadingPage/Title";
 import React from "react";
 import { LogoSvgComponent } from "../LoadingPage/Main";
 import { useMinSquareSize } from "../LoadingPage/minSquareSize";
-import { defaultTheme } from "../../zustand/defaultTheme";
 import { useLoadingStore } from "../../zustand/loadingStore";
 import { useUsersStore, useUserStore } from "../../zustand/userStore";
+import { defaultTheme } from "../../theme/themes";
 
 export const LoginPage: React.FC = () => {
   const { theme, setTheme } = useThemeStore();

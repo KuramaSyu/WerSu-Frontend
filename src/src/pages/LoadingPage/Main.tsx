@@ -25,11 +25,11 @@ import {
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { Title } from "./Title";
 import { useMinSquareSize } from "./minSquareSize";
-import { defaultTheme } from "../../zustand/defaultTheme";
 import {
   ApiRequirement,
   ApiRequirementsBuilder,
 } from "../../api/ApiRequirementsBuilder";
+import { defaultTheme } from "../../theme/themes";
 
 interface LogoSvgComponentProps {
   style?: React.CSSProperties;
@@ -223,7 +223,7 @@ export const LoadingPage: React.FC = () => {
           height: "100%",
           width: "100%",
           padding: 2,
-          backgroundColor: defaultTheme.palette.muted.dark,
+          backgroundColor: defaultTheme.palette.background.paper,
           zIndex: 5,
         }}
       >
@@ -249,7 +249,7 @@ export const LoadingPage: React.FC = () => {
             animateAtYPercent={isMobile ? 0 : 50}
           />
           <StaticCircleBackground
-            color={defaultTheme.palette.muted.dark}
+            color={defaultTheme.palette.background.paper}
             sizePercent={isMobile ? 60 : 50}
             atXPercent={isMobile ? 50 : 100}
             atYPercent={isMobile ? 100 : 50}
@@ -295,7 +295,7 @@ export const LoadingPage: React.FC = () => {
 
             padding: isMobile ? 1 : 2,
             zIndex: 5,
-            border: `2px solid ${defaultTheme.palette.muted.light}`,
+            border: `2px solid ${defaultTheme.palette.background.paper}`,
           }}
         >
           <Table>

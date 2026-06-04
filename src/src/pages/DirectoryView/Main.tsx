@@ -1,4 +1,11 @@
-import { Box, ButtonBase, Divider, Stack, Typography } from "@mui/material";
+import {
+  Box,
+  ButtonBase,
+  Divider,
+  Paper,
+  Stack,
+  Typography,
+} from "@mui/material";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -10,10 +17,10 @@ import {
   DirectoryHierarchyBuilder,
   type HirarchyItem,
 } from "../../models/HirarchyItem";
-import { M3, M4, M5 } from "../../statics";
+import { M2, M3, M4, M5, M6 } from "../../statics";
 import type { MinimalNote } from "../../api/models/search";
 import { getNoteParentDirectoryIds } from "../../utils/fileGraphUtils";
-import { LeftSideView } from "../MainPage/LeftSideView";
+import { LeftPanel } from "../MainPage/LeftPanel";
 // Directory action UI moved to `DirectoryActions` component
 import { NoteApi } from "../../api/NoteApi";
 import { note_of_date_at_hour } from "../../utils/NoteTitleTemplates";
@@ -222,7 +229,8 @@ export const DirectoryView: React.FC = () => {
   };
 
   return (
-    <Box
+    <Paper
+      elevation={0}
       ref={setScrollElement}
       sx={{
         display: "flex",
@@ -232,11 +240,16 @@ export const DirectoryView: React.FC = () => {
       }}
     >
       <TopBar scrollContainer={scrollElement}></TopBar>
+      {/* padding for actual padding, topbar and topbar margin */}
       <Box
         sx={{
-          pt: `calc(${M5} + ${M4})`,
-          px: M5,
-          pb: M5,
+          pt: `calc(${M4} + ${M5} + ${M3})`,
+        }}
+      />
+
+      <Box
+        sx={{
+          px: M4,
           color: "text.primary",
         }}
       >
@@ -249,16 +262,16 @@ export const DirectoryView: React.FC = () => {
         */}
         <DragDropProvider onDragEnd={() => undefined}>
           <Stack direction="row" spacing={M4} alignItems="flex-start">
-            <LeftSideView open={leftPaneOpen} setOpen={setLeftPaneOpen}>
+            <LeftPanel open={leftPaneOpen} setOpen={setLeftPaneOpen}>
               <DirectoryActions
                 currentNode={currentNode}
                 navigate={navigate}
                 handleCreateNote={handleCreateNote}
                 handleRenameDirectory={handleRenameDirectory}
               />
-            </LeftSideView>
+            </LeftPanel>
 
-            <Box flex={1}>
+            <Paper elevation={2} sx={{ flex: 1, p: M3 }}>
               <Stack spacing={M3}>
                 <Stack spacing={0.5}>
                   <Stack direction="row" spacing={1} alignItems="center">
@@ -415,10 +428,10 @@ export const DirectoryView: React.FC = () => {
                   </Stack>
                 </Stack>
               </Stack>
-            </Box>
+            </Paper>
           </Stack>
         </DragDropProvider>
       </Box>
-    </Box>
+    </Paper>
   );
 };

@@ -88,7 +88,7 @@ const InfoDisplay: React.FC = () => {
                 "& .MuiAlert-icon": {
                   alignItems: "center",
                 },
-                backgroundColor: theme.palette.muted.main,
+                backgroundColor: theme.palette.background.paper,
                 width: "100%",
               }}
             >

@@ -1,26 +1,27 @@
-import React, { useEffect } from 'react';
-import SwaggerUI from 'swagger-ui-react';
+import React, { useEffect } from "react";
+import SwaggerUI from "swagger-ui-react";
 
 // default swagger-ui styles
-import 'swagger-ui-react/swagger-ui.css';
+import "swagger-ui-react/swagger-ui.css";
 
 // override with one of swagger-ui-themes
-import 'swagger-ui-themes/themes/3.x/theme-outline.css';
-import { BACKEND_BASE } from '../../statics';
-import { Box, GlobalStyles, styled, ThemeProvider } from '@mui/material';
-import { docsTheme, useThemeStore } from '../../zustand/useThemeStore';
+import "swagger-ui-themes/themes/3.x/theme-outline.css";
+import { BACKEND_BASE } from "../../statics";
+import { Box, GlobalStyles, styled, ThemeProvider } from "@mui/material";
+import { useThemeStore } from "../../zustand/useThemeStore";
 import {
   ApiRequirement,
   ApiRequirementsBuilder,
-} from '../../api/ApiRequirementsBuilder';
-import { useUserStore } from '../../zustand/userStore';
+} from "../../api/ApiRequirementsBuilder";
+import { useUserStore } from "../../zustand/userStore";
+import { docsTheme } from "../../theme/themes";
 
 export const SwaggerDocs: React.FC = () => {
   const { theme, setTheme } = useThemeStore();
 
   useEffect(() => {
     async function init() {
-      await setTheme('docsTheme');
+      await setTheme("docsTheme");
     }
     init();
   }, []);
@@ -38,10 +39,10 @@ export const SwaggerDocs: React.FC = () => {
     <ThemeProvider theme={docsTheme}>
       <Box
         sx={{
-          position: 'relative',
+          position: "relative",
           zIndex: 1,
-          overflow: 'scroll',
-          height: '100%',
+          overflow: "scroll",
+          height: "100%",
         }}
       >
         <Box sx={{ mb: 1 }}>

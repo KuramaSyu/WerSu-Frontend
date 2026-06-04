@@ -2,8 +2,8 @@ import React from "react";
 import { ThemeProvider, Button, Box } from "@mui/material";
 import { BACKEND_BASE } from "../../statics";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
-import { defaultTheme } from "../../zustand/defaultTheme";
 import { useUserStore } from "../../zustand/userStore";
+import { defaultTheme } from "../../theme/themes";
 
 export const DiscordLoginBig: React.FC = () => {
   const { user } = useUserStore();
