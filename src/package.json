@@ -52,6 +52,7 @@
     "katex": "^0.16.27",
     "lowlight": "^3.3.0",
     "mui-tiptap": "^1.28.1",
+    "node-vibrant": "^4.0.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-hotkeys-hook": "^5.3.2",
