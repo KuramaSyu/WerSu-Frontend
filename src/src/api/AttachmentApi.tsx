@@ -15,12 +15,10 @@ import type {
 export interface IAttachmentApi {
   /**
    * Creates a new attachment with the given payload.
-   * @param payload - The data required to create the attachment, including filename, MIME type, and data.
+   * @param file - The file to be uploaded as an attachment.
    * @returns metadata of the created attachmentfile or null
    */
-  createAttachment(
-    payload: CreateAttachmentBody,
-  ): Promise<AttachmentMetadata | null>;
+  createAttachment(file: File): Promise<AttachmentMetadata | null>;
 
   /**
    * Retrieves the attachment file as a Blob based on its unique key.
@@ -59,13 +57,11 @@ export interface IAttachmentApi {
 }
 
 export class TestAttachmentApi implements IAttachmentApi {
-  async createAttachment(
-    payload: CreateAttachmentBody,
-  ): Promise<AttachmentMetadata> {
+  async createAttachment(file: File): Promise<AttachmentMetadata> {
     return {
       key: "test-key",
-      filename: payload.filename,
-      mime_type: payload.mime_type,
+      filename: file.name,
+      mime_type: file.type,
       size_bytes: 1234,
       created_at: new Date().toISOString(),
     };
@@ -98,6 +94,8 @@ export class TestAttachmentApi implements IAttachmentApi {
   }
 }
 
+const ATTACHMENTS_API_PATH = "/api/attachments";
+
 export class AttachmentApi implements IAttachmentApi {
   private logError(urlPart: string, error: any): void {
     console.error(
@@ -106,16 +104,14 @@ export class AttachmentApi implements IAttachmentApi {
     );
   }
 
-  async createAttachment(
-    payload: CreateAttachmentBody,
-  ): Promise<AttachmentMetadata | null> {
-    const response = await fetch(`${BACKEND_BASE}/attachments`, {
+  async createAttachment(file: File): Promise<AttachmentMetadata | null> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch(`${BACKEND_BASE}${ATTACHMENTS_API_PATH}`, {
       method: "POST",
       credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
+      body: formData,
     });
 
     if (response.ok) {
@@ -126,24 +122,27 @@ export class AttachmentApi implements IAttachmentApi {
     }
 
     this.logError(
-      "/attachments",
+      `${ATTACHMENTS_API_PATH}`,
       `Response not ok: ${response.status}; ${response.statusText}`,
     );
     return null;
   }
 
   async getAttachment(key: string): Promise<Blob | null> {
-    const response = await fetch(`${BACKEND_BASE}/attachments/${key}`, {
-      method: "GET",
-      credentials: "include",
-    });
+    const response = await fetch(
+      `${BACKEND_BASE}${ATTACHMENTS_API_PATH}/${key}`,
+      {
+        method: "GET",
+        credentials: "include",
+      },
+    );
 
     if (response.ok) {
       return response.blob();
     }
 
     this.logError(
-      `/attachments/${key}`,
+      `${ATTACHMENTS_API_PATH}/${key}`,
       `Response not ok: ${response.status}; ${response.statusText}`,
     );
     return null;
@@ -151,7 +150,7 @@ export class AttachmentApi implements IAttachmentApi {
 
   async getAttachmentMetadata(key: string): Promise<AttachmentMetadata | null> {
     const response = await fetch(
-      `${BACKEND_BASE}/attachments/${key}/metadata`,
+      `${BACKEND_BASE}${ATTACHMENTS_API_PATH}/${key}/metadata`,
       {
         method: "GET",
         credentials: "include",
@@ -160,13 +159,13 @@ export class AttachmentApi implements IAttachmentApi {
 
     if (response.ok) {
       return response.json().catch((e) => {
-        this.logError(`/attachments/${key}/metadata`, String(e));
+        this.logError(`${ATTACHMENTS_API_PATH}/${key}/metadata`, String(e));
         return null;
       });
     }
 
     this.logError(
-      `/attachments/${key}/metadata`,
+      `${ATTACHMENTS_API_PATH}/${key}/metadata`,
       `Response not ok: ${response.status}; ${response.statusText}`,
     );
     return null;
@@ -175,27 +174,30 @@ export class AttachmentApi implements IAttachmentApi {
   async deleteAttachment(
     key: string,
   ): Promise<DeleteAttachmentResponse | null> {
-    const response = await fetch(`${BACKEND_BASE}/attachments/${key}`, {
-      method: "DELETE",
-      credentials: "include",
-    });
+    const response = await fetch(
+      `${BACKEND_BASE}${ATTACHMENTS_API_PATH}/${key}`,
+      {
+        method: "DELETE",
+        credentials: "include",
+      },
+    );
 
     if (response.ok) {
       return response.json().catch((e) => {
-        this.logError(`/attachments/${key}`, String(e));
+        this.logError(`${ATTACHMENTS_API_PATH}/${key}`, String(e));
         return null;
       });
     }
 
     this.logError(
-      `/attachments/${key}`,
+      `${ATTACHMENTS_API_PATH}/${key}`,
       `Response not ok: ${response.status}; ${response.statusText}`,
     );
     return null;
   }
 
   async linkAttachment(payload: AttachmentLinkBody): Promise<boolean> {
-    const response = await fetch(`${BACKEND_BASE}/attachment-links`, {
+    const response = await fetch(`${BACKEND_BASE}/api/attachment-links`, {
       method: "POST",
       credentials: "include",
       headers: {
@@ -216,7 +218,7 @@ export class AttachmentApi implements IAttachmentApi {
   }
 
   async unlinkAttachment(payload: AttachmentLinkBody): Promise<boolean> {
-    const response = await fetch(`${BACKEND_BASE}/attachment-links`, {
+    const response = await fetch(`${BACKEND_BASE}/api/attachment-links`, {
       method: "DELETE",
       credentials: "include",
       headers: {
