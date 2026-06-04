@@ -1,19 +1,36 @@
-import { createTheme } from "@mui/material/styles";
-import type { CustomThemeConfig, CustomTheme } from "../theme/customTheme";
+import { Vibrant } from "node-vibrant/browser";
 import {
-  brightTheme,
-  docsTheme,
-  githubDarkTheme,
-  githubTheme,
-  midnightTheme,
-  useThemeStore,
-} from "../zustand/useThemeStore";
+  CustomThemeImpl,
+  type CustomTheme,
+  type CustomThemeConfig,
+} from "./customTheme";
+import { createTheme } from "@mui/material";
 import useInfoStore, { SnackbarUpdateImpl } from "../zustand/InfoStore";
-import { defaultTheme } from "../zustand/defaultTheme";
-import "@fontsource/open-sans/300.css";
-import "@fontsource/open-sans/400.css";
-import "@fontsource/open-sans/600.css";
-import "@fontsource/open-sans/700.css";
+import { useThemeStore } from "../zustand/useThemeStore";
+import { customThemes, defaultTheme } from "./themes";
+
+function isLocalOpeninaryBackground(url: string): boolean {
+  try {
+    const parsedUrl = new URL(url);
+    return (
+      parsedUrl.protocol === "http:" &&
+      parsedUrl.hostname === "localhost" &&
+      parsedUrl.port === "3001"
+    );
+  } catch {
+    return false;
+  }
+}
+
+function buildPaletteRequestUrl(url: string): string {
+  if (!import.meta.env.DEV || !isLocalOpeninaryBackground(url)) {
+    return url;
+  }
+
+  const parsedUrl = new URL(url);
+  parsedUrl.searchParams.set("_theme_cache_bust", Date.now().toString());
+  return parsedUrl.toString();
+}
 
 // Augment MUI's Theme to include extra custom properties.
 declare module "@mui/material/styles" {
@@ -85,51 +102,26 @@ export function buildCustomTheme(
 // const autoSelect = (light: string, dark: string, isDark: boolean) =>
 //   isDark ? dark : light;
 export class ThemeManager {
-  private themes: Map<string, CustomThemeConfig>;
+  themes: Map<string, CustomTheme>;
   private static instance: ThemeManager | undefined;
+  private readonly THEME_LOADING_WARNING_TIMEOUT_MS = 4000;
   // For now, we use a constant to choose dark mode; later this can be dynamically set.
   private readonly isDark: boolean = true;
 
-  private constructor(configs: CustomThemeConfig[]) {
+  private constructor(themes: CustomTheme[]) {
     this.themes = new Map();
-    configs.forEach((config) => this.themes.set(config.name, config));
+
+    themes.forEach((t) => this.themes.set(t.custom.themeName, t));
+    console.log(
+      `Initialized ThemeManager with themes: ${[...this.themes.keys()].join(", ")}`,
+    );
   }
 
   public static getInstance(): ThemeManager {
     if (ThemeManager.instance === undefined) {
-      ThemeManager.instance = new ThemeManager([]);
+      ThemeManager.instance = new ThemeManager(customThemes);
     }
     return ThemeManager.instance;
-  }
-
-  public getThemeSync(themeName: string): CustomTheme | null {
-    let theme;
-    switch (themeName) {
-      case "docsTheme":
-        theme = docsTheme;
-        break;
-      case "github":
-        theme = githubTheme;
-        break;
-      case "github-dark":
-        theme = githubDarkTheme;
-        break;
-      case "bright":
-        theme = brightTheme;
-        break;
-      case "midnight":
-        theme = midnightTheme;
-        break;
-      case "default":
-        theme = defaultTheme;
-        break;
-      default:
-        theme = defaultTheme;
-    }
-    return createTheme({
-      ...theme,
-      ...themechanges,
-    });
   }
 
   /**
@@ -139,36 +131,50 @@ export class ThemeManager {
    * The full extracted palette is used to populate primary, secondary, and extra palette keys.
    */
   public async generateTheme(themeName: string): Promise<CustomTheme | null> {
-    // const background = useThemeStore.getState().theme.custom.backgroundImage;
-    let theme;
-    switch (themeName) {
-      case "docsTheme":
-        theme = docsTheme;
-        break;
-      case "github":
-        theme = githubTheme;
-        break;
-      case "github-dark":
-        theme = githubDarkTheme;
-        break;
-      case "bright":
-        theme = brightTheme;
-        break;
-      case "midnight":
-        theme = midnightTheme;
-        break;
-      case "default":
-        theme = defaultTheme;
-        break;
-      default:
-        theme = defaultTheme;
-    }
-    return createTheme({
-      ...theme,
-      ...themechanges,
-    });
+    return this.themes.get(themeName) ?? defaultTheme;
+  }
+  public getThemeSync(themeName: string): CustomTheme | null {
+    return this.themes.get(themeName) ?? defaultTheme;
   }
 }
+
+//   /**
+//    * Asynchronously generates an MUI theme.
+//    * Always runs Vibrant on the randomly chosen background.
+//    * If config.primary/secondary are provided, they override Vibrant's primary result.
+//    * The full extracted palette is used to populate primary, secondary, and extra palette keys.
+//    */
+//   public async generateTheme(themeName: string): Promise<CustomTheme | null> {
+//     // const background = useThemeStore.getState().theme.custom.backgroundImage;
+//     let theme;
+//     switch (themeName) {
+//       case "docsTheme":
+//         theme = docsTheme;
+//         break;
+//       case "github":
+//         theme = githubTheme;
+//         break;
+//       case "github-dark":
+//         theme = githubDarkTheme;
+//         break;
+//       case "bright":
+//         theme = brightTheme;
+//         break;
+//       case "midnight":
+//         theme = midnightTheme;
+//         break;
+//       case "default":
+//         theme = defaultTheme;
+//         break;
+//       default:
+//         theme = defaultTheme;
+//     }
+//     return createTheme({
+//       ...theme,
+//       ...themechanges,
+//     });
+//   }
+// }
 
 const themechanges = {
   typography: {
