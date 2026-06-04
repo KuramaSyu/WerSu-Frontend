@@ -17,7 +17,7 @@ export interface LeftSideViewProps {
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
   children?: React.ReactNode;
 }
-export const LeftSideView: React.FC<LeftSideViewProps> = ({
+export const LeftPanel: React.FC<LeftSideViewProps> = ({
   open,
   setOpen,
   children,
@@ -61,7 +61,7 @@ export const LeftSideView: React.FC<LeftSideViewProps> = ({
   return (
     <>
       <Paper
-        elevation={0}
+        elevation={1}
         sx={{
           width: `${leftWidth}px`,
           flex: `0 0 ${leftWidth}px`,
