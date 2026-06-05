@@ -8,7 +8,7 @@ import {
   SpeedDialAction,
   Typography,
 } from "@mui/material";
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { AttachmentApi } from "../../api/AttachmentApi";
 import type {
   AttachmentLinkBody,
@@ -40,6 +40,12 @@ export default function UploadFileDialog({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
 
+  /**
+   * Uploads the provided file to the server, links it to the current note, and
+   * inserts an image block with the uploaded image into the editor at the current
+   * focus position
+   * @param file the file to upload
+   */
   const uploadFile = async (file: File) => {
     try {
       setUploading(true);
@@ -71,6 +77,17 @@ export default function UploadFileDialog({
         new SnackbarUpdateImpl("Image uploaded successfully", "success"),
       );
 
+      // insert image block into editor
+      // maybe a builder whould be better where
+      const imageUrl = api.generateImageLink(
+        attachmentResponse.key,
+        null,
+        null,
+        null,
+      );
+      editor.chain().focus().setImage({ src: imageUrl }).run();
+
+      // close dialog and reset state
       setDialogOpen(false);
       setSelectedFile(null);
     } finally {
@@ -78,8 +95,20 @@ export default function UploadFileDialog({
     }
   };
 
-  function handleUploadClick() {
-    fileInputRef.current?.click();
+  /**
+   * callback for add image button, which adds an image block with the provided
+   * URL to the current editors focus position
+   */
+  const addImage = useCallback(() => {
+    const url = window.prompt("URL");
+
+    if (url) {
+      editor.chain().focus().setImage({ src: url }).run();
+    }
+  }, [editor]);
+
+  if (!editor) {
+    return null;
   }
 
   const handleDrop = (e: React.DragEvent) => {
