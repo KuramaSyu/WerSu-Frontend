@@ -48,6 +48,20 @@ export class Note implements NoteData {
     return new Note(data);
   }
 
+  get_attachment_ids(): string | undefined {
+    const attachmentRelations = this.permissions.filter(
+      (permission) =>
+        permission.relation === "parent_note" &&
+        permission.resource.object_type === "PERMISSION_OBJECT_TYPE_ATTACHMENT",
+    );
+
+    if (attachmentRelations.length > 0) {
+      return attachmentRelations[0].resource.object_id;
+    }
+
+    return undefined;
+  }
+
   get_dir(): string | undefined {
     const parentRelations = this.permissions.filter(
       (permission) =>
@@ -74,7 +88,8 @@ export type PermissionObjectType =
   | "PERMISSION_OBJECT_TYPE_USER"
   | "PERMISSION_OBJECT_TYPE_UNSPECIFIED"
   | "PERMISSION_OBJECT_TYPE_NOTE"
-  | "PERMISSION_OBJECT_TYPE_DIRECTORY";
+  | "PERMISSION_OBJECT_TYPE_DIRECTORY"
+  | "PERMISSION_OBJECT_TYPE_ATTACHMENT";
 
 export interface PermissionResourceReply {
   object_id: string;
@@ -109,7 +124,8 @@ export interface PermissionRelationshipRequest {
     | "writer"
     | "reader"
     | "parent"
-    | "parent_directory";
+    | "parent_directory"
+    | "parent_note";
   resource?: PermissionResourceRequest;
   subject?: PermissionSubjectRequest;
 }
@@ -119,24 +135,25 @@ export interface PermissionsReply {
   object_type:
     | "PERMISSION_OBJECT_TYPE_UNSPECIFIED"
     | "PERMISSION_OBJECT_TYPE_NOTE"
-    | "PERMISSION_OBJECT_TYPE_DIRECTORY";
+    | "PERMISSION_OBJECT_TYPE_DIRECTORY"
+    | "PERMISSION_OBJECT_TYPE_ATTACHMENT";
   relationships: PermissionRelationshipReply[];
 }
 
 export interface ReplacePermissionsBody {
   object_id: string;
-  object_type: "note" | "directory";
+  object_type: "note" | "directory" | "attachment";
   relationships: PermissionRelationshipRequest[];
 }
 
 export interface CreatePermissionBody {
   object_id: string;
-  object_type: "note" | "directory";
+  object_type: "note" | "directory" | "attachment";
   relationship: PermissionRelationshipRequest;
 }
 
 export interface DeletePermissionBody {
   object_id: string;
-  object_type: "note" | "directory";
+  object_type: "note" | "directory" | "attachment";
   relationship: PermissionRelationshipRequest;
 }
