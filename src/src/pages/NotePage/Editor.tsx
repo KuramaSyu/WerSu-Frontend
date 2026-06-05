@@ -221,22 +221,6 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     },
   });
 
-  /**
-   * callback for add image button, which adds an image block with the provided
-   * URL to the current editors focus position
-   */
-  const addImage = useCallback(() => {
-    const url = window.prompt("URL");
-
-    if (url) {
-      editor.chain().focus().setImage({ src: url }).run();
-    }
-  }, [editor]);
-
-  if (!editor) {
-    return null;
-  }
-
   const isEditable = useEditorState({
     editor,
     selector: (context) => context.editor.isEditable,
