@@ -44,9 +44,9 @@ export interface IAttachmentApi {
   /**
    * Links an existing attachment to a note using the provided payload, which includes the attachment key and note ID.
    * @param payload - The data required to link the attachment, including the attachment key and the note ID.
-   * @returns whether or not the linking was successful
+   * @returns the URL of the linked attachment or null if unsuccessful
    */
-  linkAttachment(payload: AttachmentLinkBody): Promise<boolean>;
+  linkAttachment(payload: AttachmentLinkBody): Promise<string | null>;
 
   /**
    * Unlinks an attachment from a note using the provided payload, which includes the attachment key and note ID.
@@ -54,6 +54,20 @@ export interface IAttachmentApi {
    * @returns whether or not the unlinking was successful
    */
   unlinkAttachment(payload: AttachmentLinkBody): Promise<boolean>;
+
+  /**
+   * generates image link
+   * @param key the attachment key
+   * @param width the desired image width in pixels, or null for original width
+   * @param height the desired image height in pixels, or null for original height
+   * @param format the desired image format (e.g. "jpeg", "png", "webp"), or null for original format
+   */
+  generateImageLink(
+    key: string,
+    width: number | null,
+    height: number | null,
+    format: string | null,
+  ): string;
 }
 
 export class TestAttachmentApi implements IAttachmentApi {
@@ -85,12 +99,21 @@ export class TestAttachmentApi implements IAttachmentApi {
     return { success: true };
   }
 
-  async linkAttachment(): Promise<boolean> {
-    return true;
+  async linkAttachment(): Promise<string | null> {
+    return null;
   }
 
   async unlinkAttachment(): Promise<boolean> {
     return true;
+  }
+
+  generateImageLink(
+    key: string,
+    width: number | null,
+    height: number | null,
+    format: string | null,
+  ): string {
+    return `https://example.com/attachments/${key}`;
   }
 }
 
@@ -102,6 +125,28 @@ export class AttachmentApi implements IAttachmentApi {
       `Error fetching ${BACKEND_BASE}${urlPart}:`,
       JSON.stringify(error),
     );
+  }
+
+  generateImageLink(
+    key: string,
+    width: number | null,
+    height: number | null,
+    format: string | null,
+  ): string {
+    const params = new URLSearchParams();
+
+    // set same defaults
+    width = width ?? 720;
+    height = height ?? null; // since dimensions are unknown of image -> this could lead to distortion
+    format = format ?? `webp`;
+
+    // add to query
+    if (width) params.append("width", width.toString());
+    if (height) params.append("height", height.toString());
+    if (format) params.append("format", format);
+    params.append("key", encodeURIComponent(key));
+
+    return `${BACKEND_BASE}${ATTACHMENTS_API_PATH}/image?${params.toString()}`;
   }
 
   async createAttachment(file: File): Promise<AttachmentMetadata | null> {
@@ -196,7 +241,7 @@ export class AttachmentApi implements IAttachmentApi {
     return null;
   }
 
-  async linkAttachment(payload: AttachmentLinkBody): Promise<boolean> {
+  async linkAttachment(payload: AttachmentLinkBody): Promise<string | null> {
     const response = await fetch(`${BACKEND_BASE}/api/attachment-links`, {
       method: "POST",
       credentials: "include",
@@ -207,14 +252,15 @@ export class AttachmentApi implements IAttachmentApi {
     });
 
     if (response.ok) {
-      return true;
+      // encode payload key since s3 path contains / which confuses the GIN REST API
+      return `${BACKEND_BASE}/attachments/${encodeURIComponent(payload.attachment_key)}`;
     }
 
     this.logError(
       "/attachment-links",
       `Response not ok: ${response.status}; ${response.statusText}`,
     );
-    return false;
+    return null;
   }
 
   async unlinkAttachment(payload: AttachmentLinkBody): Promise<boolean> {
