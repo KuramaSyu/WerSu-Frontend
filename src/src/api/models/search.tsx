@@ -48,18 +48,17 @@ export class Note implements NoteData {
     return new Note(data);
   }
 
-  get_attachment_ids(): string | undefined {
+  get_attachment_ids(): string[] {
+    console.log("Getting attachment ids from permissions", this.permissions);
     const attachmentRelations = this.permissions.filter(
       (permission) =>
         permission.relation === "parent_note" &&
         permission.resource.object_type === "PERMISSION_OBJECT_TYPE_ATTACHMENT",
     );
 
-    if (attachmentRelations.length > 0) {
-      return attachmentRelations[0].resource.object_id;
-    }
-
-    return undefined;
+    return attachmentRelations.map(
+      (permission) => permission.resource.object_id,
+    );
   }
 
   get_dir(): string | undefined {
