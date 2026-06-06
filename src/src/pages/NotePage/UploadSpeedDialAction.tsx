@@ -9,9 +9,10 @@ import {
   Typography,
 } from "@mui/material";
 import { useCallback, useRef, useState } from "react";
-import { AttachmentApi } from "../../api/AttachmentApi";
+import { AttachmentApi, AttachmentLinkBuilder } from "../../api/AttachmentApi";
 import type {
   AttachmentLinkBody,
+  AttachmentMetadata,
   CreateAttachmentBody,
 } from "../../api/models/attachment";
 import type { Editor } from "@tiptap/core";
@@ -19,18 +20,20 @@ import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 
 export interface ImageUploadProps {
-  editor: Editor;
+  // external function, which inserts the given text at the current position
+  insertAtCurrentPosition: (text: string) => void;
   directoryId: string;
   noteId: string;
   dialogOpen: boolean;
   setDialogOpen: (open: boolean) => void;
+  onUploadSuccess?: (attachment: AttachmentMetadata) => void;
 }
 export default function UploadFileDialog({
-  editor,
-  directoryId,
+  insertAtCurrentPosition,
   noteId,
   dialogOpen,
   setDialogOpen,
+  onUploadSuccess,
 }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const { setMessage } = useInfoStore();
@@ -77,15 +80,19 @@ export default function UploadFileDialog({
         new SnackbarUpdateImpl("Image uploaded successfully", "success"),
       );
 
-      // insert image block into editor
-      // maybe a builder whould be better where
-      const imageUrl = api.generateImageLink(
-        attachmentResponse.key,
-        null,
-        null,
-        null,
+      // insert into editor with provided method
+      // before that, wait 50ms, so that backend has time to set permissions. otherwise 403
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      insertAtCurrentPosition(
+        new AttachmentLinkBuilder(api)
+          .setWidth(720)
+          .getLink(attachmentResponse.key),
       );
-      editor.chain().focus().setImage({ src: imageUrl }).run();
+
+      // call hook, usually used to save note
+      if (onUploadSuccess) {
+        onUploadSuccess(attachmentResponse);
+      }
 
       // close dialog and reset state
       setDialogOpen(false);
@@ -99,17 +106,15 @@ export default function UploadFileDialog({
    * callback for add image button, which adds an image block with the provided
    * URL to the current editors focus position
    */
-  const addImage = useCallback(() => {
-    const url = window.prompt("URL");
-
-    if (url) {
-      editor.chain().focus().setImage({ src: url }).run();
-    }
-  }, [editor]);
-
-  if (!editor) {
-    return null;
-  }
+  // const addImage = useCallback(() => {
+  //   //   const url = window.prompt("URL");
+  //   //   if (url) {
+  //   //     editor.chain().focus().setImage({ src: url }).run();
+  //   //   }
+  //   // }, [editor]);
+  //   // if (!editor) {
+  //   //   return null;
+  // });
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();

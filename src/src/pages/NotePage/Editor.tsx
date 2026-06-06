@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useState, type MouseEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+} from "react";
 import {
   Alert,
   Box,
@@ -47,6 +53,7 @@ import Document from "@tiptap/extension-document";
 import { Dropcursor } from "@tiptap/extensions";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import UploadFileDialog from "./UploadSpeedDialAction";
+import { AttachmentApi, AttachmentLinkBuilder } from "../../api/AttachmentApi";
 
 const lowlight = createLowlight(all);
 const DRAG_HANDLE_GUTTER_PX = 28;
@@ -87,6 +94,9 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
 
   // dialog open state for file upload
   const [fileUploadDialogOpen, setFileUploadDialogOpen] = useState(false);
+
+  // ref for textfield of source view
+  const sourceEditorRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     setNoteTitle(note?.title ?? "");
@@ -207,6 +217,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     contentType: "markdown",
     editorProps: {
       handleKeyDown(view, event) {
+        // do not tab out of code block, but insert spaces within the code block
         if (event.key === "Tab" && editor?.isActive("codeBlock")) {
           event.preventDefault();
           const tab = "    ";
@@ -217,6 +228,33 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         }
 
         return false;
+      },
+      handleDrop(view, event) {
+        // handle attachment drop -> insert image link
+        const attachment_id = event.dataTransfer?.getData(
+          "application/attachment-id",
+        );
+        if (!attachment_id) {
+          return false; // let tiptap handle drop, e.g. do nothing
+        }
+
+        const coords = {
+          left: event.clientX,
+          top: event.clientY,
+        };
+        const pos = view.posAtCoords(coords);
+        if (!pos) {
+          return true;
+        } // cancel
+
+        const api = new AttachmentApi();
+        const link = new AttachmentLinkBuilder(api)
+          .setWidth(720)
+          .getLink(attachment_id);
+        const imageNode = view.state.schema.nodes.image.create({ src: link });
+        const transaction = view.state.tr.insert(pos.pos, imageNode);
+        view.dispatch(transaction);
+        return true; // handled
       },
     },
   });
@@ -424,6 +462,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         {editorMode === "source" && (
           <TextField
             value={sourceMarkdown}
+            ref={sourceEditorRef}
             onChange={(event) => setSourceMarkdown(event.target.value)}
             multiline
             minRows={16}
@@ -511,10 +550,49 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       <UploadFileDialog
         noteId={noteId!}
         directoryId={note?.get_dir()!}
-        editor={editor}
+        insertAtCurrentPosition={(imageLink) => {
+          const text = imageLinkToBlock(imageLink, editorMode);
+          switch (editorMode) {
+            case "rich":
+              editor.chain().focus().insertContent(text).run();
+              break;
+            case "source": {
+              const textarea = sourceEditorRef.current;
+              if (!textarea) {
+                return;
+              }
+
+              const start = textarea.selectionStart;
+              const end = textarea.selectionEnd;
+
+              // reconstruct text to: text before selection + new text + text after selection
+              const newValue =
+                sourceMarkdown.substring(0, start ?? undefined) +
+                text +
+                (end ? sourceMarkdown.substring(end) : "");
+              setSourceMarkdown(newValue);
+            }
+          }
+        }}
         dialogOpen={fileUploadDialogOpen}
         setDialogOpen={setFileUploadDialogOpen}
+        onUploadSuccess={(_) => handleSave()}
       />
     </>
   );
 };
+
+/**
+ * when inserting an image, we need to check if we use tiptap editor or source mode. The tiptap editor
+ * gets an HTML img block, where as the source editor gets the markdown image link.
+ * @param imageLink link to build block of
+ * @param editorMode editor mode
+ * @returns the block for the current editor mode
+ */
+function imageLinkToBlock(imageLink: string, editorMode: "rich" | "source") {
+  if (editorMode === "rich") {
+    return `<img src="${imageLink}" />`;
+  } else {
+    return `![image](${imageLink})`;
+  }
+}
