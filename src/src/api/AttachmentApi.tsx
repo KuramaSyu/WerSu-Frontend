@@ -119,6 +119,80 @@ export class TestAttachmentApi implements IAttachmentApi {
 
 const ATTACHMENTS_API_PATH = "/api/attachments";
 
+/**
+ * Simple heler to build image to prevent function calls with 20x null
+ */
+export class AttachmentLinkBuilder {
+  private api: IAttachmentApi;
+  width: number | null;
+  height: number | null;
+  format: string | null;
+  as_html: boolean;
+  as_markdown: boolean;
+
+  constructor(api: IAttachmentApi) {
+    this.api = api;
+    this.width = null;
+    this.height = null;
+    this.format = null;
+    this.as_html = false;
+    this.as_markdown = false;
+  }
+
+  public asHtml(): AttachmentLinkBuilder {
+    this.as_html = true;
+    return this;
+  }
+
+  public asMarkdown(): AttachmentLinkBuilder {
+    this.as_markdown = true;
+    return this;
+  }
+
+  public setWidth(width: number | null): AttachmentLinkBuilder {
+    this.width = width;
+    return this;
+  }
+
+  public setHeight(height: number | null): AttachmentLinkBuilder {
+    this.height = height;
+    return this;
+  }
+
+  public setFormat(format: string | null): AttachmentLinkBuilder {
+    this.format = format;
+    return this;
+  }
+
+  private getHtml(link: string): string {
+    return `<img src="${link}" alt="Attachment Image" />`;
+  }
+
+  private getMarkdown(link: string): string {
+    return `![Attachment Image](${link})`;
+  }
+
+  public getLink(key: string): string {
+    /**builds the link with the given parameters */
+    const link = this.api.generateImageLink(
+      key,
+      this.width,
+      this.height,
+      this.format,
+    );
+
+    if (this.as_html) {
+      return this.getHtml(link);
+    }
+
+    if (this.as_markdown) {
+      return this.getMarkdown(link);
+    }
+
+    return link;
+  }
+}
+
 export class AttachmentApi implements IAttachmentApi {
   private logError(urlPart: string, error: any): void {
     console.error(
@@ -194,8 +268,9 @@ export class AttachmentApi implements IAttachmentApi {
   }
 
   async getAttachmentMetadata(key: string): Promise<AttachmentMetadata | null> {
+    key = encodeURIComponent(key); // encode key to handle special characters
     const response = await fetch(
-      `${BACKEND_BASE}${ATTACHMENTS_API_PATH}/${key}/metadata`,
+      `${BACKEND_BASE}${ATTACHMENTS_API_PATH}/metadata/?key=${key}`,
       {
         method: "GET",
         credentials: "include",
@@ -204,13 +279,16 @@ export class AttachmentApi implements IAttachmentApi {
 
     if (response.ok) {
       return response.json().catch((e) => {
-        this.logError(`${ATTACHMENTS_API_PATH}/${key}/metadata`, String(e));
+        this.logError(
+          `${BACKEND_BASE}${ATTACHMENTS_API_PATH}/metadata?key=${key}`,
+          String(e),
+        );
         return null;
       });
     }
 
     this.logError(
-      `${ATTACHMENTS_API_PATH}/${key}/metadata`,
+      `${BACKEND_BASE}${ATTACHMENTS_API_PATH}/metadata?key=${key}`,
       `Response not ok: ${response.status}; ${response.statusText}`,
     );
     return null;
@@ -229,13 +307,16 @@ export class AttachmentApi implements IAttachmentApi {
 
     if (response.ok) {
       return response.json().catch((e) => {
-        this.logError(`${ATTACHMENTS_API_PATH}/${key}`, String(e));
+        this.logError(
+          `${BACKEND_BASE}${ATTACHMENTS_API_PATH}/${key}`,
+          String(e),
+        );
         return null;
       });
     }
 
     this.logError(
-      `${ATTACHMENTS_API_PATH}/${key}`,
+      `${BACKEND_BASE}${ATTACHMENTS_API_PATH}/${key}`,
       `Response not ok: ${response.status}; ${response.statusText}`,
     );
     return null;
