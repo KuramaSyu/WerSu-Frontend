@@ -37,6 +37,9 @@ import {
 import { RecentActivityPanel } from "../../components/RecentActivityPanel";
 import { LeftPanel } from "../MainPage/LeftPanel";
 import { NoteActionPanel } from "./NoteActionPanel";
+import { AttachmentApi } from "../../api/AttachmentApi";
+import type { AttachmentMetadata } from "../../api/models/attachment";
+import { AttachmentPanelSection } from "./AttachmentPanelSection";
 
 const ROOT_PARENT_ID = "root";
 
@@ -130,6 +133,35 @@ const getParentDirectoryIds = (
   return [...new Set(ids)];
 };
 
+/**
+ * NoteSidePanel component that displays note metadata and management options in a side panel.
+ *
+ * Provides functionality to:
+ * - Display note information including last edited timestamp, parent directories, and user permissions
+ * - View recent activity related to the note
+ * - Change the parent directory of the note through a dialog interface
+ *
+ * @component
+ * @param {NoteSidePanelProps} props - The component props
+ * @param {Note} props.note - The note object containing metadata and permissions
+ * @param {string} props.noteId - The unique identifier of the note
+ * @param {boolean} props.open - Controls whether the side panel is open
+ * @param {(open: boolean) => void} props.setOpen - Callback to toggle the side panel visibility
+ * @param {(note: Note) => void} props.onNoteUpdated - Callback invoked when the note is updated
+ *
+ * @returns {React.ReactElement} The rendered NoteSidePanel component with metadata display and move dialog
+ *
+ * @example
+ * ```tsx
+ * <NoteSidePanel
+ *   note={note}
+ *   noteId="123"
+ *   open={true}
+ *   setOpen={setOpen}
+ *   onNoteUpdated={handleNoteUpdated}
+ * />
+ * ```
+ */
 export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
   note,
   noteId,
@@ -199,6 +231,30 @@ export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
       };
     });
   }, [directoryHierarchy, parentDirectoryIds]);
+
+  const [attachments, setAttachments] = useState<AttachmentMetadata[]>([]);
+
+  useEffect(() => {
+    const loadAttachments = async () => {
+      if (!note) {
+        return;
+      }
+      const ids = note.get_attachment_ids();
+      // request metadata for each attachment id and save as promise array
+      const api = new AttachmentApi();
+      const promises = [];
+
+      for (const id of ids) {
+        promises.push(api.getAttachmentMetadata(id));
+      }
+      const results = await Promise.all(promises);
+      const metadatas = results.filter((m) => m !== null);
+
+      setAttachments(metadatas);
+    };
+
+    loadAttachments();
+  }, [note]);
 
   // Group user permissions by relation (owner/admin/writer/reader, etc.).
   const permissionSections = useMemo<PermissionSection[]>(() => {
@@ -293,6 +349,10 @@ export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
             onChangeParentClick={() => setMoveDialogOpen(true)}
             canChangeParent={Boolean(note && noteId)}
           />
+
+          <Divider sx={{ opacity: 0.3 }} />
+
+          <AttachmentPanelSection noteAttachments={attachments} />
 
           <Divider sx={{ opacity: 0.3 }} />
 
