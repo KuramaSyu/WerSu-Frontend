@@ -9,7 +9,11 @@ import {
   Typography,
 } from "@mui/material";
 import { useCallback, useRef, useState } from "react";
-import { AttachmentApi, AttachmentLinkBuilder } from "../../api/AttachmentApi";
+import {
+  AttachmentApi,
+  AttachmentLinkBuilder,
+  type IAttachmentApi,
+} from "../../api/AttachmentApi";
 import type {
   AttachmentLinkBody,
   AttachmentMetadata,
@@ -18,6 +22,8 @@ import type {
 import type { Editor } from "@tiptap/core";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
+import type { MinimalNote } from "../../api/models/search";
+import UploadFileBuilder from "./UploadFileBuilder";
 
 export interface ImageUploadProps {
   // external function, which inserts the given text at the current position
@@ -53,46 +59,16 @@ export default function UploadFileDialog({
     try {
       setUploading(true);
 
-      const api = new AttachmentApi();
-
-      const attachmentResponse = await api.createAttachment(file);
-
-      if (!attachmentResponse) {
-        setMessage(
-          new SnackbarUpdateImpl("Failed to create attachment", "error"),
-        );
-        return;
-      }
-
-      const success = await api.linkAttachment({
-        attachment_key: attachmentResponse.key,
-        note_id: noteId,
-      });
-
-      if (!success) {
-        setMessage(
-          new SnackbarUpdateImpl("Failed to link attachment", "error"),
-        );
-        return;
-      }
-
-      setMessage(
-        new SnackbarUpdateImpl("Image uploaded successfully", "success"),
-      );
-
-      // insert into editor with provided method
-      // before that, wait 50ms, so that backend has time to set permissions. otherwise 403
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-      insertAtCurrentPosition(
-        new AttachmentLinkBuilder(api)
-          .setWidth(720)
-          .getLink(attachmentResponse.key),
-      );
-
-      // call hook, usually used to save note
-      if (onUploadSuccess) {
-        onUploadSuccess(attachmentResponse);
-      }
+      // upload with builder
+      const uploadBuilder = new UploadFileBuilder(
+        new AttachmentApi(),
+        setMessage,
+      )
+        .insertIntoEditor(insertAtCurrentPosition)
+        .linkToNote(noteId)
+        .setFile(file)
+        .insertOnUploadSuccessHook(onUploadSuccess ?? (() => {}));
+      await uploadBuilder.upload();
 
       // close dialog and reset state
       setDialogOpen(false);
