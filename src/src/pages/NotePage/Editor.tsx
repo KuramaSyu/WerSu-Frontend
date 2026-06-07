@@ -54,6 +54,11 @@ import { Dropcursor } from "@tiptap/extensions";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import UploadFileDialog from "./UploadSpeedDialAction";
 import { AttachmentApi, AttachmentLinkBuilder } from "../../api/AttachmentApi";
+import UploadFileBuilder from "./UploadFileBuilder";
+import {
+  getPasteUploadExtension,
+  UploadAttachmentNode,
+} from "../MainPage/Modals/Editor/ImagePasteExtension";
 
 const lowlight = createLowlight(all);
 const DRAG_HANDLE_GUTTER_PX = 28;
@@ -121,6 +126,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         height: 320,
         parent: window.location.hostname,
       }),
+      UploadAttachmentNode,
       Image,
       Dropcursor,
       Document,
@@ -130,6 +136,9 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       TableWithControls.configure({ resizable: false }),
       Highlight,
       Mathematics,
+      getPasteUploadExtension(handlePasteAndUpload, (message, severity) => {
+        setMessage(new SnackbarUpdateImpl(message, severity));
+      }),
       Placeholder.configure({
         // Show hint only for the currently focused empty paragraph.
         showOnlyCurrent: true,
@@ -174,32 +183,6 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
               currentEditor
                 .chain()
                 .insertContentAt(pos, {
-                  type: "image",
-                  attrs: {
-                    src: fileReader.result,
-                  },
-                })
-                .focus()
-                .run();
-            };
-          });
-        },
-        onPaste: (currentEditor, files, htmlContent) => {
-          files.forEach((file) => {
-            if (htmlContent) {
-              // if there is htmlContent, stop manual insertion & let other extensions handle insertion via inputRule
-              // you could extract the pasted file from this url string and upload it to a server for example
-              console.log(htmlContent); // oxlint-disable-line no-console
-              return false;
-            }
-
-            const fileReader = new FileReader();
-
-            fileReader.readAsDataURL(file);
-            fileReader.onload = () => {
-              currentEditor
-                .chain()
-                .insertContentAt(currentEditor.state.selection.anchor, {
                   type: "image",
                   attrs: {
                     src: fileReader.result,
@@ -335,6 +318,17 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     }
   };
 
+  // Uploads file from clipboard and inserts into editor
+  async function handlePasteAndUpload(file: File): Promise<string> {
+    const api = new AttachmentApi();
+    const builder = new UploadFileBuilder(api, postMessage)
+      .setFile(file)
+      .linkToNote(noteId!);
+    const key = await builder.upload();
+    const link = new AttachmentLinkBuilder(api).setWidth(720).getLink(key!);
+    return link;
+  }
+
   // Restores a version by saving its content as the latest note state.
   const handleRestoreVersion = async (version: NoteVersionSummaryReply) => {
     if (!noteId) {
@@ -393,6 +387,31 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
 
   const handleDragRegionMouseLeave = () => {
     setIsInDragHandleArea(false);
+  };
+
+  const insertAtCurrentPosition = (imageLink: string) => {
+    const text = imageLinkToBlock(imageLink, editorMode);
+    switch (editorMode) {
+      case "rich":
+        editor.chain().focus().insertContent(text).run();
+        break;
+      case "source": {
+        const textarea = sourceEditorRef.current;
+        if (!textarea) {
+          return;
+        }
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+
+        // reconstruct text to: text before selection + new text + text after selection
+        const newValue =
+          sourceMarkdown.substring(0, start ?? undefined) +
+          text +
+          (end ? sourceMarkdown.substring(end) : "");
+        setSourceMarkdown(newValue);
+      }
+    }
   };
 
   return (
@@ -550,30 +569,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       <UploadFileDialog
         noteId={noteId!}
         directoryId={note?.get_dir()!}
-        insertAtCurrentPosition={(imageLink) => {
-          const text = imageLinkToBlock(imageLink, editorMode);
-          switch (editorMode) {
-            case "rich":
-              editor.chain().focus().insertContent(text).run();
-              break;
-            case "source": {
-              const textarea = sourceEditorRef.current;
-              if (!textarea) {
-                return;
-              }
-
-              const start = textarea.selectionStart;
-              const end = textarea.selectionEnd;
-
-              // reconstruct text to: text before selection + new text + text after selection
-              const newValue =
-                sourceMarkdown.substring(0, start ?? undefined) +
-                text +
-                (end ? sourceMarkdown.substring(end) : "");
-              setSourceMarkdown(newValue);
-            }
-          }
-        }}
+        insertAtCurrentPosition={insertAtCurrentPosition}
         dialogOpen={fileUploadDialogOpen}
         setDialogOpen={setFileUploadDialogOpen}
         onUploadSuccess={(_) => handleSave()}
