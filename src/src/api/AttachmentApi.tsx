@@ -298,7 +298,7 @@ export class AttachmentApi implements IAttachmentApi {
     key: string,
   ): Promise<DeleteAttachmentResponse | null> {
     const response = await fetch(
-      `${BACKEND_BASE}${ATTACHMENTS_API_PATH}/${key}`,
+      `${BACKEND_BASE}${ATTACHMENTS_API_PATH}/?key=${encodeURIComponent(key)}`,
       {
         method: "DELETE",
         credentials: "include",
@@ -308,18 +308,20 @@ export class AttachmentApi implements IAttachmentApi {
     if (response.ok) {
       return response.json().catch((e) => {
         this.logError(
-          `${BACKEND_BASE}${ATTACHMENTS_API_PATH}/${key}`,
+          `${BACKEND_BASE}${ATTACHMENTS_API_PATH}/?key=${encodeURIComponent(key)}`,
           String(e),
         );
-        return null;
+        throw new Error(
+          `Failed to parse delete response for attachment with key ${key}`,
+        );
       });
     }
 
     this.logError(
-      `${BACKEND_BASE}${ATTACHMENTS_API_PATH}/${key}`,
+      `${BACKEND_BASE}${ATTACHMENTS_API_PATH}/?key=${encodeURIComponent(key)}`,
       `Response not ok: ${response.status}; ${response.statusText}`,
     );
-    return null;
+    throw new Error(`Failed to delete attachment with key ${key}`);
   }
 
   async linkAttachment(payload: AttachmentLinkBody): Promise<string | null> {
