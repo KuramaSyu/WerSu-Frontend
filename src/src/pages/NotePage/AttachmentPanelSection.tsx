@@ -6,6 +6,7 @@ import {
   Chip,
   Dialog,
   Stack,
+  Tooltip,
   Typography,
   useTheme,
 } from "@mui/material";
@@ -33,7 +34,18 @@ export const AttachmentPanelSection: React.FC<AttachmentPanelSectionProps> = ({
       the next line */}
       <Accordion elevation={2}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />} color="primary">
-          Attachments
+          <Stack direction={"column"}>
+            <Typography component="span" sx={{ width: "33%", flexShrink: 0 }}>
+              Attachments
+            </Typography>
+            <Typography
+              component="span"
+              sx={{ color: "text.secondary" }}
+              variant="caption"
+            >
+              Click to view or drag into the editor
+            </Typography>
+          </Stack>
         </AccordionSummary>
         <AccordionDetails>
           <Box
@@ -51,12 +63,35 @@ export const AttachmentPanelSection: React.FC<AttachmentPanelSectionProps> = ({
                 onDragStart={(e) => {
                   e.dataTransfer.setData("application/attachment-id", a.key);
                 }}
+                sx={{
+                  "&:hover": {
+                    cursor: "pointer",
+                    backgroundColor: theme.palette.primary.main,
+                    color: theme.blendWithContrast(
+                      theme.palette.primary.main,
+                      0.7,
+                    ),
+                  },
+                }}
               />
             ))}
           </Box>
         </AccordionDetails>
       </Accordion>
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
+      <Dialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        maxWidth={false}
+        fullWidth={false}
+        slotProps={{
+          paper: {
+            sx: {
+              maxHeight: "none",
+              overflow: "visible",
+            },
+          },
+        }}
+      >
         {selectedAttachment && (
           <AttachmentView attachment={selectedAttachment} />
         )}

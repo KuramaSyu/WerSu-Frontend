@@ -1,9 +1,12 @@
 import {
+  Button,
   Card,
   CardActions,
   CardContent,
   CardHeader,
+  CardMedia,
   IconButton,
+  TextField,
   Tooltip,
 } from "@mui/material";
 import type { AttachmentMetadata } from "../../api/models/attachment";
@@ -14,6 +17,7 @@ import FullscreenExitIcon from "@mui/icons-material/FullscreenExit";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
+import CloseIcon from "@mui/icons-material/Close";
 
 export interface AttachmentViewProps {
   attachment: AttachmentMetadata;
@@ -24,6 +28,7 @@ export const AttachmentView: React.FC<AttachmentViewProps> = ({
 }) => {
   const [bigView, setBigView] = useState(false);
   const { setMessage } = useInfoStore();
+  const [filename, setFilename] = useState(attachment.filename);
   const handleDelete = () => {
     const api = new AttachmentApi();
     api
@@ -41,41 +46,61 @@ export const AttachmentView: React.FC<AttachmentViewProps> = ({
   const url = new AttachmentLinkBuilder(new AttachmentApi())
     .setWidth(1080)
     .getLink(attachment.key);
+
+  async function handleFilenameUpdate() {
+    const api = new AttachmentApi();
+    try {
+      await api.updateAttachment({
+        key: attachment.key,
+        filename,
+      });
+    } catch (error) {
+      setMessage(new SnackbarUpdateImpl("Failed to update filename", "error"));
+    }
+  }
+
   // Implementation for rendering the attachment view
   return (
     <Card
-      sx={{ width: bigView ? "90vw" : "66vw", transition: "300ms ease-in-out" }}
+      sx={{
+        width: bigView ? "95vw" : "66vw",
+        maxHeight: "95vh",
+        transition: "300ms ease-in-out",
+      }}
     >
       <CardHeader
-        title={attachment.filename}
+        title={
+          <TextField
+            value={filename}
+            onChange={(e) => setFilename(e.target.value)}
+            variant="standard"
+          />
+        }
         action={
           <IconButton onClick={() => setBigView((prev) => !prev)}>
             {bigView ? <FullscreenExitIcon /> : <FullscreenIcon />}
           </IconButton>
         }
+        onBlur={handleFilenameUpdate}
       />
-      <CardContent sx={{ padding: 1 }}>
-        <img
-          src={url}
-          alt={attachment.filename}
-          style={{
-            width: "auto",
-            height: "auto",
-            display: "block",
-          }}
-        />
-      </CardContent>
+      <CardContent sx={{ padding: 1, overflow: "visible" }}></CardContent>
+      <CardMedia
+        component={"img"}
+        image={url}
+        alt={attachment.filename}
+        sx={{
+          maxWidth: "100%",
+          maxHeight: "calc(95vh - 140px)", // leave room for header/actions
+          // width: "auto",
+          // height: "auto",
+          objectFit: "contain",
+          margin: "0 auto",
+        }}
+      />
       <CardActions>
-        <Tooltip title="Edit filename">
-          <IconButton>
-            <EditIcon />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="Delete attachment">
-          <IconButton color="error" onClick={handleDelete}>
-            <DeleteIcon />
-          </IconButton>
-        </Tooltip>
+        <Button color="error" onClick={handleDelete} startIcon={<DeleteIcon />}>
+          Delete Attachment
+        </Button>
       </CardActions>
     </Card>
   );
