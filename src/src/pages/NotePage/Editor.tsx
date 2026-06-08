@@ -419,7 +419,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       <Paper
         elevation={1}
         sx={{
-          minHeight: "100%",
+          height: "100%",
           flex: 1,
           p: M3,
           borderRadius: M2,
@@ -427,6 +427,13 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           flexDirection: "column",
           gap: M3,
           backgroundColor: "background.default",
+        }}
+        onClick={(event) => {
+          // only focus editor, if the paper itself was clicked. not a child within it
+          if (event.target !== event.currentTarget) {
+            return;
+          }
+          editor.commands.focus("end");
         }}
       >
         {/* Main content heading  with title and save button*/}
