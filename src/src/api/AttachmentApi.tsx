@@ -1,9 +1,11 @@
+import { th } from "zod/v4/locales";
 import { BACKEND_BASE } from "../statics";
 import type {
   AttachmentLinkBody,
   AttachmentMetadata,
   CreateAttachmentBody,
   DeleteAttachmentResponse,
+  UpdateAttachmentRequest,
 } from "./models/attachment";
 
 /**
@@ -19,6 +21,16 @@ export interface IAttachmentApi {
    * @returns metadata of the created attachmentfile or null
    */
   createAttachment(file: File): Promise<AttachmentMetadata | null>;
+
+  /**
+   * Update metadata of an attachment - usually to rename it
+   * @param key - The unique identifier for the attachment which should be updated
+   * @param filename - The new filename for the attachment
+   * @returns metadata of the created attachmentfile or null
+   */
+  updateAttachment(
+    payload: UpdateAttachmentRequest,
+  ): Promise<AttachmentMetadata | null>;
 
   /**
    * Retrieves the attachment file as a Blob based on its unique key.
@@ -71,6 +83,18 @@ export interface IAttachmentApi {
 }
 
 export class TestAttachmentApi implements IAttachmentApi {
+  async updateAttachment(
+    payload: UpdateAttachmentRequest,
+  ): Promise<AttachmentMetadata | null> {
+    return {
+      key: payload.key,
+      filename: payload.filename ?? "test.txt",
+      mime_type: payload.mime_type ?? "text/plain",
+      size_bytes: 1234,
+      created_at: new Date().toISOString(),
+    };
+  }
+
   async createAttachment(file: File): Promise<AttachmentMetadata> {
     return {
       key: "test-key",
@@ -201,6 +225,38 @@ export class AttachmentApi implements IAttachmentApi {
     );
   }
 
+  async updateAttachment(
+    payload: UpdateAttachmentRequest,
+  ): Promise<AttachmentMetadata | null> {
+    const params = new URLSearchParams({
+      key: encodeURIComponent(payload.key),
+    });
+    if (payload.filename) {
+      params.append("filename", encodeURIComponent(payload.filename));
+    }
+    if (payload.mime_type) {
+      params.append("mime_type", payload.mime_type);
+    }
+    const url = `${BACKEND_BASE}${ATTACHMENTS_API_PATH}/metadata/?${params.toString()}`;
+    const result = await fetch(url, {
+      method: "PATCH",
+      credentials: "include",
+    });
+    if (result.ok) {
+      return result.json().catch((e) => {
+        this.logError(url, String(e));
+        return null;
+      });
+    } else {
+      this.logError(
+        url,
+        `Response not ok: ${result.status}; ${result.statusText}`,
+      );
+      throw new Error(
+        `Failed to update attachment with key ${payload.key} and response status: ${result.status}`,
+      );
+    }
+  }
   generateImageLink(
     key: string,
     width: number | null,

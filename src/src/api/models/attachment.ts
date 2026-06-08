@@ -20,3 +20,9 @@ export interface AttachmentLinkBody {
 export interface DeleteAttachmentResponse {
   success: boolean;
 }
+
+export interface UpdateAttachmentRequest {
+  key: string;
+  filename?: string;
+  mime_type?: string;
+}
