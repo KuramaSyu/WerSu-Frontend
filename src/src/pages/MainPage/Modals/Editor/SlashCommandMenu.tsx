@@ -6,6 +6,7 @@ import {
   List,
   ListItemButton,
   ListItemText,
+  ListSubheader,
   Paper,
   Typography,
 } from "@mui/material";
@@ -340,18 +341,28 @@ export const SlashCommandMenu = ({
           py: 1,
         }}
       >
-        <Typography variant="caption" sx={{ px: 1.5, color: "text.secondary" }}>
-          Slash commands
+        <Typography
+          variant="subtitle2"
+          sx={{ color: "text.primary" }}
+          textTransform={"uppercase"}
+          px={2}
+          pb={1}
+        >
+          Slash Commands
         </Typography>
-
         <List
           dense
           disablePadding
+          component={"nav"}
           sx={{
-            display: "flex",
-            flexDirection: "column",
             maxHeight: 300,
-            overflow: "scroll",
+            overflowY: "scroll",
+
+            // Scrollbar
+            scrollbarWidth: "none",
+            // currently not used since scrollbar is none, but also a good option with "thin" as scrollbarWidth
+            // scrollbarColor: (theme) =>
+            //   `${theme.palette.action.disabled} ${theme.palette.background.paper}`,
           }}
         >
           {matchingCommands.map((command, i) => (
@@ -363,11 +374,14 @@ export const SlashCommandMenu = ({
               }}
               onMouseEnter={() => setSelectedIndex(i)}
               sx={{
+                px: 0,
+                m: 0,
                 backgroundColor:
                   i === selectedIndex ? "action.selected" : undefined,
               }}
             >
               <ListItemText
+                sx={{ pl: 2, m: 0 }}
                 primary={command.label}
                 secondary={`/${command.id}`}
               />
