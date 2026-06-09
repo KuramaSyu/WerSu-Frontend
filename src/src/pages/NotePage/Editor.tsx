@@ -56,9 +56,11 @@ import UploadFileDialog from "./UploadSpeedDialAction";
 import { AttachmentApi, AttachmentLinkBuilder } from "../../api/AttachmentApi";
 import UploadFileBuilder from "./UploadFileBuilder";
 import {
+  getNodeByFileType,
   getPasteUploadExtension,
   UploadAttachmentNode,
 } from "../../components/Editor/ImagePasteExtension";
+import type { ApplicationAttachmentBody } from "./AttachmentPanelSection";
 
 const lowlight = createLowlight(all);
 const DRAG_HANDLE_GUTTER_PX = 28;
@@ -179,11 +181,12 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
             const fileReader = new FileReader();
 
             fileReader.readAsDataURL(file);
+
             fileReader.onload = () => {
               currentEditor
                 .chain()
                 .insertContentAt(pos, {
-                  type: "image",
+                  type: file.type,
                   attrs: {
                     src: fileReader.result,
                   },
@@ -214,10 +217,21 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       },
       handleDrop(view, event) {
         // handle attachment drop -> insert image link
-        const attachment_id = event.dataTransfer?.getData(
-          "application/attachment-id",
+        // const node = getNodeByFileType(file, file.type, currentEditor.view);
+        //     console.log(
+        //       `insert node ${node} at pos ${pos} because of file drop`,
+        //     );
+        const jsonBody = event.dataTransfer?.getData(
+          "application/x-application-attachment",
         );
-        if (!attachment_id) {
+        if (!jsonBody) {
+          return false; // let tiptap handle drop, e.g. do nothing
+        }
+        const attachmentBody = JSON.parse(
+          jsonBody,
+        ) as ApplicationAttachmentBody;
+
+        if (!attachmentBody.key) {
           return false; // let tiptap handle drop, e.g. do nothing
         }
 
@@ -233,9 +247,17 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         const api = new AttachmentApi();
         const link = new AttachmentLinkBuilder(api)
           .setWidth(720)
-          .getLink(attachment_id);
-        const imageNode = view.state.schema.nodes.image.create({ src: link });
-        const transaction = view.state.tr.insert(pos.pos, imageNode);
+          .setContentType(
+            attachmentBody.contentType ?? "application/octet-stream",
+          )
+          .getLink(attachmentBody.key);
+        const node = getNodeByFileType(
+          attachmentBody.contentType,
+          attachmentBody.filename,
+          link,
+          view,
+        )!;
+        const transaction = view.state.tr.insert(pos.pos, node);
         view.dispatch(transaction);
         return true; // handled
       },

@@ -89,7 +89,7 @@ export class TestAttachmentApi implements IAttachmentApi {
     return {
       key: payload.key,
       filename: payload.filename ?? "test.txt",
-      mime_type: payload.mime_type ?? "text/plain",
+      content_type: payload.content_type ?? "text/plain",
       size_bytes: 1234,
       created_at: new Date().toISOString(),
     };
@@ -99,7 +99,7 @@ export class TestAttachmentApi implements IAttachmentApi {
     return {
       key: "test-key",
       filename: file.name,
-      mime_type: file.type,
+      content_type: file.type,
       size_bytes: 1234,
       created_at: new Date().toISOString(),
     };
@@ -113,7 +113,7 @@ export class TestAttachmentApi implements IAttachmentApi {
     return {
       key,
       filename: "test.txt",
-      mime_type: "text/plain",
+      content_type: "text/plain",
       size_bytes: 1234,
       created_at: new Date().toISOString(),
     };
@@ -153,6 +153,7 @@ export class AttachmentLinkBuilder {
   format: string | null;
   as_html: boolean;
   as_markdown: boolean;
+  contentType: string | null;
 
   constructor(api: IAttachmentApi) {
     this.api = api;
@@ -161,10 +162,16 @@ export class AttachmentLinkBuilder {
     this.format = null;
     this.as_html = false;
     this.as_markdown = false;
+    this.contentType = "image/*";
   }
 
   public asHtml(): AttachmentLinkBuilder {
     this.as_html = true;
+    return this;
+  }
+
+  public setContentType(contentType: string): AttachmentLinkBuilder {
+    this.contentType = contentType;
     return this;
   }
 
@@ -198,12 +205,17 @@ export class AttachmentLinkBuilder {
 
   public getLink(key: string): string {
     /**builds the link with the given parameters */
-    const link = this.api.generateImageLink(
-      key,
-      this.width,
-      this.height,
-      this.format,
-    );
+    var link: string;
+    if (this.contentType && this.contentType.startsWith("image/")) {
+      link = this.api.generateImageLink(
+        key,
+        this.width,
+        this.height,
+        this.format,
+      );
+    } else {
+      link = `${BACKEND_BASE}${ATTACHMENTS_API_PATH}/?key=${encodeURIComponent(key)}`;
+    }
 
     if (this.as_html) {
       return this.getHtml(link);
@@ -234,8 +246,8 @@ export class AttachmentApi implements IAttachmentApi {
     if (payload.filename) {
       params.append("filename", encodeURIComponent(payload.filename));
     }
-    if (payload.mime_type) {
-      params.append("mime_type", payload.mime_type);
+    if (payload.content_type) {
+      params.append("content_type", payload.content_type);
     }
     const url = `${BACKEND_BASE}${ATTACHMENTS_API_PATH}/metadata/?${params.toString()}`;
     const result = await fetch(url, {

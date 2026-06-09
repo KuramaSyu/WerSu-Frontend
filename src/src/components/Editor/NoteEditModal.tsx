@@ -48,7 +48,7 @@ import { EditorBubbleMenu } from "./EditorBubbleMenu";
 import { EditorStaticMenu } from "./EditorStaticMenu";
 import { ThemedEditorBox } from "./ThemedEditorBox";
 import { CellSelection } from "@tiptap/pm/tables";
-import "../../../../styles/tiptap.css";
+import "../../styles/tiptap.css";
 import { TableWithControls } from "./TableControlls/TableControlls";
 
 // codeblock extension + all languages

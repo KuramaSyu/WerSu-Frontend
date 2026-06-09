@@ -8,6 +8,7 @@ import { Node as ProseMirrorNode } from "prosemirror-model";
 import { Node } from "@tiptap/core";
 import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
 import type { AssignmentReturnSharp } from "@mui/icons-material";
+import type { EditorView } from "@tiptap/pm/view";
 
 /**
  * factory function to create a paste upload extension for tiptap editor with dynamic upload function
@@ -75,12 +76,18 @@ export function getPasteUploadExtension(
                     setMessage("Failed to upload image.", "error");
                   },
                 );
-                setMessage("Pasted image", "info");
 
-                // create actual node with image
-                const imageNode = view.state.schema.nodes.image.create({
-                  src: url,
-                });
+                // create actual node. If it's an image, then an image node, else a link node
+                var attachmentNode = getNodeByFileType(
+                  file.type,
+                  file.name,
+                  url,
+                  view,
+                );
+                if (!attachmentNode) {
+                  setMessage("Unsupported file type.", "error");
+                  return;
+                }
 
                 // replace the placeholder
                 const placeholderNode = findNodeById(view.state.doc, uploadID);
@@ -93,7 +100,7 @@ export function getPasteUploadExtension(
                 const tr = view.state.tr.replaceWith(
                   placeholderNode.pos!,
                   placeholderNode.pos! + placeholderNode.node!.nodeSize,
-                  imageNode,
+                  attachmentNode,
                 );
                 view.dispatch(tr);
                 return true; // indicate that the paste event was handled
@@ -106,6 +113,30 @@ export function getPasteUploadExtension(
     },
   });
   return PateUploadExtension;
+}
+
+/**
+ * get ProseMirrorNode by filetype
+ */
+export function getNodeByFileType(
+  contentType: string,
+  fileName: string,
+  url: string,
+  view: EditorView,
+): ProseMirrorNode {
+  var attachmentNode: ProseMirrorNode;
+  if (contentType.startsWith("image/")) {
+    // create image node
+    attachmentNode = view.state.schema.nodes.image.create({
+      src: url,
+    });
+  } else {
+    // create link node
+    attachmentNode = view.state.schema.text(fileName, [
+      view.state.schema.marks.link.create({ href: url }),
+    ]);
+  }
+  return attachmentNode;
 }
 
 /**

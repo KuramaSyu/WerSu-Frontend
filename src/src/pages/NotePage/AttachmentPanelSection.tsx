@@ -20,6 +20,12 @@ export interface AttachmentPanelSectionProps {
   noteAttachments: AttachmentMetadata[];
 }
 
+export interface ApplicationAttachmentBody {
+  key: string;
+  filename: string;
+  contentType: string;
+}
+
 export const AttachmentPanelSection: React.FC<AttachmentPanelSectionProps> = ({
   noteAttachments,
 }) => {
@@ -61,7 +67,18 @@ export const AttachmentPanelSection: React.FC<AttachmentPanelSectionProps> = ({
                   setDialogOpen(true);
                 }}
                 onDragStart={(e) => {
-                  e.dataTransfer.setData("application/attachment-id", a.key);
+                  console.log(
+                    `start dragging attachment ${a.filename} with key ${a.key} and content type ${a.content_type}`,
+                  );
+                  e.dataTransfer.setData(
+                    "application/x-application-attachment",
+
+                    JSON.stringify({
+                      key: a.key,
+                      filename: a.filename,
+                      contentType: a.content_type,
+                    } as ApplicationAttachmentBody),
+                  );
                 }}
                 sx={{
                   "&:hover": {
