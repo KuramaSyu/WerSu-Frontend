@@ -6,6 +6,7 @@ import {
   CardHeader,
   CardMedia,
   IconButton,
+  InputAdornment,
   TextField,
   Tooltip,
 } from "@mui/material";
@@ -74,6 +75,15 @@ export const AttachmentView: React.FC<AttachmentViewProps> = ({
             value={filename}
             onChange={(e) => setFilename(e.target.value)}
             variant="standard"
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <EditIcon />
+                  </InputAdornment>
+                ),
+              },
+            }}
           />
         }
         action={
