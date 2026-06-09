@@ -9,6 +9,7 @@ import {
   Alert,
   Box,
   Button,
+  Input,
   Paper,
   SpeedDial,
   SpeedDialAction,
@@ -61,6 +62,9 @@ import {
   UploadAttachmentNode,
 } from "../../components/Editor/ImagePasteExtension";
 import type { ApplicationAttachmentBody } from "./AttachmentPanelSection";
+import { useThemeStore } from "../../zustand/useThemeStore";
+import { NoteButtonActionRow } from "./NoteButtonActionRow";
+import { useEditorSettings } from "../../zustand/useEditorSettings";
 
 const lowlight = createLowlight(all);
 const DRAG_HANDLE_GUTTER_PX = 28;
@@ -78,6 +82,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   fetchError,
   onNoteUpdated,
 }) => {
+  const { theme } = useThemeStore();
   const { setMessage } = useInfoStore();
   const [noteTitle, setNoteTitle] = useState(note?.title ?? "");
   const [isSaving, setIsSaving] = useState(false);
@@ -101,6 +106,9 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
 
   // dialog open state for file upload
   const [fileUploadDialogOpen, setFileUploadDialogOpen] = useState(false);
+
+  // used to set write/read mode
+  const { write: isWriteMode } = useEditorSettings();
 
   // ref for textfield of source view
   const sourceEditorRef = useRef<HTMLInputElement | null>(null);
@@ -263,6 +271,11 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       },
     },
   });
+
+  // read <--> write
+  useEffect(() => {
+    editor?.setEditable(isWriteMode);
+  }, [isWriteMode, editor]);
 
   const isEditable = useEditorState({
     editor,
@@ -457,22 +470,28 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         <Stack
           direction="row"
           justifyContent="space-between"
-          alignItems="center"
-          spacing={M3}
+          alignItems="flex-start"
+          gap={M3}
+          width={"100%"}
         >
-          <TextField
+          <Input
             value={noteTitle}
             onChange={(event) => setNoteTitle(event.target.value)}
-            fullWidth
             placeholder="Note title"
+            disableUnderline
+            sx={{
+              width: `${Math.max(noteTitle.length, 4)}ch`,
+              maxWidth: "60rem",
+              fontSize: theme.typography.h2,
+              pr: M2,
+            }}
           />
-          <Button
-            onClick={() => void handleSave()}
-            variant="contained"
-            disabled={!noteId || isSaving || (editorMode === "rich" && !editor)}
-          >
-            {isSaving ? "Saving..." : "Save"}
-          </Button>
+          <NoteButtonActionRow
+            editor={editor}
+            editorMode={editorMode}
+            isSaving={isSaving}
+            handleSave={handleSave}
+          />
         </Stack>
 
         {/* Rich Editor */}
