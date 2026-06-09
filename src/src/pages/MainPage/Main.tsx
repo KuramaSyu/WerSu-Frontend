@@ -86,6 +86,8 @@ export const MainPage: React.FC = () => {
           )}
         </AnimatePresence>
       )}
+
+      {/* we currently need the loadpage since it prepares stores */}
       {isLoading && DISABLE_LOADING_ANIMATION && (
         <>
           <Box zIndex={-1} top={0} left={0} position="fixed">
