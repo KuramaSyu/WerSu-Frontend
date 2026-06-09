@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AttachmentApi } from "../api/AttachmentApi";
-import type { UpdateAttachmentRequest } from "../api/models/attachment";
+import { AttachmentApi } from "../AttachmentApi";
+import type {
+  AttachmentMetadata,
+  UpdateAttachmentRequest,
+} from "../models/attachment";
 
 const attachmentApi = new AttachmentApi();
 
@@ -57,10 +60,17 @@ export function usePatchAttachment(noteId: string) {
     mutationFn: ({ patch }: { patch: UpdateAttachmentRequest }) =>
       attachmentApi.updateAttachment(patch),
 
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["attachments", noteId],
-      });
+    onSuccess: (updatedAttachment) => {
+      // insert the updated attachment into cache
+      queryClient.setQueryData(
+        ["attachments", noteId],
+        (old: AttachmentMetadata[] = []) =>
+          old.map((attachment) =>
+            attachment.key === updatedAttachment?.key
+              ? updatedAttachment
+              : attachment,
+          ),
+      );
     },
   });
 }
