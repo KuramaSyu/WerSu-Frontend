@@ -24,7 +24,6 @@ import AddIcon from "@mui/icons-material/Add";
 import { M1, M2, M3, M4, M5, M6 } from "../../statics";
 import { note_of_date_at_hour } from "../../utils/NoteTitleTemplates";
 import { NoteApi } from "../../api/NoteApi";
-import { useNotesStore } from "../../zustand/useNotesStore";
 import { CardGrid } from "./CardGrid";
 import { Note, type NoteData } from "../../api/models/search";
 import { useSearchNotesStore } from "../../zustand/useSearchNotesStore";
@@ -41,11 +40,13 @@ import NewNoteSpeedDial from "../../components/NewNoteSpeedDial";
 import { useNavigate } from "react-router-dom";
 import { getNoteParentDirectoryIds } from "../../utils/fileGraphUtils";
 import TopBar from "../../components/TopBar";
+import { useLatestNotes, useMoveNote } from "../../api/queries/useNoteQueries";
 
 export const MainContent: React.FC = () => {
-  const { notes, updateNoteParentDirectory } = useSearchNotesStore();
   const { directoriesById, setDirectories, clearDirectories, upsertDirectory } =
     useDirectoryStore();
+  const { mutate: moveNote } = useMoveNote();
+  const { data: latestNotes } = useLatestNotes();
   const { setMessage } = useInfoStore();
   const [leftPaneOpen, setLeftPaneOpen] = useState(true);
   const navigate = useNavigate();
@@ -91,7 +92,7 @@ export const MainContent: React.FC = () => {
       return;
     }
 
-    updateNoteParentDirectory(noteId, normalizedDirectoryId);
+    moveNote({ noteId, directoryId: normalizedDirectoryId });
     // Use an explicit destination name so drag-drop results are immediately clear.
     setMessage(
       new SnackbarUpdateImpl(`Note moved to ${directoryName}`, "success"),
@@ -124,7 +125,7 @@ export const MainContent: React.FC = () => {
   // Arrange notes into a Dict[directoryId, List[Note]] with multi-parent support.
   const notesByDirectory = useMemo(() => {
     const dict: Record<string, Note[]> = {};
-    Object.values(notes).forEach((noteData) => {
+    Object.values(latestNotes ?? []).forEach((noteData) => {
       const notedata: NoteData = {
         ...noteData,
         content: noteData.stripped_content,
@@ -142,7 +143,7 @@ export const MainContent: React.FC = () => {
       });
     });
     return dict;
-  }, [notes]);
+  }, [latestNotes]);
 
   // Only fetch directory metadata if at least one note points to a non-root
   // directory. This avoids unnecessary network traffic on root-only views.

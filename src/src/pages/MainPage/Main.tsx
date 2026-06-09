@@ -33,7 +33,6 @@ import { LoginPage } from "../LoginPage/Main";
 import { RestNotesSearchType } from "../../api/models/search";
 import { note_of_date_at_hour } from "../../utils/NoteTitleTemplates";
 import { NoteApi } from "../../api/NoteApi";
-import { useNotesStore } from "../../zustand/useNotesStore";
 import { CardGrid } from "./CardGrid";
 import { MainContent } from "./MainContent";
 import TopBar from "../../components/TopBar";
@@ -50,7 +49,7 @@ export const MainPage: React.FC = () => {
     null,
   );
   const oneOrZero = Math.round(exitPercentage / 100) * 100;
-  const DISABLE_LOADING_ANIMATION = true; // Set to true to disable the loading animation
+  const DISABLE_LOADING_ANIMATION = false; // Set to true to disable the loading animation
 
   return (
     <ThemeProvider theme={theme}>

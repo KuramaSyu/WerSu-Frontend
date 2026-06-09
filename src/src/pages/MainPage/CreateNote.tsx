@@ -20,10 +20,10 @@ import CreateIcon from "@mui/icons-material/Create";
 import { note_of_date_at_hour } from "../../utils/NoteTitleTemplates";
 import { NoteApi } from "../../api/NoteApi";
 import { UserError } from "../../api/models/UserError";
-import { useNotesStore } from "../../zustand/useNotesStore";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { M3 } from "../../statics";
+import { useUpdateNote } from "../../api/queries/useNoteQueries";
 
 export interface CreateNoteProps {
   open: boolean;
@@ -38,7 +38,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
   const navigate = useNavigate();
   const [title, setTitle] = useState(note_of_date_at_hour());
   const [content, setContent] = useState("");
-  const { updateNote } = useNotesStore();
+  const { mutate: updateNote } = useUpdateNote();
   const [snackbarState, setSnackbarState] = useState({ open: false });
   const [isSaving, setIsSaving] = useState(false);
   const { setMessage } = useInfoStore();
@@ -61,7 +61,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
       }
 
       setSnackbarState({ open: true });
-      updateNote(note);
+      updateNote({ noteId: note.id, title: note.title, content: note.content });
       return note;
     } catch (error) {
       if (error instanceof UserError) {

@@ -28,6 +28,7 @@ import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { UserError } from "../../api/models/UserError";
 import { DirectoryActions } from "./DirectoryActions";
 import TopBar from "../../components/TopBar";
+import { useLatestNotes } from "../../api/queries/useNoteQueries";
 // RecentActivityPanel now rendered by DirectoryActions
 
 const findNodeById = (root: HirarchyItem, id: string): HirarchyItem | null => {
@@ -116,7 +117,7 @@ export const DirectoryView: React.FC = () => {
   const navigate = useNavigate();
   const directoryId = id ?? "root";
   const { directoriesById, setDirectories } = useDirectoryStore();
-  const { notes } = useSearchNotesStore();
+  const { data: notes } = useLatestNotes();
   const { setMessage } = useInfoStore();
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(
     null,
@@ -157,7 +158,10 @@ export const DirectoryView: React.FC = () => {
   );
 
   // Group notes by their parent directory to render the list efficiently.
-  const notesByDirectory = useMemo(() => buildNotesByDirectory(notes), [notes]);
+  const notesByDirectory = useMemo(
+    () => buildNotesByDirectory(notes ?? []),
+    [notes],
+  );
 
   const childDirectories = currentNode.getChildren();
   const notesInDirectory = notesByDirectory[currentNode.getId()] ?? [];

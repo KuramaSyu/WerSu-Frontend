@@ -129,11 +129,12 @@ class LoadingComponent {
 }
 
 export const LoadingPage: React.FC = () => {
+  const DISABLE_LOADING_ANIMATION = true; // Set to true to disable the loading animation
   const [startTime, setStartTime] = React.useState(Date.now());
   const { isLoading, setLoading } = useLoadingStore();
   const containerRef = React.useRef<HTMLDivElement>(null);
   const size = useMinSquareSize(containerRef);
-  const MIN_STARTUP_TIME = 750;
+  const MIN_STARTUP_TIME = DISABLE_LOADING_ANIMATION ? 0 : 750;
   const MIN_STARTUP_TIME_S = MIN_STARTUP_TIME / 1000;
   const initialLoadingMap = new Map<string, LoadingComponent>([
     ["You", new LoadingComponent(false, 0)],

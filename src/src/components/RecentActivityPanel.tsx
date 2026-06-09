@@ -3,8 +3,9 @@ import { useEffect, useMemo, useState } from "react";
 import { ActivityApi } from "../api/ActivityApi";
 import type { NoteVersionSummaryReply } from "../api/models/activity";
 import { M3 } from "../statics";
-import { useNotesStore } from "../zustand/useNotesStore";
-import { useSearchNotesStore } from "../zustand/useSearchNotesStore";
+import { useNote } from "../api/queries/useNoteQueries";
+import type { Note } from "../api/models/search";
+import { queryClient } from "../api/queryClient";
 
 /**
  * Defines which entity's activity should be loaded for the panel.
@@ -40,10 +41,9 @@ const formatTimestamp = (value: string): string => {
 
 /** Builds the label for an activity entry. */
 const formatActivityLabel = (activity: NoteVersionSummaryReply): string => {
-  const note = useSearchNotesStore
-    .getState()
-    .notes.find((n) => n.id === activity.note_id);
+  const note = queryClient.getQueryData<Note>(["note", activity.note_id]);
   const v = activity.version_index;
+
   // if (activity.is_snapshot) {
   //   return `Created snapshot of ${note?.title || activity.note_id}`;
   //   return `Snapshot v${activity.version_index}`;
@@ -68,15 +68,15 @@ export const RecentActivityPanel: React.FC<RecentActivityPanelProps> = ({
 }) => {
   // Keep API instance stable to avoid unnecessary effect re-runs.
   const api = useMemo(() => new ActivityApi(), []);
+  const [activity, setActivity] = useState<NoteVersionSummaryReply[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasError, setHasError] = useState(false);
   // Use a stable key so identical targets don't re-trigger the fetch effect
   // when parent re-renders (e.g., hover or focus state changes).
   const targetKey = useMemo(
     () => `${target.type}:${"id" in target ? target.id : "root"}`,
     [target],
   );
-  const [activity, setActivity] = useState<NoteVersionSummaryReply[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
