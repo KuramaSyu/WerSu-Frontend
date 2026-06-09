@@ -1,44 +1,44 @@
-import { Button, Stack, ToggleButton, ToggleButtonGroup } from '@mui/material';
-import type { Editor } from '@tiptap/core';
-import { BubbleMenu } from '@tiptap/react/menus';
-import { useEffect, useState } from 'react';
-import FormatBoldIcon from '@mui/icons-material/FormatBold';
-import FormatItalicIcon from '@mui/icons-material/FormatItalic';
-import FormatUnderlinedIcon from '@mui/icons-material/FormatUnderlined';
-import StrikeThroughIcon from '@mui/icons-material/FormatStrikethrough';
-import { useEditorState } from '@tiptap/react';
-import { useThemeStore } from '../../../../zustand/useThemeStore';
-import type { EditorBubbleMenuProps as EditorProps } from './EditorBubbleMenu';
+import { Button, Stack, ToggleButton, ToggleButtonGroup } from "@mui/material";
+import type { Editor } from "@tiptap/core";
+import { BubbleMenu } from "@tiptap/react/menus";
+import { useEffect, useState } from "react";
+import FormatBoldIcon from "@mui/icons-material/FormatBold";
+import FormatItalicIcon from "@mui/icons-material/FormatItalic";
+import FormatUnderlinedIcon from "@mui/icons-material/FormatUnderlined";
+import StrikeThroughIcon from "@mui/icons-material/FormatStrikethrough";
+import { useEditorState } from "@tiptap/react";
+import { useThemeStore } from "../../zustand/useThemeStore";
+import type { EditorBubbleMenuProps as EditorProps } from "./EditorBubbleMenu";
 
 export const BoldItalicMenu = ({ editor }: EditorProps) => {
   const { isBold, isItalic, isStrikethrough } = useEditorState({
     editor,
     selector: (ctx) => ({
-      isBold: ctx.editor.isActive('bold'),
-      isItalic: ctx.editor.isActive('italic'),
-      isStrikethrough: ctx.editor.isActive('strike'),
+      isBold: ctx.editor.isActive("bold"),
+      isItalic: ctx.editor.isActive("italic"),
+      isStrikethrough: ctx.editor.isActive("strike"),
     }),
   });
   const [formats, setFormats] = useState(() => {
     const initialFormats = [];
-    if (isBold) initialFormats.push('bold');
-    if (isItalic) initialFormats.push('italic');
-    if (isStrikethrough) initialFormats.push('strike');
+    if (isBold) initialFormats.push("bold");
+    if (isItalic) initialFormats.push("italic");
+    if (isStrikethrough) initialFormats.push("strike");
     return initialFormats;
   });
   const { theme } = useThemeStore();
 
   useEffect(() => {
     const newFormats = [];
-    if (isBold) newFormats.push('bold');
-    if (isItalic) newFormats.push('italic');
-    if (isStrikethrough) newFormats.push('strike');
+    if (isBold) newFormats.push("bold");
+    if (isItalic) newFormats.push("italic");
+    if (isStrikethrough) newFormats.push("strike");
     setFormats(newFormats);
   }, [isBold, isItalic, isStrikethrough, editor]);
 
   const handleFormat = (
     event: React.MouseEvent<HTMLElement>,
-    newFormats: string[]
+    newFormats: string[],
   ) => {
     setFormats(newFormats);
   };
@@ -52,7 +52,7 @@ export const BoldItalicMenu = ({ editor }: EditorProps) => {
         value={formats}
         onChange={handleFormat}
         aria-label="text formatting"
-        color={'secondary'}
+        color={"secondary"}
       >
         <ToggleButton
           onClick={() => editor.chain().focus().toggleBold().run()}

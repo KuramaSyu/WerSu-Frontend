@@ -9,8 +9,8 @@ import {
 import { Table } from "@tiptap/extension-table";
 import { TextSelection } from "@tiptap/pm/state";
 import { useState } from "react";
-import { useEditorMenuStore } from "../../../../../zustand/editorMenuStore";
-import { M2 } from "../../../../../statics";
+import { useEditorMenuStore } from "../../../zustand/editorMenuStore";
+import { M2 } from "../../../statics";
 import { ActionRow } from "./ActionRow";
 import { IconPlus as AddIcon } from "@tabler/icons-react";
 

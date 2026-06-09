@@ -7,7 +7,7 @@ import FormatItalicIcon from "@mui/icons-material/FormatItalic";
 import FormatUnderlinedIcon from "@mui/icons-material/FormatUnderlined";
 import StrikeThroughIcon from "@mui/icons-material/FormatStrikethrough";
 import { useEditorState } from "@tiptap/react";
-import { useThemeStore } from "../../../../zustand/useThemeStore";
+import { useThemeStore } from "../../zustand/useThemeStore";
 import { BoldItalicMenu } from "./BoldItalicMenu";
 
 export interface EditorBubbleMenuProps {

@@ -1,6 +1,6 @@
 import { Extension, mergeAttributes } from "@tiptap/core";
-import { AttachmentApi } from "../../../../api/AttachmentApi";
-import UploadFileBuilder from "../../../NotePage/UploadFileBuilder";
+import { AttachmentApi } from "../../api/AttachmentApi";
+import UploadFileBuilder from "../../pages/NotePage/UploadFileBuilder";
 import { Plugin } from "@tiptap/pm/state";
 import { string } from "zod";
 import { progress } from "framer-motion";

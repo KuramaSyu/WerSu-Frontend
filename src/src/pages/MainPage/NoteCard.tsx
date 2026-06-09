@@ -15,7 +15,7 @@ import { useDraggable } from "@dnd-kit/react";
 import { useNavigate } from "react-router-dom";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import { useState } from "react";
-import { NoteEditorModal } from "./Modals/Editor/NoteEditModal";
+import { NoteEditorModal } from "../../components/Editor/NoteEditModal";
 import { NoteApi, type INoteApi } from "../../api/NoteApi";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 

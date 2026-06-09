@@ -1,5 +1,5 @@
 import { Box, darken, lighten } from "@mui/material";
-import { M1, M2 } from "../../../../statics";
+import { M1, M2 } from "../../statics";
 import { CodeBlockThemer } from "./CodeBlockThemer";
 
 export const ThemedEditorBox = ({

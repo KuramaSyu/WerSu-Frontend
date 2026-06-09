@@ -8,8 +8,8 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { useEffect, useRef } from "react";
-import { useThemeStore } from "../../../../zustand/useThemeStore";
-import { M1, M2, M3, M4 } from "../../../../statics";
+import { useThemeStore } from "../../zustand/useThemeStore";
+import { M1, M2, M3, M4 } from "../../statics";
 import "katex/dist/katex.min.css";
 
 import { createBlockMarkdownSpec, Node } from "@tiptap/core";
@@ -43,9 +43,7 @@ import {
 } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import React, { useState } from "react";
-import useInfoStore, {
-  SnackbarUpdateImpl,
-} from "../../../../zustand/InfoStore";
+import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { EditorBubbleMenu } from "./EditorBubbleMenu";
 import { EditorStaticMenu } from "./EditorStaticMenu";
 import { ThemedEditorBox } from "./ThemedEditorBox";

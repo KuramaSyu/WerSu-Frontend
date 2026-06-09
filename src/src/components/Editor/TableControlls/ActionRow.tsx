@@ -13,7 +13,7 @@ import {
   IconArrowUp,
   IconArrowDown,
 } from "@tabler/icons-react";
-import { M1 } from "../../../../../statics";
+import { M1 } from "../../../statics";
 
 interface ActionRowProps {
   editor: Editor;

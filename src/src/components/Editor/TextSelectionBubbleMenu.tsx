@@ -9,8 +9,8 @@ import StrikeThroughIcon from "@mui/icons-material/FormatStrikethrough";
 import CodeIcon from "@mui/icons-material/Code";
 import BorderColorIcon from "@mui/icons-material/BorderColor";
 import FormatClearIcon from "@mui/icons-material/FormatClear";
-import { useThemeStore } from "../../../../zustand/useThemeStore";
-import { useEditorMenuStore } from "../../../../zustand/editorMenuStore";
+import { useThemeStore } from "../../zustand/useThemeStore";
+import { useEditorMenuStore } from "../../zustand/editorMenuStore";
 
 interface TextSelectionBubbleMenuProps {
   editor: Editor;

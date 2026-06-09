@@ -37,10 +37,10 @@ import Placeholder from "@tiptap/extension-placeholder";
 import { Markdown } from "@tiptap/markdown";
 import "katex/dist/katex.min.css";
 import "../../styles/tiptap.css";
-import { TableWithControls } from "../MainPage/Modals/Editor/TableControlls/TableControlls";
-import { ThemedEditorBox } from "../MainPage/Modals/Editor/ThemedEditorBox";
-import { TextSelectionBubbleMenu } from "../MainPage/Modals/Editor/TextSelectionBubbleMenu";
-import { SlashCommandMenu } from "../MainPage/Modals/Editor/SlashCommandMenu";
+import { TableWithControls } from "../../components/Editor/TableControlls/TableControlls";
+import { ThemedEditorBox } from "../../components/Editor/ThemedEditorBox";
+import { TextSelectionBubbleMenu } from "../../components/Editor/TextSelectionBubbleMenu";
+import { SlashCommandMenu } from "../../components/Editor/SlashCommandMenu";
 import { M2, M3, M4 } from "../../statics";
 import { NoteApi } from "../../api/NoteApi";
 import type { Note } from "../../api/models/search";
@@ -58,7 +58,7 @@ import UploadFileBuilder from "./UploadFileBuilder";
 import {
   getPasteUploadExtension,
   UploadAttachmentNode,
-} from "../MainPage/Modals/Editor/ImagePasteExtension";
+} from "../../components/Editor/ImagePasteExtension";
 
 const lowlight = createLowlight(all);
 const DRAG_HANDLE_GUTTER_PX = 28;

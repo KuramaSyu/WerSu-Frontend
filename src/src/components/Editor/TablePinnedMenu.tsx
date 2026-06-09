@@ -1,7 +1,7 @@
 import { IconButton, Stack, Tooltip } from "@mui/material";
 import type { Editor } from "@tiptap/core";
 import { BubbleMenu } from "@tiptap/react/menus";
-import { useThemeStore } from "../../../../zustand/useThemeStore";
+import { useThemeStore } from "../../zustand/useThemeStore";
 import WestIcon from "@mui/icons-material/West";
 import EastIcon from "@mui/icons-material/East";
 import VerticalAlignTopIcon from "@mui/icons-material/VerticalAlignTop";
