@@ -93,7 +93,10 @@ export const AttachmentPanelSection: React.FC<AttachmentPanelSectionProps> = ({
         }}
       >
         {selectedAttachment && (
-          <AttachmentView attachment={selectedAttachment} />
+          <AttachmentView
+            attachment={selectedAttachment}
+            onClose={() => setDialogOpen(false)}
+          />
         )}
       </Dialog>
     </>

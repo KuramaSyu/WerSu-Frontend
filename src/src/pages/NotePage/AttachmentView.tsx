@@ -19,17 +19,31 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import CloseIcon from "@mui/icons-material/Close";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import BackupIcon from "@mui/icons-material/Backup";
+import CloudDoneIcon from "@mui/icons-material/CloudDone";
+import { Cloud } from "@mui/icons-material";
+
+enum SavingState {
+  Idle,
+  Saving,
+  Saved,
+  Error,
+}
 
 export interface AttachmentViewProps {
   attachment: AttachmentMetadata;
+  onClose?: () => void;
 }
 
 export const AttachmentView: React.FC<AttachmentViewProps> = ({
   attachment,
+  onClose,
 }) => {
   const [bigView, setBigView] = useState(false);
   const { setMessage } = useInfoStore();
   const [filename, setFilename] = useState(attachment.filename);
+  const [savingState, setSavingState] = useState<SavingState>(SavingState.Idle);
   const handleDelete = () => {
     const api = new AttachmentApi();
     api
@@ -49,6 +63,7 @@ export const AttachmentView: React.FC<AttachmentViewProps> = ({
     .getLink(attachment.key);
 
   async function handleFilenameUpdate() {
+    setSavingState(SavingState.Saving);
     const api = new AttachmentApi();
     try {
       await api.updateAttachment({
@@ -57,7 +72,10 @@ export const AttachmentView: React.FC<AttachmentViewProps> = ({
       });
     } catch (error) {
       setMessage(new SnackbarUpdateImpl("Failed to update filename", "error"));
+      return;
     }
+    setSavingState(SavingState.Saved);
+    setTimeout(() => setSavingState(SavingState.Idle), 2000);
   }
 
   // Implementation for rendering the attachment view
@@ -82,14 +100,29 @@ export const AttachmentView: React.FC<AttachmentViewProps> = ({
                     <EditIcon />
                   </InputAdornment>
                 ),
+                endAdornment:
+                  savingState === SavingState.Saving ? (
+                    <InputAdornment position="end">
+                      <CloudUploadIcon />
+                    </InputAdornment>
+                  ) : savingState === SavingState.Saved ? (
+                    <InputAdornment position="end">
+                      <CloudDoneIcon color="success" />
+                    </InputAdornment>
+                  ) : undefined,
               },
             }}
           />
         }
         action={
-          <IconButton onClick={() => setBigView((prev) => !prev)}>
-            {bigView ? <FullscreenExitIcon /> : <FullscreenIcon />}
-          </IconButton>
+          <>
+            <IconButton onClick={() => setBigView((prev) => !prev)}>
+              {bigView ? <FullscreenExitIcon /> : <FullscreenIcon />}
+            </IconButton>
+            <IconButton onClick={onClose} sx={{ marginLeft: "auto" }}>
+              <CloseIcon />
+            </IconButton>
+          </>
         }
         onBlur={handleFilenameUpdate}
       />
