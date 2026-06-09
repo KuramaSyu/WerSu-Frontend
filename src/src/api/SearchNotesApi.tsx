@@ -53,8 +53,6 @@ export class SearchNotesApi implements ISearchNotesApi {
     limit: number = 10,
     offset: number = 0,
   ): Promise<MinimalNote[]> {
-    const setNotes = useSearchNotesStore.getState().setNotes;
-
     // Build URL with query parameters
     const url = new URL(`${BACKEND_BASE}/api/notes/search`);
     url.searchParams.append("search_type", search_type);
@@ -72,7 +70,6 @@ export class SearchNotesApi implements ISearchNotesApi {
         return [];
       });
       console.log("fetched notes:", notes);
-      setNotes(notes);
       return notes;
     }
     this.logError(

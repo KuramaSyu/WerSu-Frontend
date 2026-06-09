@@ -1,5 +1,4 @@
 import { BACKEND_BASE } from "../statics";
-import { useNotesStore } from "../zustand/useNotesStore";
 import { Note, type NoteData } from "./models/search";
 import { UserError } from "./models/UserError";
 import { PermissionsApi } from "./PermissionsApi";
@@ -8,12 +7,8 @@ export interface INoteApi {
   get(id: string): Promise<Note | undefined>;
   /** Fetch a specific note version by its monotonic version index. */
   getVersion(id: string, versionIndex: number): Promise<Note | undefined>;
-  post(title: string, content: string): Promise<Note | undefined>;
-  patch(
-    id: string,
-    title?: string,
-    content?: string,
-  ): Promise<Note | undefined>;
+  post(title: string, content: string): Promise<Note>;
+  patch(id: string, title?: string, content?: string): Promise<Note>;
   patchDirectory(id: string, directoryId?: string): Promise<boolean>;
   delete(id: string): Promise<boolean>;
 }
@@ -44,7 +39,6 @@ export class NoteApi implements INoteApi {
    * It sets `useUserStore` to the authenticated user
    * */
   async get(id: string): Promise<Note | undefined> {
-    const updateNote = useNotesStore.getState().updateNote;
     const response = await fetch(`${BACKEND_BASE}/api/notes/${id}`, {
       method: "GET",
       credentials: "include",
@@ -61,7 +55,6 @@ export class NoteApi implements INoteApi {
         return undefined;
       }
       const note = Note.fromJson(noteData);
-      updateNote(note);
       return note;
     }
     return undefined;
@@ -96,8 +89,7 @@ export class NoteApi implements INoteApi {
     return Note.fromJson(noteData);
   }
 
-  async post(title: string, content: string): Promise<Note | undefined> {
-    const updateNote = useNotesStore.getState().updateNote;
+  async post(title: string, content: string): Promise<Note> {
     const response = await fetch(`${BACKEND_BASE}/api/notes`, {
       method: "POST",
       credentials: "include",
@@ -119,22 +111,16 @@ export class NoteApi implements INoteApi {
         );
       });
       if (noteData === null) {
-        return undefined;
+        throw new Error("Failed to create note");
       }
       console.log(`Created note: ${JSON.stringify(noteData)}`);
       const note = Note.fromJson(noteData);
-      updateNote(note);
       return note;
     }
-    return undefined;
+    throw new Error("Failed to create note");
   }
 
-  async patch(
-    id: string,
-    title?: string,
-    content?: string,
-  ): Promise<Note | undefined> {
-    const updateNote = useNotesStore.getState().updateNote;
+  async patch(id: string, title?: string, content?: string): Promise<Note> {
     const body: { id: string; title?: string; content?: string } = { id };
     if (title !== undefined) {
       body.title = title;
@@ -160,13 +146,12 @@ export class NoteApi implements INoteApi {
         return null;
       });
       if (noteData === null) {
-        return undefined;
+        throw new Error("Failed to update note");
       }
       const note = Note.fromJson(noteData);
-      updateNote(note);
       return note;
     }
-    return undefined;
+    throw new Error("Failed to update note");
   }
 
   /**
@@ -245,7 +230,6 @@ export class NoteApi implements INoteApi {
   }
 
   async delete(id: string): Promise<boolean> {
-    const removeNote = useNotesStore.getState().removeNote;
     const response = await fetch(`${BACKEND_BASE}/api/notes/${id}`, {
       method: "DELETE",
       credentials: "include",
@@ -254,9 +238,8 @@ export class NoteApi implements INoteApi {
       throw await this.buildUserError(response, "Failed to delete note");
     }
     if (response.ok) {
-      removeNote(id);
       return true;
     }
-    return false;
+    throw new Error("Failed to delete note");
   }
 }
