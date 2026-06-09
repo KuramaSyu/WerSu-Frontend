@@ -18,6 +18,9 @@ import { ActivityApi } from "../api/ActivityApi";
 import type { NoteVersionSummaryReply } from "../api/models/activity";
 import { M2, M3, M4 } from "../statics";
 import { useSearchNotesStore } from "../zustand/useSearchNotesStore";
+import { useNote } from "../api/queries/useNoteQueries";
+import { useQueryClient } from "@tanstack/react-query";
+import type { Note } from "../api/models/search";
 
 export interface NoteVersionsDrawerProps {
   open: boolean;
@@ -43,9 +46,7 @@ const formatTimestamp = (value: string): string => {
 };
 
 const formatActivityLabel = (activity: NoteVersionSummaryReply): string => {
-  const note = useSearchNotesStore
-    .getState()
-    .notes.find((n) => n.id === activity.note_id);
+  const note = useQueryClient().getQueryData<Note>(["note", activity.note_id]);
   const v = activity.version_index;
   return (
     (v === 1 ? "Created " : "") +
