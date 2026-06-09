@@ -12,20 +12,23 @@ import type { Note } from "../../api/models/search";
 import TopBar from "../../components/TopBar";
 import { NoteEditor } from "./Editor";
 import { NoteSidePanel } from "./NoteSidePanel";
-import { useNote } from "../../api/queries/useNoteQueries";
+import { useNote, useUpdateNote } from "../../api/queries/useNoteQueries";
 
 export const NotePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useUserStore();
   const { isLoading } = useLoadingStore();
   const { isMobile } = useBreakpoint();
-  const {} = useNote(id!);
 
   const [leftPaneOpen, setLeftPaneOpen] = useState(true);
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(
     null,
   );
   const { data: note } = useNote(id);
+  const { mutate } = useUpdateNote();
+  const updateNote = (note: Note) => {
+    mutate({ noteId: id!, title: note.title, content: note.content });
+  };
 
   if (isLoading) {
     return <LoadingPage />;
@@ -65,13 +68,13 @@ export const NotePage: React.FC = () => {
           noteId={id}
           open={leftPaneOpen}
           setOpen={setLeftPaneOpen}
-          onNoteUpdated={(_) => {}}
+          onNoteUpdated={updateNote}
         />
         <NoteEditor
           note={note}
           noteId={id}
           fetchError={null}
-          onNoteUpdated={(_) => {}}
+          onNoteUpdated={updateNote}
         />
       </Box>
     </Box>
