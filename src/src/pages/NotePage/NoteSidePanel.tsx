@@ -232,30 +232,6 @@ export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
     });
   }, [directoryHierarchy, parentDirectoryIds]);
 
-  const [attachments, setAttachments] = useState<AttachmentMetadata[]>([]);
-
-  useEffect(() => {
-    const loadAttachments = async () => {
-      if (!note) {
-        return;
-      }
-      const ids = note.get_attachment_ids();
-      // request metadata for each attachment id and save as promise array
-      const api = new AttachmentApi();
-      const promises = [];
-
-      for (const id of ids) {
-        promises.push(api.getAttachmentMetadata(id));
-      }
-      const results = await Promise.all(promises);
-      const metadatas = results.filter((m) => m !== null);
-
-      setAttachments(metadatas);
-    };
-
-    loadAttachments();
-  }, [note]);
-
   // Group user permissions by relation (owner/admin/writer/reader, etc.).
   const permissionSections = useMemo<PermissionSection[]>(() => {
     const groups: Record<string, string[]> = {};
@@ -351,8 +327,7 @@ export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
           />
 
           <Divider sx={{ opacity: 0.3 }} />
-
-          <AttachmentPanelSection noteAttachments={attachments} />
+          {note && <AttachmentPanelSection note={note} />}
 
           <Divider sx={{ opacity: 0.3 }} />
 

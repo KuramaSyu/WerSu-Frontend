@@ -7,6 +7,7 @@ import type {
   DeleteAttachmentResponse,
   UpdateAttachmentRequest,
 } from "./models/attachment";
+import { useAttachmentStore } from "../zustand/useAttachmentStore";
 
 /**
  * Interface for managing attachment operations.
@@ -255,10 +256,10 @@ export class AttachmentApi implements IAttachmentApi {
       credentials: "include",
     });
     if (result.ok) {
-      return result.json().catch((e) => {
+      return (await result.json().catch((e) => {
         this.logError(url, String(e));
         return null;
-      });
+      })) as AttachmentMetadata;
     } else {
       this.logError(
         url,

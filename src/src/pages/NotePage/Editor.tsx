@@ -269,11 +269,6 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     selector: (context) => context.editor.isEditable,
   });
 
-  const isEditorFocused = useEditorState({
-    editor,
-    selector: (context) => context.editor.isFocused,
-  });
-
   useEffect(() => {
     if (!editor || !note) {
       return;
@@ -441,7 +436,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       <Paper
         elevation={1}
         sx={{
-          height: "100%",
+          height: "auto",
           flex: 1,
           p: M3,
           borderRadius: M2,
