@@ -18,6 +18,7 @@ import { useThemeStore } from "../zustand/useThemeStore";
 import { useSearchNotesStore } from "../zustand/useSearchNotesStore";
 import { RestNotesSearchType, type MinimalNote } from "../api/models/search";
 import { M2, M3, M4 } from "../statics";
+import { useInfiniteNoteSearch } from "../api/queries/useNoteQueries";
 
 interface SearchResultHighlightProps {
   content: string;
@@ -150,8 +151,9 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
   searchType,
 }) => {
   const { theme } = useThemeStore();
-  const { notes } = useSearchNotesStore();
-
+  const {} = useSearchNotesStore();
+  const { data } = useInfiniteNoteSearch(searchType, searchQuery);
+  const notes = data?.pages.flat() ?? [];
   // Handle escape key to close overlay
   useEffect(() => {
     if (!open) return;
