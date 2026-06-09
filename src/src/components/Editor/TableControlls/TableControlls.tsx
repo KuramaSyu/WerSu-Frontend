@@ -176,10 +176,10 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
             },
           }}
         >
-          <ActionRow editor={editor} />
+          {editor.isEditable && <ActionRow editor={editor} />}
         </Stack>
 
-        <Fade in={isTableHovered && showAddColControl}>
+        <Fade in={isTableHovered && showAddColControl && editor.isEditable}>
           <Box className="table-col-control">
             <Button
               className="hoverBox"
@@ -204,7 +204,7 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
           </Box>
         </Fade>
 
-        <Fade in={isTableHovered && showAddRowControl}>
+        <Fade in={isTableHovered && showAddRowControl && editor.isEditable}>
           <Box className="table-row-control">
             <Button
               className="hoverBox"
