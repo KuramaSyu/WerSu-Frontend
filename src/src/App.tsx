@@ -20,6 +20,7 @@ import { DirectoryEditPage } from "./pages/DirectoryEdit/Main";
 import { FileGraphPage } from "./pages/FileGraph/Main";
 import { recordNavigation } from "./utils/navigationMemento";
 import { Bootstrap } from "./Bootstrap";
+import "katex/dist/katex.min.css";
 
 const NavigationRecorder: React.FC = () => {
   const location = useLocation();
