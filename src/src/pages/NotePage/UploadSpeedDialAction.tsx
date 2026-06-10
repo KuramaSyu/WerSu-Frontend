@@ -33,6 +33,7 @@ export interface ImageUploadProps {
   dialogOpen: boolean;
   setDialogOpen: (open: boolean) => void;
   onUploadSuccess?: (attachment: AttachmentMetadata) => void;
+  editor?: Editor;
 }
 export default function UploadFileDialog({
   insertAtCurrentPosition,
@@ -40,6 +41,7 @@ export default function UploadFileDialog({
   dialogOpen,
   setDialogOpen,
   onUploadSuccess,
+  editor,
 }: ImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const { setMessage } = useInfoStore();
@@ -59,21 +61,28 @@ export default function UploadFileDialog({
     try {
       setUploading(true);
 
-      // upload with builder
-      const uploadBuilder = new UploadFileBuilder(
-        new AttachmentApi(),
-        setMessage,
-      )
-        .insertIntoEditor(insertAtCurrentPosition)
-        .linkToNote(noteId)
-        .setFile(file)
-        .insertOnUploadSuccessHook(onUploadSuccess ?? (() => {}));
-      await uploadBuilder.upload();
+      // if editor is given, wrap the insertAtCurrentPosition
+      // with the image insert function used for pasing (where you will first see <-- uploading image...-->
+      // and then the image will be inserted after upload)
+      if (editor) {
+        editor.chain().focus().uploadAttachment(file).run();
+      } else {
+        // upload with builder
+        const uploadBuilder = new UploadFileBuilder(
+          new AttachmentApi(),
+          setMessage,
+        )
+          .insertIntoEditor(insertAtCurrentPosition)
+          .linkToNote(noteId)
+          .setFile(file)
+          .insertOnUploadSuccessHook(onUploadSuccess ?? (() => {}));
+        await uploadBuilder.upload();
+      }
 
       // close dialog and reset state
-      setDialogOpen(false);
       setSelectedFile(null);
     } finally {
+      setDialogOpen(false);
       setUploading(false);
     }
   };
