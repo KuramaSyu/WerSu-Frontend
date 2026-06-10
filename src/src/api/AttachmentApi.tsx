@@ -7,7 +7,6 @@ import type {
   DeleteAttachmentResponse,
   UpdateAttachmentRequest,
 } from "./models/attachment";
-import { useAttachmentStore } from "../zustand/useAttachmentStore";
 
 /**
  * Interface for managing attachment operations.
