@@ -1,39 +1,16 @@
-import {
-  Box,
-  ButtonBase,
-  Grid,
-  InputAdornment,
-  Paper,
-  Slide,
-  Snackbar,
-  Stack,
-  TextField,
-  ThemeProvider,
-  Typography,
-} from "@mui/material";
+import { Box, ThemeProvider, Typography } from "@mui/material";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { AnimatePresence, motion } from "framer-motion";
 
-import { Logo } from "../../components/logo";
 import { useEffect, useMemo, useRef, useState } from "react";
-import CreateIcon from "@mui/icons-material/Create";
-import {
-  SearchNotesApi,
-  TestSearchNotesApi,
-  type ISearchNotesApi,
-} from "../../api/SearchNotesApi";
-import { useSearchNotesStore } from "../../zustand/useSearchNotesStore";
-import { NoteCard } from "./NoteCard";
+
 import { M1, M2, M3, M4, M5, M6 } from "../../statics";
 import { useUserStore } from "../../zustand/userStore";
 import { useLoadingStore } from "../../zustand/loadingStore";
 import { LoadingPage } from "../LoadingPage/Main";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { LoginPage } from "../LoginPage/Main";
-import { RestNotesSearchType } from "../../api/models/search";
-import { note_of_date_at_hour } from "../../utils/NoteTitleTemplates";
-import { NoteApi } from "../../api/NoteApi";
-import { CardGrid } from "./CardGrid";
+
 import { MainContent } from "./MainContent";
 import TopBar from "../../components/TopBar";
 
