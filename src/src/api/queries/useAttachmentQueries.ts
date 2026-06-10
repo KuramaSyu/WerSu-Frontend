@@ -4,6 +4,7 @@ import type {
   AttachmentMetadata,
   UpdateAttachmentRequest,
 } from "../models/attachment";
+import type { MinimalNote } from "../models/search";
 
 const attachmentApi = new AttachmentApi();
 
@@ -34,8 +35,15 @@ export const attachmentQueries = {
  * @returns
  */
 //
-export function useAttachments(noteId: string, attachmentKeys: string[]) {
-  return useQuery(attachmentQueries.byNote(noteId, attachmentKeys));
+export function useAttachments(
+  noteId: string,
+  attachmentKeys: string[],
+  enabled: boolean = true,
+) {
+  return useQuery({
+    ...attachmentQueries.byNote(noteId, attachmentKeys),
+    enabled: enabled,
+  });
 }
 
 /**
@@ -70,6 +78,47 @@ export function usePatchAttachment(noteId: string) {
               ? updatedAttachment
               : attachment,
           ),
+      );
+    },
+  });
+}
+
+export function useDeleteAttachment(noteId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (attachmentKey: string) =>
+      attachmentApi.deleteAttachment(attachmentKey),
+
+    onSuccess: (_, attachmentKey) => {
+      // instead of invalidate the whole query, we
+      // remove the deleted attachment from cache
+      queryClient.setQueryData(
+        ["attachments", noteId],
+        (old: AttachmentMetadata[] = []) =>
+          old.filter((attachment) => attachment.key !== attachmentKey),
+      );
+    },
+  });
+}
+/**
+ * @usage ```ts
+ * const createAttachment = useCreateAttachment();
+ * const attachment = await createAttachment.mutateAsync({file: myFile, noteId: myNoteId})
+ * ```
+ * @returns factory to create attachments
+ */
+export function useCreateAttachment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ file, noteId }: { file: File; noteId: string }) =>
+      attachmentApi.createAttachment(file),
+
+    onSuccess: (createdAttachment, { noteId }) => {
+      // insert attachment into cache for note
+      queryClient.setQueryData(
+        ["attachments", noteId],
+        (old: MinimalNote[] = []) => [createdAttachment, ...old],
       );
     },
   });

@@ -18,7 +18,7 @@ import { AttachmentView } from "./AttachmentView";
 import type { Note } from "../../api/models/search";
 import { AttachmentApi } from "../../api/AttachmentApi";
 import { useQuery } from "@tanstack/react-query";
-import { useAttachmentStore } from "../../zustand/useAttachmentStore";
+import { useAttachments } from "../../api/queries/useAttachmentQueries";
 
 export interface AttachmentPanelSectionProps {
   note: Note;
@@ -41,28 +41,13 @@ export const AttachmentPanelSection: React.FC<AttachmentPanelSectionProps> = ({
   const [selectedAttachment, setSelectedAttachment] =
     useState<AttachmentMetadata | null>(null);
 
-  const { setAttachments, attachmentsById } = useAttachmentStore();
   const [expanded, setExpanded] = useState(false);
 
-  const attachmentsQuery = useQuery({
-    queryKey: ["attachments", note.id],
-    enabled: expanded,
-    staleTime: Infinity,
-    queryFn: async () => {
-      const ids = note.get_attachment_ids();
-      // request metadata for each attachment id and save as promise array
-      const api = new AttachmentApi();
-      const promises = [];
-
-      for (const id of ids) {
-        promises.push(api.getAttachmentMetadata(id));
-      }
-      const results = await Promise.all(promises);
-      const metadatas = results.filter((m) => m !== null);
-
-      setAttachments(note.id, metadatas);
-    },
-  });
+  const { data: attachments } = useAttachments(
+    note.id,
+    note.get_attachment_ids(),
+    expanded,
+  );
 
   return (
     <>
@@ -90,7 +75,7 @@ export const AttachmentPanelSection: React.FC<AttachmentPanelSectionProps> = ({
           <Box
             sx={{ display: "flex", flexWrap: "wrap", gap: theme.spacing(1) }}
           >
-            {attachmentsById[note.id]?.map((a) => (
+            {attachments?.map((a) => (
               <Chip
                 key={a.key}
                 label={a.filename}
