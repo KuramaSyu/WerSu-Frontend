@@ -7,15 +7,13 @@ import {
   IconButton,
   Stack,
 } from "@mui/material";
-import { Editor, extensions } from "@tiptap/core";
-import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
+
 import { useState } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { latex } from "codemirror-lang-latex";
 import DoneIcon from "@mui/icons-material/Done";
 import CloseIcon from "@mui/icons-material/Close";
 import { BlockMath } from "react-katex";
-import { set } from "zod";
 
 export interface LatexDialogProps {
   open: boolean;
@@ -79,7 +77,7 @@ export const LatexDialog: React.FC<LatexDialogProps> = ({ open, onClose }) => {
               width: "100%",
             }}
           >
-            <BlockMath math={value} style={{ flex: 1 }} />
+            <BlockMath math={value} />
           </Box>
         </Stack>
       </DialogContent>
