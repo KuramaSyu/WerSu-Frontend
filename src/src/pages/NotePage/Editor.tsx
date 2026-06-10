@@ -65,7 +65,7 @@ import type { ApplicationAttachmentBody } from "./AttachmentPanelSection";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { NoteButtonActionRow } from "./NoteButtonActionRow";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
-import { InsertSpeedDial } from "./InsertSpeedDial";
+import { InsertSpeedDial } from "./SpeedDial";
 
 const lowlight = createLowlight(all);
 const DRAG_HANDLE_GUTTER_PX = 28;
