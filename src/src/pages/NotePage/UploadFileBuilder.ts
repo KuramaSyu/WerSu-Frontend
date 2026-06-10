@@ -7,6 +7,7 @@ import {
 } from "../../api/AttachmentApi";
 import type { AttachmentMetadata } from "../../api/models/attachment";
 import { de } from "zod/v4/locales";
+import { queryClient } from "../../api/queryClient";
 
 class UploadFileBuilder {
   private editor: Editor | null = null;
@@ -82,6 +83,11 @@ class UploadFileBuilder {
       }
       attachment_key = attachmentResponse.key;
 
+      // now the tanstack query is off. update it
+      queryClient.invalidateQueries({
+        queryKey: ["attachments", this.note_id],
+      });
+
       // if a note_id was provided, then link note with attachment
       if (this.note_id) {
         const linkResponse = await this.attachmentsApi.linkAttachment({
@@ -104,7 +110,7 @@ class UploadFileBuilder {
         this.insertIntoEditorFunc(
           new AttachmentLinkBuilder(this.attachmentsApi)
             .setWidth(720)
-            .getLink(this.file.name),
+            .getLink(attachment_key),
         );
       }
 
