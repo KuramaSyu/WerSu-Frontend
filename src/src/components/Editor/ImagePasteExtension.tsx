@@ -2,13 +2,40 @@ import { Extension, mergeAttributes } from "@tiptap/core";
 import { AttachmentApi } from "../../api/AttachmentApi";
 import UploadFileBuilder from "../../pages/NotePage/UploadFileBuilder";
 import { Plugin } from "@tiptap/pm/state";
-import { string } from "zod";
+import { file, string } from "zod";
 import { progress } from "framer-motion";
 import { Node as ProseMirrorNode } from "prosemirror-model";
 import { Node } from "@tiptap/core";
 import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
 import type { AssignmentReturnSharp } from "@mui/icons-material";
 import type { EditorView } from "@tiptap/pm/view";
+
+// now intellisense can find the uploadAttachment command
+declare module "@tiptap/core" {
+  interface Commands<ReturnType> {
+    attachment: {
+      uploadAttachment: (file: File) => ReturnType;
+    };
+  }
+}
+
+/**
+ * helper function to find the placeholder node in the document
+ */
+function findNodeById(
+  doc: ProseMirrorNode,
+  id: string,
+): { node: ProseMirrorNode | null; pos: number | null } | null {
+  let result: { node: ProseMirrorNode | null; pos: number | null } | null =
+    null;
+  doc.descendants((node, pos) => {
+    if (node.attrs.id === id) {
+      result = { node, pos };
+      return false; // stop iteration
+    }
+  });
+  return result;
+}
 
 /**
  * factory function to create a paste upload extension for tiptap editor with dynamic upload function
@@ -18,26 +45,27 @@ export function getPasteUploadExtension(
   onUploadHook: (file: File) => Promise<string>,
   setMessage: (message: string, severity: "error" | "warning" | "info") => void,
 ): Extension {
-  /**
-   * helper function to find the placeholder node in the document
-   */
-  function findNodeById(
-    doc: ProseMirrorNode,
-    id: string,
-  ): { node: ProseMirrorNode | null; pos: number | null } | null {
-    let result: { node: ProseMirrorNode | null; pos: number | null } | null =
-      null;
-    doc.descendants((node, pos) => {
-      if (node.attrs.id === id) {
-        result = { node, pos };
-        return false; // stop iteration
-      }
-    });
-    return result;
-  }
-
   const PateUploadExtension = Extension.create({
     name: "pasteUpload",
+
+    addCommands() {
+      return {
+        uploadAttachment:
+          (file: File) =>
+          ({ editor }) => {
+            void uploadAttachmentWithPlaceholder(
+              editor.view,
+              file,
+              onUploadHook,
+            ).catch((error) => {
+              if (error instanceof Error) {
+                setMessage("test", "error");
+              }
+            });
+            return true; // indicate that the command was handled
+          },
+      };
+    },
 
     addProseMirrorPlugins() {
       return [
@@ -53,57 +81,17 @@ export function getPasteUploadExtension(
               event.preventDefault(); // prevent default paste behavior
 
               files.forEach(async (file) => {
-                const uploadID = crypto.randomUUID(); // generate UUID to later find the placeholder node to replace it
-
-                // insert placeholder while uploading
-                const placeHolder =
-                  view.state.schema.nodes.uploadAttachment.create({
-                    id: uploadID,
-                    fileName: file.name,
-                  });
-                view.dispatch(view.state.tr.replaceSelectionWith(placeHolder));
-
-                const url = await onUploadHook(file);
-
-                // make request to url and wait until no 403 is returned. if any other
-                // error code than 403 is returned, raise this error. this is just for waiting permission insert
-                const response = await waitForImagePermission(url).catch(
-                  (error) => {
-                    console.error(
-                      "Error while waiting for image permission:",
-                      error,
-                    );
-                    setMessage("Failed to upload image.", "error");
-                  },
-                );
-
-                // create actual node. If it's an image, then an image node, else a link node
-                var attachmentNode = getNodeByFileType(
-                  file.type,
-                  file.name,
-                  url,
-                  view,
-                );
-                if (!attachmentNode) {
-                  setMessage("Unsupported file type.", "error");
-                  return;
+                try {
+                  const sucess = await uploadAttachmentWithPlaceholder(
+                    view,
+                    file,
+                    onUploadHook,
+                  );
+                } catch (error) {
+                  if (error instanceof Error) {
+                    setMessage(error.message, "error");
+                  }
                 }
-
-                // replace the placeholder
-                const placeholderNode = findNodeById(view.state.doc, uploadID);
-                if (!placeholderNode) {
-                  console.error("Placeholder node not found");
-                  return;
-                }
-
-                // replace placeholder with image node
-                const tr = view.state.tr.replaceWith(
-                  placeholderNode.pos!,
-                  placeholderNode.pos! + placeholderNode.node!.nodeSize,
-                  attachmentNode,
-                );
-                view.dispatch(tr);
-                return true; // indicate that the paste event was handled
               });
               return true; // indicate that the paste event was handled
             },
@@ -113,6 +101,60 @@ export function getPasteUploadExtension(
     },
   });
   return PateUploadExtension;
+}
+
+/**
+ * Adds a file node to the editor, with a placeholder while uploading, and replaces it with the actual file
+ * @param contentType
+ * @param fileName
+ * @param url
+ * @param view
+ * @returns
+ */
+export async function uploadAttachmentWithPlaceholder(
+  view: EditorView,
+  file: File,
+  onUploadHook: (file: File) => Promise<string>,
+): Promise<boolean> {
+  const uploadID = crypto.randomUUID(); // generate UUID to later find the placeholder node to replace it
+
+  // insert placeholder while uploading
+  const placeHolder = view.state.schema.nodes.uploadAttachment.create({
+    id: uploadID,
+    fileName: file.name,
+  });
+  view.dispatch(view.state.tr.replaceSelectionWith(placeHolder));
+
+  const url = await onUploadHook(file);
+
+  // make request to url and wait until no 403 is returned. if any other
+  // error code than 403 is returned, raise this error. this is just for waiting permission insert
+  const response = await waitForImagePermission(url).catch((error) => {
+    console.error("Error while waiting for image permission:", error);
+    throw new Error("Failed to upload image.");
+  });
+
+  // create actual node. If it's an image, then an image node, else a link node
+  var attachmentNode = getNodeByFileType(file.type, file.name, url, view);
+  if (!attachmentNode) {
+    throw new Error("Unsupported file type.");
+  }
+
+  // replace the placeholder
+  const placeholderNode = findNodeById(view.state.doc, uploadID);
+  if (!placeholderNode) {
+    console.error("Placeholder node not found");
+    return false;
+  }
+
+  // replace placeholder with image node
+  const tr = view.state.tr.replaceWith(
+    placeholderNode.pos!,
+    placeholderNode.pos! + placeholderNode.node!.nodeSize,
+    attachmentNode,
+  );
+  view.dispatch(tr);
+  return true; // indicate that the paste event was handled
 }
 
 /**
@@ -144,7 +186,7 @@ export function getNodeByFileType(
  * Used for checking image permissions, since they take some seconds to be effective
  * TODO: implement HEAD in backend, since Response is not used
  * @param url
- * @returns
+ * @returns Response | null - the response of the successful (GET) request, or null if max retries exceeded
  */
 async function waitForImagePermission(url: string): Promise<Response | null> {
   // dont wait static time. 833, 714, 625, 555, 500, 454, 416, 384, 357, 333, 312, 294, 277, 263, 250, 238, 227, 217, 208,
