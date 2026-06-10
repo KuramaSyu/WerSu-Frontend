@@ -33,7 +33,7 @@ import { Youtube } from "@tiptap/extension-youtube";
 import { Twitch } from "@tiptap/extension-twitch";
 import { TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
 import { Highlight } from "@tiptap/extension-highlight";
-import { Mathematics } from "@tiptap/extension-mathematics";
+import Mathematics, { migrateMathStrings } from "@tiptap/extension-mathematics";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Markdown } from "@tiptap/markdown";
 import "katex/dist/katex.min.css";
@@ -65,6 +65,7 @@ import type { ApplicationAttachmentBody } from "./AttachmentPanelSection";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { NoteButtonActionRow } from "./NoteButtonActionRow";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
+import { InsertSpeedDial } from "./InsertSpeedDial";
 
 const lowlight = createLowlight(all);
 const DRAG_HANDLE_GUTTER_PX = 28;
@@ -88,7 +89,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [isInDragHandleArea, setIsInDragHandleArea] = useState(false);
   // Tracks which editor surface is active.
-  const [editorMode, setEditorMode] = useState<"rich" | "source">("rich");
+  const { viewMode: editorMode, setViewMode: setEditorMode } =
+    useEditorSettings();
   // Holds the markdown for source-mode editing.
   const [sourceMarkdown, setSourceMarkdown] = useState("");
   // Controls the version history drawer.
@@ -145,7 +147,41 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       TableHeader,
       TableWithControls.configure({ resizable: false }),
       Highlight,
-      Mathematics,
+      Mathematics.configure({
+        blockOptions: {
+          onClick: (node, pos) => {
+            const newCalculation = prompt(
+              "Enter new calculation:",
+              node.attrs.latex,
+            );
+            if (newCalculation) {
+              editor
+                .chain()
+                .setNodeSelection(pos)
+                .updateBlockMath({ latex: newCalculation })
+                .focus()
+                .run();
+            }
+          },
+        },
+        inlineOptions: {
+          onClick: (node, pos) => {
+            const newCalculation = prompt(
+              "Enter new calculation:",
+              node.attrs.latex,
+            );
+            if (newCalculation) {
+              editor
+                .chain()
+                .setNodeSelection(pos)
+                .updateInlineMath({ latex: newCalculation })
+                .focus()
+                .run();
+            }
+          },
+        },
+      }),
+
       getPasteUploadExtension(handlePasteAndUpload, (message, severity) => {
         setMessage(new SnackbarUpdateImpl(message, severity));
       }),
@@ -543,52 +579,14 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       </Paper>
 
       {/* Floating editor actions */}
-      <SpeedDial
-        ariaLabel="Editor actions"
-        sx={{ position: "fixed", bottom: M4, right: M4, zIndex: 1300 }}
-        icon={<SpeedDialIcon />}
-      >
-        <SpeedDialAction
-          icon={<SaveIcon />}
-          tooltipTitle="Save"
-          onClick={() => void handleSave()}
-        />
-        {editorMode === "rich" ? (
-          <SpeedDialAction
-            icon={<CodeIcon />}
-            tooltipTitle="Source view"
-            onClick={() => {
-              const markdown = editor?.getMarkdown() ?? sourceMarkdown;
-              setSourceMarkdown(markdown);
-              setEditorMode("source");
-            }}
-          />
-        ) : (
-          <SpeedDialAction
-            icon={<EditIcon />}
-            tooltipTitle="Rich editor"
-            onClick={() => {
-              if (editor) {
-                editor.commands.setContent(sourceMarkdown, {
-                  contentType: "markdown",
-                });
-              }
-              setEditorMode("rich");
-            }}
-          />
-        )}
-        <SpeedDialAction
-          icon={<HistoryIcon />}
-          tooltipTitle="Versions"
-          onClick={() => setVersionsOpen(true)}
-        />
-
-        <SpeedDialAction
-          icon={<AddPhotoAlternateIcon />}
-          tooltipTitle="Upload Image"
-          onClick={() => setFileUploadDialogOpen(true)}
-        />
-      </SpeedDial>
+      <InsertSpeedDial
+        editor={editor}
+        handleSave={handleSave}
+        setSourceMarkdown={setSourceMarkdown}
+        setFileUploadDialogOpen={setFileUploadDialogOpen}
+        setVersionsOpen={setVersionsOpen}
+        sourceMarkdown={sourceMarkdown}
+      />
 
       {/* Right-side version history drawer */}
       <NoteVersionsDrawer
@@ -616,6 +614,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         dialogOpen={fileUploadDialogOpen}
         setDialogOpen={setFileUploadDialogOpen}
         onUploadSuccess={(_) => handleSave()}
+        editor={editor}
       />
     </>
   );
