@@ -8,7 +8,7 @@ import {
   Stack,
 } from "@mui/material";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { latex } from "codemirror-lang-latex";
 import DoneIcon from "@mui/icons-material/Done";
@@ -18,19 +18,35 @@ import { BlockMath } from "react-katex";
 export interface LatexDialogProps {
   open: boolean;
   onClose: (latex: string) => void;
+  onCancel?: (latex: string) => void;
+  latexCode?: string;
 }
-export const LatexDialog: React.FC<LatexDialogProps> = ({ open, onClose }) => {
-  const [value, setValue] = useState("");
+export const LatexDialog: React.FC<LatexDialogProps> = ({
+  open,
+  onClose,
+  onCancel,
+  latexCode,
+}) => {
+  const [value, setValue] = useState(latexCode || "");
   const [latexType, setLatexType] = useState<"inline" | "block">("inline");
   const onCloseWrap = (result: string) => {
     onClose(result);
     setValue("");
   };
 
+  // on re-opens, we need to insert LatexCode (passed as prop) into the editor
+  useEffect(() => {
+    setValue(latexCode ?? "");
+  }, [open]);
+
   return (
     <Dialog
       open={open}
-      onClose={() => {
+      onClose={(_, reason) => {
+        if (reason === "backdropClick" || reason === "escapeKeyDown") {
+          onCancel?.(value);
+          return;
+        }
         onCloseWrap("");
       }}
       fullWidth
@@ -85,7 +101,7 @@ export const LatexDialog: React.FC<LatexDialogProps> = ({ open, onClose }) => {
         <IconButton title="ok" onClick={() => onCloseWrap(value)}>
           <DoneIcon />
         </IconButton>
-        <IconButton title="cancel" onClick={() => onCloseWrap("")}>
+        <IconButton title="cancel" onClick={() => onCancel?.(value)}>
           <CloseIcon />
         </IconButton>
       </DialogActions>

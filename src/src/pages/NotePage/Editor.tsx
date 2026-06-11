@@ -66,6 +66,7 @@ import { useThemeStore } from "../../zustand/useThemeStore";
 import { NoteButtonActionRow } from "./NoteButtonActionRow";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { InsertSpeedDial } from "./SpeedDial";
+import { LatexDialog } from "./LatexDialog";
 
 const lowlight = createLowlight(all);
 const DRAG_HANDLE_GUTTER_PX = 28;
@@ -89,8 +90,11 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [isInDragHandleArea, setIsInDragHandleArea] = useState(false);
   // Tracks which editor surface is active.
-  const { viewMode: editorMode, setViewMode: setEditorMode } =
-    useEditorSettings();
+  const {
+    viewMode: editorMode,
+    setViewMode: setEditorMode,
+    editMode,
+  } = useEditorSettings();
   // Holds the markdown for source-mode editing.
   const [sourceMarkdown, setSourceMarkdown] = useState("");
   // Controls the version history drawer.
@@ -114,6 +118,32 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
 
   // ref for textfield of source view
   const sourceEditorRef = useRef<HTMLInputElement | null>(null);
+
+  const [latexDialogProps, setLatexDialogProps] = useState<{
+    open: boolean;
+    latexCode?: string;
+    onClose: (latex: string) => void;
+    onCancel?: (latex: string) => void;
+  }>({
+    open: false,
+    latexCode: "",
+    onClose: (latex: string) => {},
+    onCancel: (latex: string) => {},
+  });
+
+  const getLatexDialogProps = useCallback(() => {
+    return {
+      open: false,
+      latexCode: "",
+      onClose: (latex: string) => {},
+      onCancel: (latex: string) => {
+        setLatexDialogProps({
+          ...latexDialogProps,
+          open: false,
+        });
+      },
+    };
+  }, [setLatexDialogProps, latexDialogProps]);
 
   useEffect(() => {
     setNoteTitle(note?.title ?? "");
@@ -150,34 +180,49 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       Mathematics.configure({
         blockOptions: {
           onClick: (node, pos) => {
-            const newCalculation = prompt(
-              "Enter new calculation:",
-              node.attrs.latex,
-            );
-            if (newCalculation) {
-              editor
-                .chain()
-                .setNodeSelection(pos)
-                .updateBlockMath({ latex: newCalculation })
-                .focus()
-                .run();
+            if (!editor.isEditable) {
+              return;
             }
+            // open latex dialog with current latex code
+            // and insert it if the user confirms the dialog
+            setLatexDialogProps({
+              ...getLatexDialogProps(),
+              open: true,
+              latexCode: node.attrs.latex,
+              onClose: (newCalculation) => {
+                editor
+                  .chain()
+                  .setNodeSelection(pos)
+                  .updateBlockMath({ latex: newCalculation })
+                  .focus()
+                  .run();
+                setLatexDialogProps(getLatexDialogProps());
+              },
+            });
           },
         },
         inlineOptions: {
           onClick: (node, pos) => {
-            const newCalculation = prompt(
-              "Enter new calculation:",
-              node.attrs.latex,
-            );
-            if (newCalculation) {
-              editor
-                .chain()
-                .setNodeSelection(pos)
-                .updateInlineMath({ latex: newCalculation })
-                .focus()
-                .run();
+            if (!editor.isEditable) {
+              return;
             }
+
+            // open latex dialog with current latex code
+            // and insert it if the user confirms the dialog
+            setLatexDialogProps({
+              ...getLatexDialogProps(),
+              open: true,
+              latexCode: node.attrs.latex,
+              onClose: (newCalculation) => {
+                editor
+                  .chain()
+                  .setNodeSelection(pos)
+                  .updateInlineMath({ latex: newCalculation }) // <-- the only difference to the previous handler
+                  .focus()
+                  .run();
+                setLatexDialogProps(getLatexDialogProps());
+              },
+            });
           },
         },
       }),
@@ -455,6 +500,11 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     setIsInDragHandleArea(false);
   };
 
+  /**
+   * inserts a string at the current cursor position of the editor,
+   * where it doesn't matter if the source or rich editor is used
+   * @param imageLink the string to insert, usually used to insert image links
+   */
   const insertAtCurrentPosition = (imageLink: string) => {
     const text = imageLinkToBlock(imageLink, editorMode);
     switch (editorMode) {
@@ -615,6 +665,12 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         setDialogOpen={setFileUploadDialogOpen}
         onUploadSuccess={(_) => handleSave()}
         editor={editor}
+      />
+      <LatexDialog
+        open={latexDialogProps.open}
+        latexCode={latexDialogProps.latexCode}
+        onClose={latexDialogProps.onClose}
+        onCancel={latexDialogProps.onCancel}
       />
     </>
   );

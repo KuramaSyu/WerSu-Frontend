@@ -87,6 +87,7 @@ export const ThemedEditorBox = ({
                 position: "absolute",
                 bottom: "100%",
                 left: "50%",
+                transform: "translateX(-50%)",
 
                 backgroundColor: theme.blendWithContrast(
                   theme.palette.background.paper,
