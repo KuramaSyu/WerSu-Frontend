@@ -50,18 +50,22 @@ export const InsertSpeedDial: React.FC<InsertSpeedDialProps> = ({
   }, [editor]);
 
   const onInsertBlockMath = useCallback(
-    (latex: string) => {
+    (latex: string, inline: "inline" | "block", compressed: boolean) => {
       const hasSelection = !editor.state.selection.empty;
 
       if (hasSelection) {
         return editor.chain().insertBlockMath({ latex: "" }).focus().run();
       }
 
-      // const latex = prompt("Enter block math expression:", "");
-      // if (!latex) {
-      //   return;
-      // }
-      return editor.chain().insertBlockMath({ latex }).focus().run();
+      const chain = editor.chain();
+
+      if (inline === "inline") {
+        chain.insertInlineMath({ latex: latex });
+      } else {
+        chain.insertBlockMath({ latex: latex });
+      }
+
+      chain.focus().run();
     },
     [editor],
   );
@@ -128,9 +132,9 @@ export const InsertSpeedDial: React.FC<InsertSpeedDialProps> = ({
       </SpeedDial>
       <LatexDialog
         open={latexDialogOpen}
-        onClose={(latex) => {
+        onClose={(latex, inline, compressed) => {
           setLatexDialogOpen(false);
-          onInsertBlockMath(latex);
+          onInsertBlockMath(latex, inline, compressed);
         }}
       />
     </>
