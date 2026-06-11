@@ -1,15 +1,25 @@
-import { Box, darken, lighten } from "@mui/material";
+import { Box, darken, lighten, Paper, Popper, Typography } from "@mui/material";
 import { M1, M2 } from "../../statics";
 import { CodeBlockThemer } from "./CodeBlockThemer";
+import { useEditorSettings } from "../../zustand/useEditorSettings";
+import { useEffect, useState } from "react";
+import type { Editor } from "@tiptap/core";
+import type { latex } from "codemirror-lang-latex";
+import { useThemeStore } from "../../zustand/useThemeStore";
 
 export const ThemedEditorBox = ({
   children,
+  editor,
 }: {
   children: React.ReactNode;
+  editor: Editor | null;
 }) => {
+  const { editMode } = useEditorSettings();
+  const { theme } = useThemeStore();
+
   return (
     <Box
-      sx={(theme) => ({
+      sx={{
         //backgroundColor: theme.palette.background.paper,
         color: theme.palette.text.primary,
         //border: `1px solid ${theme.palette.divider}`,
@@ -53,8 +63,50 @@ export const ThemedEditorBox = ({
             padding: theme.spacing(0.25, 0.5),
             borderRadius: theme.shape.borderRadius,
           },
+
+          // set background to latex box on hover
+          "& .tiptap-mathematics-render": {
+            position: "relative",
+            // mb: 3,
+            borderRadius: theme.shape.borderRadius,
+            transition: `background-color ${theme.transitions.duration.standard}ms`,
+
+            ...(editMode && {
+              // marks the node with a background
+              "&:hover": {
+                backgroundColor: theme.palette.action.hover,
+                cursor: "pointer",
+              },
+
+              // renders tooltip with latex code
+              "&:hover::after": {
+                content: "attr(data-latex)",
+
+                opacity: 1,
+                // show the tooltop in the middle above
+                position: "absolute",
+                bottom: "100%",
+                left: "50%",
+
+                backgroundColor: theme.blendWithContrast(
+                  theme.palette.background.paper,
+                  0.2,
+                ),
+                borderRadius: theme.shape.borderRadius,
+
+                // padding around the tooltip and margin between tooltip and math node
+                padding: theme.spacing(0.5, 1),
+                mb: theme.spacing(0.5),
+
+                // keep in one line, small font and monospace
+                whiteSpace: "nowrap",
+                fontFamily: "monospace",
+                fontSize: theme.typography.caption.fontSize,
+              },
+            }),
+          },
         },
-      })}
+      }}
     >
       <CodeBlockThemer className="tiptap">{children}</CodeBlockThemer>
     </Box>
