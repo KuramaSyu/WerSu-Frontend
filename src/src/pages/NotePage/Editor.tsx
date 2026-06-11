@@ -23,7 +23,12 @@ import CodeIcon from "@mui/icons-material/Code";
 import EditIcon from "@mui/icons-material/Edit";
 import HistoryIcon from "@mui/icons-material/History";
 import SaveIcon from "@mui/icons-material/Save";
-import { useEditor, EditorContent, useEditorState } from "@tiptap/react";
+import {
+  useEditor,
+  EditorContent,
+  useEditorState,
+  Editor,
+} from "@tiptap/react";
 import DragHandle from "@tiptap/extension-drag-handle-react";
 import StarterKit from "@tiptap/starter-kit";
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
@@ -66,7 +71,7 @@ import { useThemeStore } from "../../zustand/useThemeStore";
 import { NoteButtonActionRow } from "./NoteButtonActionRow";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { InsertSpeedDial } from "./SpeedDial";
-import { LatexDialog } from "./LatexDialog";
+import { LatexDialog, type LatexDialogProps } from "./LatexDialog";
 
 const lowlight = createLowlight(all);
 const DRAG_HANDLE_GUTTER_PX = 28;
@@ -119,24 +124,37 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   // ref for textfield of source view
   const sourceEditorRef = useRef<HTMLInputElement | null>(null);
 
-  const [latexDialogProps, setLatexDialogProps] = useState<{
-    open: boolean;
-    latexCode?: string;
-    onClose: (latex: string) => void;
-    onCancel?: (latex: string) => void;
-  }>({
+  const EMPTY_DIALOG = {
     open: false,
     latexCode: "",
-    onClose: (latex: string) => {},
-    onCancel: (latex: string) => {},
-  });
+    onClose: () => {},
+    onCancel: () => {},
+  };
 
+  // i am sorry, this got quite complex.
+  // what it does: the open opens the LatexDialog. All other things
+  // are the dialogs inputs. These inputs (latex, inline, compressed)
+  // are inserted into the onClose and onCancel handlers which get called
+  // when the user confirms or cancels the dialog.
+  const [latexDialogProps, setLatexDialogProps] =
+    useState<LatexDialogProps>(EMPTY_DIALOG);
+
+  /**factory for props for a default closed dialog */
   const getLatexDialogProps = useCallback(() => {
     return {
       open: false,
       latexCode: "",
-      onClose: (latex: string) => {},
-      onCancel: (latex: string) => {
+
+      onClose: (
+        latex: string,
+        inline: "inline" | "block",
+        compressed: boolean,
+      ) => {},
+      onCancel: (
+        latex: string,
+        inline: "inline" | "block",
+        compressed: boolean,
+      ) => {
         setLatexDialogProps({
           ...latexDialogProps,
           open: false,
@@ -189,13 +207,18 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
               ...getLatexDialogProps(),
               open: true,
               latexCode: node.attrs.latex,
-              onClose: (newCalculation) => {
-                editor
-                  .chain()
-                  .setNodeSelection(pos)
-                  .updateBlockMath({ latex: newCalculation })
-                  .focus()
-                  .run();
+              initialLatexType: "block",
+              onClose: (newCalculation, inline, compressed) => {
+                const chain = editor.chain().setNodeSelection(pos);
+
+                if (inline === "block") {
+                  chain.updateBlockMath({ latex: newCalculation });
+                } else {
+                  chain.deleteBlockMath();
+                  chain.insertInlineMath({ latex: newCalculation });
+                }
+                chain.focus().run();
+
                 setLatexDialogProps(getLatexDialogProps());
               },
             });
@@ -213,13 +236,17 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
               ...getLatexDialogProps(),
               open: true,
               latexCode: node.attrs.latex,
-              onClose: (newCalculation) => {
-                editor
-                  .chain()
-                  .setNodeSelection(pos)
-                  .updateInlineMath({ latex: newCalculation }) // <-- the only difference to the previous handler
-                  .focus()
-                  .run();
+              initialLatexType: "inline",
+              onClose: (newCalculation, inline, compressed) => {
+                const chain = editor.chain().setNodeSelection(pos);
+
+                if (inline === "inline") {
+                  chain.updateInlineMath({ latex: newCalculation });
+                } else {
+                  chain.deleteInlineMath();
+                  chain.insertBlockMath({ latex: newCalculation });
+                }
+                chain.focus().run();
                 setLatexDialogProps(getLatexDialogProps());
               },
             });
@@ -671,6 +698,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         latexCode={latexDialogProps.latexCode}
         onClose={latexDialogProps.onClose}
         onCancel={latexDialogProps.onCancel}
+        setOpen={(open) => setLatexDialogProps({ ...latexDialogProps, open })}
+        initialLatexType={latexDialogProps.initialLatexType}
       />
     </>
   );
