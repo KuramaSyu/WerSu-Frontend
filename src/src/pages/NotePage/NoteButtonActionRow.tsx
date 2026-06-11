@@ -25,7 +25,7 @@ export const NoteButtonActionRow: React.FC<NoteButtonActionRowProps> = ({
   editorMode,
   isSaving,
 }) => {
-  const { write, setWrite } = useEditorSettings();
+  const { editMode: write, setWrite } = useEditorSettings();
   const { theme } = useThemeStore();
   const handleChange = (
     event: React.MouseEvent<HTMLElement>,

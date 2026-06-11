@@ -110,7 +110,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   const [fileUploadDialogOpen, setFileUploadDialogOpen] = useState(false);
 
   // used to set write/read mode
-  const { write: isWriteMode } = useEditorSettings();
+  const { editMode: isWriteMode } = useEditorSettings();
 
   // ref for textfield of source view
   const sourceEditorRef = useRef<HTMLInputElement | null>(null);
@@ -549,7 +549,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
               >
                 <DragIndicatorIcon fontSize="small" />
               </DragHandle>
-              <ThemedEditorBox>
+              <ThemedEditorBox editor={editor}>
                 <EditorContent editor={editor} className="tiptap" />
               </ThemedEditorBox>
             </Box>
