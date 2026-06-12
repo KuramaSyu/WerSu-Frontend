@@ -203,21 +203,6 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
     return () => window.clearTimeout(timeoutId);
   }, [searchQuery, searchActive]);
 
-  const getSearchTypeLabel = (type: RestNotesSearchType): string => {
-    switch (type) {
-      case RestNotesSearchType.KEYWORD:
-        return "Keyword";
-      case RestNotesSearchType.TYPO_TOLERANT:
-        return "Typo Tolerant";
-      case RestNotesSearchType.CONTEXT:
-        return "Context";
-      case RestNotesSearchType.LATEST:
-        return "Latest";
-      default:
-        return type;
-    }
-  };
-
   const resultsContent = useMemo(() => {
     if (notes.length === 0) {
       return (
@@ -355,7 +340,7 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
               )}
 
               <TextField
-                fullWidth
+                autoFocus
                 placeholder="Search"
                 variant="outlined"
                 value={searchQuery}
@@ -363,6 +348,7 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
                   setSearchQuery(e.target.value);
                 }}
                 onBlur={() => setSearchActive(false)}
+                color="primary"
                 sx={{
                   width: "fit-content",
                   minWidth: "33%",
