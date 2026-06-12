@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from "react";
+import React, { useMemo, useEffect, useState } from "react";
 import {
   Box,
   Typography,
@@ -12,6 +12,10 @@ import {
   Divider,
   Fade,
   Grow,
+  Collapse,
+  Input,
+  TextField,
+  InputAdornment,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { useThemeStore } from "../zustand/useThemeStore";
@@ -19,6 +23,9 @@ import { useSearchNotesStore } from "../zustand/useSearchNotesStore";
 import { RestNotesSearchType, type MinimalNote } from "../api/models/search";
 import { M2, M3, M4 } from "../statics";
 import { useInfiniteNoteSearch } from "../api/queries/useNoteQueries";
+import { SearchNotesApi } from "../api/SearchNotesApi";
+import SearchStrategySelect from "./SearchStrategySelect";
+import SearchIcon from "@mui/icons-material/Search";
 
 interface SearchResultHighlightProps {
   content: string;
@@ -26,6 +33,9 @@ interface SearchResultHighlightProps {
   searchType: RestNotesSearchType;
   contextChars?: number;
 }
+
+const INITIAL_DEBOUCE_DELAY = 500; // to prevent lag in mode selection
+const DEBOUNCE_DELAY = 125;
 
 /**
  * Extracts context around matches in content and highlights them.
@@ -147,13 +157,24 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
   open,
   onClose,
   isLoading = false,
-  searchQuery,
-  searchType,
 }) => {
   const { theme } = useThemeStore();
-  const {} = useSearchNotesStore();
-  const { data } = useInfiniteNoteSearch(searchType, searchQuery);
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchText, setDebouncedSearchText] = useState("");
+  const [searchActive, setSearchActive] = useState(false);
+  const [searchType, setSearchType] = useState<RestNotesSearchType>(
+    RestNotesSearchType.CONTEXT,
+  );
+
+  // get results
+  const { data } = useInfiniteNoteSearch(searchType, debouncedSearchText, 200);
   const notes = data?.pages.flat() ?? [];
+  console.log(
+    `Search results for "${debouncedSearchText}" (${searchType}):`,
+    notes,
+  );
+
   // Handle escape key to close overlay
   useEffect(() => {
     if (!open) return;
@@ -168,13 +189,19 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [open, onClose]);
 
-  // Convert notes to array if it's an object
-  const notesArray = useMemo(() => {
-    if (Array.isArray(notes)) {
-      return notes as MinimalNote[];
+  // debouce search input to prevent lags while typings
+  useEffect(() => {
+    if (!searchActive || searchQuery === "") {
+      setDebouncedSearchText(searchQuery);
+      return;
     }
-    return Object.values(notes || {}) as MinimalNote[];
-  }, [notes]);
+
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearchText(searchQuery);
+    }, DEBOUNCE_DELAY);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [searchQuery, searchActive]);
 
   const getSearchTypeLabel = (type: RestNotesSearchType): string => {
     switch (type) {
@@ -192,7 +219,7 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
   };
 
   const resultsContent = useMemo(() => {
-    if (notesArray.length === 0) {
+    if (notes.length === 0) {
       return (
         <Box sx={{ py: 4, textAlign: "center" }}>
           <Typography color="textSecondary">
@@ -204,7 +231,7 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
 
     return (
       <Stack spacing={M3}>
-        {notesArray.map((note: MinimalNote, index: number) => (
+        {notes.map((note: MinimalNote, index: number) => (
           <Paper
             key={`${note.id}-${index}`}
             elevation={1}
@@ -260,12 +287,17 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
         ))}
       </Stack>
     );
-  }, [isLoading, notesArray, searchQuery, searchType, theme]);
+  }, [isLoading, notes, searchQuery, searchType, theme]);
 
   return (
     <>
       {/* Backdrop - click to close */}
-      <Fade in={open} timeout={400} mountOnEnter unmountOnExit>
+      <Fade
+        in={open}
+        timeout={theme.transitions.duration.complex}
+        mountOnEnter
+        unmountOnExit
+      >
         <Box
           onClick={onClose}
           sx={{
@@ -274,7 +306,7 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: alpha(theme.palette.common.black, 0.2),
+            backgroundColor: alpha(theme.palette.background.default, 0.66),
             zIndex: 900,
           }}
         />
@@ -282,16 +314,21 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
 
       {/* Overlay panel */}
       <Portal>
-        <Grow in={open} timeout={180} mountOnEnter unmountOnExit>
+        <Grow
+          in={open}
+          timeout={theme.transitions.duration.short}
+          mountOnEnter
+          unmountOnExit
+        >
           <Box
             sx={{
               position: "fixed",
-              top: "140px", // Below the search bar
+              top: "100px", // Below the search bar
               left: "15%",
               right: "15%",
               maxHeight: "66%",
               backgroundColor: theme.palette.background.paper,
-              borderRadius: M4,
+              borderRadius: M3,
               boxShadow: theme.shadows[8],
               zIndex: 1300,
               border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
@@ -307,32 +344,49 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
               position={"sticky"}
               m={M3}
             >
-              <Box>
-                <Typography variant="h5" sx={{ fontWeight: "bold" }}>
-                  Search Results
-                </Typography>
-                <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-                  <Chip
-                    label={getSearchTypeLabel(searchType)}
-                    size="small"
-                    variant="outlined"
-                  />
-                  {searchQuery && (
-                    <Typography variant="caption" sx={{ alignSelf: "center" }}>
-                      for "{searchQuery}"
-                    </Typography>
-                  )}
-                </Stack>
-              </Box>
+              <SearchStrategySelect
+                searchType={searchType}
+                setSearchType={setSearchType}
+              />
               {isLoading && (
                 <Box sx={{ display: "flex", justifyContent: "center" }}>
                   <CircularProgress />
                 </Box>
               )}
 
+              <TextField
+                fullWidth
+                placeholder="Search"
+                variant="outlined"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                }}
+                onBlur={() => setSearchActive(false)}
+                sx={{
+                  width: "fit-content",
+                  minWidth: "33%",
+                  maxWidth: "50%",
+                }}
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon sx={{ fontSize: "1rem" }} />
+                      </InputAdornment>
+                    ),
+                    sx: {
+                      borderRadius: M4,
+                      "& .MuiOutlinedInput-input": {
+                        padding: "calc(1em / 1.6) 0.5rem",
+                      },
+                    },
+                  },
+                }}
+              />
               <Stack direction="row" spacing={1} alignItems="center">
                 <Typography variant="body2" color="textSecondary">
-                  {isLoading ? "Searching..." : `${notesArray.length} results`}
+                  {isLoading ? "Searching..." : `${notes.length} results`}
                 </Typography>
                 <IconButton
                   size="medium"
