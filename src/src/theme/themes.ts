@@ -52,7 +52,7 @@ export const githubTheme = createTheme({
   palette: {
     mode: "light",
     primary: { main: "#0969da", light: "#2f81f7", dark: "#0757b2" },
-    secondary: { main: "#57606a", light: "#8c959f", dark: "#424a53" },
+    secondary: { main: "#077A7D" },
     vibrant: { main: "#0969da", light: "#54aeff", dark: "#0550ae" },
     muted: { main: "#eaeef2", light: "#f6f8fa", dark: "#d0d7de" },
     text: { primary: "#1f2328", secondary: "#57606a" },
@@ -75,7 +75,7 @@ export const githubDarkTheme = createTheme({
   palette: {
     mode: "dark",
     primary: { main: "#2f81f7", light: "#58a6ff", dark: "#1f6feb" },
-    secondary: { main: "#8b949e", light: "#b1bac4", dark: "#6e7681" },
+    secondary: { main: "#077A7D" },
     vibrant: { main: "#58a6ff", light: "#79c0ff", dark: "#1f6feb" },
     muted: { main: "#21262d", light: "#30363d", dark: "#161b22" },
     text: { primary: "#e6edf3", secondary: "#8b949e" },
