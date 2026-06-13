@@ -22,7 +22,10 @@ import type React from "react";
  * - Regular keys are rendered as `<kbd>` elements with secondary text color
  * - All components are wrapped in a flexbox container with centered alignment
  */
-export function renderShortcut(shortcut: string): React.ReactNode {
+export function renderShortcut(
+  shortcut: string,
+  onlyText: boolean = false,
+): React.ReactNode {
   var components: React.ReactNode[] = [];
   for (const [index, key] of shortcut.split(/([+,])/).entries()) {
     // Process each key
@@ -36,9 +39,9 @@ export function renderShortcut(shortcut: string): React.ReactNode {
     } else if (key === ",") {
       // Do nothing for the comma separator
     } else if (key === "super" || key === "cmd" || key === "ctrl") {
-      components.push(<Key>{superKey()}</Key>);
+      components.push(<Key onlyText={onlyText}>{superKey()}</Key>);
     } else {
-      components.push(<Key>{key}</Key>);
+      components.push(<Key onlyText={onlyText}>{key}</Key>);
     }
   }
   return (
@@ -53,18 +56,24 @@ function superKey(): React.ReactNode {
   return isMac ? "⌘" : "Ctrl";
 }
 
-function Key({ children }: { children: React.ReactNode }): React.ReactNode {
+function Key({
+  children,
+  onlyText,
+}: {
+  children: React.ReactNode;
+  onlyText?: boolean;
+}): React.ReactNode {
   const { theme } = useThemeStore();
   return (
     <Paper
       // component="kbd"
-      elevation={21}
+      elevation={onlyText ? 0 : 15}
       sx={{
         fontSize: "inherit",
         color: "inherit",
-        border: `1px solid`,
+        border: onlyText ? undefined : `1px solid`,
         px: 1,
-        borderRadius: theme.shape.borderRadius,
+        borderRadius: onlyText ? undefined : theme.shape.borderRadius,
         fontFamily: "monospace",
       }}
     >
@@ -73,8 +82,9 @@ function Key({ children }: { children: React.ReactNode }): React.ReactNode {
   );
 }
 
-export const KeyboardShortcut: React.FC<{ shortcut: string }> = ({
-  shortcut,
-}) => {
-  return <>{renderShortcut(shortcut)}</>;
+export const KeyboardShortcut: React.FC<{
+  shortcut: string;
+  onlyText?: boolean;
+}> = ({ shortcut, onlyText = false }) => {
+  return <>{renderShortcut(shortcut, onlyText)}</>;
 };
