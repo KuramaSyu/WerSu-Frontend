@@ -1,8 +1,8 @@
-import { BACKEND_BASE } from '../statics';
-import type { DiscordUser } from '../components/DiscordLogin';
+import { BACKEND_BASE } from "../statics";
+import type { DiscordUser } from "../components/DiscordLogin";
 
-import { DiscordUserImpl } from '../components/DiscordLogin';
-import { useUserStore } from '../zustand/userStore';
+import { DiscordUserImpl } from "../components/DiscordLogin";
+import { useUsersStore, useUserStore } from "../zustand/userStore";
 
 export interface BackendApiInterface {}
 export interface UserApiInterface {
@@ -18,7 +18,7 @@ export class UserApi implements UserApiInterface {
   logError(url_part: string, error: any): void {
     console.error(
       `Error fetching ${BACKEND_BASE}${url_part}:`,
-      JSON.stringify(error)
+      JSON.stringify(error),
     );
   }
 
@@ -28,15 +28,19 @@ export class UserApi implements UserApiInterface {
    * */
   async fetchUser(): Promise<Response> {
     const setUser = useUserStore.getState().setUser;
+    const setUserForUsers = useUsersStore.getState().addUser;
     const response = await fetch(`${BACKEND_BASE}/api/auth/user`, {
-      credentials: 'include',
+      credentials: "include",
     });
     if (response.ok) {
       const userData: DiscordUser | null = await response.json().catch((e) => {
         this.logError(`/api/auth/user`, e);
         return null;
       });
-      if (userData) setUser(new DiscordUserImpl(userData));
+      if (userData) {
+        setUser(new DiscordUserImpl(userData));
+        setUserForUsers(new DiscordUserImpl(userData));
+      }
     } else {
       this.logError(`/api/auth/user`, response.json());
     }
