@@ -21,6 +21,7 @@ import {
   Stack,
   SwipeableDrawer,
   Typography,
+  useColorScheme,
 } from "@mui/material";
 import { useLocation, useNavigate } from "react-router-dom";
 import SettingsIcon from "@mui/icons-material/Settings";
@@ -29,10 +30,12 @@ import AccountTreeIcon from "@mui/icons-material/AccountTree";
 
 import HomeIcon from "@mui/icons-material/Home";
 import { M2, M3, M4 } from "../statics";
-import { LocalFireDepartment, Logout, Search } from "@mui/icons-material";
+import { LocalFireDepartment, Logout, Mode, Search } from "@mui/icons-material";
 import { useUserStore } from "../zustand/userStore";
 import { useBreakpoint } from "../hooks/useBreakpoint";
 import SearchBar from "./search/SearchBar";
+import DarkModeIcon from "@mui/icons-material/DarkMode";
+import LightModeIcon from "@mui/icons-material/LightMode";
 import "@fontsource/fira-sans/100.css";
 
 import "@fontsource/fira-sans/300.css";
@@ -65,6 +68,7 @@ const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
   const lastYRef = useRef(0);
 
   const { theme, themeName, setTheme, customThemes } = useThemeStore();
+  const { setMode, mode } = useColorScheme();
   const navigate = useNavigate();
   const location = useLocation();
   const { user, setUser } = useUserStore();
@@ -189,10 +193,8 @@ const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
           position="fixed"
           elevation={4}
           sx={{
-            backgroundColor: theme.palette.background.paper,
             mt: M3,
             borderRadius: "2rem",
-
             left: "1rem",
             right: "1rem",
             width: "auto",
@@ -222,7 +224,7 @@ const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
                     fontSize={"inherit"}
                     fontFamily={"inherit"}
                     fontWeight={"300"}
-                    color={theme.palette.text.primary}
+                    color={theme.palette.primary.light}
                   >
                     Wer
                   </Typography>
@@ -230,7 +232,7 @@ const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
                     fontSize={"inherit"}
                     fontFamily={"inherit"}
                     fontWeight={"300"}
-                    color={theme.palette.text.secondary}
+                    color={theme.palette.secondary.light}
                   >
                     Su
                   </Typography>
@@ -276,6 +278,7 @@ const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
                     ))}
                   </Select>
                 </FormControl>
+
                 <Button
                   variant={containedIfSelected(Pages.HOME)}
                   onClick={() => navigate(Pages.HOME)}
