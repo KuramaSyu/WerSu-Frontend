@@ -56,6 +56,7 @@ export const highlightSearchMatch = ({
             color: theme.blendAgainstContrast(
               theme.palette.text.secondary,
               0.5,
+              undefined,
             ),
           }}
         >
@@ -100,6 +101,7 @@ export const highlightSearchMatch = ({
               color: theme.blendAgainstContrast(
                 theme.palette.text.secondary,
                 0.5,
+                undefined,
               ),
             }}
           >
