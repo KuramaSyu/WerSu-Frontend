@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useState } from "react";
+import React, { useMemo, useEffect, useState, useRef } from "react";
 import {
   Box,
   Typography,
@@ -16,118 +16,29 @@ import {
   Input,
   TextField,
   InputAdornment,
+  Button,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
-import { useThemeStore } from "../zustand/useThemeStore";
-import { useSearchNotesStore } from "../zustand/useSearchNotesStore";
-import { RestNotesSearchType, type MinimalNote } from "../api/models/search";
-import { M2, M3, M4 } from "../statics";
-import { useInfiniteNoteSearch } from "../api/queries/useNoteQueries";
-import { SearchNotesApi } from "../api/SearchNotesApi";
-import SearchStrategySelect from "./SearchStrategySelect";
+import { useThemeStore } from "../../zustand/useThemeStore";
+import { useSearchNotesStore } from "../../zustand/useSearchNotesStore";
+import {
+  RestNotesSearchType,
+  type MinimalNote,
+  Note,
+} from "../../api/models/search";
+import { M2, M3, M4 } from "../../statics";
+import { useInfiniteNoteSearch } from "../../api/queries/useNoteQueries";
+import { SearchNotesApi } from "../../api/SearchNotesApi";
+import SearchStrategySelect from "../SearchStrategySelect";
 import SearchIcon from "@mui/icons-material/Search";
-
-interface SearchResultHighlightProps {
-  content: string;
-  query: string;
-  searchType: RestNotesSearchType;
-  contextChars?: number;
-}
+import { highlightSearchMatch } from "./SearchResultHighlights";
+import { KeyboardShortcut } from "../../utils/renderShortcut";
+import { useUsersStore } from "../../zustand/userStore";
+import { formatDistanceToNowStrict } from "date-fns";
+import { getDirectoryPath } from "../../utils/getDirectoryPath";
 
 const INITIAL_DEBOUCE_DELAY = 500; // to prevent lag in mode selection
 const DEBOUNCE_DELAY = 125;
-
-/**
- * Extracts context around matches in content and highlights them.
- * For exact/typo-tolerant search, shows 100 chars before and after.
- */
-export const highlightSearchMatch = ({
-  content,
-  query,
-  searchType,
-  contextChars = 100,
-}: SearchResultHighlightProps): React.ReactNode[] => {
-  if (!query || !content) return [content];
-
-  if (
-    searchType === RestNotesSearchType.KEYWORD ||
-    searchType === RestNotesSearchType.TYPO_TOLERANT ||
-    searchType === RestNotesSearchType.LATEST ||
-    searchType === RestNotesSearchType.CONTEXT
-  ) {
-    // For keyword and typo-tolerant: find matches and show context
-    const lowerContent = content.toLowerCase();
-    const lowerQuery = query.toLowerCase();
-
-    const matches: { start: number; end: number }[] = [];
-    let startIndex = 0;
-
-    // Find all matches
-    while (true) {
-      const index = lowerContent.indexOf(lowerQuery, startIndex);
-      if (index === -1) break;
-      matches.push({ start: index, end: index + query.length });
-      startIndex = index + 1;
-    }
-
-    if (matches.length === 0) return [content];
-
-    const fragments: React.ReactNode[] = [];
-
-    matches.forEach((match, idx) => {
-      var contextStart = Math.max(0, match.start - contextChars);
-      var contextEnd = Math.min(content.length, match.end + contextChars);
-
-      // Add ellipsis if context is truncated at start
-      let contextText = content.substring(contextStart, contextEnd);
-      if (contextStart > 0) {
-        contextText = "..." + contextText;
-        contextStart -= 3; // Adjust match positions for added ellipsis
-        contextEnd -= 3;
-      }
-      if (contextEnd < content.length) {
-        contextText = contextText + "...";
-      }
-
-      // Find where the match is in the context string
-      const matchOffsetInContext = match.start - contextStart;
-      const before = contextText.substring(
-        0,
-        Math.max(0, matchOffsetInContext),
-      );
-      const matchText = contextText.substring(
-        Math.max(0, matchOffsetInContext),
-        matchOffsetInContext + query.length,
-      );
-      const after = contextText.substring(matchOffsetInContext + query.length);
-
-      fragments.push(
-        <Box key={`context-${idx}`} sx={{ mb: 1 }}>
-          <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
-            {before}
-            <Box
-              component="span"
-              sx={{
-                backgroundColor: alpha("#FFA500", 0.6),
-                color: "#000",
-                fontWeight: "bold",
-                borderRadius: "2px",
-                px: "2px",
-              }}
-            >
-              {matchText}
-            </Box>
-            {after}
-          </Typography>
-        </Box>,
-      );
-    });
-
-    return fragments;
-  }
-
-  return [content];
-};
 
 export interface SearchResultsOverlayProps {
   open: boolean;
@@ -159,7 +70,7 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
   isLoading = false,
 }) => {
   const { theme } = useThemeStore();
-
+  const { users } = useUsersStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchText, setDebouncedSearchText] = useState("");
   const [searchActive, setSearchActive] = useState(false);
@@ -169,11 +80,13 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
 
   // get results
   const { data } = useInfiniteNoteSearch(searchType, debouncedSearchText, 200);
-  const notes = data?.pages.flat() ?? [];
-  console.log(
-    `Search results for "${debouncedSearchText}" (${searchType}):`,
-    notes,
-  );
+
+  // extracted notes, but only if data is not loading -> otherwise short flickering
+  // when changed the search query with text, that nothing was found, since data is undefined for a short time
+  const notes = useRef<MinimalNote[]>([]);
+  if (data !== undefined) {
+    notes.current = data?.pages.flat() ?? [];
+  }
 
   // Handle escape key to close overlay
   useEffect(() => {
@@ -204,7 +117,7 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
   }, [searchQuery, searchActive]);
 
   const resultsContent = useMemo(() => {
-    if (notes.length === 0) {
+    if (notes.current.length === 0) {
       return (
         <Box sx={{ py: 4, textAlign: "center" }}>
           <Typography color="textSecondary">
@@ -216,7 +129,7 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
 
     return (
       <Stack spacing={M3}>
-        {notes.map((note: MinimalNote, index: number) => (
+        {notes.current.map((note: MinimalNote, index: number) => (
           <Paper
             key={`${note.id}-${index}`}
             elevation={1}
@@ -237,42 +150,49 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
               sx={{
                 fontWeight: "bold",
                 mb: M2,
-                color: theme.palette.primary.main,
+                color: theme.palette.primary.light,
               }}
             >
               {note.title}
             </Typography>
 
             <Stack direction="row" spacing={2} sx={{ mb: M2 }}>
-              <Typography variant="caption" color="textSecondary">
-                By {note.author_id}
-              </Typography>
-              <Typography variant="caption" color="textSecondary">
-                {new Date(note.updated_at).toLocaleDateString()}
-              </Typography>
+              <Chip
+                label={users[note.author_id]?.username || "unknown"}
+                variant="outlined"
+                size="small"
+              ></Chip>
+
+              <Chip
+                label={formatDistanceToNowStrict(new Date(note.updated_at), {
+                  addSuffix: true,
+                })}
+                variant="outlined"
+                size="small"
+              />
+
+              <Chip
+                label={getDirectoryPath(note.id)}
+                variant="outlined"
+                size="small"
+              />
             </Stack>
 
             <Divider sx={{ my: M3 }} />
             {/* Highlight Box */}
 
-            {searchQuery.length > 2 ? (
-              highlightSearchMatch({
-                content: note.stripped_content,
-                query: searchQuery,
-                searchType,
-                contextChars: 100,
-              })
-            ) : (
-              <>
-                {note.stripped_content.slice(0, 200) +
-                  (note.stripped_content.length > 200 ? "..." : "")}
-              </>
-            )}
+            {highlightSearchMatch({
+              content: note.stripped_content,
+              query: searchQuery,
+              searchType,
+              contextChars: 100,
+              theme,
+            })}
           </Paper>
         ))}
       </Stack>
     );
-  }, [isLoading, notes, searchQuery, searchType, theme]);
+  }, [isLoading, notes.current, searchType, theme]);
 
   return (
     <>
@@ -291,7 +211,7 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: alpha(theme.palette.background.default, 0.66),
+            backgroundColor: alpha(theme.palette.background.default, 0.85),
             zIndex: 900,
           }}
         />
@@ -311,7 +231,7 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
               top: "100px", // Below the search bar
               left: "15%",
               right: "15%",
-              maxHeight: "66%",
+              maxHeight: "85%",
               backgroundColor: theme.palette.background.paper,
               borderRadius: M3,
               boxShadow: theme.shadows[8],
@@ -329,55 +249,74 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
               position={"sticky"}
               m={M3}
             >
-              <SearchStrategySelect
-                searchType={searchType}
-                setSearchType={setSearchType}
-              />
-              {isLoading && (
-                <Box sx={{ display: "flex", justifyContent: "center" }}>
-                  <CircularProgress />
-                </Box>
-              )}
+              {/* search strategy */}
+              <Box width={"20%"}>
+                <SearchStrategySelect
+                  searchType={searchType}
+                  setSearchType={setSearchType}
+                  color="primary"
+                />
+              </Box>
 
-              <TextField
-                autoFocus
-                placeholder="Search"
-                variant="outlined"
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                }}
-                onBlur={() => setSearchActive(false)}
-                color="primary"
+              {/* search field */}
+              <Box
+                width={"60%"}
                 sx={{
-                  width: "fit-content",
-                  minWidth: "33%",
-                  maxWidth: "50%",
+                  justifyContent: "center",
+                  display: "flex",
                 }}
-                slotProps={{
-                  input: {
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon sx={{ fontSize: "1rem" }} />
-                      </InputAdornment>
-                    ),
-                    sx: {
-                      borderRadius: M4,
-                      "& .MuiOutlinedInput-input": {
-                        padding: "calc(1em / 1.6) 0.5rem",
+              >
+                <TextField
+                  autoFocus
+                  placeholder="Search"
+                  variant="outlined"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                  }}
+                  onBlur={() => setSearchActive(false)}
+                  color="primary"
+                  sx={{
+                    width: "fit-content",
+                    minWidth: "50%",
+                    maxWidth: "100%",
+                  }}
+                  slotProps={{
+                    input: {
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon sx={{ fontSize: "1rem" }} />
+                        </InputAdornment>
+                      ),
+                      sx: {
+                        borderRadius: M4,
+                        "& .MuiOutlinedInput-input": {
+                          padding: "calc(1em / 1.6) 0.5rem",
+                        },
                       },
                     },
-                  },
+                  }}
+                />
+              </Box>
+
+              {/* result count and close button */}
+              <Box
+                sx={{
+                  width: "20%",
+                  justifyContent: "flex-end",
+                  display: "flex",
                 }}
-              />
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Typography variant="body2" color="textSecondary">
-                  {isLoading ? "Searching..." : `${notes.length} results`}
-                </Typography>
-                <IconButton
-                  size="medium"
+              >
+                <Button
+                  size="large"
+                  variant="outlined"
                   onClick={onClose}
+                  color="inherit"
                   sx={{
+                    px: 6,
+                    gap: 1,
+                    width: "20%",
+                    borderRadius: theme.shape.borderRadius,
                     color: theme.palette.text.secondary,
                     "&:hover": {
                       backgroundColor: alpha(theme.palette.text.primary, 0.1),
@@ -385,8 +324,9 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
                   }}
                 >
                   <CloseIcon fontSize="medium" />
-                </IconButton>
-              </Stack>
+                  <KeyboardShortcut shortcut="esc" />
+                </Button>
+              </Box>
             </Stack>
             <Box
               sx={{

@@ -9,11 +9,13 @@ import { RestNotesSearchType } from "../api/models/search";
 interface Props {
   searchType: RestNotesSearchType;
   setSearchType: (t: RestNotesSearchType) => void;
+  color: "primary" | "secondary" | "standard" | "error" | "info" | "success";
 }
 
 const SearchStrategySelect: React.FC<Props> = ({
   searchType,
   setSearchType,
+  color,
 }) => {
   return (
     <ToggleButtonGroup
@@ -24,25 +26,24 @@ const SearchStrategySelect: React.FC<Props> = ({
           setSearchType(newSearchType as RestNotesSearchType);
         }
       }}
+      color={color}
       aria-label="search type"
       sx={{
         borderRadius: M4,
-        "& .MuiToggleButton-root": {
-          whiteSpace: "nowrap",
-        },
+        width: "100%",
       }}
-      color="secondary"
+      // color="inherit"
     >
       <Tooltip title="Keyword: Search for exact matches">
         <ToggleButton
-          color="secondary"
+          color={color}
           value={RestNotesSearchType.KEYWORD}
           aria-label="keyword"
           sx={{
             borderTopLeftRadius: M4,
             borderBottomLeftRadius: M4,
             gap: 1,
-            minWidth: 80,
+            width: "33.3%",
           }}
         >
           <SearchIcon />
@@ -50,22 +51,24 @@ const SearchStrategySelect: React.FC<Props> = ({
       </Tooltip>
       <Tooltip title="Typo Tolerant: Search with typo tolerance">
         <ToggleButton
+          color={color}
           value={RestNotesSearchType.TYPO_TOLERANT}
           aria-label="typo tolerant"
-          sx={{ gap: 1, minWidth: 80 }}
+          sx={{ gap: 1, width: "33.3%" }}
         >
           <ManageSearchIcon />
         </ToggleButton>
       </Tooltip>
       <Tooltip title="Context: Search for notes with similar content">
         <ToggleButton
+          color={color}
           value={RestNotesSearchType.CONTEXT}
           aria-label="context"
           sx={{
             borderTopRightRadius: M4,
             borderBottomRightRadius: M4,
             gap: 1,
-            minWidth: 80,
+            width: "33.3%",
           }}
         >
           <AutoAwesomeIcon />

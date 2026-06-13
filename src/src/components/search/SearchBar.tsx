@@ -13,10 +13,11 @@ import { SearchNotesApi } from "../../api/SearchNotesApi";
 import { RestNotesSearchType } from "../../api/models/search";
 import { useSearchNotesStore } from "../../zustand/useSearchNotesStore";
 import SearchStrategySelect from "../SearchStrategySelect";
-import SearchResultsOverlay from "../SearchResultsOverlay";
+import SearchResultsOverlay from "./SearchResultsOverlay";
 import { isCtrlPlus } from "../../utils/CtrlPlus";
 import { set } from "zod";
 import { useThemeStore } from "../../zustand/useThemeStore";
+import { KeyboardShortcut, renderShortcut } from "../../utils/renderShortcut";
 
 const INITIAL_DEBOUCE_DELAY = 500; // to prevent lag in mode selection
 const DEBOUNCE_DELAY = 125;
@@ -70,23 +71,20 @@ const SearchBar: React.FC = () => {
   // }, [isMainPage, isModalOpen, setIsModalOpen]);
 
   return (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 1 }}>
-      {/* <Collapse
-        in={searchText !== "" || searchActive}
-        timeout={300}
-        orientation="horizontal"
+    <>
+      <Button
+        variant="outlined"
+        onClick={() => setIsModalOpen(true)}
+        sx={{
+          justifyContent: "space-between",
+          borderRadius: theme.shape.borderRadius,
+          p: 1,
+          px: 2,
+          width: `clamp(400px, 30%, 600px)`,
+        }}
       >
-        <Box>
-          <SearchStrategySelect
-            searchType={searchType}
-            setSearchType={setSearchType}
-          />
-        </Box>
-      </Collapse> */}
-
-      <Box sx={{ width: 360 }}>
-        <Button>Search</Button>
-      </Box>
+        <SearchIcon /> Search <KeyboardShortcut shortcut="ctrl+k" />
+      </Button>
 
       <SearchResultsOverlay
         open={isModalOpen}
@@ -95,7 +93,7 @@ const SearchBar: React.FC = () => {
         searchQuery={debouncedSearchText}
         searchType={searchType}
       />
-    </Box>
+    </>
   );
 };
 
