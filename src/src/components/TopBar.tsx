@@ -33,6 +33,12 @@ import { LocalFireDepartment, Logout, Search } from "@mui/icons-material";
 import { useUserStore } from "../zustand/userStore";
 import { useBreakpoint } from "../hooks/useBreakpoint";
 import SearchBar from "./search/SearchBar";
+import "@fontsource/fira-sans/100.css";
+
+import "@fontsource/fira-sans/300.css";
+import "@fontsource/fira-sans/400.css";
+import "@fontsource/fira-sans/500.css";
+import "@fontsource/fira-sans/700.css";
 
 const Pages = {
   HOME: "/",
@@ -199,19 +205,35 @@ const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
               spacing={2}
               alignItems="center"
               justifyContent="space-between"
-              fontFamily="Open Sans"
             >
               {/* Title */}
               <Box minWidth={1 / 10}>
                 <Button
                   onClick={() => navigate("/")}
                   sx={{
-                    fontSize: "2rem",
-                    fontWeight: 300,
+                    fontSize: theme.typography.h4.fontSize,
+                    fontWeight: 200,
+                    fontFamily: '"Fira Sans", sans-serif',
                     color: theme.palette.text.primary,
+                    // textTransform: "none",
                   }}
                 >
-                  Wersu
+                  <Typography
+                    fontSize={"inherit"}
+                    fontFamily={"inherit"}
+                    fontWeight={"300"}
+                    color={theme.palette.text.primary}
+                  >
+                    Wer
+                  </Typography>
+                  <Typography
+                    fontSize={"inherit"}
+                    fontFamily={"inherit"}
+                    fontWeight={"300"}
+                    color={theme.palette.text.secondary}
+                  >
+                    Su
+                  </Typography>
                 </Button>
               </Box>
               <Box
