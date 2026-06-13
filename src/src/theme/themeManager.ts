@@ -95,6 +95,7 @@ export function buildCustomTheme(
       themeName: config.name,
       longName: config.longName,
     },
+    ...themechanges,
   }) as CustomTheme;
 }
 
@@ -178,7 +179,7 @@ export class ThemeManager {
 
 const themechanges = {
   typography: {
-    fontFamily: "Open Sans",
+    fontFamily: '"Fira Sans", sans-serif',
   },
 
   // components: {
