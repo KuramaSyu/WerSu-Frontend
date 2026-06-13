@@ -73,9 +73,10 @@ const SearchBar: React.FC = () => {
   return (
     <>
       <Button
-        variant="outlined"
+        variant="text"
         onClick={() => setIsModalOpen(true)}
         sx={{
+          border: `1px solid ${theme.palette.primary.main}`,
           justifyContent: "space-between",
           borderRadius: theme.shape.borderRadius,
           p: 1,
