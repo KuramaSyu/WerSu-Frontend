@@ -160,6 +160,8 @@ export class CustomThemeImpl extends Object implements CustomTheme {
       this.custom = (theme as CustomTheme).custom;
     }
 
+    this.typography.fontFamily = '"Fira Sans", sans-serif';
+
     // Wrap methods to handle string | number parameters
     this.alpha = (color: string, value: string | number) => {
       const numValue = typeof value === "string" ? parseFloat(value) : value;
