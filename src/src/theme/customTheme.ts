@@ -7,10 +7,17 @@ import {
 } from "@mui/material/styles";
 import {
   blendColors,
+  hexToHsl,
   hexToRgb,
+  hslToHex,
   invertColor,
   rgbToHex,
 } from "../utils/blendWithContrast";
+import {
+  themeFromSourceColor,
+  argbFromHex,
+  hexFromArgb,
+} from "@material/material-color-utilities";
 
 export type ColorInput =
   | string
@@ -25,7 +32,7 @@ export type ColorInput =
 
 export interface CustomTheme extends Theme {
   palette: Palette & {
-    //palette: Theme['palette'] & {
+    poppyColors: string[]; // for multiple chip components
     vibrant: {
       main: string;
       light: string;
@@ -51,17 +58,26 @@ export interface CustomTheme extends Theme {
    * @param amount the amount to mix, 0.0 = mainColor, 1.0 = contrastColor
    * @returns the blended color in hex format
    */
-  blendWithContrast(color: ColorInput, amount: number): string;
+  blendWithContrast(
+    color: ColorInput,
+    amount: number,
+    useTextAsContrast: undefined | "primary" | "secondary",
+  ): string;
 
   /**
    * mixes the mainColor with its calculated contrast color
    * to a specified amount. Like a dynamic brighten() or darken()
    * depending on the color's luminance.
-   * @param mainColor the color to mix
+   * @param mainColor the color which gets mixed with the inverted contrast color (dark color -> lighter, light color --> darker)
    * @param amount the amount to mix, 0.0 = mainColor, 1.0 = contrastColor
+   * @param useTextAsContrast what to use as contrast. undefined: mainColor's contrast color (default), primary and secondary refers to text.primary and text.secondary from the theme
    * @returns the blended color in hex format
    */
-  blendAgainstContrast(color: ColorInput, amount: number): string;
+  blendAgainstContrast(
+    color: ColorInput,
+    amount: number,
+    useTextAsContrast: undefined | "primary" | "secondary",
+  ): string;
 
   /**
    * Change Saturation of a color by converting it to HSL
@@ -160,6 +176,16 @@ export class CustomThemeImpl extends Object implements CustomTheme {
       this.custom = (theme as CustomTheme).custom;
     }
 
+    const { h, s, l } = hexToHsl(theme.palette.primary.main);
+    // rotate around primary color
+    this.palette.poppyColors = [
+      hslToHex((h + 40) % 360, s, l),
+      hslToHex((h + 80) % 360, s, l),
+      hslToHex((h + 120) % 360, s, l),
+      hslToHex((h + 160) % 360, s, l),
+      hslToHex((h + 200) % 360, s, l),
+      hslToHex((h + 240) % 360, s, l),
+    ];
     this.typography.fontFamily = '"Fira Sans", sans-serif';
 
     // Wrap methods to handle string | number parameters
@@ -375,23 +401,40 @@ export class CustomThemeImpl extends Object implements CustomTheme {
     }
   }
 
-  blendWithContrast(mainColor: ColorInput, amount: number): string {
+  blendWithContrast(
+    mainColor: ColorInput,
+    amount: number,
+    useTextAsContrast: undefined | "primary" | "secondary" = undefined,
+  ): string {
     const color = this.resolveColor(mainColor);
-    const invertedContrastColor = this.palette.getContrastText(color); // '#fff' or '#000'
+    const contrastColor = useTextAsContrast
+      ? this.palette.text[useTextAsContrast]
+      : this.palette.getContrastText(color);
 
     const mainRgb = hexToRgb(color);
-    const contrastRgb = hexToRgb(invertedContrastColor);
+    const contrastRgb = hexToRgb(contrastColor);
     const blended = blendColors(mainRgb, contrastRgb, amount);
 
     return rgbToHex(blended);
   }
 
-  blendAgainstContrast(mainColor: ColorInput, amount: number): string {
+  blendAgainstContrast(
+    mainColor: ColorInput,
+    amount: number,
+    useTextAsContrast: undefined | "primary" | "secondary" = undefined,
+  ): string {
     const color = this.resolveColor(mainColor);
-    const contrastColor = invertColor(this.palette.getContrastText(color));
-
+    var contrastColor: string;
+    if (useTextAsContrast === "primary") {
+      contrastColor = this.palette.text.primary;
+    } else if (useTextAsContrast === "secondary") {
+      contrastColor = this.palette.text.secondary;
+    } else {
+      contrastColor = this.palette.getContrastText(color);
+    }
+    const invertedContrastColor = invertColor(contrastColor);
     const mainRgb = hexToRgb(color);
-    const contrastRgb = hexToRgb(contrastColor);
+    const contrastRgb = hexToRgb(invertedContrastColor);
 
     // combines main color with contrast color
     const blended = blendColors(mainRgb, contrastRgb, amount);
