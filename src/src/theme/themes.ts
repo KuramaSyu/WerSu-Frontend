@@ -4,10 +4,13 @@ import { CustomThemeImpl, type CustomTheme } from "./customTheme";
 // Define a Nord-themed default theme as a fallback.
 export const defaultTheme = createTheme({
   // https://www.nordtheme.com/
+
+  // colorSchemes: { light: true, dark: true },
   palette: {
     mode: "dark",
-    primary: { main: "#5E81AC", light: "#81A1C1", dark: "#4C688A" }, // Nord10, Nord9
-    secondary: { main: "#b48ead", light: "#D8DEE9", dark: "#3B4252" }, // Nord15
+    // primary: { main: "#5E81AC", light: "#81A1C1", dark: "#4C688A" }, // Nord10, Nord9
+    primary: { main: "#88c0d0" },
+    secondary: { main: "#b48ead" }, // Nord15
     vibrant: { main: "#b48ead", light: "#ebcb8b", dark: "#bf616a" }, // Nord8, Nord7
     muted: { main: "#434c5e", light: "#4c566a", dark: "#3B4252" }, // Nord1, 2, 3
     text: { primary: "#eceff4", secondary: "#d8dee9" },
@@ -51,7 +54,7 @@ export const docsTheme = createTheme({
 export const githubTheme = createTheme({
   palette: {
     mode: "light",
-    primary: { main: "#0969da", light: "#2f81f7", dark: "#0757b2" },
+    primary: { main: "#0969da" },
     secondary: { main: "#077A7D" },
     vibrant: { main: "#0969da", light: "#54aeff", dark: "#0550ae" },
     muted: { main: "#eaeef2", light: "#f6f8fa", dark: "#d0d7de" },
@@ -74,7 +77,7 @@ export const githubTheme = createTheme({
 export const githubDarkTheme = createTheme({
   palette: {
     mode: "dark",
-    primary: { main: "#2f81f7", light: "#58a6ff", dark: "#1f6feb" },
+    primary: { main: "#58a6ff" },
     secondary: { main: "#077A7D" },
     vibrant: { main: "#58a6ff", light: "#79c0ff", dark: "#1f6feb" },
     muted: { main: "#21262d", light: "#30363d", dark: "#161b22" },
@@ -97,7 +100,7 @@ export const githubDarkTheme = createTheme({
 export const brightTheme = createTheme({
   palette: {
     mode: "light",
-    primary: { main: "#ff8f00", light: "#ffc046", dark: "#c56000" },
+    primary: { main: "#ff8f00" },
     secondary: { main: "#00bcd4", light: "#62efff", dark: "#008ba3" },
     vibrant: { main: "#ff4081", light: "#ff79b0", dark: "#c60055" },
     muted: { main: "#ffe082", light: "#fff7b2", dark: "#caae53" },
@@ -120,8 +123,8 @@ export const brightTheme = createTheme({
 export const midnightTheme = createTheme({
   palette: {
     mode: "dark",
-    primary: { main: "#60a5fa", light: "#93c5fd", dark: "#2563eb" },
-    secondary: { main: "#38bdf8", light: "#7dd3fc", dark: "#0284c7" },
+    primary: { main: "#60a5fa" },
+    secondary: { main: "#38bdf8" },
     vibrant: { main: "#22d3ee", light: "#67e8f9", dark: "#06b6d4" },
     muted: { main: "#1f2a44", light: "#24324f", dark: "#182136" },
     text: { primary: "#e2e8f0", secondary: "#94a3b8" },
@@ -147,7 +150,11 @@ export const customThemes = [
         mode: "dark",
       },
     }),
-    { themeName: "dark1", longName: "Dark 1", backgroundImage: "" },
+    {
+      themeName: "material-mark",
+      longName: "Material Mark",
+      backgroundImage: "",
+    },
   ),
   new CustomThemeImpl(githubDarkTheme),
   new CustomThemeImpl(githubTheme),
