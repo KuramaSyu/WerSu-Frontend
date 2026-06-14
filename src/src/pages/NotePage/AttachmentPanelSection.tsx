@@ -75,41 +75,44 @@ export const AttachmentPanelSection: React.FC<AttachmentPanelSectionProps> = ({
           <Box
             sx={{ display: "flex", flexWrap: "wrap", gap: theme.spacing(1) }}
           >
-            {attachments?.map((a) => (
-              <Chip
-                key={a.key}
-                label={a.filename}
-                draggable
-                onClick={() => {
-                  setSelectedAttachment(a);
-                  setDialogOpen(true);
-                }}
-                onDragStart={(e) => {
-                  console.log(
-                    `start dragging attachment ${a.filename} with key ${a.key} and content type ${a.content_type}`,
-                  );
-                  e.dataTransfer.setData(
-                    "application/x-application-attachment",
+            {attachments
+              ?.filter((a) => !!a)
+              .map((a) => (
+                <Chip
+                  key={a.key}
+                  label={a.filename}
+                  draggable
+                  onClick={() => {
+                    setSelectedAttachment(a);
+                    setDialogOpen(true);
+                  }}
+                  onDragStart={(e) => {
+                    console.log(
+                      `start dragging attachment ${a.filename} with key ${a.key} and content type ${a.content_type}`,
+                    );
+                    e.dataTransfer.setData(
+                      "application/x-application-attachment",
 
-                    JSON.stringify({
-                      key: a.key,
-                      filename: a.filename,
-                      contentType: a.content_type,
-                    } as ApplicationAttachmentBody),
-                  );
-                }}
-                sx={{
-                  "&:hover": {
-                    cursor: "pointer",
-                    backgroundColor: theme.palette.primary.main,
-                    color: theme.blendWithContrast(
-                      theme.palette.primary.main,
-                      0.7,
-                    ),
-                  },
-                }}
-              />
-            ))}
+                      JSON.stringify({
+                        key: a.key,
+                        filename: a.filename,
+                        contentType: a.content_type,
+                      } as ApplicationAttachmentBody),
+                    );
+                  }}
+                  sx={{
+                    "&:hover": {
+                      cursor: "pointer",
+                      backgroundColor: theme.palette.primary.main,
+                      color: theme.blendWithContrast(
+                        theme.palette.primary.main,
+                        0.7,
+                        undefined,
+                      ),
+                    },
+                  }}
+                />
+              ))}
           </Box>
         </AccordionDetails>
       </Accordion>
