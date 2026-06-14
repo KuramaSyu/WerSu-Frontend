@@ -133,6 +133,7 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
         overflow: "visible",
       }}
     >
+      {/* table controlls */}
       <Box
         sx={{
           ".table-nodeview:hover & .hoverBox": shouldHideTableControls
@@ -179,6 +180,7 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
           {editor.isEditable && <ActionRow editor={editor} />}
         </Stack>
 
+        {/* add column side button */}
         <Fade in={isTableHovered && showAddColControl && editor.isEditable}>
           <Box className="table-col-control">
             <Button
@@ -204,6 +206,7 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
           </Box>
         </Fade>
 
+        {/* add row bottom button */}
         <Fade in={isTableHovered && showAddRowControl && editor.isEditable}>
           <Box className="table-row-control">
             <Button
@@ -227,8 +230,9 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
           </Box>
         </Fade>
       </Box>
-
-      <NodeViewContent />
+      <CssOverrideForImageCellsBox>
+        <NodeViewContent />
+      </CssOverrideForImageCellsBox>
     </NodeViewWrapper>
   );
 };
@@ -240,3 +244,20 @@ export const TableWithControls = Table.extend({
 });
 
 export default TableWithControls;
+
+const CssOverrideForImageCellsBox: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  return (
+    <Box
+      // force image to use width = 100%
+      sx={{
+        "& td img, & th img": {
+          width: "100%",
+        },
+      }}
+    >
+      {children}
+    </Box>
+  );
+};
