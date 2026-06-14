@@ -28,6 +28,7 @@ import {
   EditorContent,
   useEditorState,
   Editor,
+  type JSONContent,
 } from "@tiptap/react";
 import DragHandle from "@tiptap/extension-drag-handle-react";
 import StarterKit from "@tiptap/starter-kit";
@@ -72,6 +73,12 @@ import { NoteButtonActionRow } from "./NoteButtonActionRow";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { InsertSpeedDial } from "./SpeedDial";
 import { LatexDialog, type LatexDialogProps } from "./LatexDialog";
+import { CustomTableCell } from "../../components/Editor/TableControlls/CustomTableCell";
+import { CustomImage } from "../../components/Editor/View/CustomImage";
+import {
+  normalizeTableCell,
+  normalizeTables,
+} from "../../components/Editor/jsonNormalization";
 
 const lowlight = createLowlight(all);
 const DRAG_HANDLE_GUTTER_PX = 28;
@@ -187,11 +194,11 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         parent: window.location.hostname,
       }),
       UploadAttachmentNode,
-      Image,
-      Dropcursor,
-      Document,
+      CustomImage,
+      // CustomImage,
+      TableCell.configure({}),
+
       TableRow,
-      TableCell,
       TableHeader,
       TableWithControls.configure({ resizable: false }),
       Highlight,
@@ -312,15 +319,14 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         return false;
       },
       handleDrop(view, event) {
-        console.log("handle drop in editor", event);
-
-        const isDraggedDiv =
-          event.dataTransfer?.files.length === 0 &&
-          event.dataTransfer?.items.length !== 0;
-        if (isDraggedDiv) {
-          // a img div was moved within the editor -> let tiptap handle it e.g. move the node
-          return false;
-        }
+        // const isDraggedDiv =
+        //   event.dataTransfer?.files.length === 0 &&
+        //   event.dataTransfer?.items.length !== 0;
+        // if (isDraggedDiv) {
+        //   // a img div was moved within the editor -> let tiptap handle it e.g. move the node
+        //   console.log("div dragged within editor, let tiptap handle it");
+        //   return false;
+        // }
 
         // check for a dropped attachment-chip
         const jsonBody = event.dataTransfer?.getData(
@@ -382,13 +388,27 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     selector: (context) => context.editor.isEditable,
   });
 
+  // load note content into editor when note changes
   useEffect(() => {
     if (!editor || !note) {
       return;
     }
 
-    const markdownContent = note.content || note.stripped_content || "";
-    editor.commands.setContent(markdownContent, { contentType: "markdown" });
+    function markdownToProsemirror(markdown: string): JSONContent {
+      // first parse markdown normally with builtin markdown extension
+      const pmDoc = editor.storage.markdown.manager.parse(markdown);
+      // now: a table cell containing an image with text gets rendered to
+      // <p>text <img/></p>. The problem with it is, that when now the user
+      // starts editing the text, the image just gets deleted and ctrl z is also
+      // not possible. Hence we normalize the JSON structure, to render it as <p>text</p><img/>
+      // keep in mind, that it parses a JSON, not HTML. I just used HTML for describing
+      const normalizedDoc = normalizeTables(pmDoc);
+      return normalizedDoc;
+    }
+    const normalizedDoc = markdownToProsemirror(
+      note.content || note.stripped_content || "",
+    );
+    editor.commands.setContent(normalizedDoc);
   }, [editor, note?.id]);
 
   // Saves either the rich editor markdown or the source editor content.
