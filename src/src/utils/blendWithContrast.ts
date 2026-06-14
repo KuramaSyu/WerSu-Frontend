@@ -1,4 +1,4 @@
-import { useTheme } from "@mui/material/styles";
+import { useTheme, type Theme } from "@mui/material/styles";
 import { type CustomTheme } from "../theme/customTheme";
 
 // Helpers
@@ -85,7 +85,7 @@ export function blendColors(
  */
 export function blendAgainstContrast(
   mainColor: string,
-  theme: CustomTheme,
+  theme: Theme,
   amount: number,
 ): string {
   const contrastColor = invertColor(theme.palette.getContrastText(mainColor));
