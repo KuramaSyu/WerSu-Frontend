@@ -602,7 +602,7 @@ const ResultContent = ({
       </Stack>
       <Fade
         in={filteredNotes.length === 0}
-        timeout={{ enter: theme.transitions.duration.complex, exit: 0 }}
+        timeout={{ enter: theme.transitions.duration.short, exit: 0 }}
         unmountOnExit
       >
         <Stack direction={"row"} alignItems={"center"}>
