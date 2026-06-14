@@ -31,7 +31,7 @@ const SearchBar: React.FC = () => {
     RestNotesSearchType.CONTEXT,
   );
 
-  const { isModalOpen, setIsModalOpen, isSearching, setIsSearching } =
+  const { isDialogOpen, setIsDialogOpen, isSearching, setIsSearching } =
     useSearchNotesStore();
   const location = useLocation();
   const isMainPage = location.pathname === "/";
@@ -41,8 +41,8 @@ const SearchBar: React.FC = () => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (isCtrlPlus(event, "k")) {
         event.preventDefault();
-        const open = !isModalOpen;
-        setIsModalOpen(open);
+        const open = !isDialogOpen;
+        setIsDialogOpen(open);
         setSearchActive(open);
       }
     };
@@ -52,7 +52,7 @@ const SearchBar: React.FC = () => {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isModalOpen, setIsModalOpen]);
+  }, [isDialogOpen, setIsDialogOpen]);
 
   // initial search
   //   useEffect(() => {
@@ -65,16 +65,16 @@ const SearchBar: React.FC = () => {
   //   }, []);
 
   // useEffect(() => {
-  //   if (isMainPage && isModalOpen) {
-  //     setIsModalOpen(false);
+  //   if (isMainPage && isDialogOpen) {
+  //     setIsDialogOpen(false);
   //   }
-  // }, [isMainPage, isModalOpen, setIsModalOpen]);
+  // }, [isMainPage, isDialogOpen, setIsDialogOpen]);
 
   return (
     <>
       <Button
         variant="text"
-        onClick={() => setIsModalOpen(true)}
+        onClick={() => setIsDialogOpen(true)}
         sx={{
           border: `1px solid ${theme.palette.primary.main}`,
           justifyContent: "space-between",
@@ -88,8 +88,8 @@ const SearchBar: React.FC = () => {
       </Button>
 
       <SearchResultsOverlay
-        open={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        open={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
         isLoading={isSearching}
         searchQuery={debouncedSearchText}
         searchType={searchType}
