@@ -71,6 +71,39 @@ export function getPasteUploadExtension(
       return [
         new Plugin({
           props: {
+            handleDrop: (view, event) => {
+              console.log(`process drop of file: ${event.dataTransfer}`);
+              const hasFiles =
+                event.dataTransfer?.files &&
+                event.dataTransfer.files.length > 0;
+              if (!hasFiles) {
+                return false; // no files, let other handlers process the drop
+              }
+
+              // prevent default drop behavior
+              event.preventDefault();
+              // process each dropped file
+              const files = Array.from(event.dataTransfer?.files || []);
+              // use foreach to process them async
+              files.forEach(async (file) => {
+                try {
+                  const sucess = await uploadAttachmentWithPlaceholder(
+                    view,
+                    file,
+                    onUploadHook,
+                  );
+                } catch (error) {
+                  if (error instanceof Error) {
+                    console.error("Error while uploading dropped file:", error);
+                    setMessage(
+                      `Failed to upload the dropped file: ${file.name}`,
+                      "error",
+                    );
+                  }
+                }
+              });
+            },
+
             handlePaste: (view, event) => {
               event.preventDefault();
               const files = Array.from(event.clipboardData?.files || []);
