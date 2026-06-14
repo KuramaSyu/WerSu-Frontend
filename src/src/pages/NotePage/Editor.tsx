@@ -284,35 +284,15 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       }),
       Markdown,
 
-      // upload extension mechanics
-      FileHandler.configure({
-        allowedMimeTypes: [
-          "image/png",
-          "image/jpeg",
-          "image/gif",
-          "image/webp",
-        ],
-        onDrop: (currentEditor, files, pos) => {
-          files.forEach((file) => {
-            const fileReader = new FileReader();
-
-            fileReader.readAsDataURL(file);
-
-            fileReader.onload = () => {
-              currentEditor
-                .chain()
-                .insertContentAt(pos, {
-                  type: file.type,
-                  attrs: {
-                    src: fileReader.result,
-                  },
-                })
-                .focus()
-                .run();
-            };
-          });
-        },
-      }),
+      // we don't need the file handler
+      // FileHandler.configure({
+      //   allowedMimeTypes: [
+      //     "image/png",
+      //     "image/jpeg",
+      //     "image/gif",
+      //     "image/webp",
+      //   ],
+      // }),
     ],
 
     content: "",
@@ -332,15 +312,22 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         return false;
       },
       handleDrop(view, event) {
-        // handle attachment drop -> insert image link
-        // const node = getNodeByFileType(file, file.type, currentEditor.view);
-        //     console.log(
-        //       `insert node ${node} at pos ${pos} because of file drop`,
-        //     );
+        console.log("handle drop in editor", event);
+
+        const isDraggedDiv =
+          event.dataTransfer?.files.length === 0 &&
+          event.dataTransfer?.items.length !== 0;
+        if (isDraggedDiv) {
+          // a img div was moved within the editor -> let tiptap handle it e.g. move the node
+          return false;
+        }
+
+        // check for a dropped attachment-chip
         const jsonBody = event.dataTransfer?.getData(
           "application/x-application-attachment",
         );
         if (!jsonBody) {
+          console.log("no attachment data, let tiptap handle drop");
           return false; // let tiptap handle drop, e.g. do nothing
         }
         const attachmentBody = JSON.parse(
@@ -348,6 +335,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         ) as ApplicationAttachmentBody;
 
         if (!attachmentBody.key) {
+          console.error("Attachment data missing key:", attachmentBody);
           return false; // let tiptap handle drop, e.g. do nothing
         }
 
@@ -357,6 +345,10 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         };
         const pos = view.posAtCoords(coords);
         if (!pos) {
+          console.error(
+            `Failed to process the drop of attachment ${attachmentBody.filename}: could not get drop position from coordinates ${JSON.stringify(coords)}`,
+          );
+
           return true;
         } // cancel
 

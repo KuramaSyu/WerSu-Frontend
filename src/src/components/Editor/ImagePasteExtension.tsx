@@ -72,18 +72,28 @@ export function getPasteUploadExtension(
         new Plugin({
           props: {
             handleDrop: (view, event) => {
-              console.log(`process drop of file: ${event.dataTransfer}`);
               const hasFiles =
                 event.dataTransfer?.files &&
                 event.dataTransfer.files.length > 0;
               if (!hasFiles) {
+                // this could happen, when an div img was dragged within the editor.
+                // this is not handled here, but in the FileHandler Extension
                 return false; // no files, let other handlers process the drop
               }
 
-              // prevent default drop behavior
-              event.preventDefault();
               // process each dropped file
               const files = Array.from(event.dataTransfer?.files || []);
+              if (files.length === 0) {
+                return false; // no files, let other handlers process the drop
+              }
+
+              // at this point, its an image and the we'll try to upload it.
+              // -> prevent default behavior
+              event.preventDefault();
+              console.log(
+                `dropped a file - try to upload it: ${files.map((f) => f.name).join(", ")}`,
+              );
+
               // use foreach to process them async
               files.forEach(async (file) => {
                 try {
@@ -102,9 +112,11 @@ export function getPasteUploadExtension(
                   }
                 }
               });
+              return true; // indicate that the drop event was handled
             },
 
             handlePaste: (view, event) => {
+              console.log(`process paste of file: ${event.clipboardData}`);
               event.preventDefault();
               const files = Array.from(event.clipboardData?.files || []);
               if (files.length === 0) {
