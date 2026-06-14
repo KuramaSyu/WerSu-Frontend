@@ -14,11 +14,15 @@ export const attachmentQueries = {
     queryFn: async () => {
       var metadatas = [];
       for (const key of attachmentKeys) {
-        const metadata = await attachmentApi.getAttachmentMetadata(key);
-        if (!metadata) {
-          throw new Error("Failed to fetch attachments for note " + noteId);
+        try {
+          const metadata = await attachmentApi.getAttachmentMetadata(key);
+          metadatas.push(metadata);
+        } catch (error) {
+          console.error(
+            `Failed to fetch metadata for attachment ${key}:`,
+            error,
+          );
         }
-        metadatas.push(metadata);
       }
       return metadatas;
     },
