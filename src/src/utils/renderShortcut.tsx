@@ -29,7 +29,6 @@ export function renderShortcut(
   var components: React.ReactNode[] = [];
   for (const [index, key] of shortcut.split(/([+,])/).entries()) {
     // Process each key
-    console.log("key", key);
     if (key === "+") {
       components.push(
         <Box key={index} component="span" sx={{ mx: 0.5 }}>

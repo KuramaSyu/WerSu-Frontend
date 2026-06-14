@@ -184,7 +184,6 @@ const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
     );
   };
 
-  console.log(`custom themes: ${JSON.stringify(customThemes)}`);
   // Desktop view
   return (
     <>
