@@ -89,7 +89,6 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
   const [searchType, setSearchType] = useState<RestNotesSearchType>(
     RestNotesSearchType.CONTEXT,
   );
-  const [selectedIndex, setSelectedIndex] = useState<number>(0);
 
   // to get directory names
   const { directoriesById } = useDirectoryStore();
@@ -123,11 +122,7 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         onClose();
-        setSelectedIndex(0);
         setSearchQuery("");
-      } else if (e.key === "Enter") {
-        setSelectedIndex(0);
-        // close is done in element itself, where also the note gets opened
       }
     };
 
@@ -514,6 +509,11 @@ const ResultContent = ({
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, [setHoverEnabled]);
+
+  // UX: set index back to 0 when search query or type changes
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [searchQuery, searchType]);
 
   return (
     <>
