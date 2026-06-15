@@ -32,6 +32,10 @@ import {
 } from "@tiptap/react";
 import DragHandle from "@tiptap/extension-drag-handle-react";
 import StarterKit from "@tiptap/starter-kit";
+import Collaboration from "@tiptap/extension-collaboration";
+import CollaborationCursor, {
+  CollaborationCaret,
+} from "@tiptap/extension-collaboration-caret";
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
 import { all, createLowlight } from "lowlight";
 import { TaskItem, TaskList } from "@tiptap/extension-list";
@@ -79,6 +83,12 @@ import {
   normalizeTableCell,
   normalizeTables,
 } from "../../components/Editor/jsonNormalization";
+import { useNoteCollaboration } from "../../hooks/useNoteCollaboration";
+import { useUsersStore, useUserStore } from "../../zustand/userStore";
+import {
+  colorFromString,
+  randomMatchingColor,
+} from "../../utils/blendWithContrast";
 
 const lowlight = createLowlight(all);
 const DRAG_HANDLE_GUTTER_PX = 28;
@@ -101,6 +111,9 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   const [noteTitle, setNoteTitle] = useState(note?.title ?? "");
   const [isSaving, setIsSaving] = useState(false);
   const [isInDragHandleArea, setIsInDragHandleArea] = useState(false);
+  const { ydoc, provider } = useNoteCollaboration(noteId);
+  const { user } = useUserStore();
+
   // Tracks which editor surface is active.
   const {
     viewMode: editorMode,
@@ -130,6 +143,9 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
 
   // ref for textfield of source view
   const sourceEditorRef = useRef<HTMLInputElement | null>(null);
+
+  // load markdown only, when draft is empty
+  const hasInitializedDraft = useRef(false);
 
   const EMPTY_DIALOG = {
     open: false,
@@ -182,7 +198,21 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ codeBlock: false, dropcursor: {} }),
+      StarterKit.configure({
+        codeBlock: false,
+        dropcursor: {},
+      }),
+      Collaboration.configure({
+        document: ydoc,
+      }),
+      CollaborationCaret.configure({
+        provider: provider,
+        user: {
+          name: `${user?.username}`,
+          // random color
+          color: randomMatchingColor(theme),
+        },
+      }),
       CodeBlockLowlight.configure({ lowlight }),
       TaskList,
       TaskItem.configure({ nested: true }),
@@ -290,16 +320,6 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         },
       }),
       Markdown,
-
-      // we don't need the file handler
-      // FileHandler.configure({
-      //   allowedMimeTypes: [
-      //     "image/png",
-      //     "image/jpeg",
-      //     "image/gif",
-      //     "image/webp",
-      //   ],
-      // }),
     ],
 
     content: "",
@@ -389,8 +409,31 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   });
 
   // load note content into editor when note changes
+  // useEffect(() => {
+  //   if (!editor || !note) {
+  //     return;
+  //   }
+
+  //   function markdownToProsemirror(markdown: string): JSONContent {
+  //     // first parse markdown normally with builtin markdown extension
+  //     const pmDoc = editor.storage.markdown.manager.parse(markdown);
+  //     // now: a table cell containing an image with text gets rendered to
+  //     // <p>text <img/></p>. The problem with it is, that when now the user
+  //     // starts editing the text, the image just gets deleted and ctrl z is also
+  //     // not possible. Hence we normalize the JSON structure, to render it as <p>text</p><img/>
+  //     // keep in mind, that it parses a JSON, not HTML. I just used HTML for describing
+  //     const normalizedDoc = normalizeTables(pmDoc);
+  //     return normalizedDoc;
+  //   }
+  //   const normalizedDoc = markdownToProsemirror(
+  //     note.content || note.stripped_content || "",
+  //   );
+  //   editor.commands.setContent(normalizedDoc);
+  // }, [editor, note?.id]);
+
+  // load ydoc content into editor
   useEffect(() => {
-    if (!editor || !note) {
+    if (!editor || !ydoc || !provider) {
       return;
     }
 
@@ -405,11 +448,32 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       const normalizedDoc = normalizeTables(pmDoc);
       return normalizedDoc;
     }
-    const normalizedDoc = markdownToProsemirror(
-      note.content || note.stripped_content || "",
-    );
-    editor.commands.setContent(normalizedDoc);
-  }, [editor, note?.id]);
+    const onSynced = () => {
+      const isEmpty = ydoc.getXmlFragment("default").length === 0;
+
+      // this means there is a draft on the websocket
+      if (!isEmpty) {
+        hasInitializedDraft.current = true;
+        return;
+      }
+
+      console.log(
+        "No draft on websocket, loading draft from markdown (note content)",
+      );
+
+      const markdown = note?.content || note?.stripped_content || "";
+      const normalizedDoc = markdownToProsemirror(markdown);
+      console.log("load doc from markdown in effect");
+      editor.commands.setContent(normalizedDoc);
+      hasInitializedDraft.current = true;
+    };
+
+    provider.on("synced", onSynced);
+
+    return () => {
+      provider.off("synced", onSynced);
+    };
+  }, [editor, note?.id, ydoc, provider]);
 
   // Saves either the rich editor markdown or the source editor content.
   const handleSave = async () => {
@@ -420,12 +484,14 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     const markdown =
       editorMode === "source" ? sourceMarkdown : (editor?.getMarkdown() ?? "");
     if (editorMode === "source" && editor) {
+      console.log("set markdown content to editor on save");
       editor.commands.setContent(markdown, { contentType: "markdown" });
     }
 
     setIsSaving(true);
     try {
       const saved = await new NoteApi().patch(noteId, noteTitle, markdown);
+      await provider?.destroy(); // close websocket connection after saving, to prevent further edits on the old note state e.g. DELETE /drafts/:noteId
       if (!saved) {
         setMessage(new SnackbarUpdateImpl("Failed to save note", "error"));
         return;
@@ -503,6 +569,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       }
 
       if (editor) {
+        console.log("restore version content to editor");
         editor.commands.setContent(content ?? "", { contentType: "markdown" });
       }
       setSourceMarkdown(content ?? "");
