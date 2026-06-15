@@ -505,7 +505,6 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     setIsSaving(true);
     try {
       const saved = await new NoteApi().patch(noteId, noteTitle, markdown);
-      await provider?.destroy(); // close websocket connection after saving, to prevent further edits on the old note state e.g. DELETE /drafts/:noteId
       if (!saved) {
         setMessage(new SnackbarUpdateImpl("Failed to save note", "error"));
         return;
