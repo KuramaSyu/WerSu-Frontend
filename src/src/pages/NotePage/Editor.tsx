@@ -110,16 +110,12 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   const { setMessage } = useInfoStore();
   const [noteTitle, setNoteTitle] = useState(note?.title ?? "");
   const [isSaving, setIsSaving] = useState(false);
-  const [isInDragHandleArea, setIsInDragHandleArea] = useState(false);
+  // const [isInDragHandleArea, setIsInDragHandleArea] = useState(false);
   const { ydoc, provider } = useNoteCollaboration(noteId);
   const { user } = useUserStore();
 
   // Tracks which editor surface is active.
-  const {
-    viewMode: editorMode,
-    setViewMode: setEditorMode,
-    editMode,
-  } = useEditorSettings();
+  const { viewMode: editorMode } = useEditorSettings();
   // Holds the markdown for source-mode editing.
   const [sourceMarkdown, setSourceMarkdown] = useState("");
   // Controls the version history drawer.
@@ -475,16 +471,6 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     };
   }, [editor, note?.id, ydoc, provider]);
 
-  // editor.on("transaction", ({ editor, transaction }) => {
-  //   if (!transaction.docChanged) {
-  //     return;
-  //   }
-
-  //   console.log(
-  //     "Editor transaction:",
-  //     JSON.stringify(editor.getJSON(), null, 2),
-  //   );
-  // });
   // Saves either the rich editor markdown or the source editor content.
   const handleSave = async () => {
     if (!noteId || (editorMode === "rich" && !editor)) {
@@ -617,16 +603,6 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     }
   };
 
-  const handleDragRegionMouseMove = (event: MouseEvent<HTMLDivElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    const xInRegion = event.clientX - rect.left;
-    setIsInDragHandleArea(xInRegion >= 0 && xInRegion <= DRAG_HANDLE_GUTTER_PX);
-  };
-
-  const handleDragRegionMouseLeave = () => {
-    setIsInDragHandleArea(false);
-  };
-
   /**
    * inserts a string at the current cursor position of the editor,
    * where it doesn't matter if the source or rich editor is used
@@ -712,15 +688,10 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           <>
             <TextSelectionBubbleMenu editor={editor} enabled={isEditable} />
             <SlashCommandMenu editor={editor} enabled={isEditable} />
-            <Box
-              className="editor-drag-region"
-              onMouseMove={handleDragRegionMouseMove}
-              onMouseLeave={handleDragRegionMouseLeave}
-            >
-              {/* block drag drop handlers, which are hidden when not hovered and not active */}
+            <Box className="editor-drag-region">
+              {/* hide handlers when editor is not editable */}
               <DragHandle
                 editor={editor}
-                // ${isInDragHandleArea ? "note-block-drag-handle--active" : ""} ${isEditorFocused && !isInDragHandleArea ? "note-block-drag-handle--suppressed" : ""}
                 className={`note-block-drag-handle ${isEditable ? "" : "note-block-drag-handle--hidden"} `}
                 nested={false}
               >
