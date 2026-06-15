@@ -270,3 +270,12 @@ export function colorFromString(str: string, theme: CustomTheme): string {
   // rotate arround hue
   return hslToHex(hue, s, l);
 }
+
+/** generates a random color which matches the theme colors */
+export function randomMatchingColor(theme: CustomTheme): string {
+  const hue = Math.abs(Math.random()) % 360; // Get a hue value between 0 and 359
+  // primary hsl
+  const { h, s, l } = hexToHsl(theme.palette.primary.main);
+  // rotate arround hue
+  return hslToHex(hue, s, l);
+}
