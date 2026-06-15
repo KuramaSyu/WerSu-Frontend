@@ -28,19 +28,19 @@ describe("normalizeTableCell", () => {
       type: "tableCell",
       content: [
         {
-          type: "image",
           attrs: {
             src: "/image.png",
           },
+          type: "image",
         },
         {
-          type: "paragraph",
           content: [
             {
               type: "text",
               text: "Hello",
             },
           ],
+          type: "paragraph",
         },
       ],
     });
@@ -152,6 +152,79 @@ describe("normalizeTables", () => {
             {
               type: "text",
               text: "Hello",
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  it("keeps the arrangement of text an image as is after destruction", () => {
+    const doc = {
+      type: "doc",
+      content: [
+        {
+          type: "table",
+          content: [
+            {
+              type: "tableRow",
+              content: [
+                {
+                  type: "tableCell",
+                  content: [
+                    {
+                      type: "paragraph",
+                      content: [
+                        {
+                          type: "text",
+                          text: "Hello1",
+                        },
+                        {
+                          type: "image",
+                          attrs: {
+                            src: "/image.png",
+                          },
+                        },
+                        {
+                          type: "text",
+                          text: "Hello2",
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const result = normalizeTables(doc);
+    expect(result.content?.[0].content?.[0].content?.[0]).toEqual({
+      type: "tableCell",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            {
+              type: "text",
+              text: "Hello1",
+            },
+          ],
+        },
+        {
+          type: "image",
+          attrs: {
+            src: "/image.png",
+          },
+        },
+        {
+          type: "paragraph",
+          content: [
+            {
+              type: "text",
+              text: "Hello2",
             },
           ],
         },

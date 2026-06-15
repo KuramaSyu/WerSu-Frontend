@@ -35,49 +35,61 @@ export function normalizeTableCell(cell: JSONContent): JSONContent {
 
   for (const child of cell.content ?? []) {
     // Non-paragraph children are already valid cell content.
-    if (child.type !== "paragraph") {
-      content.push(child);
-      continue;
-    }
+    // if (child.type !== "paragraph") {
+    //   content.push(child);
+    //   continue;
+    // }
+    // Paragraphs that contain images are normalized by destructuring the paragraph
 
-    const paragraphContent = child.content ?? [];
+    // const paragraphContent = child.content ?? [];
 
     // Only rewrite paragraphs that actually contain images.
-    const hasImage = paragraphContent.some((node) => node.type === "image");
+    // const hasImage = paragraphContent.some((node) => node.type === "image");
+    // if (!hasImage) {
+    //   content.push(child);
+    //   continue;
+    // }
 
-    if (!hasImage) {
-      content.push(child);
-      continue;
-    }
-
-    const images: JSONContent[] = [];
-    const rest: JSONContent[] = [];
-
-    // Split paragraph content into images and everything else.
-    for (const inline of paragraphContent) {
-      if (inline.type === "image") {
-        images.push(inline);
-      } else {
-        rest.push(inline);
-      }
-    }
-
-    // Images become direct children of the table cell.
-    content.push(...images);
-
-    // Remaining inline content stays wrapped in a paragraph.
-    if (rest.length > 0) {
-      content.push({
-        ...child,
-        content: rest,
-      });
-    }
+    // destrcut paragraph into its children to extract images out of paragraphs
+    content.push(...destructParagraph(child));
   }
-
   return {
     ...cell,
     content,
   };
+}
+
+/**
+ * Destrcuts a paragraph node into its non-paragraph children recursively.
+ * A non paragraph node A is returned as JSONContent[] = [A].
+ * A text node is wrapped as a paragraph. Otherwise it's rejected from tiptap.
+ * @param paragraph A paragraph node to destructure.
+ * @returns JSONContent[] - a flattened array of all non-paragraph nodes contained in the original paragraph
+ */
+function destructParagraph(paragraph: JSONContent): JSONContent[] {
+  const content: JSONContent[] = [];
+
+  if (paragraph.type === "text") {
+    // wrap bare text into a paragraph, otherwise tiptap will reject it
+    return [
+      {
+        type: "paragraph",
+        content: [paragraph],
+      },
+    ];
+  } else if (paragraph.type !== "paragraph") {
+    // keep other non-paragraph nodes as is
+    return [paragraph];
+  }
+
+  // destruct paragraph into all its children
+  for (const inline of paragraph.content ?? []) {
+    // recursively destruct each child.
+    // the above conditions will ensure, that images and other are returned as is
+    // while text nodes are wrapped into paragraphs and paragaphs are further destructured
+    content.push(...destructParagraph(inline));
+  }
+  return content;
 }
 
 /**
@@ -94,8 +106,11 @@ export function normalizeTableCell(cell: JSONContent): JSONContent {
  * @returns A normalized copy of the node tree.
  */
 export function normalizeTables(node: JSONContent): JSONContent {
+  // normalize cells as well as headers. headers are the cells in the head
   const normalized =
-    node.type === "tableCell" ? normalizeTableCell(node) : { ...node };
+    node.type === "tableCell" || node.type === "tableHeader"
+      ? normalizeTableCell(node)
+      : { ...node };
 
   if (normalized.content) {
     normalized.content = normalized.content.map(normalizeTables);
