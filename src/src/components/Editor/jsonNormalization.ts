@@ -1,7 +1,7 @@
 import type { JSONContent } from "@tiptap/react";
 
 /**
- * Normalizes a single table cell so that images are lifted out of paragraphs.
+ * Normalizes a single table cell or header (which is a cell aswell) so that images are lifted out of paragraphs.
  *
  * Markdown tables parse inline content such as:
  *
@@ -12,8 +12,9 @@ import type { JSONContent } from "@tiptap/react";
  *   tableCell
  *   └─ paragraph
  *      ├─ image
- *      └─ text("Hello")
- *
+ *      ├─ text("Hello")
+ *      ├─ image
+ *      └─ text("Hello2")
  * But this structure deletes the image, as soon as the user edits the text.
  * I don't know why. Hence we normalize the content to:
  *
@@ -21,14 +22,14 @@ import type { JSONContent } from "@tiptap/react";
  *   ├─ image
  *   └─ paragraph
  *      └─ text("Hello")
+ *   ├─ image
+ *   └─ paragraph
+ *      └─ text("Hello2")
  *
  * Paragraphs that do not contain images are left unchanged.
  *
  * @param cell A tableCell node.
  * @returns A normalized copy of the table cell.
- *
- * @limitation paragraph(text, image) will normalize to image, text -> order is lost.
- * The image will be always rendered first.
  */
 export function normalizeTableCell(cell: JSONContent): JSONContent {
   const content: JSONContent[] = [];
