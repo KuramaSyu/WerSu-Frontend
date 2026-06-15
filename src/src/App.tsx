@@ -20,7 +20,6 @@ import { DirectoryEditPage } from "./pages/DirectoryEdit/Main";
 import { FileGraphPage } from "./pages/FileGraph/Main";
 import { recordNavigation } from "./utils/navigationMemento";
 import { Bootstrap } from "./Bootstrap";
-import "katex/dist/katex.min.css";
 import "@fontsource/fira-sans/300.css";
 import "@fontsource/fira-sans/400.css";
 import "@fontsource/fira-sans/500.css";

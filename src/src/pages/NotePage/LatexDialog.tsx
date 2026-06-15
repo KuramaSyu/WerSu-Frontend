@@ -18,7 +18,7 @@ import CodeMirror from "@uiw/react-codemirror";
 import { latex } from "codemirror-lang-latex";
 import DoneIcon from "@mui/icons-material/Done";
 import CloseIcon from "@mui/icons-material/Close";
-import { BlockMath, InlineMath } from "react-katex";
+import katex from "katex";
 
 export interface LatexDialogProps {
   // compressed is assumed, when latex start with \displaystyle
@@ -78,7 +78,6 @@ export const LatexDialog: React.FC<LatexDialogProps> = ({
     setLatexType(initialLatexType || "inline");
   }, [open]);
 
-  //
   return (
     <Dialog
       open={open}
@@ -135,9 +134,23 @@ export const LatexDialog: React.FC<LatexDialogProps> = ({
             }}
           >
             {compressed ? (
-              <InlineMath math={value} />
+              <span
+                dangerouslySetInnerHTML={{
+                  __html: katex.renderToString(value, {
+                    throwOnError: false,
+                    displayMode: !compressed,
+                  }),
+                }}
+              />
             ) : (
-              <BlockMath math={value} />
+              <div
+                dangerouslySetInnerHTML={{
+                  __html: katex.renderToString(value, {
+                    throwOnError: false,
+                    displayMode: !compressed,
+                  }),
+                }}
+              />
             )}
           </Box>
         </Stack>
@@ -166,7 +179,15 @@ export const LatexDialog: React.FC<LatexDialogProps> = ({
           <Tooltip
             title={
               <>
-                smaller symbols: <InlineMath math={"\\int_a^b f(x) dx"} />{" "}
+                smaller symbols:{" "}
+                <span
+                  dangerouslySetInnerHTML={{
+                    __html: katex.renderToString("\\int_a^b f(x) dx", {
+                      throwOnError: false,
+                      displayMode: false,
+                    }),
+                  }}
+                />
               </>
             }
           >
@@ -176,7 +197,17 @@ export const LatexDialog: React.FC<LatexDialogProps> = ({
             title={
               <>
                 bigger symbols:{" "}
-                <InlineMath math={"\\displaystyle \\int_a^b f(x) dx"} />{" "}
+                <span
+                  dangerouslySetInnerHTML={{
+                    __html: katex.renderToString(
+                      "\\displaystyle \\int_a^b f(x) dx",
+                      {
+                        throwOnError: false,
+                        displayMode: false,
+                      },
+                    ),
+                  }}
+                />
               </>
             }
           >
