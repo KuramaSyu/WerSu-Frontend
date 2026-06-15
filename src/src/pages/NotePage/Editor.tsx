@@ -226,7 +226,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       UploadAttachmentNode,
       CustomImage,
       // CustomImage,
-      TableCell.configure({}),
+      //CustomTableCell,
+      TableCell,
 
       TableRow,
       TableHeader,
@@ -437,17 +438,6 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       return;
     }
 
-    function markdownToProsemirror(markdown: string): JSONContent {
-      // first parse markdown normally with builtin markdown extension
-      const pmDoc = editor.storage.markdown.manager.parse(markdown);
-      // now: a table cell containing an image with text gets rendered to
-      // <p>text <img/></p>. The problem with it is, that when now the user
-      // starts editing the text, the image just gets deleted and ctrl z is also
-      // not possible. Hence we normalize the JSON structure, to render it as <p>text</p><img/>
-      // keep in mind, that it parses a JSON, not HTML. I just used HTML for describing
-      const normalizedDoc = normalizeTables(pmDoc);
-      return normalizedDoc;
-    }
     const onSynced = () => {
       const isEmpty = ydoc.getXmlFragment("default").length === 0;
 
@@ -462,19 +452,36 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       );
 
       const markdown = note?.content || note?.stripped_content || "";
-      const normalizedDoc = markdownToProsemirror(markdown);
+      const normalizedDoc = markdownToProsemirror(editor, markdown);
       console.log("load doc from markdown in effect");
       editor.commands.setContent(normalizedDoc);
+      console.log(
+        "After markdown conversion, before sync:",
+        JSON.stringify(editor.getJSON(), null, 2),
+      );
       hasInitializedDraft.current = true;
     };
 
     provider.on("synced", onSynced);
+    provider.on("synced", () => {
+      console.log("YJS Sync:", JSON.stringify(editor.getJSON(), null, 2));
+    });
 
     return () => {
       provider.off("synced", onSynced);
     };
   }, [editor, note?.id, ydoc, provider]);
 
+  // editor.on("transaction", ({ editor, transaction }) => {
+  //   if (!transaction.docChanged) {
+  //     return;
+  //   }
+
+  //   console.log(
+  //     "Editor transaction:",
+  //     JSON.stringify(editor.getJSON(), null, 2),
+  //   );
+  // });
   // Saves either the rich editor markdown or the source editor content.
   const handleSave = async () => {
     if (!noteId || (editorMode === "rich" && !editor)) {
@@ -485,7 +492,14 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       editorMode === "source" ? sourceMarkdown : (editor?.getMarkdown() ?? "");
     if (editorMode === "source" && editor) {
       console.log("set markdown content to editor on save");
-      editor.commands.setContent(markdown, { contentType: "markdown" });
+      // normalize
+
+      const normalizedDoc = markdownToProsemirror(editor, markdown);
+      editor.commands.setContent(normalizedDoc);
+      console.log(
+        "JSON after markdown save:",
+        JSON.stringify(editor.getJSON(), null, 2),
+      );
     }
 
     setIsSaving(true);
@@ -570,7 +584,12 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
 
       if (editor) {
         console.log("restore version content to editor");
-        editor.commands.setContent(content ?? "", { contentType: "markdown" });
+        const normalizedDoc = markdownToProsemirror(editor, content);
+        editor.commands.setContent(normalizedDoc);
+        console.log(
+          "JSON after markdown restore:",
+          JSON.stringify(editor.getJSON(), null, 2),
+        );
       }
       setSourceMarkdown(content ?? "");
 
@@ -797,4 +816,16 @@ function imageLinkToBlock(imageLink: string, editorMode: "rich" | "source") {
   } else {
     return `![image](${imageLink})`;
   }
+}
+
+function markdownToProsemirror(editor: Editor, markdown: string): JSONContent {
+  // first parse markdown normally with builtin markdown extension
+  const pmDoc = editor.storage.markdown.manager.parse(markdown);
+  // now: a table cell containing an image with text gets rendered to
+  // <p>text <img/></p>. The problem with it is, that when now the user
+  // starts editing the text, the image just gets deleted and ctrl z is also
+  // not possible. Hence we normalize the JSON structure, to render it as <p>text</p><img/>
+  // keep in mind, that it parses a JSON, not HTML. I just used HTML for describing
+  const normalizedDoc = normalizeTables(pmDoc);
+  return normalizedDoc;
 }
