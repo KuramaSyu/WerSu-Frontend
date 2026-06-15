@@ -31,11 +31,7 @@ export const CardGrid: React.FC<CardGridProps> = ({
   const { isSearching } = useSearchNotesStore();
 
   const { theme } = useThemeStore();
-  const isXs = useMediaQuery(theme.breakpoints.only("xs"));
-  const isSm = useMediaQuery(theme.breakpoints.only("sm"));
-  const isMd = useMediaQuery(theme.breakpoints.only("md"));
-
-  const columnCount = isXs ? 1 : isSm ? 2 : isMd ? 3 : 4;
+  const columnCount = useColumnCount(30, 12);
 
   // Sort notes for display in row-major order (left-to-right, top-to-bottom)
   const displayNotes = useMemo(() => {
@@ -81,7 +77,7 @@ export const CardGrid: React.FC<CardGridProps> = ({
         />
         <Box
           sx={{
-            columnCount: { xs: 1, sm: 2, md: 3, lg: 4 },
+            columnCount: columnCount,
             columnGap: M2,
           }}
         >
@@ -110,7 +106,7 @@ export const CardGrid: React.FC<CardGridProps> = ({
       </Typography>
       <Box
         sx={{
-          columnCount: { xs: 1, sm: 2, md: 3, lg: 4 },
+          columnCount: columnCount,
           columnGap: M2,
         }}
       >
@@ -132,3 +128,38 @@ export const CardGrid: React.FC<CardGridProps> = ({
     </Paper>
   );
 };
+
+/**
+ * A custom hook that calculates the number of columns that can fit in the available
+ * width of the window based on the specified card width in rem and maximum columns.
+ *
+ * @param cardWidth - The width of each card in rem. Default 20rem
+ * @param maxColumns - The maximum number of columns allowed. Defaults to 10.
+ * @returns The calculated number of columns that can fit in the current window width.
+ *
+ * @example
+ * const columnCount = useColumnCount(20, 10);
+ */
+function useColumnCount(cardWidth = 20, maxColumns = 10): number {
+  const [columnCount, setColumnCount] = useState(1);
+
+  useEffect(() => {
+    const update = () => {
+      const rem = parseFloat(
+        getComputedStyle(document.documentElement).fontSize,
+      );
+      setColumnCount(
+        Math.min(
+          maxColumns,
+          Math.max(1, Math.floor(window.innerWidth / (cardWidth * rem))),
+        ),
+      );
+    };
+
+    update();
+
+    window.addEventListener("resize", update);
+  }, [cardWidth, maxColumns]);
+
+  return columnCount;
+}
