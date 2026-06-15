@@ -52,13 +52,7 @@ export const highlightSearchMatch = ({
       return [
         <Typography
           variant="body2"
-          sx={{
-            color: theme.blendAgainstContrast(
-              theme.palette.text.secondary,
-              0.5,
-              undefined,
-            ),
-          }}
+          sx={{ color: theme.palette.text.secondary }}
         >
           {shortenText(content, 200)}
         </Typography>,
@@ -98,11 +92,7 @@ export const highlightSearchMatch = ({
           <Typography
             variant="body2"
             sx={{
-              color: theme.blendAgainstContrast(
-                theme.palette.text.secondary,
-                0.5,
-                undefined,
-              ),
+              color: theme.palette.text.secondary,
             }}
           >
             {before}
@@ -111,7 +101,7 @@ export const highlightSearchMatch = ({
               sx={{
                 // backgroundColor: alpha(theme.palette.secondary.dark, 0.66),
                 fontWeight: "bold",
-                color: theme.palette.text.secondary,
+                color: theme.palette.text.primary,
                 borderRadius: 1,
                 px: "2px",
               }}
