@@ -75,6 +75,7 @@ export const NotePage: React.FC = () => {
           noteId={id}
           fetchError={null}
           onNoteUpdated={updateNote}
+          key={id}
         />
       </Box>
     </Box>

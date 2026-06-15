@@ -196,208 +196,211 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     }
   }, [note?.id]);
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit.configure({
-        codeBlock: false,
-        dropcursor: {},
-      }),
-      Collaboration.configure({
-        document: ydoc,
-      }),
-      CollaborationCaret.configure({
-        provider: provider,
-        user: {
-          name: `${user?.username}`,
-          // random color
-          color: randomMatchingColor(theme),
-        },
-      }),
-      CodeBlockLowlight.configure({ lowlight }),
-      TaskList,
-      TaskItem.configure({ nested: true }),
-      Youtube.configure({ inline: false, width: 480, height: 320 }),
-      Twitch.configure({
-        inline: false,
-        width: 480,
-        height: 320,
-        parent: window.location.hostname,
-      }),
-      UploadAttachmentNode,
-      CustomImage,
-      // CustomImage,
-      //CustomTableCell,
-      TableCell,
-
-      TableRow,
-      TableHeader,
-      TableWithControls.configure({ resizable: false }),
-      Highlight,
-      Mathematics.configure({
-        blockOptions: {
-          onClick: (node, pos) => {
-            if (!editor.isEditable) {
-              return;
-            }
-            // open latex dialog with current latex code
-            // and insert it if the user confirms the dialog
-            setLatexDialogProps({
-              ...getLatexDialogProps(),
-              open: true,
-              latexCode: node.attrs.latex,
-              initialLatexType: "block",
-              onClose: (newCalculation, inline, compressed) => {
-                const chain = editor.chain().setNodeSelection(pos);
-
-                if (inline === "block") {
-                  chain.updateBlockMath({ latex: newCalculation });
-                } else {
-                  chain.deleteBlockMath();
-                  chain.insertInlineMath({ latex: newCalculation });
-                }
-                chain.focus().run();
-
-                setLatexDialogProps(getLatexDialogProps());
-              },
-            });
+  const editor = useEditor(
+    {
+      extensions: [
+        StarterKit.configure({
+          codeBlock: false,
+          dropcursor: {},
+        }),
+        Collaboration.configure({
+          document: ydoc,
+        }),
+        CollaborationCaret.configure({
+          provider: provider,
+          user: {
+            name: `${user?.username}`,
+            // random color
+            color: randomMatchingColor(theme),
           },
-        },
-        inlineOptions: {
-          onClick: (node, pos) => {
-            if (!editor.isEditable) {
-              return;
+        }),
+        CodeBlockLowlight.configure({ lowlight }),
+        TaskList,
+        TaskItem.configure({ nested: true }),
+        Youtube.configure({ inline: false, width: 480, height: 320 }),
+        Twitch.configure({
+          inline: false,
+          width: 480,
+          height: 320,
+          parent: window.location.hostname,
+        }),
+        UploadAttachmentNode,
+        CustomImage,
+        // CustomImage,
+        //CustomTableCell,
+        TableCell,
+
+        TableRow,
+        TableHeader,
+        TableWithControls.configure({ resizable: false }),
+        Highlight,
+        Mathematics.configure({
+          blockOptions: {
+            onClick: (node, pos) => {
+              if (!editor.isEditable) {
+                return;
+              }
+              // open latex dialog with current latex code
+              // and insert it if the user confirms the dialog
+              setLatexDialogProps({
+                ...getLatexDialogProps(),
+                open: true,
+                latexCode: node.attrs.latex,
+                initialLatexType: "block",
+                onClose: (newCalculation, inline, compressed) => {
+                  const chain = editor.chain().setNodeSelection(pos);
+
+                  if (inline === "block") {
+                    chain.updateBlockMath({ latex: newCalculation });
+                  } else {
+                    chain.deleteBlockMath();
+                    chain.insertInlineMath({ latex: newCalculation });
+                  }
+                  chain.focus().run();
+
+                  setLatexDialogProps(getLatexDialogProps());
+                },
+              });
+            },
+          },
+          inlineOptions: {
+            onClick: (node, pos) => {
+              if (!editor.isEditable) {
+                return;
+              }
+
+              // open latex dialog with current latex code
+              // and insert it if the user confirms the dialog
+              setLatexDialogProps({
+                ...getLatexDialogProps(),
+                open: true,
+                latexCode: node.attrs.latex,
+                initialLatexType: "inline",
+                onClose: (newCalculation, inline, compressed) => {
+                  const chain = editor.chain().setNodeSelection(pos);
+
+                  if (inline === "inline") {
+                    chain.updateInlineMath({ latex: newCalculation });
+                  } else {
+                    chain.deleteInlineMath();
+                    chain.insertBlockMath({ latex: newCalculation });
+                  }
+                  chain.focus().run();
+                  setLatexDialogProps(getLatexDialogProps());
+                },
+              });
+            },
+          },
+        }),
+
+        getPasteUploadExtension(handlePasteAndUpload, (message, severity) => {
+          setMessage(new SnackbarUpdateImpl(message, severity));
+        }),
+        Placeholder.configure({
+          // Show hint only for the currently focused empty paragraph.
+          showOnlyCurrent: true,
+          includeChildren: false,
+          placeholder: ({ node, editor: placeholderEditor }) => {
+            // Restrict placeholder to standard paragraph lines.
+            if (node.type.name !== "paragraph") {
+              return "";
             }
 
-            // open latex dialog with current latex code
-            // and insert it if the user confirms the dialog
-            setLatexDialogProps({
-              ...getLatexDialogProps(),
-              open: true,
-              latexCode: node.attrs.latex,
-              initialLatexType: "inline",
-              onClose: (newCalculation, inline, compressed) => {
-                const chain = editor.chain().setNodeSelection(pos);
+            if (
+              // Avoid showing this hint in structured block contexts.
+              placeholderEditor.isActive("table") ||
+              placeholderEditor.isActive("bulletList") ||
+              placeholderEditor.isActive("orderedList") ||
+              placeholderEditor.isActive("taskList") ||
+              placeholderEditor.isActive("codeBlock")
+            ) {
+              return "";
+            }
 
-                if (inline === "inline") {
-                  chain.updateInlineMath({ latex: newCalculation });
-                } else {
-                  chain.deleteInlineMath();
-                  chain.insertBlockMath({ latex: newCalculation });
-                }
-                chain.focus().run();
-                setLatexDialogProps(getLatexDialogProps());
-              },
-            });
+            // Main inline guidance for slash command discoverability.
+            return "Write anything or use / for commands";
           },
-        },
-      }),
+        }),
+        Markdown,
+      ],
 
-      getPasteUploadExtension(handlePasteAndUpload, (message, severity) => {
-        setMessage(new SnackbarUpdateImpl(message, severity));
-      }),
-      Placeholder.configure({
-        // Show hint only for the currently focused empty paragraph.
-        showOnlyCurrent: true,
-        includeChildren: false,
-        placeholder: ({ node, editor: placeholderEditor }) => {
-          // Restrict placeholder to standard paragraph lines.
-          if (node.type.name !== "paragraph") {
-            return "";
+      content: "",
+      contentType: "markdown",
+      editorProps: {
+        handleKeyDown(view, event) {
+          // do not tab out of code block, but insert spaces within the code block
+          if (event.key === "Tab" && editor?.isActive("codeBlock")) {
+            event.preventDefault();
+            const tab = "    ";
+            const { state, dispatch } = view;
+            const { selection } = state;
+            dispatch(state.tr.insertText(tab, selection.from, selection.to));
+            return true;
           }
 
-          if (
-            // Avoid showing this hint in structured block contexts.
-            placeholderEditor.isActive("table") ||
-            placeholderEditor.isActive("bulletList") ||
-            placeholderEditor.isActive("orderedList") ||
-            placeholderEditor.isActive("taskList") ||
-            placeholderEditor.isActive("codeBlock")
-          ) {
-            return "";
-          }
-
-          // Main inline guidance for slash command discoverability.
-          return "Write anything or use / for commands";
+          return false;
         },
-      }),
-      Markdown,
-    ],
+        handleDrop(view, event) {
+          // const isDraggedDiv =
+          //   event.dataTransfer?.files.length === 0 &&
+          //   event.dataTransfer?.items.length !== 0;
+          // if (isDraggedDiv) {
+          //   // a img div was moved within the editor -> let tiptap handle it e.g. move the node
+          //   console.log("div dragged within editor, let tiptap handle it");
+          //   return false;
+          // }
 
-    content: "",
-    contentType: "markdown",
-    editorProps: {
-      handleKeyDown(view, event) {
-        // do not tab out of code block, but insert spaces within the code block
-        if (event.key === "Tab" && editor?.isActive("codeBlock")) {
-          event.preventDefault();
-          const tab = "    ";
-          const { state, dispatch } = view;
-          const { selection } = state;
-          dispatch(state.tr.insertText(tab, selection.from, selection.to));
-          return true;
-        }
-
-        return false;
-      },
-      handleDrop(view, event) {
-        // const isDraggedDiv =
-        //   event.dataTransfer?.files.length === 0 &&
-        //   event.dataTransfer?.items.length !== 0;
-        // if (isDraggedDiv) {
-        //   // a img div was moved within the editor -> let tiptap handle it e.g. move the node
-        //   console.log("div dragged within editor, let tiptap handle it");
-        //   return false;
-        // }
-
-        // check for a dropped attachment-chip
-        const jsonBody = event.dataTransfer?.getData(
-          "application/x-application-attachment",
-        );
-        if (!jsonBody) {
-          console.log("no attachment data, let tiptap handle drop");
-          return false; // let tiptap handle drop, e.g. do nothing
-        }
-        const attachmentBody = JSON.parse(
-          jsonBody,
-        ) as ApplicationAttachmentBody;
-
-        if (!attachmentBody.key) {
-          console.error("Attachment data missing key:", attachmentBody);
-          return false; // let tiptap handle drop, e.g. do nothing
-        }
-
-        const coords = {
-          left: event.clientX,
-          top: event.clientY,
-        };
-        const pos = view.posAtCoords(coords);
-        if (!pos) {
-          console.error(
-            `Failed to process the drop of attachment ${attachmentBody.filename}: could not get drop position from coordinates ${JSON.stringify(coords)}`,
+          // check for a dropped attachment-chip
+          const jsonBody = event.dataTransfer?.getData(
+            "application/x-application-attachment",
           );
+          if (!jsonBody) {
+            console.log("no attachment data, let tiptap handle drop");
+            return false; // let tiptap handle drop, e.g. do nothing
+          }
+          const attachmentBody = JSON.parse(
+            jsonBody,
+          ) as ApplicationAttachmentBody;
 
-          return true;
-        } // cancel
+          if (!attachmentBody.key) {
+            console.error("Attachment data missing key:", attachmentBody);
+            return false; // let tiptap handle drop, e.g. do nothing
+          }
 
-        const api = new AttachmentApi();
-        const link = new AttachmentLinkBuilder(api)
-          .setWidth(720)
-          .setContentType(
-            attachmentBody.contentType ?? "application/octet-stream",
-          )
-          .getLink(attachmentBody.key);
-        const node = getNodeByFileType(
-          attachmentBody.contentType,
-          attachmentBody.filename,
-          link,
-          view,
-        )!;
-        const transaction = view.state.tr.insert(pos.pos, node);
-        view.dispatch(transaction);
-        return true; // handled
+          const coords = {
+            left: event.clientX,
+            top: event.clientY,
+          };
+          const pos = view.posAtCoords(coords);
+          if (!pos) {
+            console.error(
+              `Failed to process the drop of attachment ${attachmentBody.filename}: could not get drop position from coordinates ${JSON.stringify(coords)}`,
+            );
+
+            return true;
+          } // cancel
+
+          const api = new AttachmentApi();
+          const link = new AttachmentLinkBuilder(api)
+            .setWidth(720)
+            .setContentType(
+              attachmentBody.contentType ?? "application/octet-stream",
+            )
+            .getLink(attachmentBody.key);
+          const node = getNodeByFileType(
+            attachmentBody.contentType,
+            attachmentBody.filename,
+            link,
+            view,
+          )!;
+          const transaction = view.state.tr.insert(pos.pos, node);
+          view.dispatch(transaction);
+          return true; // handled
+        },
       },
     },
-  });
+    [noteId], // recreate editor when noteId changes to reconnect to a correct Yjs document
+  );
 
   // read <--> write
   useEffect(() => {
