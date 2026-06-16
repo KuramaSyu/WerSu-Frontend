@@ -4,3 +4,4 @@
 
 # how the backend is reachable from view of user
 BACKEND_URL=http://localhost:8080
+VITE_HOCUSPOCUS_WS_URL=ws://localhost:8666
