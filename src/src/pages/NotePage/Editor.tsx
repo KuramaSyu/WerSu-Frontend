@@ -91,6 +91,8 @@ import {
   randomMatchingColor,
 } from "../../utils/blendWithContrast";
 import { useAccessToken } from "../../api/queries/useAccessToken";
+import * as Y from "yjs"; // Ensure Yjs is imported directly if needed
+import { Awareness } from "y-protocols/awareness";
 
 const lowlight = createLowlight(all);
 const DRAG_HANDLE_GUTTER_PX = 28;
@@ -120,6 +122,16 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
 
   // ydoc for collaboration -> only load in edit mode
   const collaboration = useNoteCollaboration(editMode ? noteId : undefined);
+  const emptyYdoc = useRef(new Y.Doc());
+  const dummyProvider = useRef({
+    awareness: new Awareness(new Y.Doc()),
+    on: () => {},
+    off: () => {},
+    connect: () => {},
+    disconnect: () => {},
+  });
+  const stableYdoc = collaboration?.ydoc ?? emptyYdoc.current;
+  const stableProvider = collaboration?.provider ?? dummyProvider.current;
 
   // Holds the markdown for source-mode editing.
   const [sourceMarkdown, setSourceMarkdown] = useState("");
@@ -196,31 +208,25 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     }
   }, [note?.id]);
 
-  const optionalCollaborationExtensions =
-    editMode && collaboration?.ydoc
-      ? [
-          Collaboration.configure({
-            document: collaboration?.ydoc,
-          }),
-          CollaborationCaret.configure({
-            provider: collaboration?.provider,
-            user: {
-              name: `${user?.username}`,
-              // random color
-              color: randomMatchingColor(theme),
-            },
-          }),
-        ]
-      : [];
-
   const editor = useEditor(
     {
       extensions: [
         StarterKit.configure({
           codeBlock: false,
           dropcursor: {},
+          undoRedo: false,
         }),
-        ...optionalCollaborationExtensions,
+        Collaboration.configure({
+          document: stableYdoc,
+        }),
+        CollaborationCaret.configure({
+          provider: stableProvider,
+          user: {
+            name: `${user?.username}`,
+            // random color
+            color: randomMatchingColor(theme),
+          },
+        }),
         CodeBlockLowlight.configure({ lowlight }),
         TaskList,
         TaskItem.configure({ nested: true }),
@@ -425,7 +431,11 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
 
   // is write mode only: load last api version
   useEffect(() => {
-    if (!editor || !note || editMode || !isEditorMounted) {
+    if (!editor || !note || editMode || !editor.storage.markdown) {
+      console.log(
+        "not loading markdown into editor, missing editor or note or not in edit mode:",
+        { editor, note, editMode, markdownStorage: editor?.storage.markdown },
+      );
       return;
     }
 
@@ -438,7 +448,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     queueMicrotask(() => {
       editor.commands.setContent(normalizedDoc);
     });
-  }, [isEditorMounted, editor?.view]);
+  }, [note, editMode, editor.storage.markdown]);
 
   // load ydoc and collaboration content into editor
   useEffect(() => {
@@ -446,6 +456,11 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       return;
     }
 
+    if (!editMode) {
+      console.log("not in edit mode, disconnect from collaboration provider");
+      collaboration.provider.disconnect();
+      return;
+    }
     const { provider, ydoc } = collaboration;
     const onSynced = () => {
       const isEmpty = ydoc!.getXmlFragment("default").length === 0;
@@ -706,9 +721,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         {editor && editorMode === "rich" && (
           <>
             <TextSelectionBubbleMenu editor={editor} enabled={editMode} />
-            {isEditorMounted && editor?.view && (
-              <SlashCommandMenu editor={editor} enabled={editMode} />
-            )}
+            <SlashCommandMenu editor={editor} enabled={editMode} />
+
             <Box className="editor-drag-region">
               {/* hide handlers when editor is not editable */}
               <DragHandle
