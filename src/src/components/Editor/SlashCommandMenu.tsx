@@ -268,6 +268,9 @@ export const SlashCommandMenu = ({
 
   // keyboard navigation: arrow up/down to change selectedIndex
   useEffect(() => {
+    if (!editor?.view || editor.isDestroyed) {
+      return;
+    }
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "ArrowUp") {
         event.preventDefault();
@@ -282,12 +285,17 @@ export const SlashCommandMenu = ({
 
     editor.view.dom.addEventListener("keydown", handleKeyDown, true);
     return () => {
-      editor.view.dom.removeEventListener("keydown", handleKeyDown, true);
+      if (editor?.view && !editor.isDestroyed) {
+        editor.view.dom.removeEventListener("keydown", handleKeyDown, true);
+      }
     };
   }, [editor, matchingCommands]);
 
   // keyboard navigation: Enter or Tab to execute the selected command
   useEffect(() => {
+    if (!editor?.view || editor.isDestroyed) {
+      return;
+    }
     const handleEnterSelection = (event: KeyboardEvent) => {
       if (event.key !== "Enter" && event.key !== "Tab") {
         return;
@@ -312,11 +320,14 @@ export const SlashCommandMenu = ({
 
     // clear listener on unmount
     return () => {
-      editor.view.dom.removeEventListener(
-        "keydown",
-        handleEnterSelection,
-        true,
-      );
+      // without this check, the page will go grey
+      if (editor?.view && !editor.isDestroyed) {
+        editor.view.dom.removeEventListener(
+          "keydown",
+          handleEnterSelection,
+          true,
+        );
+      }
     };
   }, [editor, enabled, matchingCommands, selectedIndex]);
 
