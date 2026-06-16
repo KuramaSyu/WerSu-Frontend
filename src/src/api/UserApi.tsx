@@ -3,10 +3,13 @@ import type { DiscordUser } from "../components/DiscordLogin";
 
 import { DiscordUserImpl } from "../components/DiscordLogin";
 import { useUsersStore, useUserStore } from "../zustand/userStore";
+import type { GetAcccessTokenResponse } from "./models/auth";
+import { th } from "zod/v4/locales";
 
 export interface BackendApiInterface {}
 export interface UserApiInterface {
   fetchUser(): Promise<Response>;
+  fetchAccessToken(): Promise<GetAcccessTokenResponse>;
 }
 
 // Class, to fetch resources from the backend. Responses will be
@@ -45,5 +48,27 @@ export class UserApi implements UserApiInterface {
       this.logError(`/api/auth/user`, response.json());
     }
     return response;
+  }
+
+  /**
+   * fetches an access token from the backend
+   * It sets `useUserStore` to the fetched token
+   */
+  async fetchAccessToken(): Promise<GetAcccessTokenResponse> {
+    const url = `${BACKEND_BASE}/api/auth/access-token`;
+    const response = await fetch(url, {
+      credentials: "include",
+    });
+    if (response.ok) {
+      const tokenData: { token: string } = await response.json().catch((e) => {
+        this.logError(url, e);
+        throw e;
+      });
+      if (tokenData.token) {
+        return tokenData;
+      }
+    }
+    this.logError(url, response.json());
+    throw new Error("Failed to fetch access token");
   }
 }
