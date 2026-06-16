@@ -30,6 +30,7 @@ import {
   useEditorState,
   Editor,
   type JSONContent,
+  markdown,
 } from "@tiptap/react";
 import DragHandle from "@tiptap/extension-drag-handle-react";
 import StarterKit from "@tiptap/starter-kit";
@@ -337,7 +338,10 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         Markdown,
       ],
 
-      content: "",
+      content: ({ editor: currentEditor }: { editor: Editor }) => {
+        const rawMarkdown = note?.content || note?.stripped_content || "";
+        return markdownToProsemirror(currentEditor, rawMarkdown);
+      },
       contentType: "markdown",
       editorProps: {
         handleKeyDown(view, event) {
