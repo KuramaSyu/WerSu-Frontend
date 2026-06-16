@@ -1,4 +1,5 @@
 import {
+  use,
   useCallback,
   useEffect,
   useRef,
@@ -89,6 +90,7 @@ import {
   colorFromString,
   randomMatchingColor,
 } from "../../utils/blendWithContrast";
+import { useAccessToken } from "../../api/queries/useAccessToken";
 
 const lowlight = createLowlight(all);
 const DRAG_HANDLE_GUTTER_PX = 28;
@@ -107,15 +109,18 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   onNoteUpdated,
 }) => {
   const { theme } = useThemeStore();
+  const { user } = useUserStore();
   const { setMessage } = useInfoStore();
   const [noteTitle, setNoteTitle] = useState(note?.title ?? "");
   const [isSaving, setIsSaving] = useState(false);
   // const [isInDragHandleArea, setIsInDragHandleArea] = useState(false);
-  const { ydoc, provider } = useNoteCollaboration(noteId);
-  const { user } = useUserStore();
 
-  // Tracks which editor surface is active.
-  const { viewMode: editorMode } = useEditorSettings();
+  // Tracks which editor surface is active and if write/read is used
+  const { viewMode: editorMode, editMode } = useEditorSettings();
+
+  // ydoc for collaboration -> only load in edit mode
+  const collaboration = useNoteCollaboration(editMode ? noteId : undefined);
+
   // Holds the markdown for source-mode editing.
   const [sourceMarkdown, setSourceMarkdown] = useState("");
   // Controls the version history drawer.
@@ -134,14 +139,13 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   // dialog open state for file upload
   const [fileUploadDialogOpen, setFileUploadDialogOpen] = useState(false);
 
-  // used to set write/read mode
-  const { editMode: isWriteMode } = useEditorSettings();
-
   // ref for textfield of source view
   const sourceEditorRef = useRef<HTMLInputElement | null>(null);
 
   // load markdown only, when draft is empty
   const hasInitializedDraft = useRef(false);
+
+  const [isEditorMounted, setIsEditorMounted] = useState(false);
 
   const EMPTY_DIALOG = {
     open: false,
@@ -192,6 +196,23 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     }
   }, [note?.id]);
 
+  const optionalCollaborationExtensions =
+    editMode && collaboration?.ydoc
+      ? [
+          Collaboration.configure({
+            document: collaboration?.ydoc,
+          }),
+          CollaborationCaret.configure({
+            provider: collaboration?.provider,
+            user: {
+              name: `${user?.username}`,
+              // random color
+              color: randomMatchingColor(theme),
+            },
+          }),
+        ]
+      : [];
+
   const editor = useEditor(
     {
       extensions: [
@@ -199,17 +220,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           codeBlock: false,
           dropcursor: {},
         }),
-        Collaboration.configure({
-          document: ydoc,
-        }),
-        CollaborationCaret.configure({
-          provider: provider,
-          user: {
-            name: `${user?.username}`,
-            // random color
-            color: randomMatchingColor(theme),
-          },
-        }),
+        ...optionalCollaborationExtensions,
         CodeBlockLowlight.configure({ lowlight }),
         TaskList,
         TaskItem.configure({ nested: true }),
@@ -395,50 +406,49 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         },
       },
     },
-    [noteId], // recreate editor when noteId changes to reconnect to a correct Yjs document
+    [noteId, collaboration?.ydoc], // recreate editor when noteId changes to reconnect to a correct Yjs document
   );
+
+  // watch editor state if view is accessible and update isEditorMounted
+  useEffect(() => {
+    if (editor && editor.view && !editor.isDestroyed) {
+      setIsEditorMounted(true);
+    } else {
+      setIsEditorMounted(false);
+    }
+  }, [editor, editor?.view]);
 
   // read <--> write
   useEffect(() => {
-    editor?.setEditable(isWriteMode);
-  }, [isWriteMode, editor]);
+    editor?.setEditable(editMode);
+  }, [editMode, editor]);
 
-  const isEditable = useEditorState({
-    editor,
-    selector: (context) => context.editor.isEditable,
-  });
-
-  // load note content into editor when note changes
-  // useEffect(() => {
-  //   if (!editor || !note) {
-  //     return;
-  //   }
-
-  //   function markdownToProsemirror(markdown: string): JSONContent {
-  //     // first parse markdown normally with builtin markdown extension
-  //     const pmDoc = editor.storage.markdown.manager.parse(markdown);
-  //     // now: a table cell containing an image with text gets rendered to
-  //     // <p>text <img/></p>. The problem with it is, that when now the user
-  //     // starts editing the text, the image just gets deleted and ctrl z is also
-  //     // not possible. Hence we normalize the JSON structure, to render it as <p>text</p><img/>
-  //     // keep in mind, that it parses a JSON, not HTML. I just used HTML for describing
-  //     const normalizedDoc = normalizeTables(pmDoc);
-  //     return normalizedDoc;
-  //   }
-  //   const normalizedDoc = markdownToProsemirror(
-  //     note.content || note.stripped_content || "",
-  //   );
-  //   editor.commands.setContent(normalizedDoc);
-  // }, [editor, note?.id]);
-
-  // load ydoc content into editor
+  // is write mode only: load last api version
   useEffect(() => {
-    if (!editor || !ydoc || !provider) {
+    if (!editor || !note || editMode || !isEditorMounted) {
       return;
     }
 
+    console.log("load markdown content into editor");
+    const normalizedDoc = markdownToProsemirror(
+      editor,
+      note.content || note.stripped_content || "",
+    );
+    // microtask prevents flush issue in logs
+    queueMicrotask(() => {
+      editor.commands.setContent(normalizedDoc);
+    });
+  }, [isEditorMounted, editor?.view]);
+
+  // load ydoc and collaboration content into editor
+  useEffect(() => {
+    if (!editor || !collaboration?.ydoc || !collaboration?.provider) {
+      return;
+    }
+
+    const { provider, ydoc } = collaboration;
     const onSynced = () => {
-      const isEmpty = ydoc.getXmlFragment("default").length === 0;
+      const isEmpty = ydoc!.getXmlFragment("default").length === 0;
 
       // this means there is a draft on the websocket
       if (!isEmpty) {
@@ -453,7 +463,10 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       const markdown = note?.content || note?.stripped_content || "";
       const normalizedDoc = markdownToProsemirror(editor, markdown);
       console.log("load doc from markdown in effect");
-      editor.commands.setContent(normalizedDoc);
+      // microtask prevents flush issue in logs
+      queueMicrotask(() => {
+        editor.commands.setContent(normalizedDoc);
+      });
       console.log(
         "After markdown conversion, before sync:",
         JSON.stringify(editor.getJSON(), null, 2),
@@ -469,11 +482,11 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     return () => {
       provider.off("synced", onSynced);
     };
-  }, [editor, note?.id, ydoc, provider]);
+  }, [editor, note?.id, collaboration?.provider]);
 
   // Saves either the rich editor markdown or the source editor content.
   const handleSave = async () => {
-    if (!noteId || (editorMode === "rich" && !editor)) {
+    if (!noteId || (editorMode === "rich" && !editor) || !isEditorMounted) {
       return;
     }
 
@@ -484,7 +497,10 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       // normalize
 
       const normalizedDoc = markdownToProsemirror(editor, markdown);
-      editor.commands.setContent(normalizedDoc);
+      // microtask prevents flush issue in logs
+      queueMicrotask(() => {
+        editor.commands.setContent(normalizedDoc);
+      });
       console.log(
         "JSON after markdown save:",
         JSON.stringify(editor.getJSON(), null, 2),
@@ -573,7 +589,10 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       if (editor) {
         console.log("restore version content to editor");
         const normalizedDoc = markdownToProsemirror(editor, content);
-        editor.commands.setContent(normalizedDoc);
+        // microtask prevents flush issue in logs
+        queueMicrotask(() => {
+          editor.commands.setContent(normalizedDoc);
+        });
         console.log(
           "JSON after markdown restore:",
           JSON.stringify(editor.getJSON(), null, 2),
@@ -686,13 +705,15 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         {/* Rich Editor */}
         {editor && editorMode === "rich" && (
           <>
-            <TextSelectionBubbleMenu editor={editor} enabled={isEditable} />
-            <SlashCommandMenu editor={editor} enabled={isEditable} />
+            <TextSelectionBubbleMenu editor={editor} enabled={editMode} />
+            {isEditorMounted && editor?.view && (
+              <SlashCommandMenu editor={editor} enabled={editMode} />
+            )}
             <Box className="editor-drag-region">
               {/* hide handlers when editor is not editable */}
               <DragHandle
                 editor={editor}
-                className={`note-block-drag-handle ${isEditable ? "" : "note-block-drag-handle--hidden"} `}
+                className={`note-block-drag-handle ${editMode ? "" : "note-block-drag-handle--hidden"} `}
                 nested={false}
               >
                 <DragIndicatorIcon fontSize="small" />
