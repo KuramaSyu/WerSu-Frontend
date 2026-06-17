@@ -30,6 +30,7 @@ import {
   ApiRequirementsBuilder,
 } from "../../api/ApiRequirementsBuilder";
 import { defaultTheme } from "../../theme/themes";
+import { useUser } from "../../api/queries/useUser";
 
 interface LogoSvgComponentProps {
   style?: React.CSSProperties;
@@ -142,12 +143,12 @@ export const LoadingPage: React.FC = () => {
   ]);
   const [loadingMap, setLoadingMap] = React.useState(initialLoadingMap);
   const { isMobile } = useBreakpoint();
+  const { data: user } = useUser();
 
   // Initialize theme
   useEffect(() => {
     const startTime = Date.now();
     async function init() {
-      await new ApiRequirementsBuilder().add(ApiRequirement.User).forceFetch();
       setLoadingMap((prev) => {
         const comp = prev.get("You");
         if (comp) {
