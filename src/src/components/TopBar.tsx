@@ -42,6 +42,8 @@ import "@fontsource/fira-sans/300.css";
 import "@fontsource/fira-sans/400.css";
 import "@fontsource/fira-sans/500.css";
 import "@fontsource/fira-sans/700.css";
+import { useUser } from "../api/queries/useUser";
+import { useQueryClient } from "@tanstack/react-query";
 
 const Pages = {
   HOME: "/",
@@ -71,7 +73,7 @@ const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
   const { setMode, mode } = useColorScheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, setUser } = useUserStore();
+  const { data: user } = useUser();
   const [userDrawerOpen, setUserDrawerOpen] = useState(false);
   const { isMobile } = useBreakpoint();
 
@@ -136,7 +138,7 @@ const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
     );
 
     const handleLogout = () => {
-      setUser(null);
+      useQueryClient().clear();
       setUserDrawerOpen(false);
     };
 
