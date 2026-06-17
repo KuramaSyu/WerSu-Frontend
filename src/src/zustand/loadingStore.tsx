@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+import { create } from "zustand";
 
 interface LoadingState {
   isLoading: boolean;
@@ -6,6 +6,6 @@ interface LoadingState {
 }
 
 export const useLoadingStore = create<LoadingState>((set) => ({
-  isLoading: true,
+  isLoading: false,
   setLoading: (isLoading: boolean) => set({ isLoading }),
 }));
