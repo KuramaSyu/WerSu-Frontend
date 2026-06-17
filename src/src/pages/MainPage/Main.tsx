@@ -17,34 +17,17 @@ import { useUser } from "../../api/queries/useUser";
 
 export const MainPage: React.FC = () => {
   const { data: user } = useUser();
-  const { isLoading } = useLoadingStore();
-  const { isMobile } = useBreakpoint();
-  const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(
-    null,
-  );
 
   return (
-    <Box
-      ref={setScrollElement}
-      sx={{
-        display: "flex",
-        flexDirection: "row",
-        height: "100%",
-        overflow: "auto", // Prevents overflow
-        paddingTop: user !== null && !isMobile ? M1 : undefined,
-      }}
-    >
-      {user !== null || isLoading ? (
-        <>
-          <TopBar scrollContainer={scrollElement}></TopBar>
-          <MainContent></MainContent>
-        </>
+    <>
+      {user !== null ? (
+        <MainContent></MainContent>
       ) : (
         <>
           {console.log("render login page")}
           <LoginPage></LoginPage>
         </>
       )}
-    </Box>
+    </>
   );
 };

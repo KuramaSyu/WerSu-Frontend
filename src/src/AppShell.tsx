@@ -1,11 +1,12 @@
 import { Box } from "@mui/material";
 import { Outlet } from "react-router-dom";
-import { M1 } from "./statics";
+import { M1, M2, M3, M4, M5 } from "./statics";
 import { useLayout } from "./LayoutProvider";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useUser } from "./api/queries/useUser";
 import { LoadingPage } from "./pages/LoadingPage/Main";
+import TopBar from "./components/TopBar";
 
 export const AppShell: React.FC = () => {
   const { leftPanel, rightPanel } = useLayout();
@@ -65,6 +66,8 @@ export const AppShell: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      <TopBar scrollContainer={scrollElement} />
+
       <Box
         sx={{
           display: "grid",
@@ -77,17 +80,22 @@ export const AppShell: React.FC = () => {
             borderRight: 1,
             borderColor: "divider",
             overflowY: "auto",
+            pt: `calc(${M3} + ${M5} + ${M4})`,
           }}
         >
           {leftPanel}
         </Box>
         <Box
+          ref={setScrollElement}
           sx={{
-            overflowY: "auto",
-            p: M1,
+            overflowY: "auto", // make it scrollable
+            display: "block",
           }}
         >
-          <Outlet />
+          {/* add margin for the actual margin, topbar, and margin of top bar */}
+          <Box sx={{ mt: `calc(${M4} + ${M5} + ${M3})` }}>
+            <Outlet />
+          </Box>
         </Box>
         <Box
           sx={{

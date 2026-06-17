@@ -41,6 +41,7 @@ import { useNavigate } from "react-router-dom";
 import { getNoteParentDirectoryIds } from "../../utils/fileGraphUtils";
 import TopBar from "../../components/TopBar";
 import { useLatestNotes, useMoveNote } from "../../api/queries/useNoteQueries";
+import { useLayout } from "../../LayoutProvider";
 
 export const MainContent: React.FC = () => {
   const { directoriesById, setDirectories, clearDirectories, upsertDirectory } =
@@ -50,6 +51,28 @@ export const MainContent: React.FC = () => {
   const { setMessage } = useInfoStore();
   const [leftPaneOpen, setLeftPaneOpen] = useState(true);
   const navigate = useNavigate();
+  const { setLeftPanel } = useLayout();
+
+  useEffect(() => {
+    setLeftPanel(
+      <LeftPanel open={leftPaneOpen} setOpen={setLeftPaneOpen}>
+        <Stack
+          direction="row"
+          sx={{ px: 1, pb: 1, justifyContent: "flex-end" }}
+        >
+          <IconButton
+            size="small"
+            color="primary"
+            onClick={() => void handleCreateDirectory()}
+          >
+            <AddIcon />
+          </IconButton>
+        </Stack>
+        <DirectorySideView isLoading={directoriesLoading} />
+      </LeftPanel>,
+    );
+    return () => setLeftPanel(undefined);
+  }, []);
 
   type DragEndEvent = Parameters<DragDropEvents["dragend"]>[0];
 
@@ -203,7 +226,6 @@ export const MainContent: React.FC = () => {
         {/* add padding of the actual margin, topbar, and margin of top bar */}
         <Box
           sx={{
-            pt: `calc(${M4} + ${M5} + ${M3})`,
             height: "calc(100% - 8rem)",
             width: "100%",
             display: "flex",
@@ -215,21 +237,6 @@ export const MainContent: React.FC = () => {
           <NewNoteSpeedDial />
           <DragDropProvider onDragEnd={(event) => void handleDragEnd(event)}>
             <Stack direction={"row"} sx={{ alignItems: "center" }}>
-              <LeftPanel open={leftPaneOpen} setOpen={setLeftPaneOpen}>
-                <Stack
-                  direction="row"
-                  sx={{ px: 1, pb: 1, justifyContent: "flex-end" }}
-                >
-                  <IconButton
-                    size="small"
-                    color="primary"
-                    onClick={() => void handleCreateDirectory()}
-                  >
-                    <AddIcon />
-                  </IconButton>
-                </Stack>
-                <DirectorySideView isLoading={directoriesLoading} />
-              </LeftPanel>
               <Box>
                 {Object.entries(notesByDirectory).map(([dir, notes]) => {
                   const dirMeta = directoriesById[dir];
