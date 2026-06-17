@@ -8,7 +8,7 @@ import { th } from "zod/v4/locales";
 
 export interface BackendApiInterface {}
 export interface UserApiInterface {
-  fetchUser(): Promise<Response>;
+  fetchUser(): Promise<DiscordUser>;
   fetchAccessToken(): Promise<GetAcccessTokenResponse>;
 }
 
@@ -29,25 +29,20 @@ export class UserApi implements UserApiInterface {
    * tries to authenticate a user by coockie.
    * It sets `useUserStore` to the authenticated user
    * */
-  async fetchUser(): Promise<Response> {
-    const setUser = useUserStore.getState().setUser;
-    const setUserForUsers = useUsersStore.getState().addUser;
+  async fetchUser(): Promise<DiscordUser> {
     const response = await fetch(`${BACKEND_BASE}/api/auth/user`, {
       credentials: "include",
     });
+    var userData: DiscordUser | null = null;
     if (response.ok) {
-      const userData: DiscordUser | null = await response.json().catch((e) => {
-        this.logError(`/api/auth/user`, e);
-        return null;
-      });
-      if (userData) {
-        setUser(new DiscordUserImpl(userData));
-        setUserForUsers(new DiscordUserImpl(userData));
-      }
+      userData = await response.json();
+    }
+    if (userData) {
+      return userData;
     } else {
       this.logError(`/api/auth/user`, response.json());
+      throw new Error("Failed to fetch user data");
     }
-    return response;
   }
 
   /**
