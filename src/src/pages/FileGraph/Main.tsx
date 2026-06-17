@@ -549,9 +549,12 @@ export function FileGraphPage(): React.ReactElement {
         {isLoading ? (
           <Stack
             spacing={2}
-            alignItems="center"
-            justifyContent="center"
-            sx={{ height: "100%", flex: 1 }}
+            sx={{
+              height: "100%",
+              flex: 1,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
           >
             <CircularProgress />
             <Typography>Loading graph…</Typography>
@@ -559,9 +562,12 @@ export function FileGraphPage(): React.ReactElement {
         ) : error ? (
           <Stack
             spacing={1}
-            alignItems="center"
-            justifyContent="center"
-            sx={{ height: "100%", flex: 1 }}
+            sx={{
+              height: "100%",
+              flex: 1,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
           >
             <Typography color="error">{error}</Typography>
             <Typography variant="body2">
@@ -571,9 +577,12 @@ export function FileGraphPage(): React.ReactElement {
         ) : nodeList.length === 0 ? (
           <Stack
             spacing={1}
-            alignItems="center"
-            justifyContent="center"
-            sx={{ height: "100%", flex: 1 }}
+            sx={{
+              height: "100%",
+              flex: 1,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
           >
             <Typography>No directories or notes yet.</Typography>
           </Stack>

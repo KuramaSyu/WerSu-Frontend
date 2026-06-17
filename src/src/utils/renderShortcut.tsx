@@ -1,4 +1,4 @@
-import { Box, Paper } from "@mui/material";
+import { Box, Paper, Stack } from "@mui/material";
 import { useThemeStore } from "../zustand/useThemeStore";
 import type React from "react";
 
@@ -44,9 +44,9 @@ export function renderShortcut(
     }
   }
   return (
-    <Box display={"flex"} alignItems={"center"}>
+    <Stack sx={{ alignItems: "center" }} direction="row">
       {components}
-    </Box>
+    </Stack>
   );
 }
 

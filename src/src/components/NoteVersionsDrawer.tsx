@@ -210,15 +210,21 @@ export const NoteVersionsDrawer: React.FC<NoteVersionsDrawerProps> = ({
         }}
       >
         <Typography variant="h6">Versions</Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="textSecondary">
           Select a version to compare or restore.
         </Typography>
         <Divider />
 
         {isLoading && (
-          <Stack direction="row" spacing={1} alignItems="center">
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{
+              alignItems: "center",
+            }}
+          >
             <CircularProgress size={18} />
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="textSecondary">
               Loading versions...
             </Typography>
           </Stack>
@@ -229,7 +235,7 @@ export const NoteVersionsDrawer: React.FC<NoteVersionsDrawerProps> = ({
           </Typography>
         )}
         {!isLoading && !hasError && activity.length === 0 && (
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="textSecondary">
             No versions yet.
           </Typography>
         )}
@@ -269,19 +275,19 @@ export const NoteVersionsDrawer: React.FC<NoteVersionsDrawerProps> = ({
         <Divider />
 
         <Stack spacing={M2}>
-          <Typography variant="subtitle2" color="text.secondary">
+          <Typography variant="subtitle2" color="textSecondary">
             Preview
           </Typography>
           {isFetchingVersion && (
-            <Stack direction="row" spacing={1} alignItems="center">
+            <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
               <CircularProgress size={16} />
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="textSecondary">
                 Loading version...
               </Typography>
             </Stack>
           )}
           {!isFetchingVersion && !selectedContent && (
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="textSecondary">
               Choose a version to preview changes.
             </Typography>
           )}
@@ -304,7 +310,7 @@ export const NoteVersionsDrawer: React.FC<NoteVersionsDrawerProps> = ({
                     borderColor: "divider",
                   }}
                 >
-                  <Typography variant="subtitle2" color="text.secondary">
+                  <Typography variant="subtitle2" color="textSecondary">
                     Diff preview
                   </Typography>
                 </Box>
@@ -319,7 +325,7 @@ export const NoteVersionsDrawer: React.FC<NoteVersionsDrawerProps> = ({
                   }}
                 >
                   {diffLines.length === 0 && (
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" color="textSecondary">
                       No changes detected.
                     </Typography>
                   )}
@@ -332,7 +338,7 @@ export const NoteVersionsDrawer: React.FC<NoteVersionsDrawerProps> = ({
                             ? "success.main"
                             : line.type === "removed"
                               ? "error.main"
-                              : "text.secondary",
+                              : "textSecondary",
                       }}
                     >
                       {line.type === "added"

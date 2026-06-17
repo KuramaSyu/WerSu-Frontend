@@ -30,11 +30,11 @@ export function GraphToolsPanel(
       >
         {drawMode ? "Draw mode on" : "Draw mode"}
       </Button>
-      <Typography variant="caption" color="text.secondary">
+      <Typography variant="caption" color="textSecondary">
         Drag from a directory to a note/directory to set the parent.
       </Typography>
       {linkStatus && (
-        <Typography variant="caption" color="text.secondary">
+        <Typography variant="caption" color="textSecondary">
           {linkStatus}
         </Typography>
       )}

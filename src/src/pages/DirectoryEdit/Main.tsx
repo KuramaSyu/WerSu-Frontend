@@ -209,15 +209,20 @@ export const DirectoryEditPage: React.FC = () => {
           pt: `calc(${M5} + ${M4})`,
           px: M5,
           pb: M5,
-          color: "text.primary",
+          color: "textPrimary",
         }}
       >
-        <Stack spacing={M4} maxWidth={640}>
+        <Stack
+          spacing={M4}
+          sx={{
+            maxWidth: 640,
+          }}
+        >
           <Stack spacing={0.5}>
-            <Typography variant="h4" fontWeight={600}>
+            <Typography variant="h4" sx={{ fontWeight: 600 }}>
               Edit directory
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="textSecondary">
               Update name, description, and parent directory.
             </Typography>
           </Stack>
@@ -275,7 +280,7 @@ export const DirectoryEditPage: React.FC = () => {
             <Button variant="outlined" onClick={() => navigate(-1)}>
               Cancel
             </Button>
-            <Box flex={1} />
+            <Box sx={{ flex: 1 }} />
             <Button
               variant="outlined"
               color="error"

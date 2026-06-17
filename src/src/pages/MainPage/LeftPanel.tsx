@@ -81,9 +81,12 @@ export const LeftPanel: React.FC<LeftSideViewProps> = ({
         >
           <Stack
             direction="row"
-            spacing={1}
-            justifyContent={"space-between"}
-            sx={{ p: 1.5, borderBottom: "1px solid", borderColor: "divider" }}
+            sx={{
+              p: 1.5,
+              borderBottom: "1px solid",
+              borderColor: "divider",
+              justifyContent: "space-between",
+            }}
           >
             <Stack direction={"row"}>
               <Tooltip title="Back">

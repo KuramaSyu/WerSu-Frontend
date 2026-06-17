@@ -159,8 +159,8 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
           className="hoverBox"
           direction="row"
           spacing={0.75}
-          alignItems="center"
           sx={{
+            alignItems: "center",
             position: "absolute",
             bottom: "calc(100% + 6px)",
             width: "max-content",

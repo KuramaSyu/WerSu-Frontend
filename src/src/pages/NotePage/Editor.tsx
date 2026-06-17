@@ -696,10 +696,12 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         {/* Main content heading  with title and save button*/}
         <Stack
           direction="row"
-          justifyContent="space-between"
-          alignItems="flex-start"
-          gap={M3}
-          width={"100%"}
+          sx={{
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            width: "100%",
+          }}
+          spacing={M3}
         >
           <Input
             value={noteTitle}
@@ -761,7 +763,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         )}
 
         {!editor && (
-          <Typography color="text.secondary">Loading editor...</Typography>
+          <Typography color="textSecondary">Loading editor...</Typography>
         )}
       </Paper>
 

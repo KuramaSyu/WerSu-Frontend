@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   ThemeProvider,
   CssBaseline,
@@ -8,12 +8,13 @@ import {
   Tooltip,
   Typography,
   useMediaQuery,
-} from '@mui/material';
-import { useThemeStore } from '../zustand/useThemeStore';
-import { useUserStore } from '../zustand/userStore';
-import { BACKEND_BASE } from '../statics';
-import LogoutIcon from '@mui/icons-material/Logout';
-import { useBreakpoint } from '../hooks/useBreakpoint';
+  Stack,
+} from "@mui/material";
+import { useThemeStore } from "../zustand/useThemeStore";
+import { useUserStore } from "../zustand/userStore";
+import { BACKEND_BASE } from "../statics";
+import LogoutIcon from "@mui/icons-material/Logout";
+import { useBreakpoint } from "../hooks/useBreakpoint";
 
 // Define TypeScript interface for Discord user data
 interface DiscordUser {
@@ -90,11 +91,11 @@ const DiscordLogin: React.FC = () => {
   const handleLogout = async (): Promise<void> => {
     try {
       await fetch(`${BACKEND_BASE}/api/auth/logout`, {
-        credentials: 'include',
+        credentials: "include",
       });
       setUser(null);
     } catch (error) {
-      console.error('Error logging out:', error);
+      console.error("Error logging out:", error);
     }
   };
 
@@ -107,7 +108,7 @@ const DiscordLogin: React.FC = () => {
         sx={{
           width: 40,
           height: 40,
-          filter: 'drop-shadow(2px 2px 6px rgba(0,0,0,0.3))',
+          filter: "drop-shadow(2px 2px 6px rgba(0,0,0,0.3))",
         }}
         onClick={handleLogout}
       />
@@ -121,7 +122,7 @@ const DiscordLogin: React.FC = () => {
           width: 40,
           height: 40,
           padding: 0,
-          borderRadius: '50%',
+          borderRadius: "50%",
         }}
       >
         <svg
@@ -142,21 +143,21 @@ const DiscordLogin: React.FC = () => {
   return (
     <ThemeProvider theme={theme}>
       {!loading ? (
-        <Box display="flex" flexDirection="row" alignItems="center" gap={4}>
+        <Stack direction="row" sx={{ alignItems: "center" }} spacing={4}>
           <Button variant="outlined" color="inherit" onClick={handleLogout}>
             <LogoutIcon />
           </Button>
 
           <Avatar
-            src={user ? user.getAvatarUrl() : ''}
-            alt={user ? user.username : ''}
+            src={user ? user.getAvatarUrl() : ""}
+            alt={user ? user.username : ""}
             sx={{
               width: 60,
               height: 60,
-              filter: 'drop-shadow(2px 2px 6px rgba(0,0,0,0.3))',
+              filter: "drop-shadow(2px 2px 6px rgba(0,0,0,0.3))",
             }}
           />
-        </Box>
+        </Stack>
       ) : (
         <Button
           variant="contained"
@@ -196,15 +197,10 @@ export const DiscordViewModel: React.FC<DiscordViewModelProps> = ({ user }) => {
   }
   return (
     <Tooltip title={`ID: ${user.id}`}>
-      <Box
-        display="flex"
-        alignItems="center"
-        gap={1}
-        sx={{ cursor: 'pointer' }}
-      >
+      <Stack spacing={1} sx={{ cursor: "pointer", alignItems: "center" }}>
         <Avatar src={user.getAvatarUrl()} alt={user.username} />
         <Typography variant="body1">{user.username}</Typography>
-      </Box>
+      </Stack>
     </Tooltip>
   );
 };

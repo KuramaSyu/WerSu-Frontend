@@ -150,7 +150,7 @@ export default function UploadFileDialog({
           >
             <Typography variant="h6">Drag an image here</Typography>
 
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="textSecondary">
               or click to browse
             </Typography>
 

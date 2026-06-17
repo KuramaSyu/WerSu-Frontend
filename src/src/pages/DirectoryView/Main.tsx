@@ -254,7 +254,7 @@ export const DirectoryView: React.FC = () => {
       <Box
         sx={{
           px: M4,
-          color: "text.primary",
+          color: "textPrimary",
         }}
       >
         {/*
@@ -265,7 +265,7 @@ export const DirectoryView: React.FC = () => {
           runtime hook errors.
         */}
         <DragDropProvider onDragEnd={() => undefined}>
-          <Stack direction="row" spacing={M4} alignItems="flex-start">
+          <Stack direction="row" spacing={M4} sx={{ alignItems: "flex-start" }}>
             <LeftPanel open={leftPaneOpen} setOpen={setLeftPaneOpen}>
               <DirectoryActions
                 currentNode={currentNode}
@@ -278,13 +278,19 @@ export const DirectoryView: React.FC = () => {
             <Paper elevation={2} sx={{ flex: 1, p: M3 }}>
               <Stack spacing={M3}>
                 <Stack spacing={0.5}>
-                  <Stack direction="row" spacing={1} alignItems="center">
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    sx={{ alignItems: "center" }}
+                  >
                     {path.map((segment, index) => (
                       <Stack
                         key={segment.getId()}
                         direction="row"
                         spacing={1}
-                        alignItems="center"
+                        sx={{
+                          alignItems: "center",
+                        }}
                       >
                         <ButtonBase
                           onClick={() => navigate(`/d/${segment.getId()}`)}
@@ -297,19 +303,19 @@ export const DirectoryView: React.FC = () => {
                             },
                           }}
                         >
-                          <Typography variant="body2" color="text.secondary">
+                          <Typography variant="body2" color="textSecondary">
                             {segment.getName()}
                           </Typography>
                         </ButtonBase>
                         {index < path.length - 1 && (
-                          <Typography variant="body2" color="text.secondary">
+                          <Typography variant="body2" color="textSecondary">
                             ›
                           </Typography>
                         )}
                       </Stack>
                     ))}
                   </Stack>
-                  <Typography variant="h4" fontWeight={600}>
+                  <Typography variant="h4" sx={{ fontWeight: 600 }}>
                     {title}
                   </Typography>
                 </Stack>
@@ -350,14 +356,14 @@ export const DirectoryView: React.FC = () => {
                                   index % 2 === 0 ? "#C27C3B" : "#3B7CC2",
                               }}
                             />
-                            <Box flex={1}>
-                              <Typography variant="subtitle1" fontWeight={600}>
+                            <Box sx={{ flex: 1 }}>
+                              <Typography
+                                variant="subtitle1"
+                                sx={{ fontWeight: 600 }}
+                              >
                                 {child.getName()}
                               </Typography>
-                              <Typography
-                                variant="body2"
-                                color="text.secondary"
-                              >
+                              <Typography variant="body2" color="textSecondary">
                                 {(notesByDirectory[child.getId()] ?? []).length}{" "}
                                 Pages
                               </Typography>
@@ -372,7 +378,7 @@ export const DirectoryView: React.FC = () => {
 
                   <Stack spacing={1.5}>
                     {notesInDirectory.length === 0 ? (
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="body2" color="textSecondary">
                         No notes yet in this directory.
                       </Typography>
                     ) : (
@@ -408,13 +414,16 @@ export const DirectoryView: React.FC = () => {
                                   index % 2 === 0 ? "#54A07A" : "#8E6CCB",
                               }}
                             />
-                            <Box flex={1}>
-                              <Typography variant="subtitle1" fontWeight={600}>
+                            <Box sx={{ flex: 1 }}>
+                              <Typography
+                                variant="subtitle1"
+                                sx={{ fontWeight: 600 }}
+                              >
                                 {note.title}
                               </Typography>
                               <Typography
                                 variant="body2"
-                                color="text.secondary"
+                                color="textSecondary"
                                 sx={{
                                   display: "-webkit-box",
                                   WebkitLineClamp: 2,

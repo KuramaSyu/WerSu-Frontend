@@ -7,7 +7,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import { M3 } from "../../statics";
+import { M1, M2, M3 } from "../../statics";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { blendWithContrast } from "../../utils/blendWithContrast";
 import type { MinimalNote } from "../../api/models/search";
@@ -18,6 +18,7 @@ import { useState } from "react";
 import { NoteEditorModal } from "../../components/Editor/NoteEditModal";
 import { NoteApi, type INoteApi } from "../../api/NoteApi";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
+import { formatDistance } from "date-fns";
 
 export const NoteCard: React.FC<{
   note: MinimalNote;
@@ -139,11 +140,22 @@ export const NoteCard: React.FC<{
 
         <CardContent>
           <Typography
-            variant="subtitle2"
-            mb={M3}
-            color={blendWithContrast(theme.palette.text.primary, theme, 1 / 4)}
+            variant="caption"
+            sx={{
+              color: blendWithContrast(
+                theme.palette.text.primary,
+                theme,
+                1 / 4,
+              ),
+              p: M2,
+              position: "absolute",
+              top: 0,
+              right: 0,
+            }}
           >
-            {new Date(note.updated_at).toLocaleString()}
+            {formatDistance(new Date(note.updated_at), new Date(), {
+              addSuffix: true,
+            })}
           </Typography>
           <Typography
             variant="h5"

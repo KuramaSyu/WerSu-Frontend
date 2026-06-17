@@ -86,13 +86,17 @@ export const InsertSpeedDial: React.FC<InsertSpeedDialProps> = ({
       >
         <SpeedDialAction
           icon={<SaveIcon />}
-          tooltipTitle="Save"
+          slotProps={{
+            tooltip: { title: "Save" },
+          }}
           onClick={() => void handleSave()}
         />
         {viewMode === "rich" ? (
           <SpeedDialAction
             icon={<CodeIcon />}
-            tooltipTitle="Source view"
+            slotProps={{
+              tooltip: { title: "Source view" },
+            }}
             onClick={() => {
               const markdown = editor?.getMarkdown() ?? sourceMarkdown;
               setSourceMarkdown(markdown);
@@ -102,7 +106,9 @@ export const InsertSpeedDial: React.FC<InsertSpeedDialProps> = ({
         ) : (
           <SpeedDialAction
             icon={<EditIcon />}
-            tooltipTitle="Rich editor"
+            slotProps={{
+              tooltip: { title: "Rich editor" },
+            }}
             onClick={() => {
               if (editor) {
                 editor.commands.setContent(sourceMarkdown, {
@@ -115,13 +121,17 @@ export const InsertSpeedDial: React.FC<InsertSpeedDialProps> = ({
         )}
         <SpeedDialAction
           icon={<HistoryIcon />}
-          tooltipTitle="Versions"
+          slotProps={{
+            tooltip: { title: "Version history" },
+          }}
           onClick={() => setVersionsOpen(true)}
         />
 
         <SpeedDialAction
           icon={<AddPhotoAlternateIcon />}
-          tooltipTitle="Upload Image"
+          slotProps={{
+            tooltip: { title: "Upload Image" },
+          }}
           onClick={() => setFileUploadDialogOpen(true)}
         />
         <SpeedDialAction

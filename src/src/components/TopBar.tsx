@@ -201,45 +201,52 @@ const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
         >
           <Toolbar>
             <Stack
-              flexGrow={1}
               direction="row"
               spacing={2}
-              alignItems="center"
-              justifyContent="space-between"
+              sx={{
+                flexGrow: 1,
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
             >
               {/* Title */}
-              <Box minWidth={1 / 10}>
+              <Box sx={{ minWidth: 1 / 10 }}>
                 <Button
                   onClick={() => navigate("/")}
                   sx={{
                     fontSize: theme.typography.h4.fontSize,
-                    fontWeight: 200,
+                    fontWeight: 300,
                     fontFamily: '"Fira Sans", sans-serif',
-                    color: theme.palette.text.primary,
-                    // textTransform: "none",
                   }}
                 >
                   <Typography
-                    fontSize={"inherit"}
-                    fontFamily={"inherit"}
-                    fontWeight={"300"}
-                    color={theme.palette.primary.light}
+                    sx={{
+                      fontSize: "inherit",
+                      fontFamily: "inherit",
+                      fontWeight: "inherit",
+                      color: theme.palette.primary.light,
+                    }}
                   >
                     Wer
                   </Typography>
                   <Typography
-                    fontSize={"inherit"}
-                    fontFamily={"inherit"}
-                    fontWeight={"300"}
-                    color={theme.palette.secondary.light}
+                    sx={{
+                      fontSize: "inherit",
+                      fontFamily: "inherit",
+                      fontWeight: "inherit",
+                      color: theme.palette.secondary.light,
+                    }}
                   >
                     Su
                   </Typography>
                 </Button>
               </Box>
               <Box
-                minWidth={3 / 10}
-                sx={{ display: "flex", justifyContent: "center" }}
+                sx={{
+                  display: "flex",
+                  justifyContent: "center",
+                  minWidth: 3 / 10,
+                }}
               >
                 <SearchBar />
               </Box>

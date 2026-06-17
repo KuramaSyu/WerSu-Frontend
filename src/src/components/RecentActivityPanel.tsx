@@ -135,12 +135,12 @@ export const RecentActivityPanel: React.FC<RecentActivityPanelProps> = ({
   return (
     <Box sx={{ px: 2, py: 2 }}>
       <Stack spacing={M3}>
-        <Typography variant="subtitle2" color="text.secondary">
+        <Typography variant="subtitle2" color="textSecondary">
           {title}
         </Typography>
         <Divider />
         {isLoading && (
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="textSecondary">
             Loading activity...
           </Typography>
         )}
@@ -150,17 +150,17 @@ export const RecentActivityPanel: React.FC<RecentActivityPanelProps> = ({
           </Typography>
         )}
         {!isLoading && !hasError && activity.length === 0 && (
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="textSecondary">
             No recent activity.
           </Typography>
         )}
         <Stack spacing={1.5}>
           {activity.map((entry) => (
             <Box key={entry.version_id}>
-              <Typography variant="body2" fontWeight={600}>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
                 {formatActivityLabel(entry)}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" color="textSecondary">
                 {formatTimestamp(entry.created_at)}
               </Typography>
             </Box>

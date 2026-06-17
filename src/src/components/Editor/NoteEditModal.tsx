@@ -374,7 +374,7 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
                     />
 
                     {!isSourceMode && (
-                      <ThemedEditorBox>
+                      <ThemedEditorBox editor={editor}>
                         <EditorContent editor={editor} className="tiptap" />
                       </ThemedEditorBox>
                     )}

@@ -92,6 +92,7 @@ export const ThemedEditorBox = ({
                 backgroundColor: theme.blendWithContrast(
                   theme.palette.background.paper,
                   0.2,
+                  undefined,
                 ),
                 borderRadius: theme.shape.borderRadius,
 

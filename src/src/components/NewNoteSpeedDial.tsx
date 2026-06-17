@@ -25,7 +25,11 @@ const NewNoteSpeedDial: React.FC = () => {
       >
         <SpeedDialAction
           icon={<CreateIcon />}
-          tooltipTitle="New note"
+          slotProps={{
+            tooltip: {
+              title: "New Note",
+            },
+          }}
           onClick={() => {
             setDialogOpen(true);
             setOpen(false);

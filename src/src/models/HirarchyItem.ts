@@ -139,7 +139,7 @@ export class DirectoryHirarchyItem extends CompositeHirarchyItem {
     super(
       directory.id,
       directory.display_name ?? directory.name,
-      directory.parent_id,
+      directory.parent_id ?? undefined,
     );
   }
 

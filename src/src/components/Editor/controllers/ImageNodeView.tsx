@@ -21,7 +21,12 @@ export function ImageNodeView({ node, selected, getPos }: NodeViewProps) {
         }
       }
     >
-      <Box paddingY={M2} width={"fit-content"}>
+      <Box
+        sx={{
+          paddingY: M2,
+          width: "fit-content",
+        }}
+      >
         <Box
           component="img"
           src={node.attrs.src}

@@ -201,13 +201,15 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
           >
             {/* Header with close button */}
             <Stack
+              sx={{
+                justifyContent: "space-between",
+                alignItems: "center",
+                position: "sticky",
+              }}
               direction="row"
-              justifyContent="space-between"
-              alignItems="center"
-              position={"sticky"}
             >
               {/* search strategy */}
-              <Box width={"20%"}>
+              <Box sx={{ width: "20%" }}>
                 <SearchStrategySelect
                   searchType={searchType}
                   setSearchType={setSearchType}
@@ -217,8 +219,8 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
 
               {/* search field */}
               <Box
-                width={"60%"}
                 sx={{
+                  width: "60%",
                   justifyContent: "center",
                   display: "flex",
                 }}
@@ -549,7 +551,7 @@ const ResultContent = ({
                 gap: M2,
               }}
             >
-              <Box className="note header" minWidth={3 / 8}>
+              <Box className="note header" sx={{ minWidth: 3 / 8 }}>
                 <Typography
                   variant="h6"
                   sx={{
@@ -564,8 +566,7 @@ const ResultContent = ({
                 <Stack
                   direction="row"
                   spacing={2}
-                  sx={{ mb: M2 }}
-                  minWidth={5 / 8}
+                  sx={{ mb: M2, minWidth: 5 / 8 }}
                 >
                   <Chip
                     label={users[note.author_id]?.username || "unknown"}
@@ -605,7 +606,7 @@ const ResultContent = ({
         timeout={{ enter: theme.transitions.duration.short, exit: 0 }}
         unmountOnExit
       >
-        <Stack direction={"row"} alignItems={"center"}>
+        <Stack direction={"row"} sx={{ alignItems: "center" }}>
           <Stack
             direction={"column"}
             sx={{
@@ -617,32 +618,32 @@ const ResultContent = ({
             }}
           >
             <TextTrail key={searchQuery ? "search" : "no-search"}>
-              <Typography variant="h4" color="text.primary">
+              <Typography variant="h4" color="textPrimary">
                 I took a deep dive,
               </Typography>
-              <Typography variant="h5" color="text.secondary">
+              <Typography variant="h5" color="textSecondary">
                 but hell, there is no
               </Typography>
               <Typography
                 key={searchQuery || "empty"}
                 color="primary"
                 variant={searchQuery ? "h3" : "h6"}
-                py={M3}
+                sx={{
+                  py: M3,
+                }}
               >
                 {searchQuery || "Oh, you haven't even searched yet - nvm"}
               </Typography>
               {searchQuery && (
-                <Typography variant="h5" color="text.secondary">
+                <Typography variant="h5" color="textSecondary">
                   in the abyss of your notes.
                 </Typography>
               )}
             </TextTrail>
           </Stack>
-          <Box width={5 / 8} justifyContent={"center"} sx={{ display: "flex" }}>
+          <Box sx={{ display: "flex", width: 5 / 8, justifyContent: "center" }}>
             <Box
-              width={5 / 8}
-              justifyContent={"center"}
-              sx={{ display: "flex" }}
+              sx={{ display: "flex", width: 5 / 8, justifyContent: "center" }}
             >
               <LogoSvgComponent />
             </Box>

@@ -60,11 +60,11 @@ export function GraphDetailsPanel(
       </Typography>
       <Divider sx={{ mb: 2 }} />
       {!selectedNode ? (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="textSecondary">
           Click a node to see metadata and content.
         </Typography>
       ) : isDetailsLoading ? (
-        <Stack spacing={2} alignItems="center" sx={{ mt: 2 }}>
+        <Stack spacing={2} sx={{ mt: 2, alignItems: "center" }}>
           <CircularProgress size={24} />
           <Typography variant="body2">Loading details…</Typography>
         </Stack>
@@ -75,7 +75,7 @@ export function GraphDetailsPanel(
               selectedDirectory?.name ||
               selectedNode.label}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="textSecondary">
             Directory ID: {selectedNode.id}
           </Typography>
           {selectedDirectory?.description && (
@@ -87,10 +87,10 @@ export function GraphDetailsPanel(
       ) : selectedNote ? (
         <Stack spacing={1}>
           <Typography variant="subtitle1">{selectedNote.title}</Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="textSecondary">
             Note ID: {selectedNote.id}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="textSecondary">
             Updated: {new Date(selectedNote.updated_at).toLocaleString()}
           </Typography>
           <Divider sx={{ my: 1 }} />
@@ -99,7 +99,7 @@ export function GraphDetailsPanel(
           </Typography>
         </Stack>
       ) : (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="textSecondary">
           No details available.
         </Typography>
       )}
@@ -107,7 +107,7 @@ export function GraphDetailsPanel(
         <Stack spacing={1} sx={{ mt: 2 }}>
           <Divider />
           <Typography variant="subtitle2">Selected link</Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="textSecondary">
             {selectedEdge.sourceId} → {selectedEdge.targetId}
           </Typography>
           <Button

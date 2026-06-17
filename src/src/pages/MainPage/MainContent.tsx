@@ -214,12 +214,11 @@ export const MainContent: React.FC = () => {
         >
           <NewNoteSpeedDial />
           <DragDropProvider onDragEnd={(event) => void handleDragEnd(event)}>
-            <Stack direction={"row"} alignItems={"flex-start"}>
+            <Stack direction={"row"} sx={{ alignItems: "center" }}>
               <LeftPanel open={leftPaneOpen} setOpen={setLeftPaneOpen}>
                 <Stack
                   direction="row"
-                  justifyContent="flex-end"
-                  sx={{ px: 1, pb: 1 }}
+                  sx={{ px: 1, pb: 1, justifyContent: "flex-end" }}
                 >
                   <IconButton
                     size="small"
@@ -241,7 +240,7 @@ export const MainContent: React.FC = () => {
                       : dirMeta?.display_name || dirMeta?.name || dir;
 
                   return (
-                    <Box px={M4} key={dir}>
+                    <Box key={dir} sx={{ px: M4 }}>
                       <CardGrid
                         notes={notes}
                         title={forceLoading ? "Loading..." : displayTitle}

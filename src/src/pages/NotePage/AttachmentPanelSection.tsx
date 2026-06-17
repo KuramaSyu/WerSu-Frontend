@@ -64,7 +64,7 @@ export const AttachmentPanelSection: React.FC<AttachmentPanelSectionProps> = ({
             </Typography>
             <Typography
               component="span"
-              sx={{ color: "text.secondary" }}
+              sx={{ color: "textSecondary" }}
               variant="caption"
             >
               Click to view or drag into the editor

@@ -101,7 +101,7 @@ export const CardGrid: React.FC<CardGridProps> = ({
 
   return (
     <Paper sx={{ p: M4 }} elevation={1}>
-      <Typography variant="h2" mb={M4}>
+      <Typography variant="h2" sx={{ mb: M4 }}>
         {title}
       </Typography>
       <Box

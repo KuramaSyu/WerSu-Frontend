@@ -171,8 +171,8 @@ export function ActionRow({ editor }: ActionRowProps): React.ReactElement {
     <Stack
       direction="row"
       spacing={0.5}
-      alignItems="center"
       sx={{
+        alignItems: "center",
         backgroundColor: theme.palette.background.paper,
         borderRadius: 1,
         p: M1,

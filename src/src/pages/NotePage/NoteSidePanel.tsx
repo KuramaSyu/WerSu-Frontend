@@ -346,7 +346,7 @@ export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
         <DialogTitle>Change parent directory</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="textSecondary">
               Choose a new parent directory for this note.
             </Typography>
             <FormControl fullWidth>

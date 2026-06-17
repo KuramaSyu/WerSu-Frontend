@@ -46,7 +46,11 @@ const DirectoryTreeNode: React.FC<DirectoryTreeNodeProps> = ({ item }) => {
       itemId={itemId}
       ref={ref}
       label={
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ pr: 0.5 }}>
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{ pr: 0.5, alignItems: "center" }}
+        >
           <ButtonBase
             onClick={(event) => {
               event.stopPropagation();
@@ -62,10 +66,14 @@ const DirectoryTreeNode: React.FC<DirectoryTreeNodeProps> = ({ item }) => {
               color: "inherit",
             }}
           >
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Typography variant="body2" fontWeight={500}>
-                {item.getName()}
-              </Typography>
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{
+                alignItems: "center",
+              }}
+            >
+              <Typography variant="body2">{item.getName()}</Typography>
             </Stack>
           </ButtonBase>
           {itemId !== "root" && (

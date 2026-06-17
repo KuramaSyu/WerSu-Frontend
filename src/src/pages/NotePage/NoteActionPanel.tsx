@@ -31,25 +31,25 @@ export const NoteActionPanel: React.FC<NoteActionPanelProps> = ({
 }) => {
   return (
     <Stack spacing={1.5}>
-      <Typography variant="subtitle2" color="text.secondary">
+      <Typography variant="subtitle2" color="textSecondary">
         Metadata
       </Typography>
 
       {isLoading ? (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="textSecondary">
           Loading metadata...
         </Typography>
       ) : (
         <Stack spacing={1.5}>
           <Stack spacing={0.5}>
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" color="textSecondary">
               Last edited
             </Typography>
             <Typography variant="body2">{lastEditedLabel}</Typography>
           </Stack>
 
           <Stack spacing={0.5}>
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" color="textSecondary">
               Parent directories
             </Typography>
             {parentDirectories.length === 0 ? (
@@ -78,21 +78,23 @@ export const NoteActionPanel: React.FC<NoteActionPanelProps> = ({
           </Stack>
 
           <Stack spacing={0.5}>
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" color="textSecondary">
               Permissions
             </Typography>
             {permissionSections.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="textSecondary">
                 No explicit user permissions.
               </Typography>
             ) : (
               <Stack spacing={1}>
                 {permissionSections.map((section) => (
                   <Stack key={section.label} spacing={0.5}>
-                    <Typography variant="body2" fontWeight={600}>
-                      {section.label}
-                    </Typography>
-                    <Stack direction="row" spacing={0.5} flexWrap="wrap">
+                    <Typography variant="body2">{section.label}</Typography>
+                    <Stack
+                      direction="row"
+                      spacing={0.5}
+                      sx={{ flexWrap: "wrap" }}
+                    >
                       {section.users.map((user) => (
                         <Chip
                           key={`${section.label}-${user}`}

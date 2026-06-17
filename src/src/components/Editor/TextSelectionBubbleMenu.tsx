@@ -130,10 +130,10 @@ export const TextSelectionBubbleMenu = ({
     >
       <Stack
         direction="row"
-        alignItems="center"
         spacing={0.5}
         sx={{
           p: 0.5,
+          alignItems: "center",
           borderRadius: 1,
           border: `1px solid ${theme.palette.divider}`,
           backgroundColor: theme.palette.background.paper,

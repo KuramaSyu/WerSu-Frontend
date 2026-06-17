@@ -354,10 +354,12 @@ export const SlashCommandMenu = ({
       >
         <Typography
           variant="subtitle2"
-          sx={{ color: "text.primary" }}
-          textTransform={"uppercase"}
-          px={2}
-          pb={1}
+          sx={{
+            textTransform: "uppercase",
+            px: 2,
+            pb: 1,
+            color: "textPrimary",
+          }}
         >
           Slash Commands
         </Typography>

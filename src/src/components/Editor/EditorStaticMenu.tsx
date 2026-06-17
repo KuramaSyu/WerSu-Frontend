@@ -34,7 +34,13 @@ export const EditorStaticMenu = ({
 
   return (
     <>
-      <Stack direction="row" spacing={1} alignItems="center">
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{
+          alignItems: "center",
+        }}
+      >
         <BoldItalicMenu editor={editor} />
         <TableButtonGroup editor={editor} />
         <Button size="small" variant="outlined" onClick={onToggleSourceMode}>
