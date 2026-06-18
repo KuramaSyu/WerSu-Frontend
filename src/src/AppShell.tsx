@@ -75,7 +75,8 @@ export const AppShell: React.FC = () => {
         sx={{
           display: "grid",
           gridTemplateColumns: `${leftPanelOpen ? "280px" : "0px"} 1fr ${rightPanelOpen ? "280px" : "0px"}`,
-          transition: `grid-template-columns ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
+          transition: `grid-template-columns ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}, padding-top ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
+          pt: showTopBar ? `calc(${M3} + ${M5} + ${M3})` : "0px",
           height: "100vh",
           mx: M3,
           // gap is handled by its inner boxes, so that it can be collapsed without leaving a gap
@@ -84,8 +85,6 @@ export const AppShell: React.FC = () => {
         <Box
           sx={{
             overflowY: "auto",
-            mt: showTopBar ? `calc(${M3} + ${M5} + ${M3})` : "0px",
-            transition: `margin-top ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
             mr: M3,
           }}
         >
@@ -97,23 +96,26 @@ export const AppShell: React.FC = () => {
           sx={{
             overflowY: "auto", // make it scrollable
             display: "block",
-            // pt: `calc(${M3} + ${M5} + ${M3})`, // padding top, so that it can be scrolled away
-            transition: `margin-top ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
 
-            mt: showTopBar ? `calc(${M3} + ${M5} + ${M3})` : "0px",
             scrollbarWidth: "none",
           }}
         >
           {/* add margin for the actual margin, topbar, and margin of top bar */}
           <Box>
             <Outlet />
+            <Box
+              sx={{
+                width: "100%",
+                height: "10vh",
+                background: theme.palette.background.default,
+              }}
+            ></Box>
           </Box>
         </Box>
         <Box
           sx={{
             overflowY: "auto",
-            mt: showTopBar ? `calc(${M3} + ${M5} + ${M3})` : "0px",
-            transition: `margin-top ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
+
             ml: M3,
           }}
         >
