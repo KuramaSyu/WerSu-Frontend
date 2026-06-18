@@ -676,15 +676,16 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     <>
       <Paper
         elevation={1}
+        color="backgroundDefault"
         sx={{
           height: "auto",
           flex: 1,
-          p: M3,
+          px: M3,
           borderRadius: M2,
           display: "flex",
           flexDirection: "column",
           gap: M3,
-          backgroundColor: "background.default",
+          // background: theme.palette.background.default,
         }}
         onClick={(event) => {
           // only focus editor, if the paper itself was clicked. not a child within it
@@ -699,7 +700,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           direction="row"
           sx={{
             justifyContent: "space-between",
-            alignItems: "flex-start",
+            alignItems: "center",
+            alignContent: "flex-start",
             width: "100%",
           }}
           spacing={M3}
@@ -710,8 +712,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
             placeholder="Note title"
             disableUnderline
             sx={{
-              width: `${Math.max(noteTitle.length, 4)}ch`,
-              maxWidth: "60rem",
+              width: `clamp(200px,${Math.max(noteTitle.length, 4)}ch, 80%)`,
               fontSize: theme.typography.h2,
               pr: M2,
             }}
