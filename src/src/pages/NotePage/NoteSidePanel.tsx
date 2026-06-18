@@ -40,6 +40,7 @@ import { NoteActionPanel } from "./NoteActionPanel";
 import { AttachmentApi } from "../../api/AttachmentApi";
 import type { AttachmentMetadata } from "../../api/models/attachment";
 import { AttachmentPanelSection } from "./AttachmentPanelSection";
+import { VersionInfo } from "./VersionInfo";
 
 const ROOT_PARENT_ID = "root";
 
@@ -325,7 +326,8 @@ export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
             onChangeParentClick={() => setMoveDialogOpen(true)}
             canChangeParent={Boolean(note && noteId)}
           />
-
+          <Divider sx={{ opacity: 0.3 }} />
+          <VersionInfo />
           <Divider sx={{ opacity: 0.3 }} />
           {note && <AttachmentPanelSection note={note} />}
 
