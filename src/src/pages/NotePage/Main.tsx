@@ -13,10 +13,12 @@ import TopBar from "../../components/TopBar";
 import { NoteEditor } from "./Editor";
 import { NoteSidePanel } from "./NoteSidePanel";
 import { useNote, useUpdateNote } from "../../api/queries/useNoteQueries";
+import { useUser } from "../../api/queries/useUser";
+import { useLayout } from "../../LayoutProvider";
 
 export const NotePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { user } = useUserStore();
+  const { data: user } = useUser();
   const { isLoading } = useLoadingStore();
   const { isMobile } = useBreakpoint();
 
@@ -29,6 +31,22 @@ export const NotePage: React.FC = () => {
   const updateNote = (note: Note) => {
     mutate({ noteId: id!, title: note.title, content: note.content });
   };
+  const { setLeftPanel, clearPanels } = useLayout();
+
+  useEffect(() => {
+    setLeftPanel(
+      <NoteSidePanel
+        note={note}
+        noteId={id}
+        open={leftPaneOpen}
+        setOpen={setLeftPaneOpen}
+        onNoteUpdated={updateNote}
+      />,
+    );
+    return () => {
+      clearPanels();
+    };
+  }, []);
 
   if (isLoading) {
     return <LoadingPage />;
@@ -63,13 +81,6 @@ export const NotePage: React.FC = () => {
           alignItems: "flex-start",
         }}
       >
-        <NoteSidePanel
-          note={note}
-          noteId={id}
-          open={leftPaneOpen}
-          setOpen={setLeftPaneOpen}
-          onNoteUpdated={updateNote}
-        />
         <NoteEditor
           note={note}
           noteId={id}

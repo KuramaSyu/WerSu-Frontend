@@ -3,8 +3,12 @@ import { createContext, type ReactNode, useContext, useState } from "react";
 type LayoutContextType = {
   leftPanel: ReactNode | null;
   rightPanel: ReactNode | null;
+  leftPanelOpen: boolean;
+  rightPanelOpen: boolean;
   setLeftPanel: (panel: ReactNode | null) => void;
   setRightPanel: (panel: ReactNode | null) => void;
+  setLeftPanelOpen: (open: boolean) => void;
+  setRightPanelOpen: (open: boolean) => void;
   clearPanels: () => void;
 };
 
@@ -17,6 +21,8 @@ export interface AppLayoutProps {
 export const LayoutProvider: React.FC<AppLayoutProps> = ({ children }) => {
   const [leftPanel, setLeftPanel] = useState<ReactNode | null>(null);
   const [rightPanel, setRightPanel] = useState<ReactNode | null>(null);
+  const [leftPanelOpen, setLeftPanelOpen] = useState(true);
+  const [rightPanelOpen, setRightPanelOpen] = useState(true);
 
   const clearPanels = () => {
     setLeftPanel(null);
@@ -28,9 +34,13 @@ export const LayoutProvider: React.FC<AppLayoutProps> = ({ children }) => {
       value={{
         leftPanel,
         rightPanel,
+        leftPanelOpen,
+        rightPanelOpen,
         setLeftPanel,
         setRightPanel,
         clearPanels,
+        setLeftPanelOpen,
+        setRightPanelOpen,
       }}
     >
       {children}

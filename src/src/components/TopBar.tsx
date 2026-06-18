@@ -44,6 +44,7 @@ import "@fontsource/fira-sans/500.css";
 import "@fontsource/fira-sans/700.css";
 import { useUser } from "../api/queries/useUser";
 import { useQueryClient } from "@tanstack/react-query";
+import { LeftPanelToggle } from "./LeftPanelToggle";
 
 const Pages = {
   HOME: "/",
@@ -211,6 +212,8 @@ const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
                 justifyContent: "space-between",
               }}
             >
+              {/* side panel toggle */}
+              <LeftPanelToggle />
               {/* Title */}
               <Box sx={{ minWidth: 1 / 10 }}>
                 <Button
