@@ -94,6 +94,7 @@ import {
 import { useAccessToken } from "../../api/queries/useAccessToken";
 import * as Y from "yjs"; // Ensure Yjs is imported directly if needed
 import { Awareness } from "y-protocols/awareness";
+import { useUser } from "../../api/queries/useUser";
 
 const lowlight = createLowlight(all);
 const DRAG_HANDLE_GUTTER_PX = 28;
@@ -112,7 +113,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   onNoteUpdated,
 }) => {
   const { theme } = useThemeStore();
-  const { user } = useUserStore();
+  const { data: user } = useUser();
   const { setMessage } = useInfoStore();
   const [noteTitle, setNoteTitle] = useState(note?.title ?? "");
   const [isSaving, setIsSaving] = useState(false);

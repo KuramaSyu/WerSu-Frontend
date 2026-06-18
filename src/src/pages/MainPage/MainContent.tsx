@@ -56,10 +56,7 @@ export const MainContent: React.FC = () => {
   useEffect(() => {
     setLeftPanel(
       <LeftPanel open={leftPaneOpen} setOpen={setLeftPaneOpen}>
-        <Stack
-          direction="row"
-          sx={{ px: 1, pb: 1, justifyContent: "flex-end" }}
-        >
+        <Stack direction="row" sx={{ justifyContent: "flex-end" }}>
           <IconButton
             size="small"
             color="primary"
@@ -211,56 +208,51 @@ export const MainContent: React.FC = () => {
   }, [notesByDirectory]);
 
   return (
-    <>
+    <Box
+      sx={{
+        height: "100%",
+        width: "100%",
+        alignSelf: "center",
+        fontFamily: "Open Sans",
+        display: "flex",
+        // overflow: "auto",
+      }}
+    >
       <Box
         sx={{
-          px: M4,
-          height: "100%",
+          // height: "calc(100% - 8rem)",
           width: "100%",
-          alignSelf: "center",
-          fontFamily: "Open Sans",
           display: "flex",
-          // overflow: "auto",
+          flexDirection: "column",
+          alignItems: "center",
         }}
       >
-        {/* add padding of the actual margin, topbar, and margin of top bar */}
-        <Box
-          sx={{
-            height: "calc(100% - 8rem)",
-            width: "100%",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: M4,
-          }}
-        >
-          <NewNoteSpeedDial />
-          <DragDropProvider onDragEnd={(event) => void handleDragEnd(event)}>
-            <Stack direction={"row"} sx={{ alignItems: "center" }}>
-              <Box>
-                {Object.entries(notesByDirectory).map(([dir, notes]) => {
-                  const dirMeta = directoriesById[dir];
-                  const forceLoading = dir !== "root" && !dirMeta;
-                  const displayTitle =
-                    dir === "root"
-                      ? "Root"
-                      : dirMeta?.display_name || dirMeta?.name || dir;
+        <NewNoteSpeedDial />
+        <DragDropProvider onDragEnd={(event) => void handleDragEnd(event)}>
+          <Stack direction={"row"} sx={{ alignItems: "center" }}>
+            <Box>
+              {Object.entries(notesByDirectory).map(([dir, notes]) => {
+                const dirMeta = directoriesById[dir];
+                const forceLoading = dir !== "root" && !dirMeta;
+                const displayTitle =
+                  dir === "root"
+                    ? "Root"
+                    : dirMeta?.display_name || dirMeta?.name || dir;
 
-                  return (
-                    <Box key={dir} sx={{ px: M4 }}>
-                      <CardGrid
-                        notes={notes}
-                        title={forceLoading ? "Loading..." : displayTitle}
-                        loading={forceLoading}
-                      />
-                    </Box>
-                  );
-                })}
-              </Box>
-            </Stack>
-          </DragDropProvider>
-        </Box>
+                return (
+                  <Box key={dir} sx={{ position: "relative", width: "100%" }}>
+                    <CardGrid
+                      notes={notes}
+                      title={forceLoading ? "Loading..." : displayTitle}
+                      loading={forceLoading}
+                    />
+                  </Box>
+                );
+              })}
+            </Box>
+          </Stack>
+        </DragDropProvider>
       </Box>
-    </>
+    </Box>
   );
 };

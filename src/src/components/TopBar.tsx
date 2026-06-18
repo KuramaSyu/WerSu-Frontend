@@ -44,7 +44,8 @@ import "@fontsource/fira-sans/500.css";
 import "@fontsource/fira-sans/700.css";
 import { useUser } from "../api/queries/useUser";
 import { useQueryClient } from "@tanstack/react-query";
-import { LeftPanelToggle } from "./LeftPanelToggle";
+import { LeftPanelToggle, RightPanelToggle } from "./LeftPanelToggle";
+import { useLayout } from "../LayoutProvider";
 
 const Pages = {
   HOME: "/",
@@ -67,7 +68,7 @@ export interface TopBarProps {
 }
 
 const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
-  const [showBar, setShowBar] = useState(true);
+  const { showTopBar: showBar, setShowTopBar: setShowBar } = useLayout();
   const lastYRef = useRef(0);
 
   const { theme, themeName, setTheme, customThemes } = useThemeStore();
@@ -190,7 +191,16 @@ const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
   // Desktop view
   return (
     <>
-      <Slide appear={false} direction="down" in={showBar}>
+      <Slide
+        appear={false}
+        direction="down"
+        in={showBar}
+        timeout={theme.transitions.duration.standard}
+        easing={{
+          enter: theme.transitions.easing.easeInOut,
+          exit: theme.transitions.easing.easeInOut,
+        }}
+      >
         <AppBar
           position="fixed"
           elevation={4}
@@ -311,6 +321,7 @@ const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
                     alt={user ? user.username : ""}
                   ></Avatar>
                 </IconButton>
+                <RightPanelToggle />
               </Box>
             </Stack>
           </Toolbar>

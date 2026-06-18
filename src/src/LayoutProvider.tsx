@@ -9,6 +9,8 @@ type LayoutContextType = {
   setRightPanel: (panel: ReactNode | null) => void;
   setLeftPanelOpen: (open: boolean) => void;
   setRightPanelOpen: (open: boolean) => void;
+  showTopBar: boolean;
+  setShowTopBar: (show: boolean) => void;
   clearPanels: () => void;
 };
 
@@ -23,6 +25,7 @@ export const LayoutProvider: React.FC<AppLayoutProps> = ({ children }) => {
   const [rightPanel, setRightPanel] = useState<ReactNode | null>(null);
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
+  const [showTopBar, setShowTopBar] = useState(true);
 
   const clearPanels = () => {
     setLeftPanel(null);
@@ -41,6 +44,8 @@ export const LayoutProvider: React.FC<AppLayoutProps> = ({ children }) => {
         clearPanels,
         setLeftPanelOpen,
         setRightPanelOpen,
+        showTopBar,
+        setShowTopBar,
       }}
     >
       {children}

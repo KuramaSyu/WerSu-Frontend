@@ -23,9 +23,6 @@ export const NotePage: React.FC = () => {
   const { isMobile } = useBreakpoint();
 
   const [leftPaneOpen, setLeftPaneOpen] = useState(true);
-  const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(
-    null,
-  );
   const { data: note } = useNote(id);
   const { mutate } = useUpdateNote();
   const updateNote = (note: Note) => {
@@ -58,21 +55,15 @@ export const NotePage: React.FC = () => {
 
   return (
     <Box
-      ref={setScrollElement}
       sx={{
         display: "flex",
         flexDirection: "row",
         height: "100%",
         overflow: "auto",
-        paddingTop: user !== null && !isMobile ? M1 : undefined,
       }}
     >
-      <TopBar scrollContainer={scrollElement} />
-
       <Box
         sx={{
-          pt: `calc(${M4} + ${M5} + ${M3})`,
-          px: M4,
           pb: M4,
           height: "calc(100% - 8rem)",
           width: "100%",
