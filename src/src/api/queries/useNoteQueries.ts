@@ -10,7 +10,12 @@ import type {
   UpdateAttachmentRequest,
 } from "../models/attachment";
 import { SearchNotesApi, type ISearchNotesApi } from "../SearchNotesApi";
-import { Note, RestNotesSearchType, type MinimalNote } from "../models/search";
+import {
+  Note,
+  RestNotesSearchType,
+  type MinimalNote,
+  type NoteData,
+} from "../models/search";
 import { NoteApi, type INoteApi } from "../NoteApi";
 import { updateNoteParentDirectory } from "../../utils/updateNoteParentDirectory";
 
@@ -50,6 +55,8 @@ export const noteQueries = {
     queryKey: ["notes", noteId],
 
     queryFn: () => noteApi.get(noteId),
+
+    select: (data) => new Note(data),
   }),
 };
 
@@ -120,6 +127,8 @@ export function useNote(noteId?: string) {
     },
 
     enabled: !!noteId,
+
+    select: (data) => new Note({ ...data } as NoteData),
   });
 }
 
