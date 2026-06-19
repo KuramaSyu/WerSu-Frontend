@@ -10,22 +10,33 @@ import useInfoStore, { SnackbarUpdateImpl } from "./InfoStore";
 interface ActiveNoteState {
   noteId: string | undefined;
 
-  // re-renders only when the editor object ref changes. not when state changes within happen
+  /* re-renders only when the editor object ref changes. not when state changes within happen */
   editor: Editor | null;
+
   title: string;
   sourceMarkdown: string;
   isSaving: boolean;
   onNoteUpdated: ((note: Note) => void) | null;
 
+  /* function to actually store a note. should be used to inject a tanstack mutation function */
+  updateNote: (title: string, content: string) => Promise<Note>;
+
   registerNote: (
     noteId: string | undefined,
-    onNoteUpdated: (n: Note) => void,
+    onNoteUpdated: (note: Note) => void,
   ) => void;
 
   // setEditor(null) for cleanup
   setEditor: (editor: Editor | null) => void;
   setTitle: (title: string) => void;
   setSourceMarkdown: (markdown: string) => void;
+
+  /**
+   * setter for updateNote. Use it to inject a tanstack mutation function, so that updates/invalidation can be handled proerly
+   */
+  setUpdateNoteFn: (
+    fn: (title: string, content: string) => Promise<Note>,
+  ) => void;
 
   getContent: () => string;
   setContent: (markdown: string) => void;
@@ -39,11 +50,15 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => ({
   sourceMarkdown: "",
   isSaving: false,
   onNoteUpdated: null,
+  updateNote: (title: string, content: string) => {
+    throw new Error("updateNote function not set");
+  },
 
   registerNote: (noteId, onNoteUpdated) => set({ noteId, onNoteUpdated }),
   setEditor: (editor) => set({ editor }),
   setTitle: (title) => set({ title }),
   setSourceMarkdown: (markdown) => set({ sourceMarkdown: markdown }),
+  setUpdateNoteFn: (fn) => set({ updateNote: fn }),
 
   getContent: () => {
     const { editMode, viewMode } = useEditorSettings.getState();
@@ -84,22 +99,9 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => ({
 
     set({ isSaving: true });
     try {
-      const saved = await new NoteApi().patch(noteId, finalTitle, finalContent);
-
-      // invalidate activity, so that when leaving the editor, all acitivity
-      // previews will refetch data
-      queryClient.invalidateQueries({ queryKey: ["activity"] });
-      // instantly refresh activity for this note, so that the verion component updates to
-      // the new latest version
-      queryClient.refetchQueries({ queryKey: ["activity", "note", noteId] });
-      if (!saved) {
-        useInfoStore
-          .getState()
-          .setMessage(new SnackbarUpdateImpl("Failed to save note", "error"));
-        return;
-      }
+      const saved = await get().updateNote(finalTitle, finalContent);
       onNoteUpdated?.(saved); // call hook
-      set({ title: saved.title });
+      set({ title: finalTitle });
       useInfoStore
         .getState()
         .setMessage(new SnackbarUpdateImpl("Note saved", "success"));
