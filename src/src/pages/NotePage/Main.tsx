@@ -27,6 +27,14 @@ export const NotePage: React.FC = () => {
   const updateNote = (note: Note) => {
     mutate({ noteId: id!, title: note.title, content: note.content });
   };
+  const { setLeftPanel, leftPanelOpen } = useLayout();
+
+  useEffect(() => {
+    setLeftPanel(
+      <NoteSidePanel note={note} noteId={id} onNoteUpdated={updateNote} />,
+    );
+    return () => setLeftPanel(null);
+  }, [id]);
 
   if (isLoading) {
     return <LoadingPage />;
