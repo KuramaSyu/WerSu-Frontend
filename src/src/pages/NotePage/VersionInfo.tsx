@@ -1,4 +1,4 @@
-import { Avatar, Box, Grid, Stack } from "@mui/material";
+import { Avatar, Box, Button, Grid, Stack } from "@mui/material";
 import Timeline from "@mui/lab/Timeline";
 import TimelineItem, { timelineItemClasses } from "@mui/lab/TimelineItem";
 import TimelineSeparator from "@mui/lab/TimelineSeparator";
@@ -15,14 +15,20 @@ import type {
   DiscordUser,
   DiscordUserImpl,
 } from "../../components/DiscordLogin";
-import { useUsers } from "../../api/queries/useUser";
+import { useUser, useUsers } from "../../api/queries/useUser";
 import { useLiveUsers } from "../../zustand/useLiveUsersStore";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { NoteVersionSummaryReply } from "../../api/models/activity";
 import { NoteApi } from "../../api/NoteApi";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
-import { markdownToProsemirror, useEditorContext } from "./Editor";
 import { NoteVersionsDrawer } from "../../components/NoteVersionsDrawer";
+import { useNoteActivity } from "../../api/queries/recentActivity";
+import { formatDistanceToNow } from "date-fns";
+import type { Note } from "../../api/models/search";
+import { IconArrowNarrowRight } from "@tabler/icons-react";
+import { queryClient } from "../../api/queryClient";
+import { useNoteVersion } from "../../api/queries/useNoteQueries";
+import { useActiveNoteStore } from "../../zustand/editorStore";
 
 export interface VersionInfoProps {
   noteId: string | undefined;
@@ -31,22 +37,22 @@ export interface VersionInfoProps {
 export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
   const { theme } = useThemeStore();
   const { setMessage } = useInfoStore();
-  const { title, save } = useEditorContext();
+  const { setTitle, setContent, save } = useActiveNoteStore();
 
-  const liveUsers = useLiveUsers(noteId);
-  console.log("Live users:", liveUsers);
-  const { data: usersById } = useUsers(liveUsers.map((user) => user.userId));
-  console.log("Users by ID:", usersById);
+  const { data: user } = useUser();
+
+  // const liveUsers = useLiveUsers(noteId);
+  // console.log("Live users:", liveUsers);
+  // const { data: usersById } = useUsers(liveUsers.map((user) => user.userId));
+  // console.log("Users by ID:", usersById);
   // Controls the version history drawer.
   const [versionsOpen, setVersionsOpen] = useState(false);
   // Currently selected version metadata + content snapshot.
   const [selectedVersion, setSelectedVersion] =
     useState<NoteVersionSummaryReply | null>(null);
-  const [selectedVersionContent, setSelectedVersionContent] = useState<
-    string | null
-  >(null);
-  // Loading state for fetching a specific version.
-  const [isFetchingVersion, setIsFetchingVersion] = useState(false);
+
+  const { data: versions } = useNoteActivity(noteId ?? "");
+
   // Loading state for restore flow.
   const [isRestoringVersion, setIsRestoringVersion] = useState(false);
 
@@ -56,52 +62,57 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
       return;
     }
     setSelectedVersion(version);
-    setIsFetchingVersion(true);
-    try {
-      const versionNote = await new NoteApi().getVersion(
-        noteId,
-        version.version_index,
-      );
-      if (!versionNote) {
-        setMessage(new SnackbarUpdateImpl("Version not available", "error"));
-        return;
-      }
-      setSelectedVersionContent(
-        versionNote.content || versionNote.stripped_content || "",
-      );
-    } catch (error) {
-      console.error("Failed to load version", error);
-      setMessage(new SnackbarUpdateImpl("Failed to load version", "error"));
-    } finally {
-      setIsFetchingVersion(false);
-    }
   };
+  const { data: selectedVersionContent } = useNoteVersion(
+    noteId,
+    selectedVersion?.version_index,
+  );
 
+  // clear user from an old version as soon as he enters the edit window.
+  // also select the latest version if he is not in editor mode e.g. read mode
+  // useEffect(() => {
+  //   if (!usersById || !user) {
+  //     return;
+  //   }
+
+  //   if (usersById[user?.id] !== undefined) {
+  //     setSelectedVersion(null);
+  //     return;
+  //   }
+  //   // the user does not edit. if no version is selected, select the latest one for preview
+  //   if (!selectedVersion && versions && versions.length > 0) {
+  //     setSelectedVersion(versions[0]);
+  //   }
+  // }, [usersById]);
   // Restores a version by saving its content as the latest note state.
-  const handleRestoreVersion = async (version: NoteVersionSummaryReply) => {
+  const handleRestoreVersion = async (
+    version: NoteVersionSummaryReply,
+    note: Note | undefined,
+  ) => {
     if (!noteId) {
+      console.error("Note ID is required to restore version");
+      return;
+    }
+    if (!note?.title || !note.content) {
+      console.error("Current note data is incomplete");
+      setMessage(
+        new SnackbarUpdateImpl("Current note data is incomplete", "error"),
+      );
       return;
     }
     setIsRestoringVersion(true);
     try {
-      let content = selectedVersionContent;
-      let restoredTitle = title;
-      if (selectedVersion?.version_id !== version.version_id || !content) {
-        const versionNote = await new NoteApi().getVersion(
-          noteId,
-          version.version_index,
-        );
-        if (!versionNote) {
-          setMessage(new SnackbarUpdateImpl("Version not available", "error"));
-          return;
-        }
-        content = versionNote.content || versionNote.stripped_content || "";
-        restoredTitle = versionNote.title || restoredTitle;
-        setSelectedVersionContent(content);
-      }
-
-      await save(restoredTitle, content);
-      setMessage(new SnackbarUpdateImpl("Version restored", "success"));
+      // await save(note?.title, note?.content);
+      setTitle(note.title);
+      setContent(note.content);
+      setMessage(
+        new SnackbarUpdateImpl(
+          `Version ${version.version_index} in preview`,
+          "success",
+          undefined,
+          "Press save to restore this version",
+        ),
+      );
     } catch (error) {
       console.error("Restore failed", error);
       setMessage(new SnackbarUpdateImpl("Failed to restore version", "error"));
@@ -115,62 +126,87 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
     <>
       <Timeline
         sx={{
-          // [`& .${timelineContentClasses.root}`]: {
-          //   flex: 0.2,
-          // },
-
           padding: 0,
           margin: 0,
         }}
       >
-        {showLiveVersion && (
+        {/* {showLiveVersion && (
           <LiveVersionItem users={Object.values(usersById ?? {})} />
-        )}
-        <TimelineItem>
-          <TimelineOppositeContent
-            // align="right"
-            variant="body2"
-            sx={{
-              color: "text.secondary",
-              m: "auto 0",
-            }}
-          >
-            9:30 am
-          </TimelineOppositeContent>
-          <TimelineSeparator>
-            <TimelineDot></TimelineDot>
-            <TimelineConnector />
-          </TimelineSeparator>
-          <TimelineContent>
-            <Box
-              sx={{
-                backgroundColor: theme.palette.primary.main,
-                width: "fit-content",
-                height: "fit-content",
-                padding: theme.spacing(0.5, 2),
-                borderRadius: theme.shape.borderRadius,
-                whiteSpace: "nowrap",
-                // display: "flex",
-              }}
-            >
-              V11
-            </Box>
-          </TimelineContent>
-        </TimelineItem>
-        <TimelineItem>
-          <TimelineOppositeContent />
-          <TimelineSeparator>
-            <TimelineDot />
-            <TimelineConnector />
-          </TimelineSeparator>
-          <TimelineContent>Code</TimelineContent>
-        </TimelineItem>
-        <TimelineItem>
-          <TimelineSeparator>
-            <TimelineDot />
-          </TimelineSeparator>
-          <TimelineContent>Sleep</TimelineContent>
-        </TimelineItem>
+        )} */}
+        {versions?.map((version, index) => {
+          const len = versions?.length ?? 0;
+          const bg = theme.blendWithContrast(
+            theme.palette.secondary.dark,
+            0 + index / len,
+            "secondary",
+          );
+          const textColor = theme.palette.getContrastText(bg);
+
+          return (
+            <TimelineItem key={version.version_index}>
+              <TimelineOppositeContent
+                // align="right"
+                variant="body2"
+                // sx={{
+                //   color: "text.secondary",
+                //   m: "auto 0",
+                // }}
+              >
+                {selectedVersion?.version_index === version.version_index &&
+                user ? (
+                  <Stack
+                    direction={"row"}
+                    sx={{ alignItems: "center" }}
+                    spacing={2}
+                  >
+                    <AvatarOrAvatarGroup users={[user]} />
+                    <IconArrowNarrowRight
+                      stroke={2}
+                      color={theme.palette.text.secondary}
+                    />
+                  </Stack>
+                ) : (
+                  formatDistanceToNow(new Date(version.created_at), {
+                    addSuffix: true,
+                  })
+                )}
+              </TimelineOppositeContent>
+              <TimelineSeparator>
+                <TimelineDot></TimelineDot>
+                <TimelineConnector />
+              </TimelineSeparator>
+              <TimelineContent>
+                <Button
+                  onClick={async () => {
+                    setSelectedVersion(version);
+                    const note = await queryClient.fetchQuery({
+                      queryKey: ["versions", noteId, version.version_index],
+                      queryFn: async () =>
+                        await new NoteApi().getVersion(
+                          noteId!,
+                          version.version_index,
+                        ),
+                    });
+                    await handleRestoreVersion(version, note);
+                  }}
+                  sx={{
+                    backgroundColor: bg,
+                    color: textColor,
+                    width: "fit-content",
+                    height: "fit-content",
+                    padding: theme.spacing(0.5, 2),
+                    borderRadius: theme.shape.borderRadius,
+                    whiteSpace: "nowrap",
+
+                    // display: "flex",
+                  }}
+                >
+                  v{version.version_index}
+                </Button>
+              </TimelineContent>
+            </TimelineItem>
+          );
+        })}
       </Timeline>
       {/* Right-side version history drawer */}
       <NoteVersionsDrawer
@@ -180,8 +216,7 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
         onSelectVersion={handleSelectVersion}
         onRestoreVersion={handleRestoreVersion}
         selectedVersion={selectedVersion}
-        selectedContent={selectedVersionContent}
-        isFetchingVersion={isFetchingVersion}
+        isFetchingVersion={false}
         isRestoring={isRestoringVersion}
       />
     </>
@@ -196,9 +231,11 @@ const LiveVersionItem = ({ users }: { users: DiscordUser[] }) => {
       <TimelineOppositeContent>
         <Stack direction={"row"} sx={{ justifyContent: "flex-end" }}>
           <AvatarOrAvatarGroup users={users} />
-          <Box>
-            <IconArrowNarrowRightDashed color={theme.palette.common.white} />
-          </Box>
+          {users.length > 0 && (
+            <Box>
+              <IconArrowNarrowRightDashed color={theme.palette.common.white} />
+            </Box>
+          )}
         </Stack>
       </TimelineOppositeContent>
       <TimelineSeparator>
@@ -208,7 +245,8 @@ const LiveVersionItem = ({ users }: { users: DiscordUser[] }) => {
       <TimelineContent>
         <Box
           sx={{
-            backgroundColor: theme.palette.secondary.dark,
+            backgroundColor: "transparent",
+            border: `2px dashed ${theme.palette.secondary.main}`,
             width: "fit-content",
             height: "fit-content",
             padding: theme.spacing(0.5, 2),
