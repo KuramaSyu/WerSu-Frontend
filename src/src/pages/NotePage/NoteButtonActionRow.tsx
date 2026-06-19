@@ -11,20 +11,10 @@ import SaveIcon from "@mui/icons-material/Save";
 import { Share } from "@mui/icons-material";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { useThemeStore } from "../../zustand/useThemeStore";
+import { useActiveNoteStore } from "../../zustand/editorStore";
 
-export interface NoteButtonActionRowProps {
-  handleSave: () => Promise<void>;
-  editor: Editor;
-  editorMode: "rich" | "source";
-  isSaving: boolean;
-}
-
-export const NoteButtonActionRow: React.FC<NoteButtonActionRowProps> = ({
-  handleSave,
-  editor,
-  editorMode,
-  isSaving,
-}) => {
+export const NoteButtonActionRow: React.FC = () => {
+  const handleSave = useActiveNoteStore((s) => s.save);
   const { editMode: write, setWrite } = useEditorSettings();
   const { theme } = useThemeStore();
   const handleChange = (
