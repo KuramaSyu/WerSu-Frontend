@@ -101,6 +101,7 @@ import { useUser } from "../../api/queries/useUser";
 import { useLiveUsersStore } from "../../zustand/useLiveUsersStore";
 import { queryClient } from "../../api/queryClient";
 import { useActiveNoteStore } from "../../zustand/editorStore";
+import { useUpdateNote } from "../../api/queries/useNoteQueries";
 
 const lowlight = createLowlight(all);
 
@@ -124,6 +125,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   const { theme } = useThemeStore();
   const { data: user } = useUser();
   const setMessage = useInfoStore((s) => s.setMessage);
+  const { mutateAsync: updateNote } = useUpdateNote();
 
   const {
     isSaving,
@@ -133,6 +135,9 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     setSourceMarkdown,
     setContent,
     save,
+    setUpdateNoteFn,
+    setEditor,
+    registerNote,
   } = useActiveNoteStore();
 
   // Tracks which editor surface is active and if write/read is used
@@ -419,7 +424,12 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
 
   // register editor to useActiveNoteStore for global access and cleanup on unmount
   useEffect(() => {
-    useActiveNoteStore.getState().setEditor(editor ?? null);
+    console.log("Rebuild Editor Zustand");
+    registerNote(noteId, onNoteUpdated);
+    setEditor(editor ?? null);
+    setUpdateNoteFn((title: string, content: string) => {
+      return updateNote({ noteId: noteId!, title, content });
+    });
 
     return () => useActiveNoteStore.getState().setEditor(null);
   }, [editor]);
@@ -457,6 +467,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
 
     return () => {
       awareness!.off("change", updateUsers);
+      useLiveUsersStore.getState().clearUsers(noteId);
     };
   }, [noteId, collaboration?.provider]);
 
@@ -684,12 +695,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
               pr: M2,
             }}
           />
-          <NoteButtonActionRow
-            editor={editor}
-            editorMode={editorMode}
-            isSaving={isSaving}
-            handleSave={save}
-          />
+          <NoteButtonActionRow />
         </Stack>
 
         {/* Rich Editor */}
