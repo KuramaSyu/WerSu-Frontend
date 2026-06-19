@@ -45,7 +45,7 @@ export const AttachmentPanelSection: React.FC<AttachmentPanelSectionProps> = ({
 
   const { data: attachments } = useAttachments(
     note.id,
-    note.get_attachment_ids(),
+    noteAttachments?.map((a) => a.key) ?? [],
     expanded,
   );
 
