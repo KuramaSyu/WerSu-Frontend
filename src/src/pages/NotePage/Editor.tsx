@@ -99,22 +99,10 @@ import * as Y from "yjs"; // Ensure Yjs is imported directly if needed
 import { Awareness } from "y-protocols/awareness";
 import { useUser } from "../../api/queries/useUser";
 import { useLiveUsersStore } from "../../zustand/useLiveUsersStore";
-import { LeftPanelSetter } from "./LeftPanelSetter";
+import { queryClient } from "../../api/queryClient";
+import { useActiveNoteStore } from "../../zustand/editorStore";
 
 const lowlight = createLowlight(all);
-
-type EditorContextType = {
-  title: string;
-  setTitle: (title: string) => void;
-  content: string;
-  setContent: (content: string) => void;
-  save: (title: string, markdown: string) => Promise<void>;
-  getCurrentContent: () => string;
-  note: Note | undefined;
-  noteId: string;
-};
-
-export const EditorContext = createContext<EditorContextType | null>(null);
 
 export interface AppLayoutProps {
   children: ReactNode;
@@ -135,10 +123,17 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
 }) => {
   const { theme } = useThemeStore();
   const { data: user } = useUser();
-  const { setMessage } = useInfoStore();
-  const [noteTitle, setNoteTitle] = useState(note?.title ?? "");
-  const [isSaving, setIsSaving] = useState(false);
-  // const [isInDragHandleArea, setIsInDragHandleArea] = useState(false);
+  const setMessage = useInfoStore((s) => s.setMessage);
+
+  const {
+    isSaving,
+    title,
+    setTitle,
+    sourceMarkdown,
+    setSourceMarkdown,
+    setContent,
+    save,
+  } = useActiveNoteStore();
 
   // Tracks which editor surface is active and if write/read is used
   const { viewMode: editorMode, editMode } = useEditorSettings();
@@ -156,19 +151,11 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   const stableYdoc = collaboration?.ydoc ?? emptyYdoc.current;
   const stableProvider = collaboration?.provider ?? dummyProvider.current;
 
-  // Holds the markdown for source-mode editing.
-  const [sourceMarkdown, setSourceMarkdown] = useState("");
-
   // dialog open state for file upload
   const [fileUploadDialogOpen, setFileUploadDialogOpen] = useState(false);
 
   // ref for textfield of source view
   const sourceEditorRef = useRef<HTMLInputElement | null>(null);
-
-  // load markdown only, when draft is empty
-  const hasInitializedDraft = useRef(false);
-
-  const [isEditorMounted, setIsEditorMounted] = useState(false);
 
   const EMPTY_DIALOG = {
     open: false,
@@ -210,7 +197,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   }, [setLatexDialogProps, latexDialogProps]);
 
   useEffect(() => {
-    setNoteTitle(note?.title ?? "");
+    setTitle(note?.title ?? "");
   }, [note?.id, note?.title]);
 
   useEffect(() => {
@@ -430,14 +417,12 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     [noteId, collaboration?.ydoc], // recreate editor when noteId changes to reconnect to a correct Yjs document
   );
 
-  // watch editor state if view is accessible and update isEditorMounted
+  // register editor to useActiveNoteStore for global access and cleanup on unmount
   useEffect(() => {
-    if (editor && editor.view && !editor.isDestroyed) {
-      setIsEditorMounted(true);
-    } else {
-      setIsEditorMounted(false);
-    }
-  }, [editor, editor?.view]);
+    useActiveNoteStore.getState().setEditor(editor ?? null);
+
+    return () => useActiveNoteStore.getState().setEditor(null);
+  }, [editor]);
 
   // read <--> write
   useEffect(() => {
@@ -476,25 +461,25 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   }, [noteId, collaboration?.provider]);
 
   // is write mode only: load last api version
-  useEffect(() => {
-    if (!editor || !note || editMode || !editor.storage.markdown) {
-      console.log(
-        "not loading markdown into editor, missing editor or note or not in edit mode:",
-        { editor, note, editMode, markdownStorage: editor?.storage.markdown },
-      );
-      return;
-    }
+  // useEffect(() => {
+  //   if (!editor || !note || editMode || !editor.storage.markdown) {
+  //     console.log(
+  //       "not loading markdown into editor, missing editor or note or not in edit mode:",
+  //       { editor, note, editMode, markdownStorage: editor?.storage.markdown },
+  //     );
+  //     return;
+  //   }
 
-    console.log("load markdown content into editor");
-    const normalizedDoc = markdownToProsemirror(
-      editor,
-      note.content || note.stripped_content || "",
-    );
-    // microtask prevents flush issue in logs
-    queueMicrotask(() => {
-      editor.commands.setContent(normalizedDoc);
-    });
-  }, [note, editMode, editor.storage.markdown]);
+  //   console.log("load markdown content into editor");
+  //   const normalizedDoc = markdownToProsemirror(
+  //     editor,
+  //     note.content || note.stripped_content || "",
+  //   );
+  //   // microtask prevents flush issue in logs
+  //   queueMicrotask(() => {
+  //     editor.commands.setContent(normalizedDoc);
+  //   });
+  // }, [note, editMode, editor.storage.markdown]);
 
   // load ydoc and collaboration content into editor
   useEffect(() => {
@@ -503,36 +488,26 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     }
 
     if (!editMode) {
-      console.log("not in edit mode, disconnect from collaboration provider");
+      console.log("read mode - disconnect from collaboration provider");
       collaboration.provider.disconnect();
       return;
     }
+
+    // from here on edit mode
     const { provider, ydoc } = collaboration;
+
+    // call when hocuspocus returned the note state
     const onSynced = () => {
       const isEmpty = ydoc!.getXmlFragment("default").length === 0;
 
-      // this means there is a draft on the websocket
-      if (!isEmpty) {
-        hasInitializedDraft.current = true;
-        return;
-      }
+      // if ydoc is not empty, then use this ydoc instead
+      if (!isEmpty) return;
 
       console.log(
         "No draft on websocket, loading draft from markdown (note content)",
       );
 
-      const markdown = note?.content || note?.stripped_content || "";
-      const normalizedDoc = markdownToProsemirror(editor, markdown);
-      console.log("load doc from markdown in effect");
-      // microtask prevents flush issue in logs
-      queueMicrotask(() => {
-        editor.commands.setContent(normalizedDoc);
-      });
-      console.log(
-        "After markdown conversion, before sync:",
-        JSON.stringify(editor.getJSON(), null, 2),
-      );
-      hasInitializedDraft.current = true;
+      setContent(note!.content);
     };
 
     provider.on("synced", onSynced);
@@ -546,75 +521,82 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   }, [editor, note?.id, collaboration?.provider]);
 
   /** returns the current content as markdown */
-  const getCurrentContent = () => {
-    if (editorMode === "source") {
-      return sourceMarkdown;
-    } else {
-      return editor?.getMarkdown() ?? "";
-    }
-  };
+  // const getCurrentContent = () => {
+  //   if (editorMode === "source") {
+  //     return sourceMarkdown;
+  //   } else {
+  //     return editor?.getMarkdown() ?? "";
+  //   }
+  // };
 
   /** Sets the content of the editor either into the source or rich editor without saving */
-  const setContent = (content: string) => {
-    if (editorMode === "source") {
-      setSourceMarkdown(content);
-    } else {
-      const normalizedDoc = markdownToProsemirror(editor, content);
-      // microtask prevents flush issue in logs
-      queueMicrotask(() => {
-        editor.commands.setContent(normalizedDoc);
-      });
-    }
-  };
+  // const setContent = (content: string) => {
+  //   if (editorMode === "source") {
+  //     setSourceMarkdown(content);
+  //   } else {
+  //     const normalizedDoc = markdownToProsemirror(editor, content);
+  //     // microtask prevents flush issue in logs
+  //     queueMicrotask(() => {
+  //       editor.commands.setContent(normalizedDoc);
+  //     });
+  //   }
+  // };
 
   // Saves either the rich editor markdown or the source editor content.
-  const handleSave = async (
-    newTitle: string | undefined = undefined,
-    newContent: string | undefined = undefined,
-  ) => {
-    if (!noteId || (editorMode === "rich" && !editor) || !isEditorMounted) {
-      return;
-    }
+  // const handleSave = async (
+  //   newTitle: string | undefined = undefined,
+  //   newContent: string | undefined = undefined,
+  // ) => {
+  //   if (editorMode === "rich" && !editor) {
+  //     return;
+  //   }
 
-    // if new content was provided, the content needs to be
-    // put into the editor. In case of markdown content, this
-    // happens automatically. otherwise trigger it with this bool
-    const updateView = newContent !== undefined && editorMode === "rich";
+  //   // if new content was provided, the content needs to be
+  //   // put into the editor. In case of markdown content, this
+  //   // happens automatically. otherwise trigger it with this bool
+  //   const updateView = newContent !== undefined;
 
-    const title = newTitle ?? noteTitle;
-    if (newTitle !== undefined) {
-      setNoteTitle(newTitle);
-    }
+  //   const title = newTitle ?? noteTitle;
+  //   if (newTitle !== undefined) {
+  //     setNoteTitle(newTitle);
+  //   }
 
-    const markdown = newContent ?? getCurrentContent();
+  //   const markdown = newContent ?? getCurrentContent();
 
-    // put markdown into editor if source edit was used
-    // or content was otherwise changed outside of the editor
-    if (editorMode === "source" || updateView) {
-      setContent(markdown);
-      console.log(
-        "JSON after markdown save:",
-        JSON.stringify(editor.getJSON(), null, 2),
-      );
-    }
+  //   // put markdown into editor if source edit was used
+  //   // or content was otherwise changed outside of the editor
+  //   if (editorMode === "source") {
+  //     setContent(markdown);
+  //     console.log(
+  //       "JSON after markdown save:",
+  //       JSON.stringify(editor.getJSON(), null, 2),
+  //     );
+  //   }
 
-    setIsSaving(true);
-    try {
-      const saved = await new NoteApi().patch(noteId, title, markdown);
-      if (!saved) {
-        setMessage(new SnackbarUpdateImpl("Failed to save note", "error"));
-        return;
-      }
-      onNoteUpdated(saved);
-      setNoteTitle(saved.title);
-      setMessage(new SnackbarUpdateImpl("Note saved", "success"));
-    } catch (error) {
-      console.error("Save failed", error);
-      setMessage(new SnackbarUpdateImpl("Failed to save note", "error"));
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  //   if (updateView) {
+  //     setContent(markdown);
+  //   }
+
+  //   setIsSaving(true);
+  //   try {
+  //     const saved = await new NoteApi().patch(noteId!, title, markdown);
+  //     console.log("invalidate queries and retech after save");
+  //     queryClient.invalidateQueries({ queryKey: ["activity"] });
+  //     queryClient.refetchQueries({ queryKey: ["activity", "note", noteId!] });
+  //     if (!saved) {
+  //       setMessage(new SnackbarUpdateImpl("Failed to save note", "error"));
+  //       return;
+  //     }
+  //     onNoteUpdated(saved);
+  //     setNoteTitle(saved.title);
+  //     setMessage(new SnackbarUpdateImpl("Note saved", "success"));
+  //   } catch (error) {
+  //     console.error("Save failed", error);
+  //     setMessage(new SnackbarUpdateImpl("Failed to save note", "error"));
+  //   } finally {
+  //     setIsSaving(false);
+  //   }
+  // };
 
   // Uploads file from clipboard and inserts into editor
   async function handlePasteAndUpload(file: File): Promise<string> {
@@ -658,19 +640,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   };
 
   return (
-    <EditorContext.Provider
-      value={{
-        title: noteTitle,
-        setTitle: setNoteTitle,
-        content: getCurrentContent(),
-        setContent,
-        save: handleSave,
-        getCurrentContent,
-        note,
-        noteId: noteId!,
-      }}
-    >
-      <LeftPanelSetter />
+    <>
       <Paper
         elevation={1}
         color="backgroundDefault"
@@ -704,12 +674,12 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           spacing={M3}
         >
           <Input
-            value={noteTitle}
-            onChange={(event) => setNoteTitle(event.target.value)}
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
             placeholder="Note title"
             disableUnderline
             sx={{
-              width: `clamp(200px,${Math.max(noteTitle.length, 4)}ch, 80%)`,
+              width: `clamp(200px,${Math.max(title.length, 4)}ch, 80%)`,
               fontSize: theme.typography.h2,
               pr: M2,
             }}
@@ -718,7 +688,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
             editor={editor}
             editorMode={editorMode}
             isSaving={isSaving}
-            handleSave={handleSave}
+            handleSave={save}
           />
         </Stack>
 
@@ -769,7 +739,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       {/* Floating editor actions */}
       <InsertSpeedDial
         editor={editor}
-        handleSave={handleSave}
+        handleSave={save}
         setSourceMarkdown={setSourceMarkdown}
         setFileUploadDialogOpen={setFileUploadDialogOpen}
         setVersionsOpen={() => {}}
@@ -783,7 +753,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         insertAtCurrentPosition={insertAtCurrentPosition}
         dialogOpen={fileUploadDialogOpen}
         setDialogOpen={setFileUploadDialogOpen}
-        onUploadSuccess={(_) => handleSave()}
+        onUploadSuccess={(_) => save()}
         editor={editor}
       />
       <LatexDialog
@@ -794,19 +764,9 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         setOpen={(open) => setLatexDialogProps({ ...latexDialogProps, open })}
         initialLatexType={latexDialogProps.initialLatexType}
       />
-    </EditorContext.Provider>
+    </>
   );
 };
-
-export function useEditorContext(): EditorContextType {
-  const context = useContext(EditorContext);
-  if (!context) {
-    throw new Error(
-      "useEditorContext must be used within an EditorContext.Provider",
-    );
-  }
-  return context;
-}
 
 /**
  * when inserting an image, we need to check if we use tiptap editor or source mode. The tiptap editor
