@@ -144,6 +144,7 @@ export const MainContent: React.FC = () => {
 
   // Arrange notes into a Dict[directoryId, List[Note]] with multi-parent support.
   const notesByDirectory = useMemo(() => {
+    console.time("Grouping notes by directory in MainContent");
     const dict: Record<string, Note[]> = {};
     Object.values(latestNotes ?? []).forEach((noteData) => {
       const notedata: NoteData = {
@@ -162,6 +163,7 @@ export const MainContent: React.FC = () => {
         dict[dir].push(note);
       });
     });
+    console.timeEnd("Grouping notes by directory in MainContent");
     return dict;
   }, [latestNotes]);
 
@@ -201,11 +203,11 @@ export const MainContent: React.FC = () => {
 
   // Temporary debug logging for grouped notes; safe to remove once directory
   // grouping behavior is validated.
-  useEffect(() => {
-    console.log(
-      `notesByDirectory ${JSON.stringify(notesByDirectory, null, 2)}`,
-    );
-  }, [notesByDirectory]);
+  // useEffect(() => {
+  //   console.log(
+  //     `notesByDirectory ${JSON.stringify(notesByDirectory, null, 2)}`,
+  //   );
+  // }, [notesByDirectory]);
 
   return (
     <Box
