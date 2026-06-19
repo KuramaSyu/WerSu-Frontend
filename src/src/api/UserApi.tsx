@@ -9,6 +9,7 @@ import { th } from "zod/v4/locales";
 export interface BackendApiInterface {}
 export interface UserApiInterface {
   fetchUser(): Promise<DiscordUser>;
+  fetchUsers(users: string[]): Promise<DiscordUser[]>;
   fetchAccessToken(): Promise<GetAcccessTokenResponse>;
 }
 
@@ -23,6 +24,35 @@ export class UserApi implements UserApiInterface {
       `Error fetching ${BACKEND_BASE}${url_part}:`,
       JSON.stringify(error),
     );
+  }
+
+  /**
+   * fetches all given users if the current user has access to them.
+   * @param users array of userIds to fetch
+   * */
+  async fetchUsers(users: string[]): Promise<DiscordUser[]> {
+    // currently not implemented
+    const user = await this.fetchUser();
+    return [user];
+
+    const response = await fetch(`${BACKEND_BASE}/api/auth/users`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ users }),
+    });
+    var userData: DiscordUser[] | null = null;
+    if (response.ok) {
+      userData = await response.json();
+    }
+    if (userData !== null) {
+      return userData as DiscordUser[];
+    } else {
+      this.logError(`/api/auth/users`, response.json());
+      throw new Error("Failed to fetch user data");
+    }
   }
 
   /**
