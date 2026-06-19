@@ -1,10 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as Y from "yjs";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import { IndexeddbPersistence } from "y-indexeddb";
 import { useAuthStore } from "../zustand/useAuthStore";
 import { HOCUSPOCUS_WS_URL } from "../statics";
 import { useAccessToken } from "../api/queries/useAccessToken";
+import { queryClient } from "../api/queryClient";
+
+type CollabCacheEntry = {
+  ydoc: Y.Doc;
+  provider: HocuspocusProvider;
+  persistence: IndexeddbPersistence;
+};
 
 /**
  * Custom hook to manage real-time collaboration for a specific note.
@@ -35,14 +42,27 @@ import { useAccessToken } from "../api/queries/useAccessToken";
  * }
  * ```
  */
-export function useNoteCollaboration(noteId?: string) {
+export function useNoteCollaboration(noteId?: string): CollabCacheEntry | null {
+  // cache to not rebuild ydoc / provider and hence prevent editor rebuilds
+  const collabCache = useRef<Map<string, CollabCacheEntry>>(new Map());
+
   const { data: accessToken } = useAccessToken();
 
-  console.log("Initializing collaboration for note:", noteId);
+  const [state, setEntry] = useState<CollabCacheEntry | null>(null);
 
-  const [state, setState] = useState({
-    ydoc: null as Y.Doc | null,
-    provider: null as HocuspocusProvider | null,
+  // when useAuthStore gets a new token from the query, then the subscriber will
+  // trigger a reconnect. I don't know if this actually reconnects, if the
+  // connection is already established, since query updates at 14 of 15 minutes valid token time
+  useEffect(() => {
+    const unsubscribe = useAuthStore.subscribe((state, prevState) => {
+      if (state.accessToken !== prevState.accessToken) {
+        collabCache.current.forEach(({ provider }) => {
+          provider.connect();
+        });
+      }
+    });
+
+    return unsubscribe;
   });
 
   useEffect(() => {
@@ -52,38 +72,42 @@ export function useNoteCollaboration(noteId?: string) {
       );
       return;
     }
+    let cached = collabCache.current.get(noteId);
 
-    const ydoc = new Y.Doc();
+    if (!cached) {
+      console.log("Creating new Hocuspocus provider for note", noteId);
+      const ydoc = new Y.Doc();
+      // this also loads the document from IndexedDB into ydoc
+      const persistence = new IndexeddbPersistence(`note-${noteId}`, ydoc);
+      const provider = new HocuspocusProvider({
+        url: `${HOCUSPOCUS_WS_URL}`,
+        document: ydoc,
+        name: `note-${noteId}`,
+        token: () => useAuthStore.getState().accessToken ?? "",
+      });
 
-    // this also loads the document from IndexedDB into ydoc
-    const persistence = new IndexeddbPersistence(`note-${noteId}`, ydoc);
+      cached = { ydoc, provider, persistence };
+      collabCache.current.set(noteId, cached);
+    } else {
+      console.debug("Using cached Hocuspocus provider for note", noteId);
+      cached.provider.connect();
+    }
 
-    console.log(
-      `Setup Hocuspocus provider for note ${noteId} with access token: ${accessToken.substring(0, 10)}... to ${HOCUSPOCUS_WS_URL}`,
-    );
-    const provider = new HocuspocusProvider({
-      url: `${HOCUSPOCUS_WS_URL}`,
-      name: `note-${noteId}`,
-      document: ydoc,
-      token: accessToken,
-    });
+    setEntry(cached);
 
-    setState({ ydoc, provider });
+    // if current accessToken still causes issues, listening for status might help
+    // cached.provider.on("status", () => {
+    //   console.log("Hocuspocus provider status changed");
+    // });
 
-    provider.on("status", () => {
-      console.log("Hocuspocus provider status changed");
-    });
-
-    // when accessToken or note changes, disconnect the provider
     return () => {
-      provider.disconnect();
-      ydoc.destroy();
+      cached!.provider.disconnect();
     };
-  }, [noteId, accessToken]);
+  }, [noteId]);
 
   if (!noteId) {
     // if no noteId is provided, return null values
-    return { ydoc: null, provider: null };
+    return null;
   }
   return state;
 }
