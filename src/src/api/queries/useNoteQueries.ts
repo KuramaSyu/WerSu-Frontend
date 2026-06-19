@@ -183,6 +183,12 @@ export function useUpdateNote() {
       queryClient.invalidateQueries({
         queryKey: ["notes"],
       });
+
+      // acitivties
+      queryClient.invalidateQueries({ queryKey: ["activity"] });
+      queryClient.refetchQueries({
+        queryKey: ["activity", "note", updatedNote.id],
+      });
     },
   });
 }
