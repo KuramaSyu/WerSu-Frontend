@@ -18,19 +18,23 @@ import { ActivityApi } from "../api/ActivityApi";
 import type { NoteVersionSummaryReply } from "../api/models/activity";
 import { M2, M3, M4 } from "../statics";
 import { useSearchNotesStore } from "../zustand/useSearchNotesStore";
-import { useNote } from "../api/queries/useNoteQueries";
-import { useQueryClient } from "@tanstack/react-query";
+import { useNote, useNoteVersion } from "../api/queries/useNoteQueries";
+import { QueryClient, useQueryClient } from "@tanstack/react-query";
 import type { Note } from "../api/models/search";
-import { useEditorContext } from "../pages/NotePage/Editor";
+import { useNoteActivity } from "../api/queries/recentActivity";
+import { useActiveNoteStore } from "../zustand/editorStore";
+import { queryClient } from "../api/queryClient";
 
 export interface NoteVersionsDrawerProps {
   open: boolean;
   noteId?: string;
   onClose: () => void;
   onSelectVersion: (version: NoteVersionSummaryReply) => void;
-  onRestoreVersion: (version: NoteVersionSummaryReply) => void;
+  onRestoreVersion: (
+    version: NoteVersionSummaryReply,
+    note: Note | undefined,
+  ) => void;
   selectedVersion?: NoteVersionSummaryReply | null;
-  selectedContent?: string | null;
   isFetchingVersion?: boolean;
   isRestoring?: boolean;
   limit?: number;
@@ -46,7 +50,7 @@ const formatTimestamp = (value: string): string => {
 };
 
 const formatActivityLabel = (activity: NoteVersionSummaryReply): string => {
-  const note = useQueryClient().getQueryData<Note>(["note", activity.note_id]);
+  const note = queryClient.getQueryData<Note>(["note", activity.note_id]);
   const v = activity.version_index;
   return (
     (v === 1 ? "Created " : "") +
@@ -126,63 +130,28 @@ export const NoteVersionsDrawer: React.FC<NoteVersionsDrawerProps> = ({
   onClose,
   onSelectVersion,
   onRestoreVersion,
-  selectedVersion,
-  selectedContent,
   isFetchingVersion = false,
+  selectedVersion,
   isRestoring = false,
   limit = 15,
 }) => {
-  // Cache the activity API instance.
-  const api = useMemo(() => new ActivityApi(), []);
   // Version list state.
-  const [activity, setActivity] = useState<NoteVersionSummaryReply[]>([]);
-  // Loading and error flags for the versions list.
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasError, setHasError] = useState(false);
+  const { data: activity } = useNoteActivity(noteId ?? "");
+
   // Controls which preview tab is shown (current vs selected).
   const [previewTab, setPreviewTab] = useState(0);
 
-  const { getCurrentContent } = useEditorContext();
+  const getCurrentContent = useActiveNoteStore((s) => s.getContent);
+  const { data: selectedNote } = useNoteVersion(
+    noteId,
+    selectedVersion?.version_index,
+  );
+  const selectedContent =
+    selectedNote?.content || selectedNote?.stripped_content || "";
   const currentContent = getCurrentContent();
 
   useEffect(() => {
-    if (!open || !noteId) {
-      return;
-    }
-
-    let isMounted = true;
-
-    const fetchActivity = async () => {
-      setIsLoading(true);
-      setHasError(false);
-      try {
-        const data = await api.getNoteActivity(noteId, limit, 0);
-        if (!isMounted) {
-          return;
-        }
-        setActivity(data);
-      } catch (error) {
-        console.error("Failed to load versions", error);
-        if (!isMounted) {
-          return;
-        }
-        setHasError(true);
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    fetchActivity();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [api, limit, noteId, open]);
-
-  useEffect(() => {
-    if (!selectedContent) {
+    if (!selectedNote?.content) {
       return;
     }
     setPreviewTab(0);
@@ -192,7 +161,7 @@ export const NoteVersionsDrawer: React.FC<NoteVersionsDrawerProps> = ({
   const previewValue = previewTab === 0 ? currentContent : selectedContent;
   const diffLines = useMemo(
     () =>
-      selectedContent !== undefined
+      selectedNote?.content !== undefined
         ? buildLineDiff(currentContent ?? "", selectedContent ?? "")
         : [],
     [currentContent, selectedContent],
@@ -217,7 +186,7 @@ export const NoteVersionsDrawer: React.FC<NoteVersionsDrawerProps> = ({
         </Typography>
         <Divider />
 
-        {isLoading && (
+        {!activity && (
           <Stack
             direction="row"
             spacing={1}
@@ -231,19 +200,19 @@ export const NoteVersionsDrawer: React.FC<NoteVersionsDrawerProps> = ({
             </Typography>
           </Stack>
         )}
-        {hasError && !isLoading && (
+        {!activity && (
           <Typography variant="body2" color="error">
             Failed to load versions.
           </Typography>
         )}
-        {!isLoading && !hasError && activity.length === 0 && (
+        {activity && activity.length === 0 && (
           <Typography variant="body2" color="textSecondary">
             No versions yet.
           </Typography>
         )}
 
         <List dense sx={{ flex: 1, overflowY: "auto" }}>
-          {activity.map((entry) => (
+          {activity?.map((entry) => (
             <ListItem
               key={entry.version_id}
               disablePadding
@@ -254,7 +223,7 @@ export const NoteVersionsDrawer: React.FC<NoteVersionsDrawerProps> = ({
                   disabled={isRestoring || isFetchingVersion}
                   onClick={(event) => {
                     event.stopPropagation();
-                    onRestoreVersion(entry);
+                    onRestoreVersion(entry, selectedNote);
                   }}
                 >
                   Restore
