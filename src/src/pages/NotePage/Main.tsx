@@ -22,28 +22,11 @@ export const NotePage: React.FC = () => {
   const { isLoading } = useLoadingStore();
   const { isMobile } = useBreakpoint();
 
-  const [leftPaneOpen, setLeftPaneOpen] = useState(true);
   const { data: note } = useNote(id);
   const { mutate } = useUpdateNote();
   const updateNote = (note: Note) => {
     mutate({ noteId: id!, title: note.title, content: note.content });
   };
-  const { setLeftPanel, clearPanels } = useLayout();
-
-  useEffect(() => {
-    setLeftPanel(
-      <NoteSidePanel
-        note={note}
-        noteId={id}
-        open={leftPaneOpen}
-        setOpen={setLeftPaneOpen}
-        onNoteUpdated={updateNote}
-      />,
-    );
-    return () => {
-      clearPanels();
-    };
-  }, []);
 
   if (isLoading) {
     return <LoadingPage />;
@@ -59,7 +42,6 @@ export const NotePage: React.FC = () => {
         display: "flex",
         flexDirection: "row",
         height: "100%",
-        overflow: "auto",
       }}
     >
       <Box
