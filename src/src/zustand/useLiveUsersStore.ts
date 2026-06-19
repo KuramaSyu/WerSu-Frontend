@@ -24,7 +24,6 @@ export const useLiveUsersStore = create<LiveUsersState>((set) => {
     usersByNoteId: {},
     extendUsers: (noteId, users) =>
       set((state) => ({
-        ...state,
         usersByNoteId: {
           ...state.usersByNoteId,
           [noteId]: [...state.usersByNoteId[noteId], ...users],
@@ -32,12 +31,10 @@ export const useLiveUsersStore = create<LiveUsersState>((set) => {
       })),
     setUsers: (noteId, users) =>
       set((state) => ({
-        ...state,
         usersByNoteId: { ...state.usersByNoteId, [noteId]: users },
       })),
     clearUsers: (noteId) =>
       set((state) => ({
-        ...state,
         usersByNoteId: { ...state.usersByNoteId, [noteId]: [] },
       })),
   };

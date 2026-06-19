@@ -16,8 +16,8 @@ import type {
   DiscordUserImpl,
 } from "../../components/DiscordLogin";
 import { useUser, useUsers } from "../../api/queries/useUser";
-import { useLiveUsers } from "../../zustand/useLiveUsersStore";
-import { useEffect, useState } from "react";
+import { useLiveUsers, type LiveUser } from "../../zustand/useLiveUsersStore";
+import { useEffect, useMemo, useState } from "react";
 import type { NoteVersionSummaryReply } from "../../api/models/activity";
 import { NoteApi } from "../../api/NoteApi";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
@@ -29,6 +29,7 @@ import { IconArrowNarrowRight } from "@tabler/icons-react";
 import { queryClient } from "../../api/queryClient";
 import { useNoteVersion } from "../../api/queries/useNoteQueries";
 import { useActiveNoteStore } from "../../zustand/editorStore";
+import { color } from "@uiw/react-codemirror/esm/getDefaultExtensions.js";
 
 export interface VersionInfoProps {
   noteId: string | undefined;
@@ -41,10 +42,21 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
 
   const { data: user } = useUser();
 
-  // const liveUsers = useLiveUsers(noteId);
-  // console.log("Live users:", liveUsers);
-  // const { data: usersById } = useUsers(liveUsers.map((user) => user.userId));
-  // console.log("Users by ID:", usersById);
+  const liveUsers = useLiveUsers(noteId);
+  // const liveUsers: LiveUser[] = [
+  //   {
+  //     userId: "123",
+  //     color: "#ff0000",
+  //   },
+  // ];
+  const userIds = useMemo(
+    () => [...new Set(liveUsers.map((u) => u.userId))],
+    [liveUsers],
+  );
+  console.log("Live users:", liveUsers);
+  const { data: usersById } = useUsers(userIds);
+  console.log("Users by ID:", usersById);
+
   // Controls the version history drawer.
   const [versionsOpen, setVersionsOpen] = useState(false);
   // Currently selected version metadata + content snapshot.
@@ -68,22 +80,30 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
     selectedVersion?.version_index,
   );
 
-  // clear user from an old version as soon as he enters the edit window.
-  // also select the latest version if he is not in editor mode e.g. read mode
-  // useEffect(() => {
-  //   if (!usersById || !user) {
-  //     return;
-  //   }
+  /*   clear user from an old version as soon as he enters the edit window.
+  also select the latest version if he is not in editor mode e.g. read mode */
+  useEffect(() => {
+    console.log(
+      "Users by ID or user changed, checking if selected version needs update",
+    );
+    if (!usersById || !user) {
+      return;
+    }
 
-  //   if (usersById[user?.id] !== undefined) {
-  //     setSelectedVersion(null);
-  //     return;
-  //   }
-  //   // the user does not edit. if no version is selected, select the latest one for preview
-  //   if (!selectedVersion && versions && versions.length > 0) {
-  //     setSelectedVersion(versions[0]);
-  //   }
-  // }, [usersById]);
+    const isEditing = usersById[user?.id] !== undefined;
+    if (isEditing && selectedVersion !== null) {
+      console.log("User is editing, clear selected version");
+      setSelectedVersion(null);
+      return;
+    }
+    // the user does not edit. if no version is selected, select the latest one for preview
+    if (!isEditing && !selectedVersion && versions && versions.length > 0) {
+      console.log("User is not editing, select latest version for preview");
+      if (!selectedVersion && versions.length > 0) {
+        setSelectedVersion(versions[0]);
+      }
+    }
+  }, [usersById, selectedVersion]);
   // Restores a version by saving its content as the latest note state.
   const handleRestoreVersion = async (
     version: NoteVersionSummaryReply,
@@ -130,9 +150,9 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
           margin: 0,
         }}
       >
-        {/* {showLiveVersion && (
+        {showLiveVersion && (
           <LiveVersionItem users={Object.values(usersById ?? {})} />
-        )} */}
+        )}
         {versions?.map((version, index) => {
           const len = versions?.length ?? 0;
           const bg = theme.blendWithContrast(
