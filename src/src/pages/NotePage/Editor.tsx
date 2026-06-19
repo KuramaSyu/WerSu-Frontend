@@ -1,10 +1,13 @@
 import {
+  createContext,
   use,
   useCallback,
+  useContext,
   useEffect,
   useRef,
   useState,
   type MouseEvent,
+  type ReactNode,
 } from "react";
 import {
   Alert,
@@ -95,9 +98,27 @@ import { useAccessToken } from "../../api/queries/useAccessToken";
 import * as Y from "yjs"; // Ensure Yjs is imported directly if needed
 import { Awareness } from "y-protocols/awareness";
 import { useUser } from "../../api/queries/useUser";
+import { useLiveUsersStore } from "../../zustand/useLiveUsersStore";
+import { LeftPanelSetter } from "./LeftPanelSetter";
 
 const lowlight = createLowlight(all);
-const DRAG_HANDLE_GUTTER_PX = 28;
+
+type EditorContextType = {
+  title: string;
+  setTitle: (title: string) => void;
+  content: string;
+  setContent: (content: string) => void;
+  save: (title: string, markdown: string) => Promise<void>;
+  getCurrentContent: () => string;
+  note: Note | undefined;
+  noteId: string;
+};
+
+export const EditorContext = createContext<EditorContextType | null>(null);
+
+export interface AppLayoutProps {
+  children: ReactNode;
+}
 
 interface NoteEditorProps {
   note?: Note;
@@ -137,18 +158,6 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
 
   // Holds the markdown for source-mode editing.
   const [sourceMarkdown, setSourceMarkdown] = useState("");
-  // Controls the version history drawer.
-  const [versionsOpen, setVersionsOpen] = useState(false);
-  // Currently selected version metadata + content snapshot.
-  const [selectedVersion, setSelectedVersion] =
-    useState<NoteVersionSummaryReply | null>(null);
-  const [selectedVersionContent, setSelectedVersionContent] = useState<
-    string | null
-  >(null);
-  // Loading state for fetching a specific version.
-  const [isFetchingVersion, setIsFetchingVersion] = useState(false);
-  // Loading state for restore flow.
-  const [isRestoringVersion, setIsRestoringVersion] = useState(false);
 
   // dialog open state for file upload
   const [fileUploadDialogOpen, setFileUploadDialogOpen] = useState(false);
@@ -225,6 +234,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
           provider: stableProvider,
           user: {
             name: `${user?.username}`,
+            id: user?.id,
             // random color
             color: randomMatchingColor(theme),
           },
@@ -434,6 +444,37 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     editor?.setEditable(editMode);
   }, [editMode, editor]);
 
+  // update live users from provider to zustand store
+  useEffect(() => {
+    if (!collaboration?.provider?.awareness || !noteId) {
+      return;
+    }
+    const { provider } = collaboration;
+    const awareness = provider.awareness;
+
+    const updateUsers = () => {
+      if (!awareness || !noteId) return;
+      var users = [];
+      for (const state of awareness.getStates().values()) {
+        if (state.user) {
+          users.push({
+            userId: state.user.id,
+            color: state.user.color,
+          });
+        }
+      }
+      useLiveUsersStore.getState().setUsers(noteId, users);
+      console.log("Updated live users from awareness states:", users);
+    };
+
+    awareness!.on("change", updateUsers);
+    updateUsers();
+
+    return () => {
+      awareness!.off("change", updateUsers);
+    };
+  }, [noteId, collaboration?.provider]);
+
   // is write mode only: load last api version
   useEffect(() => {
     if (!editor || !note || editMode || !editor.storage.markdown) {
@@ -495,32 +536,62 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     };
 
     provider.on("synced", onSynced);
-    provider.on("synced", () => {
-      console.log("YJS Sync:", JSON.stringify(editor.getJSON(), null, 2));
-    });
+    // provider.on("synced", () => {
+    //   console.log("YJS Sync:", JSON.stringify(editor.getJSON(), null, 2));
+    // });
 
     return () => {
       provider.off("synced", onSynced);
     };
   }, [editor, note?.id, collaboration?.provider]);
 
-  // Saves either the rich editor markdown or the source editor content.
-  const handleSave = async () => {
-    if (!noteId || (editorMode === "rich" && !editor) || !isEditorMounted) {
-      return;
+  /** returns the current content as markdown */
+  const getCurrentContent = () => {
+    if (editorMode === "source") {
+      return sourceMarkdown;
+    } else {
+      return editor?.getMarkdown() ?? "";
     }
+  };
 
-    const markdown =
-      editorMode === "source" ? sourceMarkdown : (editor?.getMarkdown() ?? "");
-    if (editorMode === "source" && editor) {
-      console.log("set markdown content to editor on save");
-      // normalize
-
-      const normalizedDoc = markdownToProsemirror(editor, markdown);
+  /** Sets the content of the editor either into the source or rich editor without saving */
+  const setContent = (content: string) => {
+    if (editorMode === "source") {
+      setSourceMarkdown(content);
+    } else {
+      const normalizedDoc = markdownToProsemirror(editor, content);
       // microtask prevents flush issue in logs
       queueMicrotask(() => {
         editor.commands.setContent(normalizedDoc);
       });
+    }
+  };
+
+  // Saves either the rich editor markdown or the source editor content.
+  const handleSave = async (
+    newTitle: string | undefined = undefined,
+    newContent: string | undefined = undefined,
+  ) => {
+    if (!noteId || (editorMode === "rich" && !editor) || !isEditorMounted) {
+      return;
+    }
+
+    // if new content was provided, the content needs to be
+    // put into the editor. In case of markdown content, this
+    // happens automatically. otherwise trigger it with this bool
+    const updateView = newContent !== undefined && editorMode === "rich";
+
+    const title = newTitle ?? noteTitle;
+    if (newTitle !== undefined) {
+      setNoteTitle(newTitle);
+    }
+
+    const markdown = newContent ?? getCurrentContent();
+
+    // put markdown into editor if source edit was used
+    // or content was otherwise changed outside of the editor
+    if (editorMode === "source" || updateView) {
+      setContent(markdown);
       console.log(
         "JSON after markdown save:",
         JSON.stringify(editor.getJSON(), null, 2),
@@ -529,7 +600,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
 
     setIsSaving(true);
     try {
-      const saved = await new NoteApi().patch(noteId, noteTitle, markdown);
+      const saved = await new NoteApi().patch(noteId, title, markdown);
       if (!saved) {
         setMessage(new SnackbarUpdateImpl("Failed to save note", "error"));
         return;
@@ -545,33 +616,6 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     }
   };
 
-  // Loads the content for a selected version into the preview panel.
-  const handleSelectVersion = async (version: NoteVersionSummaryReply) => {
-    if (!noteId) {
-      return;
-    }
-    setSelectedVersion(version);
-    setIsFetchingVersion(true);
-    try {
-      const versionNote = await new NoteApi().getVersion(
-        noteId,
-        version.version_index,
-      );
-      if (!versionNote) {
-        setMessage(new SnackbarUpdateImpl("Version not available", "error"));
-        return;
-      }
-      setSelectedVersionContent(
-        versionNote.content || versionNote.stripped_content || "",
-      );
-    } catch (error) {
-      console.error("Failed to load version", error);
-      setMessage(new SnackbarUpdateImpl("Failed to load version", "error"));
-    } finally {
-      setIsFetchingVersion(false);
-    }
-  };
-
   // Uploads file from clipboard and inserts into editor
   async function handlePasteAndUpload(file: File): Promise<string> {
     const api = new AttachmentApi();
@@ -582,65 +626,6 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     const link = new AttachmentLinkBuilder(api).setWidth(720).getLink(key!);
     return link;
   }
-
-  // Restores a version by saving its content as the latest note state.
-  const handleRestoreVersion = async (version: NoteVersionSummaryReply) => {
-    if (!noteId) {
-      return;
-    }
-    setIsRestoringVersion(true);
-    try {
-      let content = selectedVersionContent;
-      let restoredTitle = noteTitle;
-      if (selectedVersion?.version_id !== version.version_id || !content) {
-        const versionNote = await new NoteApi().getVersion(
-          noteId,
-          version.version_index,
-        );
-        if (!versionNote) {
-          setMessage(new SnackbarUpdateImpl("Version not available", "error"));
-          return;
-        }
-        content = versionNote.content || versionNote.stripped_content || "";
-        restoredTitle = versionNote.title || restoredTitle;
-        setSelectedVersionContent(content);
-      }
-
-      if (editor) {
-        console.log("restore version content to editor");
-        const normalizedDoc = markdownToProsemirror(editor, content);
-        // microtask prevents flush issue in logs
-        queueMicrotask(() => {
-          editor.commands.setContent(normalizedDoc);
-        });
-        console.log(
-          "JSON after markdown restore:",
-          JSON.stringify(editor.getJSON(), null, 2),
-        );
-      }
-      setSourceMarkdown(content ?? "");
-
-      const saved = await new NoteApi().patch(
-        noteId,
-        restoredTitle,
-        content ?? "",
-      );
-      if (!saved) {
-        setMessage(
-          new SnackbarUpdateImpl("Failed to restore version", "error"),
-        );
-        return;
-      }
-      onNoteUpdated(saved);
-      setNoteTitle(saved.title);
-      setMessage(new SnackbarUpdateImpl("Version restored", "success"));
-    } catch (error) {
-      console.error("Restore failed", error);
-      setMessage(new SnackbarUpdateImpl("Failed to restore version", "error"));
-    } finally {
-      setIsRestoringVersion(false);
-    }
-  };
 
   /**
    * inserts a string at the current cursor position of the editor,
@@ -673,7 +658,19 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
   };
 
   return (
-    <>
+    <EditorContext.Provider
+      value={{
+        title: noteTitle,
+        setTitle: setNoteTitle,
+        content: getCurrentContent(),
+        setContent,
+        save: handleSave,
+        getCurrentContent,
+        note,
+        noteId: noteId!,
+      }}
+    >
+      <LeftPanelSetter />
       <Paper
         elevation={1}
         color="backgroundDefault"
@@ -775,26 +772,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         handleSave={handleSave}
         setSourceMarkdown={setSourceMarkdown}
         setFileUploadDialogOpen={setFileUploadDialogOpen}
-        setVersionsOpen={setVersionsOpen}
+        setVersionsOpen={() => {}}
         sourceMarkdown={sourceMarkdown}
-      />
-
-      {/* Right-side version history drawer */}
-      <NoteVersionsDrawer
-        open={versionsOpen}
-        noteId={noteId}
-        onClose={() => setVersionsOpen(false)}
-        onSelectVersion={handleSelectVersion}
-        onRestoreVersion={handleRestoreVersion}
-        selectedVersion={selectedVersion}
-        selectedContent={selectedVersionContent}
-        currentContent={
-          editorMode === "source"
-            ? sourceMarkdown
-            : (editor?.getMarkdown() ?? "")
-        }
-        isFetchingVersion={isFetchingVersion}
-        isRestoring={isRestoringVersion}
       />
 
       {/* dialog which opens on file upload click */}
@@ -815,9 +794,19 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         setOpen={(open) => setLatexDialogProps({ ...latexDialogProps, open })}
         initialLatexType={latexDialogProps.initialLatexType}
       />
-    </>
+    </EditorContext.Provider>
   );
 };
+
+export function useEditorContext(): EditorContextType {
+  const context = useContext(EditorContext);
+  if (!context) {
+    throw new Error(
+      "useEditorContext must be used within an EditorContext.Provider",
+    );
+  }
+  return context;
+}
 
 /**
  * when inserting an image, we need to check if we use tiptap editor or source mode. The tiptap editor
@@ -834,7 +823,10 @@ function imageLinkToBlock(imageLink: string, editorMode: "rich" | "source") {
   }
 }
 
-function markdownToProsemirror(editor: Editor, markdown: string): JSONContent {
+export function markdownToProsemirror(
+  editor: Editor,
+  markdown: string,
+): JSONContent {
   // first parse markdown normally with builtin markdown extension
   const pmDoc = editor.storage.markdown.manager.parse(markdown);
   // now: a table cell containing an image with text gets rendered to
