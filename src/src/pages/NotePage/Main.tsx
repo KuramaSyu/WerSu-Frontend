@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Box } from "@mui/material";
+import { Box, Fade } from "@mui/material";
 import { LoginPage } from "../LoginPage/Main";
 import { LoadingPage } from "../LoadingPage/Main";
 import { M1, M3, M4, M5 } from "../../statics";
@@ -15,12 +15,15 @@ import { NoteSidePanel } from "./NoteSidePanel";
 import { useNote, useUpdateNote } from "../../api/queries/useNoteQueries";
 import { useUser } from "../../api/queries/useUser";
 import { useLayout } from "../../LayoutProvider";
+import { NoteEditorSkeleton } from "./NoteEditorSkeleton";
+import { useThemeStore } from "../../zustand/useThemeStore";
 
 export const NotePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { data: user } = useUser();
   const { isLoading } = useLoadingStore();
   const { isMobile } = useBreakpoint();
+  const { theme } = useThemeStore();
 
   const { data: note } = useNote(id);
   const { mutate } = useUpdateNote();
@@ -36,10 +39,6 @@ export const NotePage: React.FC = () => {
     return () => setLeftPanel(null);
   }, [id]);
 
-  if (isLoading) {
-    return <LoadingPage />;
-  }
-
   if (user === null) {
     return <LoginPage />;
   }
@@ -47,29 +46,65 @@ export const NotePage: React.FC = () => {
   return (
     <Box
       sx={{
-        display: "flex",
-        flexDirection: "row",
+        position: "relative",
+        width: "100%",
         height: "100%",
       }}
     >
-      <Box
-        sx={{
-          pb: M4,
-          height: "calc(100% - 8rem)",
-          width: "100%",
-          display: "flex",
-          gap: M3,
-          alignItems: "flex-start",
+      <Fade
+        in={note === undefined}
+        timeout={{
+          enter: theme.transitions.duration.enteringScreen,
+          exit: theme.transitions.duration.complex,
         }}
+        unmountOnExit
       >
-        <NoteEditor
-          note={note}
-          noteId={id}
-          fetchError={null}
-          onNoteUpdated={updateNote}
-          key={id}
-        />
-      </Box>
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+          }}
+        >
+          <NoteEditorSkeleton showSourceEditor={false} />
+        </Box>
+      </Fade>
+      <Fade
+        in={note !== undefined}
+        timeout={{
+          enter: theme.transitions.duration.complex,
+          exit: theme.transitions.duration.complex,
+        }}
+        unmountOnExit
+      >
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            flexDirection: "row",
+            height: "100%",
+          }}
+        >
+          <Box
+            sx={{
+              pb: M4,
+              height: "calc(100% - 8rem)",
+              width: "100%",
+              display: "flex",
+              gap: M3,
+              alignItems: "flex-start",
+            }}
+          >
+            <NoteEditor
+              note={note}
+              noteId={id}
+              fetchError={null}
+              onNoteUpdated={updateNote}
+              key={id}
+            />
+          </Box>
+        </Box>
+      </Fade>
     </Box>
   );
 };
