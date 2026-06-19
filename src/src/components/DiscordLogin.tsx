@@ -24,6 +24,8 @@ interface DiscordUser {
   discriminator: string;
   avatar: string;
   email: string;
+
+  getAvatarUrl(): string;
 }
 
 // Create a DiscordUser class that implements the interface
