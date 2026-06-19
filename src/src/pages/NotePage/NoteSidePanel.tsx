@@ -41,6 +41,9 @@ import { AttachmentApi } from "../../api/AttachmentApi";
 import type { AttachmentMetadata } from "../../api/models/attachment";
 import { AttachmentPanelSection } from "./AttachmentPanelSection";
 import { VersionInfo } from "./VersionInfo";
+import { useUser, useUsers } from "../../api/queries/useUser";
+import { useEditorSettings } from "../../zustand/useEditorSettings";
+import { useLiveUsers } from "../../zustand/useLiveUsersStore";
 
 const ROOT_PARENT_ID = "root";
 
@@ -173,7 +176,10 @@ export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
   const navigate = useNavigate();
   const { setMessage } = useInfoStore();
   const { directoriesById, setDirectories } = useDirectoryStore();
-  const { users } = useUsersStore();
+
+  // for version indicators
+  // const { data: user } = useUser();
+
   const [isUpdatingParent, setIsUpdatingParent] = useState(false);
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [selectedParentId, setSelectedParentId] = useState(ROOT_PARENT_ID);
@@ -233,41 +239,6 @@ export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
     });
   }, [directoryHierarchy, parentDirectoryIds]);
 
-  // Group user permissions by relation (owner/admin/writer/reader, etc.).
-  const permissionSections = useMemo<PermissionSection[]>(() => {
-    const groups: Record<string, string[]> = {};
-    const permissions = note?.permissions ?? [];
-
-    permissions.forEach((permission) => {
-      const relation = permission.relation;
-      if (relation === "parent" || relation === "parent_directory") {
-        return;
-      }
-
-      const isUserSubject =
-        permission.subject.object_type === "PERMISSION_OBJECT_TYPE_USER" ||
-        permission.subject.object_type === "user";
-
-      if (!isUserSubject) {
-        return;
-      }
-
-      if (!groups[relation]) {
-        groups[relation] = [];
-      }
-      groups[relation].push(permission.subject.object_id);
-    });
-
-    return Object.entries(groups)
-      .map(([relation, userIds]) => ({
-        label: normalizePermissionRelation(relation),
-        users: [...new Set(userIds)].map(
-          (userId) => users[userId]?.username ?? userId,
-        ),
-      }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [note?.permissions, users]);
-
   const selectableDirectories = useMemo(() => {
     return Object.values(directoriesById)
       .filter((directory) => directory.id !== currentParentId)
@@ -319,7 +290,7 @@ export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
             isLoading={!note}
             lastEditedLabel={formatTimestamp(note?.updated_at)}
             parentDirectories={parentDirectoryPaths}
-            permissionSections={permissionSections}
+            permissionSections={[]}
             onNavigateToDirectory={(directoryId) =>
               navigate(`/d/${directoryId}`)
             }
@@ -327,7 +298,7 @@ export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
             canChangeParent={Boolean(note && noteId)}
           />
           <Divider sx={{ opacity: 0.3 }} />
-          <VersionInfo />
+          <VersionInfo noteId={noteId} />
           <Divider sx={{ opacity: 0.3 }} />
           {note && <AttachmentPanelSection note={note} />}
 
