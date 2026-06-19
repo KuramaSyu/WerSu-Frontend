@@ -341,10 +341,7 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
         Markdown,
       ],
 
-      content: ({ editor: currentEditor }: { editor: Editor }) => {
-        const rawMarkdown = note?.content || note?.stripped_content || "";
-        return markdownToProsemirror(currentEditor, rawMarkdown);
-      },
+      content: undefined, // our content needs processing and this needs the editor e.g. here not possible
       contentType: "markdown",
       editorProps: {
         handleKeyDown(view, event) {
@@ -430,6 +427,11 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     setUpdateNoteFn((title: string, content: string) => {
       return updateNote({ noteId: noteId!, title, content });
     });
+
+    // in view mode, initialize content
+    if (!editMode && note) {
+      setContent(note.content);
+    }
 
     return () => useActiveNoteStore.getState().setEditor(null);
   }, [editor]);
