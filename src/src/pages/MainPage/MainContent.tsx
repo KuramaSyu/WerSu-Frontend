@@ -1,47 +1,28 @@
 import { DragDropProvider, type DragDropEvents } from "@dnd-kit/react";
-import {
-  Box,
-  ButtonBase,
-  Drawer,
-  Grid,
-  IconButton,
-  InputAdornment,
-  ListItem,
-  Paper,
-  Slide,
-  Snackbar,
-  Stack,
-  TextField,
-  ThemeProvider,
-  Toolbar,
-} from "@mui/material";
-import { useThemeStore } from "../../zustand/useThemeStore";
-import { AnimatePresence, motion } from "framer-motion";
+import { Box, IconButton, Stack } from "@mui/material";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import CreateIcon from "@mui/icons-material/Create";
 import AddIcon from "@mui/icons-material/Add";
 import { M1, M2, M3, M4, M5, M6 } from "../../statics";
-import { note_of_date_at_hour } from "../../utils/NoteTitleTemplates";
 import { NoteApi } from "../../api/NoteApi";
 import { CardGrid } from "./CardGrid";
 import { Note, type NoteData } from "../../api/models/search";
-import { useSearchNotesStore } from "../../zustand/useSearchNotesStore";
+import {} from "../../zustand/useSearchNotesStore";
 import type { ListDirectoriesQuery } from "../../api/DirectoryApi";
 import { DirectoryApi } from "../../api/DirectoryApi";
 import { useDirectoriesQuery } from "../../api/queries/directoryQueries";
 import { useDirectoryStore } from "../../zustand/useDirectoryStore";
 import { DirectorySideView } from "./DirectorySideView";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
-import MenuOpenIcon from "@mui/icons-material/MenuOpen";
-import MenuIcon from "@mui/icons-material/Menu";
+
 import { LeftPanel } from "./LeftPanel";
 import NewNoteSpeedDial from "../../components/NewNoteSpeedDial";
-import { useNavigate } from "react-router-dom";
 import { getNoteParentDirectoryIds } from "../../utils/fileGraphUtils";
-import TopBar from "../../components/TopBar";
 import { useLatestNotes, useMoveNote } from "../../api/queries/useNoteQueries";
 import { useLayout } from "../../LayoutProvider";
+import { useNavigate } from "react-router-dom";
+import { PopupNoteModal } from "./Modals/PopupNoteModal";
 
 export const MainContent: React.FC = () => {
   const { directoriesById, setDirectories, clearDirectories, upsertDirectory } =
@@ -210,51 +191,54 @@ export const MainContent: React.FC = () => {
   // }, [notesByDirectory]);
 
   return (
-    <Box
-      sx={{
-        height: "100%",
-        width: "100%",
-        alignSelf: "center",
-        fontFamily: "Open Sans",
-        display: "flex",
-        // overflow: "auto",
-      }}
-    >
+    <>
       <Box
         sx={{
-          // height: "calc(100% - 8rem)",
+          height: "100%",
           width: "100%",
+          alignSelf: "center",
+          fontFamily: "Open Sans",
           display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
+          // overflow: "auto",
         }}
       >
-        <NewNoteSpeedDial />
-        <DragDropProvider onDragEnd={(event) => void handleDragEnd(event)}>
-          <Stack direction={"row"} sx={{ alignItems: "center" }}>
-            <Box>
-              {Object.entries(notesByDirectory).map(([dir, notes]) => {
-                const dirMeta = directoriesById[dir];
-                const forceLoading = dir !== "root" && !dirMeta;
-                const displayTitle =
-                  dir === "root"
-                    ? "Root"
-                    : dirMeta?.display_name || dirMeta?.name || dir;
+        <Box
+          sx={{
+            // height: "calc(100% - 8rem)",
+            width: "100%",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
+          <NewNoteSpeedDial />
+          <DragDropProvider onDragEnd={(event) => void handleDragEnd(event)}>
+            <Stack direction={"row"} sx={{ alignItems: "center" }}>
+              <Box>
+                {Object.entries(notesByDirectory).map(([dir, notes]) => {
+                  const dirMeta = directoriesById[dir];
+                  const forceLoading = dir !== "root" && !dirMeta;
+                  const displayTitle =
+                    dir === "root"
+                      ? "Root"
+                      : dirMeta?.display_name || dirMeta?.name || dir;
 
-                return (
-                  <Box key={dir} sx={{ position: "relative", width: "100%" }}>
-                    <CardGrid
-                      notes={notes}
-                      title={forceLoading ? "Loading..." : displayTitle}
-                      loading={forceLoading}
-                    />
-                  </Box>
-                );
-              })}
-            </Box>
-          </Stack>
-        </DragDropProvider>
+                  return (
+                    <Box key={dir} sx={{ position: "relative", width: "100%" }}>
+                      <CardGrid
+                        notes={notes}
+                        title={forceLoading ? "Loading..." : displayTitle}
+                        loading={forceLoading}
+                      />
+                    </Box>
+                  );
+                })}
+              </Box>
+            </Stack>
+          </DragDropProvider>
+        </Box>
+        <PopupNoteModal />
       </Box>
-    </Box>
+    </>
   );
 };

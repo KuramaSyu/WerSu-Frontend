@@ -10,7 +10,7 @@ import {
 import { M1, M2, M3 } from "../../statics";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { blendWithContrast } from "../../utils/blendWithContrast";
-import type { MinimalNote } from "../../api/models/search";
+import { Note, type MinimalNote } from "../../api/models/search";
 import { useDraggable } from "@dnd-kit/react";
 import { useNavigate } from "react-router-dom";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
@@ -19,6 +19,7 @@ import { NoteEditorModal } from "../../components/Editor/NoteEditModal";
 import { NoteApi, type INoteApi } from "../../api/NoteApi";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { formatDistance } from "date-fns";
+import { useMainPageStore } from "../../zustand/useMainPageStore";
 
 export const NoteCard: React.FC<{
   note: MinimalNote;
@@ -34,8 +35,9 @@ export const NoteCard: React.FC<{
   });
   const { theme } = useThemeStore();
   const navigate = useNavigate();
-  const [modalOpen, setModalOpen] = useState(false);
   const { setMessage } = useInfoStore();
+  const { setNoteModalOpen: setModalOpen, setSelectedModalNote: setNote } =
+    useMainPageStore();
 
   if (loading) {
     return (
@@ -104,7 +106,10 @@ export const NoteCard: React.FC<{
           ...sx,
         }}
         variant="outlined"
-        onClick={() => setModalOpen(true)}
+        onClick={() => {
+          setNote(new Note({ ...note, content: "" }));
+          setModalOpen(true);
+        }}
       >
         <Tooltip title="Open fullscreen">
           <IconButton
@@ -187,26 +192,6 @@ export const NoteCard: React.FC<{
           </Typography>
         </CardContent>
       </Card>
-
-      <NoteEditorModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title={note.title}
-        content={note.stripped_content}
-        onSave={(title: string, content: string) => {
-          const api: INoteApi = new NoteApi();
-          api
-            .patch(note.id, title, content)
-            .then(() => {
-              setMessage(new SnackbarUpdateImpl("Note saved", "success"));
-            })
-            .catch(() => {
-              setMessage(
-                new SnackbarUpdateImpl("Failed to save note", "error"),
-              );
-            });
-        }}
-      />
     </Box>
   );
 };

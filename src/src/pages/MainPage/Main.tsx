@@ -2,7 +2,7 @@ import { Box, ThemeProvider, Typography } from "@mui/material";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { AnimatePresence, motion } from "framer-motion";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import { M1, M2, M3, M4, M5, M6 } from "../../statics";
 import { useUserStore } from "../../zustand/userStore";
@@ -21,7 +21,12 @@ export const MainPage: React.FC = () => {
   return (
     <>
       {user !== null ? (
-        <MainContent></MainContent>
+        <React.Profiler
+          id="MainPage"
+          onRender={() => console.log("render main page")}
+        >
+          <MainContent></MainContent>
+        </React.Profiler>
       ) : (
         <>
           {console.log("render login page")}
