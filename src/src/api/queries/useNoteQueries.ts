@@ -3,6 +3,7 @@ import {
   useMutation,
   useQuery,
   useQueryClient,
+  type UseQueryResult,
 } from "@tanstack/react-query";
 import { AttachmentApi } from "../AttachmentApi";
 import type {
@@ -18,6 +19,7 @@ import {
 } from "../models/search";
 import { NoteApi, type INoteApi } from "../NoteApi";
 import { updateNoteParentDirectory } from "../../utils/updateNoteParentDirectory";
+import { DiscordUserImpl } from "../../components/DiscordLogin";
 
 const searchNotesApi: ISearchNotesApi = new SearchNotesApi();
 const noteApi: INoteApi = new NoteApi();
@@ -124,6 +126,31 @@ export function useNote(noteId?: string) {
         throw new Error("noteId reuqired");
       }
       return noteApi.get(noteId);
+    },
+
+    enabled: !!noteId,
+
+    select: (data) => new Note({ ...data } as NoteData),
+  });
+}
+
+/**
+ * get a note with all details
+ * @param noteId id of note
+ * @returns Note
+ */
+export function useNoteVersion(
+  noteId?: string,
+  versionIndex?: number,
+): UseQueryResult<Note, Error> {
+  return useQuery({
+    queryKey: ["versions", noteId, versionIndex],
+
+    queryFn: () => {
+      if (!noteId || !versionIndex) {
+        throw new Error("noteId and versionIndex required");
+      }
+      return noteApi.getVersion(noteId, versionIndex);
     },
 
     enabled: !!noteId,
