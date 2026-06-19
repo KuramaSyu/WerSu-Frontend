@@ -56,7 +56,7 @@ export const noteQueries = {
 
     queryFn: () => noteApi.get(noteId),
 
-    select: (data) => new Note(data),
+    select: (data: NoteData) => new Note(data as NoteData),
   }),
 };
 
