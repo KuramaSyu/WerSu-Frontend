@@ -60,8 +60,6 @@ interface PermissionSection {
 interface NoteSidePanelProps {
   note?: Note;
   noteId?: string;
-  open: boolean;
-  setOpen: Dispatch<SetStateAction<boolean>>;
   onNoteUpdated: (note: Note) => void;
 }
 
@@ -149,8 +147,6 @@ const getParentDirectoryIds = (
  * @param {NoteSidePanelProps} props - The component props
  * @param {Note} props.note - The note object containing metadata and permissions
  * @param {string} props.noteId - The unique identifier of the note
- * @param {boolean} props.open - Controls whether the side panel is open
- * @param {(open: boolean) => void} props.setOpen - Callback to toggle the side panel visibility
  * @param {(note: Note) => void} props.onNoteUpdated - Callback invoked when the note is updated
  *
  * @returns {React.ReactElement} The rendered NoteSidePanel component with metadata display and move dialog
@@ -169,8 +165,6 @@ const getParentDirectoryIds = (
 export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
   note,
   noteId,
-  open,
-  setOpen,
   onNoteUpdated,
 }) => {
   const navigate = useNavigate();
@@ -284,7 +278,7 @@ export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
 
   return (
     <>
-      <LeftPanel open={open} setOpen={setOpen}>
+      <LeftPanel open={true} setOpen={() => {}}>
         <Stack spacing={2} sx={{ p: 2 }}>
           <NoteActionPanel
             isLoading={!note}
