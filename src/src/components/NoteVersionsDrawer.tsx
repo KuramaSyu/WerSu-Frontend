@@ -21,6 +21,7 @@ import { useSearchNotesStore } from "../zustand/useSearchNotesStore";
 import { useNote } from "../api/queries/useNoteQueries";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Note } from "../api/models/search";
+import { useEditorContext } from "../pages/NotePage/Editor";
 
 export interface NoteVersionsDrawerProps {
   open: boolean;
@@ -30,7 +31,6 @@ export interface NoteVersionsDrawerProps {
   onRestoreVersion: (version: NoteVersionSummaryReply) => void;
   selectedVersion?: NoteVersionSummaryReply | null;
   selectedContent?: string | null;
-  currentContent?: string;
   isFetchingVersion?: boolean;
   isRestoring?: boolean;
   limit?: number;
@@ -128,7 +128,6 @@ export const NoteVersionsDrawer: React.FC<NoteVersionsDrawerProps> = ({
   onRestoreVersion,
   selectedVersion,
   selectedContent,
-  currentContent,
   isFetchingVersion = false,
   isRestoring = false,
   limit = 15,
@@ -142,6 +141,9 @@ export const NoteVersionsDrawer: React.FC<NoteVersionsDrawerProps> = ({
   const [hasError, setHasError] = useState(false);
   // Controls which preview tab is shown (current vs selected).
   const [previewTab, setPreviewTab] = useState(0);
+
+  const { getCurrentContent } = useEditorContext();
+  const currentContent = getCurrentContent();
 
   useEffect(() => {
     if (!open || !noteId) {
