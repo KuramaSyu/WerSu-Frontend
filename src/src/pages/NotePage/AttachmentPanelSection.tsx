@@ -34,7 +34,6 @@ export interface ApplicationAttachmentBody {
 
 export const AttachmentPanelSection: React.FC<AttachmentPanelSectionProps> = ({
   note,
-  noteAttachments,
 }) => {
   const { theme } = useThemeStore();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -45,7 +44,7 @@ export const AttachmentPanelSection: React.FC<AttachmentPanelSectionProps> = ({
 
   const { data: attachments } = useAttachments(
     note.id,
-    noteAttachments?.map((a) => a.key) ?? [],
+    note.get_attachment_ids(),
     expanded,
   );
 
