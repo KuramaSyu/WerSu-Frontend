@@ -135,7 +135,7 @@ export const LoadingPage: React.FC = () => {
   const { isLoading, setLoading } = useLoadingStore();
   const containerRef = React.useRef<HTMLDivElement>(null);
   const size = useMinSquareSize(containerRef);
-  const MIN_STARTUP_TIME = DISABLE_LOADING_ANIMATION ? 0 : 750;
+  const MIN_STARTUP_TIME = DISABLE_LOADING_ANIMATION ? 0 : 1000;
   const MIN_STARTUP_TIME_S = MIN_STARTUP_TIME / 1000;
   const initialLoadingMap = new Map<string, LoadingComponent>([
     ["You", new LoadingComponent(false, 0)],
@@ -171,7 +171,8 @@ export const LoadingPage: React.FC = () => {
         return new Map(prev);
       });
     }
-    init();
+    // to make sure, the logo inits first
+    window.setTimeout(() => init(), 50);
   }, []);
 
   // set isLoading to false, when everthing is initialized
