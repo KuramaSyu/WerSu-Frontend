@@ -77,7 +77,7 @@ export const NoteActionPanel: React.FC<NoteActionPanelProps> = ({
             </Button>
           </Stack>
 
-          <Stack spacing={0.5}>
+          {/* <Stack spacing={0.5}>
             <Typography variant="caption" color="textSecondary">
               Permissions
             </Typography>
@@ -108,7 +108,7 @@ export const NoteActionPanel: React.FC<NoteActionPanelProps> = ({
                 ))}
               </Stack>
             )}
-          </Stack>
+          </Stack> */}
         </Stack>
       )}
     </Stack>
