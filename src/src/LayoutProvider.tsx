@@ -23,8 +23,12 @@ export interface AppLayoutProps {
 export const LayoutProvider: React.FC<AppLayoutProps> = ({ children }) => {
   const [leftPanel, setLeftPanel] = useState<ReactNode | null>(null);
   const [rightPanel, setRightPanel] = useState<ReactNode | null>(null);
+
+  // often in use for navigation and actions
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
-  const [rightPanelOpen, setRightPanelOpen] = useState(true);
+
+  // usually not in use
+  const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const [showTopBar, setShowTopBar] = useState(true);
 
   const clearPanels = () => {
