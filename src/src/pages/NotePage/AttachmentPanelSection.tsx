@@ -4,7 +4,9 @@ import {
   AccordionSummary,
   Box,
   Chip,
+  CircularProgress,
   Dialog,
+  LinearProgress,
   Stack,
   Tooltip,
   Typography,
@@ -19,6 +21,7 @@ import type { Note } from "../../api/models/search";
 import { AttachmentApi } from "../../api/AttachmentApi";
 import { useQuery } from "@tanstack/react-query";
 import { useAttachments } from "../../api/queries/useAttachmentQueries";
+import { set } from "zod";
 
 export interface AttachmentPanelSectionProps {
   note: Note;
@@ -40,13 +43,24 @@ export const AttachmentPanelSection: React.FC<AttachmentPanelSectionProps> = ({
   const [selectedAttachment, setSelectedAttachment] =
     useState<AttachmentMetadata | null>(null);
 
+  const [requestOpen, setRequestOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
   const { data: attachments } = useAttachments(
     note.id,
     note.get_attachment_ids(),
-    expanded,
+    requestOpen,
   );
+
+  // expand the accordion, as soon as data is loaded after user requested it by clicking
+  useEffect(() => {
+    console.log("attachments", attachments);
+    if (requestOpen && attachments !== undefined) {
+      setExpanded(true);
+    }
+  }, [attachments, requestOpen]);
+
+  const loading = requestOpen && attachments === undefined;
 
   return (
     <>
@@ -54,7 +68,15 @@ export const AttachmentPanelSection: React.FC<AttachmentPanelSectionProps> = ({
       the next line */}
       <Accordion
         elevation={2}
-        onChange={(_, isExpanded) => setExpanded(isExpanded)}
+        expanded={expanded}
+        onChange={(_, isExpanded) => {
+          if (isExpanded) {
+            setRequestOpen(true);
+          } else {
+            setExpanded(false);
+            setRequestOpen(false);
+          }
+        }}
       >
         <AccordionSummary expandIcon={<ExpandMoreIcon />} color="primary">
           <Stack direction={"column"}>
@@ -68,6 +90,7 @@ export const AttachmentPanelSection: React.FC<AttachmentPanelSectionProps> = ({
             >
               Click to view or drag into the editor
             </Typography>
+            {loading && <LinearProgress sx={{ mt: 1 }} />}
           </Stack>
         </AccordionSummary>
         <AccordionDetails>
