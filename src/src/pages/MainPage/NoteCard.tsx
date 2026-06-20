@@ -41,12 +41,11 @@ export const NoteCard: React.FC<{
 
   if (loading) {
     return (
-      <Box ref={ref} sx={{ width: "100%" }}>
+      <Box ref={ref}>
         <Card
           ref={ref}
           sx={{
             position: "relative",
-            width: "100%",
             cursor: "wait",
             opacity: 0.9,
             transition: "all 0.2s ease-in-out",
@@ -85,12 +84,11 @@ export const NoteCard: React.FC<{
   }
 
   return (
-    <Box ref={ref} sx={{ width: "100%" }}>
+    <Box ref={ref} sx={{}}>
       <Card
         ref={ref}
         sx={{
           position: "relative",
-          width: "100%",
           cursor: "grab",
           opacity: isDragging ? 0.6 : 1,
           transition: "all 0.2s ease-in-out",

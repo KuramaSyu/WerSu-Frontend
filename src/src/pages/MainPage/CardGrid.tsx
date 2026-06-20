@@ -31,7 +31,7 @@ export const CardGrid: React.FC<CardGridProps> = ({
   const { isSearching } = useSearchNotesStore();
 
   const { theme } = useThemeStore();
-  const columnCount = useColumnCount(30, 12);
+  const columnCount = useColumnCount(22, 12);
 
   // Sort notes for display in row-major order (left-to-right, top-to-bottom)
   const displayNotes = useMemo(() => {
@@ -108,6 +108,7 @@ export const CardGrid: React.FC<CardGridProps> = ({
         sx={{
           columnCount: columnCount,
           columnGap: M2,
+          width: "100%",
         }}
       >
         {displayNotes.map((note) => {
@@ -117,9 +118,9 @@ export const CardGrid: React.FC<CardGridProps> = ({
               note={note}
               sx={{
                 mb: M2,
-                breakInside: "avoid",
-                display: "inline-block",
-                width: "100%",
+                // breakInside: "avoid",
+                display: "block",
+                // width: "100%",
               }}
             />
           );

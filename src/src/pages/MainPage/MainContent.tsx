@@ -23,18 +23,21 @@ import { useLatestNotes, useMoveNote } from "../../api/queries/useNoteQueries";
 import { useLayout } from "../../LayoutProvider";
 import { useNavigate } from "react-router-dom";
 import { PopupNoteModal } from "./Modals/PopupNoteModal";
+import { set } from "zod";
+import { EmptyLandingPage } from "./EmptyLandingPage";
 
 export const MainContent: React.FC = () => {
   const { directoriesById, setDirectories, clearDirectories, upsertDirectory } =
     useDirectoryStore();
   const { mutate: moveNote } = useMoveNote();
-  const { data: latestNotes } = useLatestNotes();
+  const { data: latestNotes, isLoading } = useLatestNotes();
   const { setMessage } = useInfoStore();
   const [leftPaneOpen, setLeftPaneOpen] = useState(true);
   const navigate = useNavigate();
-  const { setLeftPanel } = useLayout();
+  const { setLeftPanel, setLeftPanelOpen } = useLayout();
 
   useEffect(() => {
+    setLeftPaneOpen(true);
     setLeftPanel(
       <LeftPanel open={leftPaneOpen} setOpen={setLeftPaneOpen}>
         <Stack direction="row" sx={{ justifyContent: "flex-end" }}>
@@ -214,7 +217,7 @@ export const MainContent: React.FC = () => {
           <NewNoteSpeedDial />
           <DragDropProvider onDragEnd={(event) => void handleDragEnd(event)}>
             <Stack direction={"row"} sx={{ alignItems: "center" }}>
-              <Box>
+              <Box sx={{ width: "100%" }}>
                 {Object.entries(notesByDirectory).map(([dir, notes]) => {
                   const dirMeta = directoriesById[dir];
                   const forceLoading = dir !== "root" && !dirMeta;
@@ -224,7 +227,13 @@ export const MainContent: React.FC = () => {
                       : dirMeta?.display_name || dirMeta?.name || dir;
 
                   return (
-                    <Box key={dir} sx={{ position: "relative", width: "100%" }}>
+                    <Box
+                      key={dir}
+                      sx={{
+                        position: "relative",
+                        width: "auto",
+                      }}
+                    >
                       <CardGrid
                         notes={notes}
                         title={forceLoading ? "Loading..." : displayTitle}
@@ -237,6 +246,7 @@ export const MainContent: React.FC = () => {
             </Stack>
           </DragDropProvider>
         </Box>
+        {!isLoading && latestNotes?.length === 0 && <EmptyLandingPage />}
         <PopupNoteModal />
       </Box>
     </>

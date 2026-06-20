@@ -16,11 +16,12 @@ import TopBar from "../../components/TopBar";
 import { useUser } from "../../api/queries/useUser";
 
 export const MainPage: React.FC = () => {
-  const { data: user } = useUser();
+  const { data: user, isError, error, isLoading } = useUser();
+  const authenticated = !isError;
 
   return (
     <>
-      {user !== null ? (
+      {authenticated ? (
         <React.Profiler
           id="MainPage"
           onRender={() => console.log("render main page")}
