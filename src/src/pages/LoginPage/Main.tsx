@@ -11,16 +11,20 @@ import { useMinSquareSize } from "../LoadingPage/minSquareSize";
 import { useLoadingStore } from "../../zustand/loadingStore";
 import { useUsersStore, useUserStore } from "../../zustand/userStore";
 import { defaultTheme } from "../../theme/themes";
+import { useLayout } from "../../LayoutProvider";
+import { M3, M4, M5 } from "../../statics";
 
 export const LoginPage: React.FC = () => {
   const { theme, setTheme } = useThemeStore();
   const [oldTheme, setOldTheme] = useState<string | null>();
-  const { user } = useUserStore();
   const { isMobile } = useBreakpoint();
-  const { isLoading } = useLoadingStore();
   const containerRef = React.useRef<HTMLDivElement>(null);
   const size = useMinSquareSize(containerRef);
+  const { setLeftPanelOpen } = useLayout();
 
+  useEffect(() => {
+    setLeftPanelOpen(false);
+  }, []);
   useEffect(() => {
     if (theme.custom.themeName !== "default") {
       setOldTheme(theme.custom.themeName);
@@ -30,7 +34,7 @@ export const LoginPage: React.FC = () => {
   }, [theme]);
 
   useEffect(() => {
-    if (oldTheme === null || oldTheme === undefined || isLoading) return;
+    if (oldTheme === null || oldTheme === undefined) return;
     return () => {
       console.log("set old theme");
       setTheme(oldTheme);
@@ -41,7 +45,7 @@ export const LoginPage: React.FC = () => {
     <Box
       sx={{
         width: "100%",
-        height: "100%",
+        height: `calc(100vh - ${M3} - ${M4} - ${M5})`, // appshell does not set a height
         display: "flex",
         flexDirection: isMobile ? "column-reverse" : "row",
         alignItems: "center",
