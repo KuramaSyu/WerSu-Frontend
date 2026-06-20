@@ -44,6 +44,7 @@ import { VersionInfo } from "./VersionInfo";
 import { useUser, useUsers } from "../../api/queries/useUser";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { useLiveUsers } from "../../zustand/useLiveUsersStore";
+import { useNote } from "../../api/queries/useNoteQueries";
 
 const ROOT_PARENT_ID = "root";
 
@@ -163,16 +164,15 @@ const getParentDirectoryIds = (
  * ```
  */
 export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
-  note,
   noteId,
   onNoteUpdated,
 }) => {
+  const { data: note } = useNote(noteId);
   const navigate = useNavigate();
   const { setMessage } = useInfoStore();
-  const { directoriesById, setDirectories } = useDirectoryStore();
 
   // for version indicators
-  // const { data: user } = useUser();
+  const { data: user } = useUser();
 
   const [isUpdatingParent, setIsUpdatingParent] = useState(false);
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
@@ -183,12 +183,16 @@ export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
     [],
   );
   const { data: directories } = useDirectoriesQuery(directoryListQuery, true);
-
-  useEffect(() => {
-    if (directories) {
-      setDirectories(directories);
+  const directoriesById = useMemo(() => {
+    if (!directories || directories.length === 0) {
+      return {};
     }
-  }, [directories, setDirectories]);
+    const map: Record<string, (typeof directories)[0]> = {};
+    for (const directory of directories ?? []) {
+      map[directory.id] = directory;
+    }
+    return map;
+  }, [directories]);
 
   // Build directory tree for resolving parent paths in the metadata panel.
   const directoryHierarchy = useMemo(
@@ -292,9 +296,9 @@ export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
             canChangeParent={Boolean(note && noteId)}
           />
           <Divider sx={{ opacity: 0.3 }} />
-          <VersionInfo noteId={noteId} />
-          <Divider sx={{ opacity: 0.3 }} />
           {note && <AttachmentPanelSection note={note} />}
+          <Divider sx={{ opacity: 0.3 }} />
+          <VersionInfo noteId={noteId} />
 
           <Divider sx={{ opacity: 0.3 }} />
 
