@@ -15,6 +15,6 @@ export const useDirectoriesQuery = (
 ) =>
   useQuery({
     queryKey: directoryQueryKeys.list(query),
-    queryFn: () => directoryApi.list(query),
+    queryFn: async () => await directoryApi.list(query),
     enabled,
   });
