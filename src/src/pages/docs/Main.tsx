@@ -9,12 +9,13 @@ import "swagger-ui-themes/themes/3.x/theme-outline.css";
 import { BACKEND_BASE } from "../../statics";
 import { Box, GlobalStyles, styled, ThemeProvider } from "@mui/material";
 import { useThemeStore } from "../../zustand/useThemeStore";
+
+import { useUserStore } from "../../zustand/userStore";
+import { docsTheme } from "../../theme/themes";
 import {
   ApiRequirement,
   ApiRequirementsBuilder,
-} from "../../api/ApiRequirementsBuilder";
-import { useUserStore } from "../../zustand/userStore";
-import { docsTheme } from "../../theme/themes";
+} from "../../api/utils/ApiRequirementsBuilder";
 
 export const SwaggerDocs: React.FC = () => {
   const { theme, setTheme } = useThemeStore();

@@ -69,7 +69,7 @@ import Document from "@tiptap/extension-document";
 import { Dropcursor } from "@tiptap/extensions";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import UploadFileDialog from "./UploadSpeedDialAction";
-import { AttachmentApi, AttachmentLinkBuilder } from "../../api/AttachmentApi";
+import { AttachmentApi } from "../../api/AttachmentApi";
 import UploadFileBuilder from "./UploadFileBuilder";
 import {
   getNodeByFileType,
@@ -102,6 +102,7 @@ import { useLiveUsersStore } from "../../zustand/useLiveUsersStore";
 import { queryClient } from "../../api/queryClient";
 import { useActiveNoteStore } from "../../zustand/editorStore";
 import { useUpdateNote } from "../../api/queries/useNoteQueries";
+import { AttachmentLinkBuilder } from "../../api/utils/AttachmentLInkBuilder";
 
 const lowlight = createLowlight(all);
 

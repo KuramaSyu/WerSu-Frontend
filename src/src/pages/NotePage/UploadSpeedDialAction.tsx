@@ -9,11 +9,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useCallback, useRef, useState } from "react";
-import {
-  AttachmentApi,
-  AttachmentLinkBuilder,
-  type IAttachmentApi,
-} from "../../api/AttachmentApi";
+import { AttachmentApi, type IAttachmentApi } from "../../api/AttachmentApi";
 import type {
   AttachmentLinkBody,
   AttachmentMetadata,

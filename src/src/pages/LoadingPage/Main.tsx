@@ -25,10 +25,6 @@ import {
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { Title } from "./Title";
 import { useMinSquareSize } from "./minSquareSize";
-import {
-  ApiRequirement,
-  ApiRequirementsBuilder,
-} from "../../api/ApiRequirementsBuilder";
 import { defaultTheme } from "../../theme/themes";
 import { useUser } from "../../api/queries/useUser";
 

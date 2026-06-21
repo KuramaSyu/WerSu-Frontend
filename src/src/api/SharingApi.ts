@@ -120,8 +120,6 @@ export abstract class AbstractSharingApi implements SharingApi {
   ): Promise<GetShareByIdEndpointReply>;
 }
 
-// ---------- Concrete fetch implementation ----------
-
 export class RestSharingApi extends AbstractSharingApi {
   async createShare(
     request: CreateShareEndpointRequest,

@@ -1,13 +1,10 @@
 import type { Editor } from "@tiptap/core";
 import { SnackbarUpdateImpl } from "../../zustand/InfoStore";
-import {
-  AttachmentApi,
-  AttachmentLinkBuilder,
-  type IAttachmentApi,
-} from "../../api/AttachmentApi";
+import { AttachmentApi, type IAttachmentApi } from "../../api/AttachmentApi";
 import type { AttachmentMetadata } from "../../api/models/attachment";
 import { de } from "zod/v4/locales";
 import { queryClient } from "../../api/queryClient";
+import { AttachmentLinkBuilder } from "../../api/utils/AttachmentLInkBuilder";
 
 class UploadFileBuilder {
   private editor: Editor | null = null;

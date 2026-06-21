@@ -11,7 +11,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import type { AttachmentMetadata } from "../../api/models/attachment";
-import { AttachmentApi, AttachmentLinkBuilder } from "../../api/AttachmentApi";
+import { AttachmentApi } from "../../api/AttachmentApi";
 import { useState } from "react";
 import FullscreenIcon from "@mui/icons-material/Fullscreen";
 import FullscreenExitIcon from "@mui/icons-material/FullscreenExit";
@@ -23,6 +23,7 @@ import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import BackupIcon from "@mui/icons-material/Backup";
 import CloudDoneIcon from "@mui/icons-material/CloudDone";
 import { Cloud } from "@mui/icons-material";
+import { AttachmentLinkBuilder } from "../../api/utils/AttachmentLInkBuilder";
 
 enum SavingState {
   Idle,

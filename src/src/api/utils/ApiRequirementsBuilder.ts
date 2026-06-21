@@ -1,5 +1,5 @@
-import { useUserStore } from '../zustand/userStore';
-import { UserApi } from './UserApi';
+import { useUserStore } from "../../zustand/userStore";
+import { UserApi } from "../UserApi";
 
 interface IApiReuqirement {
   needsFetch(): Boolean;
@@ -34,7 +34,7 @@ abstract class ApiRequirementABC implements IApiReuqirement {
     if (!ApiRequirementABC.instances.has(className)) {
       ApiRequirementABC.instances.set(
         className,
-        new this() as ApiRequirementABC
+        new this() as ApiRequirementABC,
       );
     }
     return ApiRequirementABC.instances.get(className) as T;
