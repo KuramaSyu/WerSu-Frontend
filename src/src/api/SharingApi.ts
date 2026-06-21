@@ -45,7 +45,7 @@ export class ApiError extends Error {
 
 // ---------- Abstract API contract ----------
 
-export interface SharingApiClient {
+export interface SharingApi {
   /**
    * Create one share.
    *
@@ -99,7 +99,7 @@ export interface SharingApiClient {
   ): Promise<GetShareByIdEndpointReply>;
 }
 
-export abstract class AbstractSharingApiClient implements SharingApiClient {
+export abstract class AbstractSharingApi implements SharingApi {
   abstract createShare(
     request: CreateShareEndpointRequest,
   ): Promise<CreateShareEndpointReply>;
@@ -122,7 +122,7 @@ export abstract class AbstractSharingApiClient implements SharingApiClient {
 
 // ---------- Concrete fetch implementation ----------
 
-export class FetchSharingApiClient extends AbstractSharingApiClient {
+export class RestSharingApi extends AbstractSharingApi {
   async createShare(
     request: CreateShareEndpointRequest,
   ): Promise<CreateShareEndpointReply> {
@@ -185,4 +185,4 @@ export class FetchSharingApiClient extends AbstractSharingApiClient {
   }
 }
 
-export const sharingApiClient: SharingApiClient = new FetchSharingApiClient();
+export const sharingApiClient: SharingApi = new RestSharingApi();
