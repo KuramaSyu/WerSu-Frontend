@@ -6,7 +6,6 @@ export interface NoteShareReply {
   created_by: string;
   online_since?: string;
   online_until?: string;
-  access_as: string;
 }
 
 export interface CreateShareBody {
@@ -14,7 +13,6 @@ export interface CreateShareBody {
   note_id: string;
   online_since?: string;
   online_until?: string;
-  access_as: string;
 }
 
 export interface UpdateShareBody {
@@ -23,7 +21,6 @@ export interface UpdateShareBody {
   note_id: string;
   online_since?: string;
   online_until?: string;
-  access_as: string;
 }
 
 export interface DeleteSharesBody {
@@ -35,7 +32,6 @@ export interface GetSharesQuery {
   created_by?: string;
   online_since?: string;
   online_until?: string;
-  access_as?: string;
 }
 
 export interface GetSharesByIdRequest {
