@@ -183,4 +183,4 @@ export class RestSharingApi extends AbstractSharingApi {
   }
 }
 
-export const sharingApiClient: SharingApi = new RestSharingApi();
+export const sharingApi: SharingApi = new RestSharingApi();
