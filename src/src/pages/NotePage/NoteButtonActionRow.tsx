@@ -12,11 +12,15 @@ import { Share } from "@mui/icons-material";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useActiveNoteStore } from "../../zustand/editorStore";
+import { useState } from "react";
+import { ShareDialog } from "./ShareDialog";
 
 export const NoteButtonActionRow: React.FC = () => {
   const handleSave = useActiveNoteStore((s) => s.save);
   const { editMode: write, setWrite } = useEditorSettings();
   const { theme } = useThemeStore();
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const noteId = useActiveNoteStore((s) => s.noteId);
   const handleChange = (
     event: React.MouseEvent<HTMLElement>,
     newAlignment: string,
@@ -30,28 +34,35 @@ export const NoteButtonActionRow: React.FC = () => {
     exclusive: true,
   };
   return (
-    <Stack direction={"row"} spacing={theme.spacing(1)}>
-      <ToggleButtonGroup
-        size="small"
-        {...control}
-        aria-label="edit or view mode"
-      >
-        <ToggleButton value={"read"} key="left">
-          read
-        </ToggleButton>
+    <>
+      <Stack direction={"row"} spacing={theme.spacing(1)}>
+        <ToggleButtonGroup
+          size="small"
+          {...control}
+          aria-label="edit or view mode"
+        >
+          <ToggleButton value={"read"} key="left">
+            read
+          </ToggleButton>
 
-        <ToggleButton value={"write"} key="center">
-          write
-        </ToggleButton>
-      </ToggleButtonGroup>
+          <ToggleButton value={"write"} key="center">
+            write
+          </ToggleButton>
+        </ToggleButtonGroup>
 
-      <IconButton onClick={() => void handleSave()}>
-        <SaveIcon />
-      </IconButton>
+        <IconButton onClick={() => void handleSave()}>
+          <SaveIcon />
+        </IconButton>
 
-      <IconButton>
-        <ShareIcon />
-      </IconButton>
-    </Stack>
+        <IconButton onClick={() => setShareDialogOpen(true)}>
+          <ShareIcon />
+        </IconButton>
+      </Stack>
+      <ShareDialog
+        noteId={noteId ?? ""}
+        open={shareDialogOpen}
+        onClose={() => setShareDialogOpen(false)}
+      />
+    </>
   );
 };
