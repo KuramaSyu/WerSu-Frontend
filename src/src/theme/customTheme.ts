@@ -4,6 +4,7 @@ import {
   darken,
   type Palette,
   type Theme,
+  type Motion,
 } from "@mui/material/styles";
 import {
   blendColors,
@@ -18,6 +19,7 @@ import {
   argbFromHex,
   hexFromArgb,
 } from "@material/material-color-utilities";
+import { deepmerge } from "@mui/utils";
 
 export type ColorInput =
   | string
@@ -120,6 +122,12 @@ export interface ThemeCustomExtension {
   backgroundImage: string;
 }
 
+export interface RecalculateOpions {
+  recalculateTextColors?: boolean; // Whether to recalculate text colors based on contrast
+  recalculateBackgroundColors?: boolean; // Whether to recalculate background colors based on contrast
+  recalculateSuccessInfoWarningErrorColors?: boolean; // Whether to recalculate success, info, warning, and error colors based on contrast
+}
+
 /**
  * Implementation of CustomTheme with following features:
  * - blendWithContrast and blendAgainstContrast methods
@@ -148,6 +156,10 @@ export class CustomThemeImpl extends Object implements CustomTheme {
   colorTransition: {
     root: { transition: string; "&:hover"?: { transition: string } };
   };
+  borderRadius: {
+    root: { borderRadius: number; "&:hover"?: { borderRadius: number } };
+  };
+  motion!: Theme["motion"];
 
   // Wrap the methods to match the Theme interface signature
   alpha: (color: string, value: string | number) => string;
@@ -155,16 +167,16 @@ export class CustomThemeImpl extends Object implements CustomTheme {
   darken: (color: string, coefficient: string | number) => string;
 
   constructor(theme: CustomTheme);
-  constructor(theme: Theme, config: ThemeCustomExtension);
+  constructor(theme: Theme | CustomTheme, config: ThemeCustomExtension);
   constructor(
-    theme: Theme,
+    theme: Theme | CustomTheme,
     config?: ThemeCustomExtension,
-    recalculateColors?: boolean,
+    recalculateColors?: RecalculateOpions,
   );
   constructor(
     theme: Theme | CustomTheme,
     config?: ThemeCustomExtension,
-    recalculateColors?: boolean,
+    recalculateColors?: RecalculateOpions,
   ) {
     super();
     Object.assign(this, theme);
@@ -204,17 +216,27 @@ export class CustomThemeImpl extends Object implements CustomTheme {
       return darken(color, numCoef);
     };
 
+    this.borderRadius = {
+      root: { borderRadius: 64, "&:hover": { borderRadius: 8 } },
+    };
+
     this.colorTransition = {
       root: {
         transition: this.transitions.create(
-          ["background-color", "color", "border-color"],
+          ["background-color", "color", "border-color", "border-radius"],
           {
             duration: this.transitions.duration.complex,
           },
         ),
         "&:hover": {
           transition: this.transitions.create(
-            ["background-color", "color", "border-color", "transform"],
+            [
+              "background-color",
+              "color",
+              "border-color",
+              "transform",
+              "border-radius",
+            ],
             {
               duration: this.transitions.duration.short,
             },
@@ -223,7 +245,7 @@ export class CustomThemeImpl extends Object implements CustomTheme {
       },
     };
 
-    if (recalculateColors === true) {
+    if (recalculateColors?.recalculateBackgroundColors === true) {
       // blend background colors against contrast color (to increase contrast with text)
       const contrastColor = invertColor(
         this.palette.getContrastText(this.palette.background.default),
@@ -244,7 +266,8 @@ export class CustomThemeImpl extends Object implements CustomTheme {
           ),
         ),
       };
-
+    }
+    if (recalculateColors?.recalculateTextColors === true) {
       // blend text colors with contrast color
       this.palette.text = {
         primary: rgbToHex(
@@ -276,6 +299,18 @@ export class CustomThemeImpl extends Object implements CustomTheme {
         ),
       };
 
+      // bend text colors from primary and secondary colors
+      this.palette.primary.contrastText = this.blendWithContrast(
+        "primary",
+        0.66,
+      );
+      this.palette.secondary.contrastText = this.blendWithContrast(
+        "secondary",
+        0.66,
+      );
+    }
+
+    if (recalculateColors?.recalculateSuccessInfoWarningErrorColors === true) {
       // recalculate success, info, warning, error colors
       this.palette.success = {
         ...this.palette.success,
@@ -324,81 +359,78 @@ export class CustomThemeImpl extends Object implements CustomTheme {
           ),
         ),
       };
-
-      // Merge custom component overrides
-      this.components = {
-        ...this.components, // Spread existing component overrides
-        MuiTooltip: {
-          styleOverrides: {
-            tooltip: {
-              backgroundColor: this.palette.background.paper,
-              color: this.palette.text.primary,
-              fontSize: this.typography.body1.fontSize,
-              borderRadius: "8px",
-            },
-            arrow: {
-              color: this.palette.background.paper,
-            },
-          },
-        },
-        MuiButton: {
-          styleOverrides: {
-            ...this.colorTransition,
-          },
-        },
-        MuiButtonGroup: {
-          styleOverrides: {
-            ...this.colorTransition,
-          },
-        },
-
-        MuiInputBase: {
-          styleOverrides: {
-            ...this.colorTransition,
-          },
-        },
-        MuiPaper: {
-          styleOverrides: {
-            ...this.colorTransition,
-          },
-        },
-        MuiSlider: {
-          styleOverrides: {
-            ...this.colorTransition,
-          },
-        },
-        MuiButtonBase: {
-          styleOverrides: {
-            ...this.colorTransition,
-          },
-        },
-        MuiTypography: {
-          styleOverrides: {
-            ...this.colorTransition,
-          },
-        },
-        MuiToggleButton: {
-          styleOverrides: {
-            ...this.colorTransition,
-          },
-        },
-        MuiToggleButtonGroup: {
-          styleOverrides: {
-            ...this.colorTransition,
-          },
-        },
-      };
-
-      // bend text colors from primary and secondary colors
-      this.palette.primary.contrastText = this.blendWithContrast(
-        "primary",
-        0.66,
-      );
-      this.palette.secondary.contrastText = this.blendWithContrast(
-        "secondary",
-        0.66,
-      );
     }
+
+    const RootColorAndRadius = deepmerge(
+      this.colorTransition,
+      this.borderRadius,
+    );
+
+    console.log("custom props", RootColorAndRadius);
+
+    // Merge custom component overrides
+    this.components = {
+      ...this.components, // Spread existing component overrides
+      MuiTooltip: {
+        styleOverrides: {
+          tooltip: {
+            backgroundColor: this.palette.background.paper,
+            color: this.palette.text.primary,
+            fontSize: this.typography.body1.fontSize,
+            borderRadius: "8px",
+          },
+          arrow: {
+            color: this.palette.background.paper,
+          },
+        },
+      },
+      MuiButton: {
+        styleOverrides: {
+          ...RootColorAndRadius,
+        },
+      },
+      MuiButtonGroup: {
+        styleOverrides: {
+          ...RootColorAndRadius,
+        },
+      },
+
+      MuiInputBase: {
+        styleOverrides: {
+          ...RootColorAndRadius,
+        },
+      },
+      MuiPaper: {
+        styleOverrides: {
+          ...this.colorTransition,
+        },
+      },
+      MuiSlider: {
+        styleOverrides: {
+          ...this.colorTransition,
+        },
+      },
+      MuiButtonBase: {
+        styleOverrides: {
+          ...RootColorAndRadius,
+        },
+      },
+      MuiTypography: {
+        styleOverrides: {
+          ...this.colorTransition,
+        },
+      },
+      MuiToggleButton: {
+        styleOverrides: {
+          ...RootColorAndRadius,
+        },
+      },
+      MuiToggleButtonGroup: {
+        styleOverrides: {
+          ...RootColorAndRadius,
+        },
+      },
+    };
   }
 
   blendWithContrast(
