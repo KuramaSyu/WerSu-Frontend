@@ -1,4 +1,4 @@
-import { Avatar, Box, Button, Grid, Stack } from "@mui/material";
+import { alpha, Avatar, Box, Button, Grid, Stack } from "@mui/material";
 import Timeline from "@mui/lab/Timeline";
 import TimelineItem, { timelineItemClasses } from "@mui/lab/TimelineItem";
 import TimelineSeparator from "@mui/lab/TimelineSeparator";
@@ -30,6 +30,7 @@ import { queryClient } from "../../api/queryClient";
 import { useNoteVersion } from "../../api/queries/useNoteQueries";
 import { useActiveNoteStore } from "../../zustand/editorStore";
 import { color } from "@uiw/react-codemirror/esm/getDefaultExtensions.js";
+import { blendColors, hexToRgb, rgbToHex } from "../../utils/blendWithContrast";
 
 export interface VersionInfoProps {
   noteId: string | undefined;
@@ -155,10 +156,12 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
         )}
         {versions?.map((version, index) => {
           const len = versions?.length ?? 0;
-          const bg = theme.blendWithContrast(
-            theme.palette.secondary.dark,
-            0 + index / len,
-            "secondary",
+          const bg = rgbToHex(
+            blendColors(
+              hexToRgb(theme.palette.background.paper),
+              hexToRgb(theme.palette.secondary.main),
+              1 - (index * 0.8) / len,
+            ),
           );
           const textColor = theme.palette.getContrastText(bg);
 
