@@ -1,7 +1,11 @@
 import { create } from "zustand";
 import { createTheme } from "@mui/material/styles";
 import { ThemeManager } from "../theme/themeManager";
-import type { CustomTheme, CustomThemeConfig } from "../theme/customTheme";
+import {
+  CustomThemeImpl,
+  type CustomTheme,
+  type CustomThemeConfig,
+} from "../theme/customTheme";
 import { loadPreferencesFromCookie } from "../utils/cookiePreferences";
 import { persist } from "zustand/middleware";
 import { defaultTheme } from "../theme/themes";
@@ -10,7 +14,7 @@ import { defaultTheme } from "../theme/themes";
 const themeManager = ThemeManager.getInstance();
 
 interface ThemeState {
-  theme: CustomTheme;
+  theme: CustomThemeImpl;
   themeName: string;
   themeLongName: string;
 
@@ -26,7 +30,11 @@ interface ThemeState {
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set, get) => ({
-      theme: ThemeManager.getInstance().getThemeSync("default") || defaultTheme,
+      theme: new CustomThemeImpl(
+        ThemeManager.getInstance().getThemeSync("default") || defaultTheme,
+        undefined,
+        { recalculateSuccessInfoWarningErrorColors: true },
+      ),
       themeName: defaultTheme.custom.themeName,
       themeLongName: defaultTheme.custom.longName,
 
@@ -41,7 +49,9 @@ export const useThemeStore = create<ThemeState>()(
         const generatedTheme = await themeManager.generateTheme(themeName);
         if (generatedTheme) {
           set({
-            theme: generatedTheme,
+            theme: new CustomThemeImpl(generatedTheme, undefined, {
+              recalculateSuccessInfoWarningErrorColors: true,
+            }),
             themeName: generatedTheme.custom.themeName,
             themeLongName: generatedTheme.custom.longName,
           });
@@ -61,7 +71,9 @@ export const useThemeStore = create<ThemeState>()(
         if (!state?.themeName) return;
 
         const theme = await themeManager.generateTheme(state.themeName);
-        state.theme = theme || defaultTheme;
+        state.theme = new CustomThemeImpl(theme ?? defaultTheme, undefined, {
+          recalculateSuccessInfoWarningErrorColors: true,
+        });
       },
     },
   ),
