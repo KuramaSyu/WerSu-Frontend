@@ -19,9 +19,6 @@ import {
 import ShareIcon from "@mui/icons-material/Share";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { M1, M2, M3, M4, M5 } from "../../statics";
-import { DotLottieReact } from "@lottiefiles/dotlottie-react";
-import { hexToCSSFilter } from "hex-to-css-filter";
-import shareAnimation from "../../assets/lottie/Share.lottie?url";
 import RotatingStrokeBox from "../../components/RotatingCirle";
 import { useState } from "react";
 import PublicIcon from "@mui/icons-material/Public";
@@ -31,10 +28,6 @@ import CollapseToggleButton from "../../components/CollapseToggleButton";
 import ScheduleIcon from "@mui/icons-material/Schedule";
 import { sharingApi } from "../../api/SharingApi";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
-
-const filter = hexToCSSFilter("#1976d2");
-
-console.log(filter);
 
 export interface ShareDialogProps {
   noteId: string;
