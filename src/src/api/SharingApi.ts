@@ -9,6 +9,7 @@
   - Keep the backend base URL as an ambient global: BACKEND_BASE.
 */
 
+import { BACKEND_BASE } from "../statics";
 import type {
   CreateShareEndpointReply,
   CreateShareEndpointRequest,
@@ -24,8 +25,6 @@ import type {
   UpdateShareEndpointRequest,
 } from "./models/sharing";
 import { requestJson, toQueryString } from "./utils/request_helpers";
-
-declare const BACKEND_BASE: string;
 
 export type HttpMethod = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
 
@@ -124,7 +123,7 @@ export class RestSharingApi extends AbstractSharingApi {
   async createShare(
     request: CreateShareEndpointRequest,
   ): Promise<CreateShareEndpointReply> {
-    const endpoint = `${BACKEND_BASE}/shares`;
+    const endpoint = `${BACKEND_BASE}/api/shares`;
     return await requestJson<CreateShareEndpointReply>(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -135,7 +134,7 @@ export class RestSharingApi extends AbstractSharingApi {
   async updateShare(
     request: UpdateShareEndpointRequest,
   ): Promise<UpdateShareEndpointReply> {
-    const endpoint = `${BACKEND_BASE}/shares`;
+    const endpoint = `${BACKEND_BASE}/api/shares`;
     return await requestJson<UpdateShareEndpointReply>(endpoint, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -146,7 +145,7 @@ export class RestSharingApi extends AbstractSharingApi {
   async getSharesById(
     request: GetSharesByIdEndpointRequest,
   ): Promise<GetSharesByIdEndpointReply> {
-    const endpoint = `${BACKEND_BASE}/shares/by-id${toQueryString({ share_ids: request.share_ids })}`;
+    const endpoint = `${BACKEND_BASE}/api/shares/by-id${toQueryString({ share_ids: request.share_ids })}`;
     return await requestJson<GetSharesByIdEndpointReply>(endpoint, {
       method: "GET",
     });
@@ -155,7 +154,7 @@ export class RestSharingApi extends AbstractSharingApi {
   async getShares(
     request: GetSharesEndpointRequest,
   ): Promise<GetSharesEndpointReply> {
-    const endpoint = `${BACKEND_BASE}/shares${toQueryString(request)}`;
+    const endpoint = `${BACKEND_BASE}/api/shares${toQueryString(request)}`;
     return await requestJson<GetSharesEndpointReply>(endpoint, {
       method: "GET",
     });
@@ -164,7 +163,7 @@ export class RestSharingApi extends AbstractSharingApi {
   async deleteShares(
     request: DeleteSharesEndpointRequest,
   ): Promise<DeleteSharesEndpointReply> {
-    const endpoint = `${BACKEND_BASE}/shares`;
+    const endpoint = `${BACKEND_BASE}/api/shares`;
     await requestJson<void>(endpoint, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -176,7 +175,7 @@ export class RestSharingApi extends AbstractSharingApi {
   async getShareById(
     request: GetShareByIdEndpointRequest,
   ): Promise<GetShareByIdEndpointReply> {
-    const endpoint = `${BACKEND_BASE}/shares/${encodeURIComponent(request.id)}`;
+    const endpoint = `${BACKEND_BASE}/api/shares/${encodeURIComponent(request.id)}`;
     return await requestJson<GetShareByIdEndpointReply>(endpoint, {
       method: "GET",
     });
