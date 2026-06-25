@@ -536,7 +536,7 @@ export class CustomThemeImpl extends Object implements CustomTheme {
     this.refreshColorTransition();
   }
 
-  private refreshColorTransition(): void {
+  refreshColorTransition(): void {
     // Rebuild reusable transition definitions that depend on `transitions.duration`.
     this.colorTransition = {
       root: {
