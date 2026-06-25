@@ -10,19 +10,27 @@ import type {
   AttachmentMetadata,
   UpdateAttachmentRequest,
 } from "../models/attachment";
-import { SearchNotesApi, type ISearchNotesApi } from "../SearchNotesApi";
+import {
+  getSearchNotesApi,
+  type ISearchNotesApi,
+} from "../SearchNotesApi";
 import {
   Note,
   RestNotesSearchType,
   type MinimalNote,
   type NoteData,
 } from "../models/search";
-import { NoteApi, type INoteApi } from "../NoteApi";
+import { getNoteApi, type INoteApi } from "../NoteApi";
 import { updateNoteParentDirectory } from "../../utils/updateNoteParentDirectory";
 import { DiscordUserImpl } from "../../components/DiscordLogin";
 
-const searchNotesApi: ISearchNotesApi = new SearchNotesApi();
-const noteApi: INoteApi = new NoteApi();
+// Use the registered singletons so the share-token provider installed on
+// `Bootstrap` reaches these instances (a fresh `new NoteApi()` would not
+// receive the provider). `getNoteApi()` throws if not registered — that's
+// intentional: silent `undefined` here would cause "why is my fetch missing
+// the auth header" bugs that are painful to track down.
+const searchNotesApi: ISearchNotesApi = getSearchNotesApi();
+const noteApi: INoteApi = getNoteApi();
 
 export const noteQueries = {
   /**

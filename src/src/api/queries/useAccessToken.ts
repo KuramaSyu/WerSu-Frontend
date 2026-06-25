@@ -1,6 +1,9 @@
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
-import { UserApi } from "../UserApi";
+import { getUserApi } from "../UserApi";
 import { useAuthStore } from "../../zustand/useAuthStore";
+
+// Use the registered singleton. See `useNoteQueries` for rationale.
+const userApi = getUserApi();
 
 const isExpired = (token: string): boolean => {
   try {
@@ -31,7 +34,7 @@ export function useAccessToken(): UseQueryResult<string, Error> {
     queryFn: async () => {
       // i am sorry, but I will directly update zustand in here. I want to avoid
       // extra react components with a useEffect to transfer the token from react query to zustand
-      const token = await new UserApi().fetchAccessToken().then((data) => {
+      const token = await userApi.fetchAccessToken().then((data) => {
         console.log(
           "Fetched new access token:",
           data.token.substring(0, 10) + "...",

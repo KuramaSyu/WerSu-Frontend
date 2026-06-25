@@ -5,6 +5,7 @@ import { DiscordUserImpl } from "../components/DiscordLogin";
 import { useUsersStore, useUserStore } from "../zustand/userStore";
 import type { GetAcccessTokenResponse } from "./models/auth";
 import { th } from "zod/v4/locales";
+import { apiRegistry, type ApiToken } from "./apiRegistry";
 
 export interface BackendApiInterface {}
 export interface UserApiInterface {
@@ -96,4 +97,21 @@ export class UserApi implements UserApiInterface {
     this.logError(url, response.json());
     throw new Error("Failed to fetch access token");
   }
+}
+
+// Register the default singleton + a typed token so consumers can resolve
+// it via `getUserApi()`.
+apiRegistry.register(new UserApi());
+export const USER_API_TOKEN: ApiToken<UserApi> = Symbol(
+  "UserApi",
+) as ApiToken<UserApi>;
+apiRegistry.register(new UserApi(), USER_API_TOKEN);
+
+/**
+ * Resolve the registered `UserApi` singleton.
+ *
+ * Throws if the API isn't registered — see `getNoteApi` for rationale.
+ */
+export function getUserApi(): UserApi {
+  return apiRegistry.get<UserApi>(USER_API_TOKEN);
 }

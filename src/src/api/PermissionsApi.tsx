@@ -5,6 +5,7 @@ import type {
   PermissionsReply,
   ReplacePermissionsBody,
 } from "./models/search";
+import { apiRegistry, type ApiToken } from "./apiRegistry";
 
 export type PermissionObjectQueryType = "note" | "directory";
 
@@ -104,4 +105,21 @@ export class PermissionsApi implements IPermissionsApi {
 
     return permissions ?? undefined;
   }
+}
+
+// Register the default singleton + a typed token so consumers can resolve
+// it via `getPermissionsApi()`.
+apiRegistry.register(new PermissionsApi());
+export const PERMISSIONS_API_TOKEN: ApiToken<PermissionsApi> = Symbol(
+  "PermissionsApi",
+) as ApiToken<PermissionsApi>;
+apiRegistry.register(new PermissionsApi(), PERMISSIONS_API_TOKEN);
+
+/**
+ * Resolve the registered `PermissionsApi` singleton.
+ *
+ * Throws if the API isn't registered — see `getNoteApi` for rationale.
+ */
+export function getPermissionsApi(): PermissionsApi {
+  return apiRegistry.get<PermissionsApi>(PERMISSIONS_API_TOKEN);
 }

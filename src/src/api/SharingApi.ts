@@ -28,6 +28,7 @@ import type {
   UpdateShareEndpointRequest,
 } from "./models/sharing";
 import { requestJson, toQueryString } from "./utils/request_helpers";
+import { apiRegistry, type ApiToken } from "./apiRegistry";
 
 export type HttpMethod = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
 
@@ -244,3 +245,21 @@ export class RestSharingApi extends AbstractSharingApi {
 }
 
 export const sharingApi: SharingApi = new RestSharingApi();
+
+// Also register the concrete REST singleton under a typed token so consumers
+// can resolve it via `getSharingApi()`. The bare `sharingApi` export above
+// stays for backward compatibility with existing call sites.
+apiRegistry.register(sharingApi as RestSharingApi);
+export const SHARING_API_TOKEN: ApiToken<RestSharingApi> = Symbol(
+  "RestSharingApi",
+) as ApiToken<RestSharingApi>;
+apiRegistry.register(sharingApi as RestSharingApi, SHARING_API_TOKEN);
+
+/**
+ * Resolve the registered `RestSharingApi` singleton.
+ *
+ * Throws if the API isn't registered — see `getNoteApi` for rationale.
+ */
+export function getSharingApi(): RestSharingApi {
+  return apiRegistry.get<RestSharingApi>(SHARING_API_TOKEN);
+}

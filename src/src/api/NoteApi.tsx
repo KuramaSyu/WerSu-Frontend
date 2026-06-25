@@ -1,7 +1,7 @@
 import { BACKEND_BASE } from "../statics";
 import { Note, type NoteData } from "./models/search";
 import { UserError } from "./models/UserError";
-import { PermissionsApi } from "./PermissionsApi";
+import { getPermissionsApi } from "./PermissionsApi";
 import { ShareTokenBearerMixin } from "./shareToken";
 import { apiRegistry, type ApiToken } from "./apiRegistry";
 
@@ -176,7 +176,10 @@ export class NoteApi extends ShareTokenBearerMixin implements INoteApi {
    * relationships. Passing `undefined` as `directoryId` moves the note to root.
    */
   async patchDirectory(id: string, directoryId?: string): Promise<boolean> {
-    const permissionsApi = new PermissionsApi();
+    // Use the registered singleton so the share-token provider installed on
+    // `Bootstrap` reaches this internal helper. See `useNoteQueries` for
+    // rationale.
+    const permissionsApi = getPermissionsApi();
     const existingPermissions = await permissionsApi.get("note", id);
     if (!existingPermissions) {
       this.logError(

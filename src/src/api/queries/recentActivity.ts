@@ -5,8 +5,12 @@ import {
   DiscordUserImpl,
   type DiscordUser,
 } from "../../components/DiscordLogin";
-import { ActivityApi } from "../ActivityApi";
+import { getActivityApi } from "../ActivityApi";
 import type { NoteVersionSummaryReply } from "../models/activity";
+
+// Use the registered singleton so the share-token provider installed on
+// `Bootstrap` reaches this instance. See `useNoteQueries` for rationale.
+const activityApi = getActivityApi();
 
 /**
  * Hook to fetch the activity / versions for a specific note
@@ -18,7 +22,7 @@ export function useNoteActivity(
   return useQuery({
     queryKey: ["activity", "note", noteId],
     queryFn: async () => {
-      return await new ActivityApi().getNoteActivity(noteId);
+      return await activityApi.getNoteActivity(noteId);
     },
   });
 }

@@ -1,7 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import { DirectoryApi, type ListDirectoriesQuery } from "../DirectoryApi";
+import { getDirectoryApi, type ListDirectoriesQuery } from "../DirectoryApi";
 
-const directoryApi = new DirectoryApi();
+// Use the registered singleton so the share-token provider installed on
+// `Bootstrap` reaches this instance. See `useNoteQueries` for rationale.
+const directoryApi = getDirectoryApi();
 
 export const directoryQueryKeys = {
   all: ["directories"] as const,

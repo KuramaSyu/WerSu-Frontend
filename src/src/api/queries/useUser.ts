@@ -1,10 +1,16 @@
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
-import { UserApi } from "../UserApi";
+import { getUserApi } from "../UserApi";
 import { useAuthStore } from "../../zustand/useAuthStore";
 import {
   DiscordUserImpl,
   type DiscordUser,
 } from "../../components/DiscordLogin";
+
+// Use the registered singleton so the share-token provider installed on
+// `Bootstrap` reaches this instance. `UserApi` doesn't extend the bearer
+// mixin yet, but resolving through the registry keeps wiring consistent and
+// lets us add share-token support later without touching call sites.
+const userApi = getUserApi();
 
 /**
  * Hook to fetch the current user with discord login authentication
@@ -14,7 +20,7 @@ export function useUser(): UseQueryResult<DiscordUserImpl, Error> {
   return useQuery({
     queryKey: ["user"],
     queryFn: async () => {
-      return await new UserApi().fetchUser();
+      return await userApi.fetchUser();
     },
 
     // the cached entry is plain JSON -> recreate class
@@ -35,7 +41,7 @@ export function useUsers(
       if (userIds.length === 0) {
         return [];
       }
-      return await new UserApi().fetchUsers(userIds);
+      return await userApi.fetchUsers(userIds);
     },
 
     // the cached entry is plain JSON -> recreate class

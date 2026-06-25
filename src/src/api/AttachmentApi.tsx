@@ -7,6 +7,7 @@ import type {
   DeleteAttachmentResponse,
   UpdateAttachmentRequest,
 } from "./models/attachment";
+import { apiRegistry, type ApiToken } from "./apiRegistry";
 
 /**
  * Interface for managing attachment operations.
@@ -348,4 +349,21 @@ export class AttachmentApi implements IAttachmentApi {
     );
     return false;
   }
+}
+
+// Register the default singleton + a typed token so consumers can resolve
+// it via `getAttachmentApi()`.
+apiRegistry.register(new AttachmentApi());
+export const ATTACHMENT_API_TOKEN: ApiToken<AttachmentApi> = Symbol(
+  "AttachmentApi",
+) as ApiToken<AttachmentApi>;
+apiRegistry.register(new AttachmentApi(), ATTACHMENT_API_TOKEN);
+
+/**
+ * Resolve the registered `AttachmentApi` singleton.
+ *
+ * Throws if the API isn't registered — see `getNoteApi` for rationale.
+ */
+export function getAttachmentApi(): AttachmentApi {
+  return apiRegistry.get<AttachmentApi>(ATTACHMENT_API_TOKEN);
 }

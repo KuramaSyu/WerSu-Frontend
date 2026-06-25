@@ -1,12 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AttachmentApi } from "../AttachmentApi";
+import { getAttachmentApi } from "../AttachmentApi";
 import type {
   AttachmentMetadata,
   UpdateAttachmentRequest,
 } from "../models/attachment";
 import type { MinimalNote } from "../models/search";
 
-const attachmentApi = new AttachmentApi();
+// Use the registered singleton so the share-token provider installed on
+// `Bootstrap` reaches this instance. See `useNoteQueries` for rationale.
+const attachmentApi = getAttachmentApi();
 
 export const attachmentQueries = {
   byNote: (noteId: string, attachmentKeys: string[]) => ({

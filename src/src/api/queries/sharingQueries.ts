@@ -8,7 +8,11 @@ import {
   type UseQueryOptions,
 } from "@tanstack/react-query";
 
-import { sharingApi } from "../SharingApi";
+import { getSharingApi } from "../SharingApi";
+
+// Use the registered singleton so the share-token provider installed on
+// `Bootstrap` reaches this instance. See `useNoteQueries` for rationale.
+const sharingApi = getSharingApi();
 
 import type {
   CreateShareEndpointReply,

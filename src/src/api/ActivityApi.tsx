@@ -1,5 +1,6 @@
 import { BACKEND_BASE } from "../statics";
 import type { NoteVersionSummaryReply } from "./models/activity";
+import { apiRegistry, type ApiToken } from "./apiRegistry";
 
 /**
  * Query parameters for directory activity requests.
@@ -144,4 +145,21 @@ export class ActivityApi implements IActivityApi {
 
     return (payload ?? []) as NoteVersionSummaryReply[];
   }
+}
+
+// Register the default singleton + a typed token so consumers can resolve
+// it via `getActivityApi()`.
+apiRegistry.register(new ActivityApi());
+export const ACTIVITY_API_TOKEN: ApiToken<ActivityApi> = Symbol(
+  "ActivityApi",
+) as ApiToken<ActivityApi>;
+apiRegistry.register(new ActivityApi(), ACTIVITY_API_TOKEN);
+
+/**
+ * Resolve the registered `ActivityApi` singleton.
+ *
+ * Throws if the API isn't registered — see `getNoteApi` for rationale.
+ */
+export function getActivityApi(): ActivityApi {
+  return apiRegistry.get<ActivityApi>(ACTIVITY_API_TOKEN);
 }

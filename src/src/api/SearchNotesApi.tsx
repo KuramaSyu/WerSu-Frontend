@@ -1,6 +1,7 @@
 import { BACKEND_BASE } from "../statics";
 import { useSearchNotesStore } from "../zustand/useSearchNotesStore";
 import type { MinimalNote, RestNotesSearchType } from "./models/search";
+import { apiRegistry, type ApiToken } from "./apiRegistry";
 
 export interface ISearchNotesApi {
   search(
@@ -78,4 +79,21 @@ export class SearchNotesApi implements ISearchNotesApi {
     );
     return [];
   }
+}
+
+// Register the default singleton + a typed token so consumers can resolve
+// it via `getSearchNotesApi()`.
+apiRegistry.register(new SearchNotesApi());
+export const SEARCH_NOTES_API_TOKEN: ApiToken<SearchNotesApi> = Symbol(
+  "SearchNotesApi",
+) as ApiToken<SearchNotesApi>;
+apiRegistry.register(new SearchNotesApi(), SEARCH_NOTES_API_TOKEN);
+
+/**
+ * Resolve the registered `SearchNotesApi` singleton.
+ *
+ * Throws if the API isn't registered — see `getNoteApi` for rationale.
+ */
+export function getSearchNotesApi(): SearchNotesApi {
+  return apiRegistry.get<SearchNotesApi>(SEARCH_NOTES_API_TOKEN);
 }
