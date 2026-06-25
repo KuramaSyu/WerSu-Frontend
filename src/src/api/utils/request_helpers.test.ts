@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { ApiError } from "../SharingApi";
 import {
   errorMessageFromPayload,
+  extractShareIdFromUrl,
   readErrorPayload,
   requestJson,
   toQueryString,
@@ -222,5 +223,59 @@ describe("requestJson", () => {
     await expect(promise).rejects.toMatchObject({
       message: "Nope",
     });
+  });
+});
+
+describe("extractShareIdFromUrl", () => {
+  it("returns trimmed bare IDs unchanged", () => {
+    expect(extractShareIdFromUrl("abc123")).toBe("abc123");
+    expect(extractShareIdFromUrl("  abc123  ")).toBe("abc123");
+  });
+
+  it("returns empty string for empty or whitespace input", () => {
+    expect(extractShareIdFromUrl("")).toBe("");
+    expect(extractShareIdFromUrl("   ")).toBe("");
+  });
+
+  it("extracts ID from a /s/<id> URL", () => {
+    expect(
+      extractShareIdFromUrl(
+        "https://app.example.com/s/0195f8f4-1167-7f89-b5ec-b40a8f08f4cb",
+      ),
+    ).toBe("0195f8f4-1167-7f89-b5ec-b40a8f08f4cb");
+  });
+
+  it("extracts ID from a URL with extra path segments", () => {
+    expect(
+      extractShareIdFromUrl(
+        "https://app.example.com/shared/notes/0195f8f4-1167-7f89-b5ec-b40a8f08f4cb",
+      ),
+    ).toBe("0195f8f4-1167-7f89-b5ec-b40a8f08f4cb");
+  });
+
+  it("strips trailing query string from a /s/<id> URL", () => {
+    expect(
+      extractShareIdFromUrl(
+        "https://app.example.com/s/0195f8f4-1167-7f89-b5ec-b40a8f08f4cb?foo=bar",
+      ),
+    ).toBe("0195f8f4-1167-7f89-b5ec-b40a8f08f4cb");
+  });
+
+  it("prefers ?share_id=... over the path", () => {
+    expect(
+      extractShareIdFromUrl(
+        "https://app.example.com/s/from-path?share_id=from-query",
+      ),
+    ).toBe("from-query");
+  });
+
+  it("accepts ?share=... as an alias for ?share_id=...", () => {
+    expect(extractShareIdFromUrl("https://app.example.com/?share=abc123")).toBe(
+      "abc123",
+    );
+  });
+
+  it("returns empty string for a URL with no path segments or query ID", () => {
+    expect(extractShareIdFromUrl("https://app.example.com/")).toBe("");
   });
 });

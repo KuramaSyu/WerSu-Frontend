@@ -2,6 +2,8 @@ import { BACKEND_BASE } from "../statics";
 import { Note, type NoteData } from "./models/search";
 import { UserError } from "./models/UserError";
 import { PermissionsApi } from "./PermissionsApi";
+import { ShareTokenBearerMixin } from "./shareToken";
+import { apiRegistry, type ApiToken } from "./apiRegistry";
 
 export interface INoteApi {
   get(id: string): Promise<Note | undefined>;
@@ -13,8 +15,14 @@ export interface INoteApi {
   delete(id: string): Promise<boolean>;
 }
 
-// represents the backend methods, which are needed for user purposes
-export class NoteApi implements INoteApi {
+// represents the backend methods, which are needed for user purposes.
+//
+// Extends `ShareTokenBearerMixin` so the API can attach an
+// `Authorization: Bearer <share-jwt>` header to its outgoing requests when
+// a public share is active. The provider is injected at runtime via the
+// central `apiRegistry`; no provider => no share header is attached
+// (default state for logged-in users).
+export class NoteApi extends ShareTokenBearerMixin implements INoteApi {
   logError(url_part: string, error: unknown): void {
     console.error(
       `Error fetching ${BACKEND_BASE}${url_part}:`,
@@ -35,6 +43,17 @@ export class NoteApi implements INoteApi {
   }
 
   /**
+   * Returns the headers object for a request, merged with the share-token
+   * `Authorization` header when one is currently injected. Always `await` —
+   * the provider may be async.
+   */
+  private async authHeaders(
+    base: Record<string, string> = {},
+  ): Promise<Record<string, string>> {
+    return { ...base, ...(await this.resolveShareAuthHeader()) };
+  }
+
+  /**
    * tries to authenticate a user by coockie.
    * It sets `useUserStore` to the authenticated user
    * */
@@ -42,6 +61,7 @@ export class NoteApi implements INoteApi {
     const response = await fetch(`${BACKEND_BASE}/api/notes/${id}`, {
       method: "GET",
       credentials: "include",
+      headers: await this.authHeaders(),
     });
     if (!response.ok) {
       throw await this.buildUserError(response);
@@ -72,6 +92,7 @@ export class NoteApi implements INoteApi {
       {
         method: "GET",
         credentials: "include",
+        headers: await this.authHeaders(),
       },
     );
     if (!response.ok) {
@@ -93,9 +114,7 @@ export class NoteApi implements INoteApi {
     const response = await fetch(`${BACKEND_BASE}/api/notes`, {
       method: "POST",
       credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: await this.authHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({ title, content }),
     });
     if (!response.ok) {
@@ -132,9 +151,7 @@ export class NoteApi implements INoteApi {
     const response = await fetch(`${BACKEND_BASE}/api/notes`, {
       method: "PATCH",
       credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: await this.authHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify(body),
     });
     if (!response.ok) {
@@ -233,6 +250,7 @@ export class NoteApi implements INoteApi {
     const response = await fetch(`${BACKEND_BASE}/api/notes/${id}`, {
       method: "DELETE",
       credentials: "include",
+      headers: await this.authHeaders(),
     });
     if (!response.ok) {
       throw await this.buildUserError(response, "Failed to delete note");
@@ -242,4 +260,35 @@ export class NoteApi implements INoteApi {
     }
     throw new Error("Failed to delete note");
   }
+}
+
+// Register the default singleton so `apiRegistry.installShareTokenProvider(...)`
+// reaches it. Consumers that create their own `NoteApi` instances should call
+// `apiRegistry.register(instance)` themselves.
+apiRegistry.register(new NoteApi());
+
+/**
+ * Typed token for retrieving the registered `NoteApi` singleton from the
+ * registry. Use the helper `getNoteApi()` rather than calling
+ * `apiRegistry.get(NOTE_API_TOKEN)` directly — the helper is shorter and
+ * lets us swap the resolution strategy later (e.g. lazy init) without
+ * touching call sites.
+ */
+export const NOTE_API_TOKEN: ApiToken<NoteApi> = Symbol(
+  "NoteApi",
+) as ApiToken<NoteApi>;
+
+// Re-register the same instance under the typed token so both retrieval
+// styles work:
+apiRegistry.register(new NoteApi(), NOTE_API_TOKEN);
+
+/**
+ * Resolve the registered `NoteApi` singleton.
+ *
+ * Throws if the API isn't registered — call sites shouldn't silently get
+ * `undefined`, since that turns "auth header missing" into a runtime bug
+ * that's painful to track down.
+ */
+export function getNoteApi(): NoteApi {
+  return apiRegistry.get<NoteApi>(NOTE_API_TOKEN);
 }

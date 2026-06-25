@@ -4,6 +4,8 @@ import type {
   DirectoryReply,
   PatchDirectoryBody,
 } from "./models/directory.ts";
+import { ShareTokenBearerMixin } from "./shareToken";
+import { apiRegistry, type ApiToken } from "./apiRegistry";
 
 const DIRECTORIES_API_PATH = "/api/directories";
 
@@ -25,12 +27,24 @@ export interface IDirectoryApi {
   delete(id: string): Promise<DirectoryReply | undefined>;
 }
 
-export class DirectoryApi implements IDirectoryApi {
+// Extends `ShareTokenBearerMixin` so directory endpoints can attach the
+// anonymous share JWT when a public share is active. See `NoteApi` for the
+// full rationale — `DirectoryApi` follows the same pattern.
+export class DirectoryApi
+  extends ShareTokenBearerMixin
+  implements IDirectoryApi
+{
   private logError(urlPart: string, error: unknown): void {
     console.error(
       `Error fetching ${BACKEND_BASE}${urlPart}:`,
       JSON.stringify(error),
     );
+  }
+
+  private async authHeaders(
+    base: Record<string, string> = {},
+  ): Promise<Record<string, string>> {
+    return { ...base, ...(await this.resolveShareAuthHeader()) };
   }
 
   async list(query?: ListDirectoriesQuery): Promise<DirectoryReply[]> {
@@ -49,6 +63,7 @@ export class DirectoryApi implements IDirectoryApi {
     const response = await fetch(url.toString(), {
       method: "GET",
       credentials: "include",
+      headers: await this.authHeaders(),
     });
 
     if (!response.ok) {
@@ -76,6 +91,7 @@ export class DirectoryApi implements IDirectoryApi {
     const response = await fetch(`${BACKEND_BASE}${urlPart}`, {
       method: "GET",
       credentials: "include",
+      headers: await this.authHeaders(),
     });
 
     if (!response.ok) {
@@ -128,9 +144,7 @@ export class DirectoryApi implements IDirectoryApi {
     const response = await fetch(`${BACKEND_BASE}${urlPart}`, {
       method,
       credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: await this.authHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify(payload),
     });
 
@@ -157,6 +171,7 @@ export class DirectoryApi implements IDirectoryApi {
     const response = await fetch(`${BACKEND_BASE}${urlPart}`, {
       method,
       credentials: "include",
+      headers: await this.authHeaders(),
     });
 
     if (!response.ok) {
@@ -174,4 +189,29 @@ export class DirectoryApi implements IDirectoryApi {
 
     return directory ?? undefined;
   }
+}
+
+// Register the default singleton so `apiRegistry.installShareTokenProvider(...)`
+// reaches it. Consumers that create their own `DirectoryApi` instances should
+// call `apiRegistry.register(instance)` themselves.
+apiRegistry.register(new DirectoryApi());
+
+/**
+ * Typed token for retrieving the registered `DirectoryApi` singleton from
+ * the registry. Prefer the `getDirectoryApi()` helper over calling
+ * `apiRegistry.get(DIRECTORY_API_TOKEN)` directly.
+ */
+export const DIRECTORY_API_TOKEN: ApiToken<DirectoryApi> = Symbol(
+  "DirectoryApi",
+) as ApiToken<DirectoryApi>;
+
+apiRegistry.register(new DirectoryApi(), DIRECTORY_API_TOKEN);
+
+/**
+ * Resolve the registered `DirectoryApi` singleton.
+ *
+ * Throws if the API isn't registered — see `getNoteApi` for rationale.
+ */
+export function getDirectoryApi(): DirectoryApi {
+  return apiRegistry.get<DirectoryApi>(DIRECTORY_API_TOKEN);
 }

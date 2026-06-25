@@ -15,6 +15,8 @@ import type {
   CreateShareEndpointRequest,
   DeleteSharesEndpointReply,
   DeleteSharesEndpointRequest,
+  GetPublicShareEndpointReply,
+  GetPublicShareEndpointRequest,
   GetShareByIdEndpointReply,
   GetShareByIdEndpointRequest,
   GetSharesByIdEndpointReply,
@@ -39,6 +41,9 @@ export const sharingKeys = {
     [...sharingKeys.all, "byIds", request] as const,
 
   detail: (id: string) => [...sharingKeys.all, "detail", id] as const,
+
+  publicShare: (shareId: string) =>
+    [...sharingKeys.all, "publicShare", shareId] as const,
 };
 
 // -----------------------------------------------------------------------------
@@ -109,6 +114,35 @@ export function useShare(
     queryKey: sharingKeys.detail(request.id),
     queryFn: () => sharingApi.getShareById(request),
     enabled: !!request.id,
+    ...options,
+  });
+}
+
+/**
+ * Resolve a share URL or share ID to the public share grant.
+ *
+ * This is the public-token endpoint: it tells the caller which note is shared,
+ * what access level the bearer has (`access_as`), and the active time window.
+ *
+ * The query is disabled until a non-empty `share_id` is provided. Use
+ * `extractShareIdFromUrl` upstream to turn a pasted URL into a share ID.
+ */
+export function usePublicShare(
+  request: GetPublicShareEndpointRequest,
+  options?: Omit<
+    UseQueryOptions<
+      GetPublicShareEndpointReply,
+      Error,
+      GetPublicShareEndpointReply,
+      ReturnType<typeof sharingKeys.publicShare>
+    >,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: sharingKeys.publicShare(request.share_id),
+    queryFn: () => sharingApi.getPublicShare(request),
+    enabled: !!request.share_id,
     ...options,
   });
 }

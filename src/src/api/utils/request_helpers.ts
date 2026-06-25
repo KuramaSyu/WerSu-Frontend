@@ -102,11 +102,68 @@ export function errorMessageFromPayload(
 }
 
 /**
+ * Accepts a share URL or bare share ID and returns the bare share ID.
+ *
+ * Tries, in order:
+ *   1. Query string parameters `share_id` or `share` (case-insensitive).
+ *   2. The last non-empty path segment of the URL.
+ *
+ * If the input is not a valid URL, it is returned (trimmed) as the share ID.
+ *
+ * Examples:
+ *   extractShareIdFromUrl("https://app.example.com/s/abc123")
+ *     // => "abc123"
+ *   extractShareIdFromUrl("https://app.example.com/?share_id=abc123")
+ *     // => "abc123"
+ *   extractShareIdFromUrl("  abc123  ")
+ *     // => "abc123"
+ */
+export function extractShareIdFromUrl(input: string): string {
+  const trimmed = input?.trim() ?? "";
+  if (!trimmed) return "";
+
+  let url: URL | null = null;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    // Not a URL — treat the whole input as a bare share ID.
+    return trimmed;
+  }
+
+  const queryId =
+    url.searchParams.get("share_id") ?? url.searchParams.get("share");
+  if (queryId) return queryId;
+
+  const segments = url.pathname.split("/").filter((s) => s.length > 0);
+  return segments.length > 0 ? segments[segments.length - 1] : "";
+}
+
+/**
+ * Optional extra headers to merge into the outgoing request.
+ *
+ * Use `shareAuthHeader` to pass a pre-resolved `{ Authorization: "Bearer ..." }`
+ * record when the caller has opted into share-token authentication (see
+ * `ShareTokenBearerMixin.resolveShareAuthHeader`). Anything else that needs
+ * to ride along on every request can be added under `extraHeaders`.
+ */
+export interface RequestJsonExtras {
+  /**
+   * Pre-resolved `Authorization: Bearer <share-token>` header, or `{}` to
+   * skip. The caller is responsible for resolving this from the
+   * `ShareTokenBearer` mixin — `requestJson` does not read the registry.
+   */
+  shareAuthHeader?: Record<string, string>;
+  /** Any additional headers the caller wants to attach unconditionally. */
+  extraHeaders?: Record<string, string>;
+}
+
+/**
  * Sends a JSON request to the specified endpoint and parses the response.
  *
  * @template T - The expected type of the response data.
  * @param endpoint - The URL endpoint to send the request to.
  * @param init - Optional fetch RequestInit configuration (headers, method, body, etc.).
+ * @param extras - Optional headers to merge in (e.g. share-auth `Authorization`).
  * @returns A promise that resolves to the parsed response data of type T.
  * @throws {ApiError} If the HTTP response status is not ok (2xx), containing the error message, status code, and error payload.
  *
@@ -120,13 +177,16 @@ export function errorMessageFromPayload(
 export async function requestJson<T>(
   endpoint: string,
   init: RequestInit,
+  extras: RequestJsonExtras = {},
 ): Promise<T> {
   const response = await fetch(endpoint, {
     credentials: "include",
     ...init,
     headers: {
       Accept: "application/json",
+      ...(extras.extraHeaders ?? {}),
       ...(init.headers ?? {}),
+      ...(extras.shareAuthHeader ?? {}),
     },
   });
 
