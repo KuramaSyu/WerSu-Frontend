@@ -26,21 +26,6 @@ import "@fontsource/fira-sans/500.css";
 import "@fontsource/fira-sans/700.css";
 import { LayoutProvider } from "./LayoutProvider";
 import { AppShell } from "./AppShell";
-import { QueryClient } from "@tanstack/react-query";
-import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
-import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      gcTime: 1000 * 60 * 60 * 24, // 24 hours
-    },
-  },
-});
-
-const localStoragePersister = createAsyncStoragePersister({
-  storage: window.localStorage,
-});
 
 /**
  * records the navigation of the user, so that the back button works as expected
@@ -60,43 +45,40 @@ const NavigationRecorder: React.FC = () => {
 function App() {
   const { theme } = useThemeStore();
 
+  // QueryClientProvider lives in main.tsx; do not add a second one here
+  // or imperative `queryClient` invalidations target the wrong cache.
   return (
-    <PersistQueryClientProvider
-      client={queryClient}
-      persistOptions={{ persister: localStoragePersister }}
-    >
-      <ThemeProvider theme={theme}>
-        <Bootstrap />
-        {/* <CssBaseline /> */}
-        <Router>
-          <Box
-            sx={{
-              width: "100vw",
-              height: "100vh",
-              display: "flex",
-              flexDirection: "column",
-              overflow: "hidden", // Prevents content from growing beyond 100vh
-              backgroundColor: theme.palette.background.default,
-            }}
-          >
-            <NavigationRecorder />
-            <LayoutProvider>
-              <Routes>
-                <Route element={<AppShell />}>
-                  <Route path="/" element={<MainPage />} />
-                  <Route path="/n/:id" element={<NotePage />} />
-                  <Route path="/d/:id" element={<DirectoryView />} />
-                  <Route path="/d/:id/edit" element={<DirectoryEditPage />} />
-                  <Route path="/graph" element={<FileGraphPage />} />
-                  <Route path="/docs/*" element={<SwaggerDocs />} />
-                </Route>
-              </Routes>
-            </LayoutProvider>
-            <InfoDisplay />
-          </Box>
-        </Router>
-      </ThemeProvider>
-    </PersistQueryClientProvider>
+    <ThemeProvider theme={theme}>
+      <Bootstrap />
+      {/* <CssBaseline /> */}
+      <Router>
+        <Box
+          sx={{
+            width: "100vw",
+            height: "100vh",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden", // Prevents content from growing beyond 100vh
+            backgroundColor: theme.palette.background.default,
+          }}
+        >
+          <NavigationRecorder />
+          <LayoutProvider>
+            <Routes>
+              <Route element={<AppShell />}>
+                <Route path="/" element={<MainPage />} />
+                <Route path="/n/:id" element={<NotePage />} />
+                <Route path="/d/:id" element={<DirectoryView />} />
+                <Route path="/d/:id/edit" element={<DirectoryEditPage />} />
+                <Route path="/graph" element={<FileGraphPage />} />
+                <Route path="/docs/*" element={<SwaggerDocs />} />
+              </Route>
+            </Routes>
+          </LayoutProvider>
+          <InfoDisplay />
+        </Box>
+      </Router>
+    </ThemeProvider>
   );
 }
 
