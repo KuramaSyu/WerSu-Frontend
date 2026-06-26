@@ -93,9 +93,26 @@ export class UserApi implements UserApiInterface {
       if (tokenData.token) {
         return tokenData;
       }
+      // 2xx but no JWT — distinct from generic failure so the badge
+      // can show a useful diagnostic.
+      this.logError(url, {
+        status: response.status,
+        body: tokenData,
+        reason: "empty token in response body",
+      });
+      throw new Error(
+        `Backend returned 2xx but no JWT (status=${response.status})`,
+      );
     }
-    this.logError(url, response.json());
-    throw new Error("Failed to fetch access token");
+    // Read body once (it can only be consumed once).
+    let body: unknown = null;
+    try {
+      body = await response.clone().text();
+    } catch {
+      /* ignore */
+    }
+    this.logError(url, { status: response.status, body });
+    throw new Error(`Failed to fetch access token (HTTP ${response.status})`);
   }
 }
 
