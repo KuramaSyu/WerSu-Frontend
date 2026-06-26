@@ -1,0 +1,8 @@
+# Template for `.env.production`. Copy to `.env.production` and adjust.
+# Loaded automatically by Vite when running `npm run build` / `npm run preview`.
+# Used by `src/statics.tsx` via import.meta.env.VITE_BACKEND_URL.
+# How the backend is reachable from the user's browser in production builds.
+VITE_BACKEND_URL=http://localhost:8080
+
+# WebSocket endpoint for the Hocuspocus collaboration provider in production.
+VITE_HOCUSPOCUS_WS_URL=ws://localhost:8666

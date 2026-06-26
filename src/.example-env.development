@@ -1,0 +1,8 @@
+# Template for `.env.development`. Copy to `.env.development` and adjust.
+# Loaded automatically by Vite when running `npm run dev`.
+# Used by `src/statics.tsx` via import.meta.env.VITE_BACKEND_URL.
+# How the backend is reachable from the user's browser during local dev.
+VITE_BACKEND_URL=http://localhost:8080
+
+# WebSocket endpoint for the Hocuspocus collaboration provider during local dev.
+VITE_HOCUSPOCUS_WS_URL=ws://localhost:8666
