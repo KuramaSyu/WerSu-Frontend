@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import * as Y from "yjs";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import { IndexeddbPersistence } from "y-indexeddb";
 import { useAuthStore } from "../zustand/useAuthStore";
 import { HOCUSPOCUS_WS_URL } from "../statics";
 import { useAccessToken } from "../api/queries/useAccessToken";
-import { queryClient } from "../api/queryClient";
+import { collabStatusStore } from "../zustand/useCollabStatusStore";
 
 type CollabCacheEntry = {
   ydoc: Y.Doc;
@@ -14,100 +14,100 @@ type CollabCacheEntry = {
 };
 
 /**
- * Custom hook to manage real-time collaboration for a specific note.
+ * Module-scope cache, keyed by `noteId`. Module-scope (not `useRef`) so
+ * that two trees subscribing to the same note — `Editor.tsx` and
+ * `CollabStatusBadge.tsx` — share a single `Y.Doc` + provider instead of
+ * each opening their own WebSocket.
+ */
+const collabCache = new Map<string, CollabCacheEntry>();
+const listeners = new Set<() => void>();
+const emit = () => {
+  for (const l of listeners) l();
+};
+
+/**
+ * Real-time collab hook. Provider creation is gated on a JWT being in
+ * `useAuthStore.accessToken` — opening the WebSocket without a token
+ * would make Hocuspocus reply with `jwt must be provided` and retry in
+ * a tight loop.
  *
- * This hook initializes and manages the lifecycle of a Y.js document (`Y.Doc`)
- * and a Hocuspocus provider for real-time synchronization. It also sets up
- * IndexedDB persistence for offline support.
- *
- * The connection is established only when both a `noteId` and an `accessToken` are available.
- * When the `noteId` or `accessToken` changes, the existing connection is torn down
- * and a new one is established.
- *
- * @param noteId - The unique identifier for the note to collaborate on. If undefined,
- * no connection will be established.
- * @returns An object containing the Y.js document (`ydoc`) and the Hocuspocus
- * provider instance (`provider`). Both will be `null` until the connection is initialized.
- *
- * @example
- * ```tsx
- * const MyEditor = ({ noteId }) => {
- *   const { ydoc, provider } = useNoteCollaboration(noteId);
- *
- *   if (!ydoc || !provider) {
- *     return <div>Loading...</div>;
- *   }
- *
- *   return <Editor ydoc={ydoc} provider={provider} />;
- * }
- * ```
+ * Entries are kept for the module lifetime — the editor and badge both
+ * re-mount frequently (read/write toggle, etc.) and we don't want to
+ * drop the IndexedDB-loaded `Y.Doc` and lose local edits.
  */
 export function useNoteCollaboration(noteId?: string): CollabCacheEntry | null {
-  // cache to not rebuild ydoc / provider and hence prevent editor rebuilds
-  const collabCache = useRef<Map<string, CollabCacheEntry>>(new Map());
+  const tokenQuery = useAccessToken();
+  const accessToken = useAuthStore((s) => s.accessToken);
 
-  const { data: accessToken } = useAccessToken();
+  const entry = useSyncExternalStore(
+    (onChange) => {
+      listeners.add(onChange);
+      return () => {
+        listeners.delete(onChange);
+      };
+    },
+    () => (noteId ? (collabCache.get(noteId) ?? null) : null),
+    () => null,
+  );
 
-  const [state, setEntry] = useState<CollabCacheEntry | null>(null);
-
-  // when useAuthStore gets a new token from the query, then the subscriber will
-  // trigger a reconnect. I don't know if this actually reconnects, if the
-  // connection is already established, since query updates at 14 of 15 minutes valid token time
+  // Reconnect every provider when the access token rotates (14-min
+  // refresh, logout, share-token swap).
   useEffect(() => {
-    const unsubscribe = useAuthStore.subscribe((state, prevState) => {
-      if (state.accessToken !== prevState.accessToken) {
-        collabCache.current.forEach(({ provider }) => {
-          provider.connect();
-        });
+    return useAuthStore.subscribe((s, prev) => {
+      if (s.accessToken !== prev.accessToken) {
+        collabCache.forEach(({ provider }) => provider.connect());
       }
     });
-
-    return unsubscribe;
-  });
+  }, []);
 
   useEffect(() => {
-    if (!noteId || !accessToken) {
+    if (!noteId) return;
+    if (!accessToken) {
       console.log(
-        "Don't connect to Hocuspocus provider, missing noteId or accessToken",
+        "Don't connect to Hocuspocus provider, missing accessToken for note",
+        noteId,
       );
+      collabStatusStore
+        .getState()
+        .setStatus(
+          noteId,
+          "awaitingToken",
+          "Waiting for the access token to load…",
+        );
       return;
     }
-    let cached = collabCache.current.get(noteId);
 
-    if (!cached) {
-      console.log("Creating new Hocuspocus provider for note", noteId);
-      const ydoc = new Y.Doc();
-      // this also loads the document from IndexedDB into ydoc
-      const persistence = new IndexeddbPersistence(`note-${noteId}`, ydoc);
-      const provider = new HocuspocusProvider({
-        url: `${HOCUSPOCUS_WS_URL}`,
-        document: ydoc,
-        name: `note-${noteId}`,
-        token: () => useAuthStore.getState().accessToken ?? "",
-      });
-
-      cached = { ydoc, provider, persistence };
-      collabCache.current.set(noteId, cached);
-    } else {
-      console.debug("Using cached Hocuspocus provider for note", noteId);
-      cached.provider.connect();
+    if (collabCache.has(noteId)) {
+      console.debug("Re-using cached Hocuspocus provider for note", noteId);
+      collabCache.get(noteId)!.provider.connect();
+      return;
     }
 
-    setEntry(cached);
+    console.log("Creating new Hocuspocus provider for note", noteId);
+    const ydoc = new Y.Doc();
+    const persistence = new IndexeddbPersistence(`note-${noteId}`, ydoc);
+    const provider = new HocuspocusProvider({
+      url: `${HOCUSPOCUS_WS_URL}`,
+      document: ydoc,
+      name: `note-${noteId}`,
+      // Read fresh on every handshake so 14-min token rotations land.
+      token: () => useAuthStore.getState().accessToken ?? "",
+    });
+    collabCache.set(noteId, { ydoc, provider, persistence });
+    emit();
+  }, [noteId, accessToken]);
 
-    // if current accessToken still causes issues, listening for status might help
-    // cached.provider.on("status", () => {
-    //   console.log("Hocuspocus provider status changed");
-    // });
+  // Mirror JWT-fetch failures into the status store for the badge tooltip.
+  useEffect(() => {
+    if (noteId && tokenQuery.isError) {
+      collabStatusStore.getState().setTokenFetchError(noteId, tokenQuery.error);
+    }
+  }, [noteId, tokenQuery.isError, tokenQuery.error]);
 
-    return () => {
-      cached!.provider.disconnect();
-    };
-  }, [noteId]);
+  return entry;
+}
 
-  if (!noteId) {
-    // if no noteId is provided, return null values
-    return null;
-  }
-  return state;
+/** Cache lookup without subscribing — used by the badge's retry button. */
+export function getCollabEntry(noteId: string): CollabCacheEntry | undefined {
+  return collabCache.get(noteId);
 }

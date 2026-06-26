@@ -1,10 +1,11 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useUserStore } from "./zustand/userStore";
 import { useAuthStore } from "./zustand/useAuthStore";
 import { getSearchNotesApi } from "./api/SearchNotesApi";
 import { RestNotesSearchType } from "./api/models/search";
 import { getUserApi } from "./api/UserApi";
+import { useAccessToken } from "./api/queries/useAccessToken";
 import { apiRegistry } from "./api/apiRegistry";
 
 /**
@@ -63,10 +64,33 @@ export const Bootstrap: React.FC = () => {
     staleTime: Infinity, // cache forever
   });
 
-  useQuery({
+  const userQuery = useQuery({
     queryKey: ["user-load"], // load once - there shouldn't be a reason to load a user multiple times
     queryFn: async () => await userApi.fetchUser(),
     staleTime: Infinity, // cache forever
   });
+
+  // Mount the access-token query at app boot so the JWT is in the auth
+  // store by the time the user enters write mode. Without this, users who
+  // land on a read-mode note and toggle to write see the badge stuck on
+  // "Awaiting login" until the fetch resolves.
+  useAccessToken();
+
+  // Refetch the JWT once the user-load settles — the session cookie may
+  // not have been valid when the query first fired. `useRef` latch
+  // prevents Strict Mode's double-mount from triggering two refetches.
+  const didRefetchAfterUserLoad = useRef(false);
+  useEffect(() => {
+    if (userQuery.isSuccess && !didRefetchAfterUserLoad.current) {
+      didRefetchAfterUserLoad.current = true;
+      // Lazy import: `useAccessToken` would re-create the query each
+      // call, and its result object is reference-unstable, so we go
+      // through the singleton client directly.
+      void import("./api/queryClient").then(({ queryClient }) =>
+        queryClient.invalidateQueries({ queryKey: ["accessToken"] }),
+      );
+    }
+  }, [userQuery.isSuccess]);
+
   return <></>;
 };

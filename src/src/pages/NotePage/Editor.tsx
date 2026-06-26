@@ -99,6 +99,10 @@ import * as Y from "yjs"; // Ensure Yjs is imported directly if needed
 import { Awareness } from "y-protocols/awareness";
 import { useUser } from "../../api/queries/useUser";
 import { useLiveUsersStore } from "../../zustand/useLiveUsersStore";
+import {
+  collabStatusStore,
+  type CollabStatus,
+} from "../../zustand/useCollabStatusStore";
 import { queryClient } from "../../api/queryClient";
 import { useActiveNoteStore } from "../../zustand/editorStore";
 import { useUpdateNote } from "../../api/queries/useNoteQueries";
@@ -473,6 +477,62 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
       useLiveUsersStore.getState().clearUsers(noteId);
     };
   }, [noteId, collaboration?.provider]);
+
+  // Mirror the provider's connection state into a zustand store so the
+  // toolbar badge can render without prop-drilling the provider instance.
+  useEffect(() => {
+    if (!noteId || !editMode) {
+      if (noteId) collabStatusStore.getState().setStatus(noteId, "idle");
+      return;
+    }
+    if (!collaboration?.provider) return; // hook is waiting on the JWT — leave its diagnostic alone
+
+    const { provider } = collaboration;
+    const setStatus = (status: CollabStatus, message?: string) =>
+      collabStatusStore.getState().setStatus(noteId, status, message);
+
+    const onStatus = (event: { status: string }) => {
+      switch (event.status) {
+        case "connecting":
+          setStatus(
+            "connecting",
+            "Opening WebSocket to the collaboration server…",
+          );
+          break;
+        case "connected":
+          setStatus("connected");
+          break;
+        case "disconnected":
+          setStatus(
+            "disconnected",
+            "WebSocket closed. The provider will retry automatically.",
+          );
+          break;
+      }
+    };
+    const onAuthenticated = () => setStatus("connected");
+    const onAuthenticationFailed = (event?: { reason?: string }) =>
+      collabStatusStore
+        .getState()
+        .setAuthFailed(noteId, event?.reason ?? "unknown reason");
+
+    provider.on("status", onStatus);
+    provider.on("authenticated", onAuthenticated);
+    provider.on("authenticationFailed", onAuthenticationFailed);
+
+    // Seed the status from the current provider state — needed because we
+    // may subscribe *after* the socket has already opened.
+    const current = (provider as { status?: string }).status;
+    if (current === "connected") setStatus("connected");
+    else if (current === "connecting") setStatus("connecting");
+    else setStatus("disconnected");
+
+    return () => {
+      provider.off("status", onStatus);
+      provider.off("authenticated", onAuthenticated);
+      provider.off("authenticationFailed", onAuthenticationFailed);
+    };
+  }, [noteId, editMode, collaboration?.provider]);
 
   // is write mode only: load last api version
   // useEffect(() => {

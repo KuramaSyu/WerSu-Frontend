@@ -1,5 +1,6 @@
 import {
   Button,
+  Collapse,
   IconButton,
   Stack,
   ToggleButton,
@@ -14,6 +15,7 @@ import { useThemeStore } from "../../zustand/useThemeStore";
 import { useActiveNoteStore } from "../../zustand/editorStore";
 import { useState } from "react";
 import { ShareDialog } from "./ShareDialog";
+import { CollabStatusBadge } from "./CollabStatusBadge";
 
 export const NoteButtonActionRow: React.FC = () => {
   const handleSave = useActiveNoteStore((s) => s.save);
@@ -35,28 +37,46 @@ export const NoteButtonActionRow: React.FC = () => {
   };
   return (
     <>
-      <Stack direction={"row"} spacing={theme.spacing(1)}>
-        <ToggleButtonGroup
-          size="small"
-          {...control}
-          aria-label="edit or view mode"
+      <Stack
+        direction={"column"}
+        spacing={theme.spacing(0.5)}
+        sx={{ alignItems: "flex-start" }}
+      >
+        <Stack direction={"row"} spacing={theme.spacing(1)}>
+          <ToggleButtonGroup
+            size="small"
+            {...control}
+            aria-label="edit or view mode"
+          >
+            <ToggleButton value={"read"} key="left">
+              read
+            </ToggleButton>
+
+            <ToggleButton value={"write"} key="center">
+              write
+            </ToggleButton>
+          </ToggleButtonGroup>
+
+          <IconButton onClick={() => void handleSave()}>
+            <SaveIcon />
+          </IconButton>
+
+          <IconButton onClick={() => setShareDialogOpen(true)}>
+            <ShareIcon />
+          </IconButton>
+        </Stack>
+
+        {/* Collab badge — hidden in read mode; the Collapse animation matches
+            the editor's `theme.transitions.duration.complex` so it slides in
+            without competing with the editor mount. */}
+        <Collapse
+          in={write}
+          timeout={theme.transitions.duration.complex}
+          mountOnEnter
+          unmountOnExit
         >
-          <ToggleButton value={"read"} key="left">
-            read
-          </ToggleButton>
-
-          <ToggleButton value={"write"} key="center">
-            write
-          </ToggleButton>
-        </ToggleButtonGroup>
-
-        <IconButton onClick={() => void handleSave()}>
-          <SaveIcon />
-        </IconButton>
-
-        <IconButton onClick={() => setShareDialogOpen(true)}>
-          <ShareIcon />
-        </IconButton>
+          <CollabStatusBadge />
+        </Collapse>
       </Stack>
       <ShareDialog
         noteId={noteId ?? ""}
