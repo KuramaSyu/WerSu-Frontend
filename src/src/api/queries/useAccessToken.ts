@@ -2,55 +2,46 @@ import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { getUserApi } from "../UserApi";
 import { useAuthStore } from "../../zustand/useAuthStore";
 
-// Use the registered singleton. See `useNoteQueries` for rationale.
 const userApi = getUserApi();
-
-const isExpired = (token: string): boolean => {
-  try {
-    const payload = JSON.parse(atob(token.split(".")[1]));
-
-    // expires at
-    const exp = payload.exp;
-
-    const now = Math.floor(Date.now() / 1000);
-    return exp < now;
-  } catch (error) {
-    console.error("Error parsing JWT token:", error);
-    return false;
-  }
-};
 
 const JWT_REFRESH_BUFFER = 60; // seconds
 
 /**
- * TRY TO USE `useAuthStore` INSTEAD OF THIS HOOK and register given listeners there.
- * This hooks main purpose is to fetch the access token regularly and set it in the zustand store.
+ * Owns the lifecycle of the user's JWT. The token is written into
+ * `useAuthStore.accessToken` so non-hook code (e.g. the Hocuspocus
+ * provider's `token` callback) can read it synchronously.
  *
- * A React Query hook for fetching and managing the user's JWT access token.
+ * On rejection, `setAccessToken` is **not** called — the previous token
+ * (if any) stays in the store, so callers fall back to the stale token
+ * instead of spuriously clearing it.
  */
 export function useAccessToken(): UseQueryResult<string, Error> {
   return useQuery({
     queryKey: ["accessToken"],
+    retry: 5,
+    // Exponential backoff capped at 15s, so transient 401s (e.g. cookie
+    // just expired) recover in ~30s instead of locking the user out for
+    // the full `refetchInterval` (14 min).
+    retryDelay: (i) => Math.min(15_000, 1_000 * 2 ** i),
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    // `always` so the query still runs when navigator.onLine is false and
+    // the badge can show the user a useful diagnostic instead of silence.
+    networkMode: "always",
     queryFn: async () => {
-      // i am sorry, but I will directly update zustand in here. I want to avoid
-      // extra react components with a useEffect to transfer the token from react query to zustand
-      const token = await userApi.fetchAccessToken().then((data) => {
-        console.log(
-          "Fetched new access token:",
-          data.token.substring(0, 10) + "...",
-        );
-        return data.token;
-      });
+      const data = await userApi.fetchAccessToken();
+      const token = data.token;
+      if (!token) {
+        throw new Error("Backend returned 2xx but no JWT in body");
+      }
 
-      // set zustand directly
-      // setAccessToken will notify all listeners
-      useAuthStore.getState().setAccessToken(token);
-
-      // return token anyways
+      const current = useAuthStore.getState().accessToken;
+      if (current !== token) {
+        useAuthStore.getState().setAccessToken(token);
+      }
       return token;
     },
-
-    staleTime: 15 * 60 * 1000 - JWT_REFRESH_BUFFER * 1000, // 15 minutes - 1 minute buffer
+    staleTime: 15 * 60 * 1000 - JWT_REFRESH_BUFFER * 1000,
     refetchInterval: 15 * 60 * 1000 - JWT_REFRESH_BUFFER * 1000,
   });
 }
