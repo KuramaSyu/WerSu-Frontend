@@ -1,4 +1,19 @@
 services:
+  wersu-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_BACKEND_URL: ${VITE_BACKEND_URL:-http://localhost:8080}
+        VITE_HOCUSPOCUS_WS_URL: ${VITE_HOCUSPOCUS_WS_URL:-ws://localhost:8666}
+    image: wersu-frontend:dev
+    container_name: wersu-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    depends_on:
+      - wersu-rest
+
   wersu-grpc:
     image: kuramasyu/wersu-grpc:dev
     ports:
