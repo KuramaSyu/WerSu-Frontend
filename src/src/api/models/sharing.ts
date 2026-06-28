@@ -13,6 +13,7 @@ export interface CreateShareBody {
   note_id: string;
   online_since?: string;
   online_until?: string;
+  permission: string;
 }
 
 export interface UpdateShareBody {
@@ -21,6 +22,7 @@ export interface UpdateShareBody {
   note_id: string;
   online_since?: string;
   online_until?: string;
+  permission: string;
 }
 
 export interface DeleteSharesBody {
