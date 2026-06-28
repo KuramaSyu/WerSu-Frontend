@@ -6,6 +6,7 @@ import {
   Box,
   Chip,
   Stack,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import ShareIcon from "@mui/icons-material/Share";
@@ -39,6 +40,7 @@ const formatPermission = (
   icon: React.ReactNode;
   color: "warning" | "info" | "default";
   variant: "filled" | "outlined";
+  tooltip: string;
 } => {
   if (!raw) {
     return {
@@ -46,6 +48,7 @@ const formatPermission = (
       icon: <HelpIcon />,
       color: "default",
       variant: "outlined",
+      tooltip: "Permission not set",
     };
   }
   if (raw === "SHARE_PERMISSION_WRITE") {
@@ -54,6 +57,7 @@ const formatPermission = (
       icon: <EditIcon />,
       color: "warning",
       variant: "filled",
+      tooltip: "Recipients can view and modify the note",
     };
   }
   if (raw === "SHARE_PERMISSION_READ") {
@@ -62,6 +66,7 @@ const formatPermission = (
       icon: <VisibilityIcon />,
       color: "info",
       variant: "filled",
+      tooltip: "Recipients can view the note but cannot modify it",
     };
   }
   if (KNOWN_PERMISSIONS.has(raw)) {
@@ -71,6 +76,9 @@ const formatPermission = (
       icon: isWrite ? <EditIcon /> : <VisibilityIcon />,
       color: isWrite ? "warning" : "info",
       variant: "filled",
+      tooltip: isWrite
+        ? "Recipients can view and modify the note"
+        : "Recipients can view the note but cannot modify it",
     };
   }
   return {
@@ -78,6 +86,7 @@ const formatPermission = (
     icon: <HelpIcon />,
     color: "default",
     variant: "outlined",
+    tooltip: `Unknown permission: ${raw}`,
   };
 };
 
@@ -90,6 +99,21 @@ const formatExpiry = (iso?: string): string => {
   if (ts <= Date.now()) return "expired";
 
   return `in ${formatDistanceToNowStrict(ts, { addSuffix: false })}`;
+};
+
+/**
+ * Human-friendly absolute expiry string for tooltips, e.g.
+ *   "Expires Jun 21, 2026, 12:00 PM" / "Expired" / "Never expires".
+ */
+const formatExpiryTooltip = (iso?: string): string => {
+  if (!iso) return "Never expires";
+  const ts = Date.parse(iso);
+  if (Number.isNaN(ts)) return "Never expires";
+  if (ts <= Date.now()) return "Expired";
+  // `Date.parse` returns a raw epoch number — wrap it in `Date` so
+  // `toLocaleString` formats it as a timestamp, not as a localized
+  // integer ("1.782.741.795.280").
+  return `Accessible until ${new Date(ts).toLocaleString()}`;
 };
 
 /**
@@ -151,23 +175,35 @@ export const ShareCard: React.FC<ShareCardProps> = ({
           spacing={M1}
           sx={{ alignItems: "center", flex: 1, minWidth: 0 }}
         >
-          <Chip
-            size="small"
-            icon={permission.icon as React.ReactElement}
-            label={permission.label}
-            color={permission.color}
-            variant={permission.variant}
-          />
-          <Stack
-            direction="row"
-            spacing={0.5}
-            sx={{ alignItems: "center", color: "text.secondary", minWidth: 0 }}
-          >
-            <EventIcon sx={{ fontSize: 14 }} />
-            <Typography variant="caption" noWrap>
-              {formatExpiry(share.online_until)}
-            </Typography>
-          </Stack>
+          <Tooltip title={permission.tooltip}>
+            {/* `span` wrapper is required so the tooltip can hover an
+                inline element without forcing the chip into a block layout. */}
+            <span>
+              <Chip
+                size="small"
+                icon={permission.icon as React.ReactElement}
+                label={permission.label}
+                color={permission.color}
+                variant={permission.variant}
+              />
+            </span>
+          </Tooltip>
+          <Tooltip title={formatExpiryTooltip(share.online_until)}>
+            <Stack
+              direction="row"
+              spacing={0.5}
+              sx={{
+                alignItems: "center",
+                color: "text.secondary",
+                minWidth: 0,
+              }}
+            >
+              <EventIcon sx={{ fontSize: 14 }} />
+              <Typography variant="caption" noWrap>
+                {formatExpiry(share.online_until)}
+              </Typography>
+            </Stack>
+          </Tooltip>
         </Stack>
       </AccordionSummary>
 
