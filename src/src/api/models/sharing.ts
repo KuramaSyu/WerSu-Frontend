@@ -6,6 +6,7 @@ export interface NoteShareReply {
   created_by: string;
   online_since?: string;
   online_until?: string;
+  permission: string;
 }
 
 export interface CreateShareBody {
