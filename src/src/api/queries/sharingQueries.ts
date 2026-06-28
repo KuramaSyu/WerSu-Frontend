@@ -169,18 +169,22 @@ export function useCreateShare(
 ) {
   const queryClient = useQueryClient();
 
+  // Pull `onSuccess` out of `options` so we can compose it after the
+  // invalidation. Spreading `...options` AFTER our own `onSuccess` would
+  // let the caller's handler silently replace ours — leaving the cache
+  // stale and forcing a page reload to see the new shares list.
+  const { onSuccess: userOnSuccess, ...restOptions } = options ?? {};
+
   return useMutation({
     mutationFn: (request) => sharingApi.createShare(request),
-
+    ...restOptions,
     onSuccess: async (...args) => {
       await queryClient.invalidateQueries({
         queryKey: sharingKeys.all,
       });
 
-      await options?.onSuccess?.(...args);
+      await userOnSuccess?.(...args);
     },
-
-    ...options,
   });
 }
 
@@ -200,18 +204,20 @@ export function useUpdateShare(
 ) {
   const queryClient = useQueryClient();
 
+  // See `useCreateShare` — keep `onSuccess` out of `restOptions` so the
+  // invalidation wrapper can't be overridden by the caller.
+  const { onSuccess: userOnSuccess, ...restOptions } = options ?? {};
+
   return useMutation({
     mutationFn: (request) => sharingApi.updateShare(request),
-
+    ...restOptions,
     onSuccess: async (...args) => {
       await queryClient.invalidateQueries({
         queryKey: sharingKeys.all,
       });
 
-      await options?.onSuccess?.(...args);
+      await userOnSuccess?.(...args);
     },
-
-    ...options,
   });
 }
 
@@ -229,17 +235,19 @@ export function useDeleteShares(
 ) {
   const queryClient = useQueryClient();
 
+  // See `useCreateShare` — keep `onSuccess` out of `restOptions` so the
+  // invalidation wrapper can't be overridden by the caller.
+  const { onSuccess: userOnSuccess, ...restOptions } = options ?? {};
+
   return useMutation({
     mutationFn: (request) => sharingApi.deleteShares(request),
-
+    ...restOptions,
     onSuccess: async (...args) => {
       await queryClient.invalidateQueries({
         queryKey: sharingKeys.all,
       });
 
-      await options?.onSuccess?.(...args);
+      await userOnSuccess?.(...args);
     },
-
-    ...options,
   });
 }
