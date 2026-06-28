@@ -202,17 +202,13 @@ export const ShareCard: React.FC<ShareCardProps> = ({
             </Typography>
             <MicroInteractionButton
               size="small"
-              edge="end"
               aria-label="copy share url"
               disabled={!shareUrl}
               icon={<ContentCopyIcon fontSize="small" />}
               microInteraction={
-                <CheckCircleIcon
-                  fontSize="small"
-                  sx={{ color: "success.main" }}
-                />
+                <CheckCircleIcon fontSize="small" color="success" />
               }
-              microDurationMs={1000}
+              microDurationMs={Math.PI * 1000}
               onTrigger={() => {
                 if (shareUrl && navigator.clipboard) {
                   return navigator.clipboard.writeText(shareUrl);
