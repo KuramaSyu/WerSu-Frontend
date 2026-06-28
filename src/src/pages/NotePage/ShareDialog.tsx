@@ -24,9 +24,11 @@ import { useState } from "react";
 import PublicIcon from "@mui/icons-material/Public";
 import InsertLinkIcon from "@mui/icons-material/InsertLink";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import EditIcon from "@mui/icons-material/Edit";
 import CollapseToggleButton from "../../components/CollapseToggleButton";
 import ScheduleIcon from "@mui/icons-material/Schedule";
-import { sharingApi } from "../../api/SharingApi";
+import { getSharingApi, sharingApi } from "../../api/SharingApi";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 
 export interface ShareDialogProps {
@@ -49,6 +51,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
 }) => {
   const { theme } = useThemeStore();
   const [shareType, setShareType] = useState("link");
+  const [accessType, setAccessType] = useState("read");
   const [activeSeconds, setActiveSeconds] = useState(Months_1);
   const [description, setDescription] = useState<string | null>(null);
   const setMessage = useInfoStore((s) => s.setMessage);
@@ -74,6 +77,18 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
     exclusive: true,
   };
 
+  const handleChangeAccess = (
+    event: React.MouseEvent<HTMLElement>,
+    newAlignment: string,
+  ) => {
+    setAccessType(newAlignment);
+  };
+  const accessControl = {
+    value: accessType,
+    onChange: handleChangeAccess,
+    exclusive: true,
+  };
+
   const handleChangeSchedule = (
     event: React.MouseEvent<HTMLElement>,
     newAlignment: number,
@@ -88,7 +103,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
   };
 
   const onShare = () => {
-    sharingApi
+    getSharingApi()
       .createShare({
         share: {
           note_id: noteId,
@@ -96,6 +111,11 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
           online_until: new Date(
             Date.now() + activeSeconds * 1000,
           ).toISOString(),
+          online_since: new Date().toISOString(),
+          permission:
+            accessType === "write"
+              ? "SHARE_PERMISSION_WRITE"
+              : "SHARE_PERMISSION_READ",
         },
       })
       .then((reply) => {
@@ -184,6 +204,46 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                     }
                   >
                     <PersonAddIcon />
+                  </CollapseToggleButton>
+                </Tooltip>
+              </ToggleButtonGroup>
+            </Stack>
+
+            <Stack
+              className="dialog-access-selection"
+              direction={"column"}
+              spacing={M1}
+            >
+              <Typography variant="h5">Access</Typography>
+
+              <ToggleButtonGroup aria-label="access options" {...accessControl}>
+                <Tooltip title="Recipients can view but not modify">
+                  <CollapseToggleButton
+                    value="read"
+                    sx={{ gap: M2 }}
+                    selected={accessType === "read"}
+                    whenSelected={
+                      <Typography sx={{ whiteSpace: "nowrap", pl: M2 }}>
+                        Only Read
+                      </Typography>
+                    }
+                  >
+                    <VisibilityIcon />
+                  </CollapseToggleButton>
+                </Tooltip>
+
+                <Tooltip title="Recipients can view and modify">
+                  <CollapseToggleButton
+                    value="write"
+                    sx={{ gap: M2 }}
+                    selected={accessType === "write"}
+                    whenSelected={
+                      <Typography sx={{ whiteSpace: "nowrap", pl: M2 }}>
+                        Can Edit
+                      </Typography>
+                    }
+                  >
+                    <EditIcon />
                   </CollapseToggleButton>
                 </Tooltip>
               </ToggleButtonGroup>
