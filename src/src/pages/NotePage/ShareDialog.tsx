@@ -1,24 +1,19 @@
 import {
-  Box,
   Button,
-  ButtonGroup,
-  Collapse,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
-  DialogTitle,
   Divider,
   Stack,
   TextField,
-  ToggleButton,
   ToggleButtonGroup,
   Tooltip,
   Typography,
-  useTheme,
 } from "@mui/material";
 import ShareIcon from "@mui/icons-material/Share";
 import { useThemeStore } from "../../zustand/useThemeStore";
-import { M1, M2, M3, M4, M5 } from "../../statics";
+import { M1, M2, M3, M4 } from "../../statics";
 import RotatingStrokeBox from "../../components/RotatingCirle";
 import { useState } from "react";
 import PublicIcon from "@mui/icons-material/Public";
@@ -27,9 +22,9 @@ import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import EditIcon from "@mui/icons-material/Edit";
 import CollapseToggleButton from "../../components/CollapseToggleButton";
-import ScheduleIcon from "@mui/icons-material/Schedule";
-import { getSharingApi, sharingApi } from "../../api/SharingApi";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
+import { useShares, useCreateShare } from "../../api/queries/sharingQueries";
+import { ShareCard } from "./ShareCard";
 
 export interface ShareDialogProps {
   noteId: string;
@@ -102,35 +97,42 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
     exclusive: true,
   };
 
+  const createShare = useCreateShare({
+    onSuccess: (reply) => {
+      setMessage(new SnackbarUpdateImpl(`Share created with ID: ${reply.id}`));
+    },
+    onError: (error) => {
+      setMessage(
+        new SnackbarUpdateImpl(
+          `Error creating share: ${error.message}`,
+          "error",
+        ),
+      );
+    },
+  });
+
+  // Existing shares for this note — used to populate the right-hand column.
+  // The query is disabled when there is no noteId so opening the dialog
+  // for a not-yet-saved note does not fire a request.
+  const sharesQuery = useShares(
+    { note_id: noteId },
+    { enabled: !!noteId && open },
+  );
+  const existingShares = sharesQuery.data ?? [];
+
   const onShare = () => {
-    getSharingApi()
-      .createShare({
-        share: {
-          note_id: noteId,
-          description: description ?? undefined,
-          online_until: new Date(
-            Date.now() + activeSeconds * 1000,
-          ).toISOString(),
-          online_since: new Date().toISOString(),
-          permission:
-            accessType === "write"
-              ? "SHARE_PERMISSION_WRITE"
-              : "SHARE_PERMISSION_READ",
-        },
-      })
-      .then((reply) => {
-        setMessage(
-          new SnackbarUpdateImpl(`Share created with ID: ${reply.id}`),
-        );
-      })
-      .catch((error) => {
-        setMessage(
-          new SnackbarUpdateImpl(
-            `Error creating share: ${error.message}`,
-            "error",
-          ),
-        );
-      });
+    createShare.mutate({
+      share: {
+        note_id: noteId,
+        description: description ?? undefined,
+        online_until: new Date(Date.now() + activeSeconds * 1000).toISOString(),
+        online_since: new Date().toISOString(),
+        permission:
+          accessType === "write"
+            ? "SHARE_PERMISSION_WRITE"
+            : "SHARE_PERMISSION_READ",
+      },
+    });
   };
 
   return (
@@ -138,7 +140,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
       open={open}
       onClose={onClose}
       fullWidth
-      maxWidth="sm"
+      maxWidth="md"
       sx={{ overflow: "hidden", p: 0, m: 0 }}
     >
       <DialogContent sx={{ overflow: "hidden" }}>
@@ -284,6 +286,46 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
                 variant="outlined"
               />
             </Stack>
+          </Stack>
+
+          <Divider orientation="vertical" flexItem />
+
+          {/* Third column: existing shares for this note. */}
+          <Stack
+            className="dialog-existing-shares"
+            direction="column"
+            spacing={M2}
+            sx={{ flex: 1, minWidth: 0 }}
+          >
+            <Typography variant="h5">Existing shares</Typography>
+
+            {sharesQuery.isLoading && (
+              <Stack
+                direction="row"
+                spacing={M1}
+                sx={{ alignItems: "center", color: "text.secondary" }}
+              >
+                <CircularProgress size={16} />
+                <Typography variant="body2">Loading shares…</Typography>
+              </Stack>
+            )}
+
+            {!sharesQuery.isLoading && existingShares.length === 0 && (
+              <Typography variant="body2" color="text.secondary">
+                No shares for this note yet.
+              </Typography>
+            )}
+
+            {!sharesQuery.isLoading && existingShares.length > 0 && (
+              <Stack
+                spacing={M2}
+                sx={{ maxHeight: 360, overflowY: "auto", pr: 1 }}
+              >
+                {existingShares.map((share) => (
+                  <ShareCard key={share.id} share={share} />
+                ))}
+              </Stack>
+            )}
           </Stack>
         </Stack>
       </DialogContent>
