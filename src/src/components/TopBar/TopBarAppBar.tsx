@@ -7,6 +7,7 @@ import {
   FormControl,
   MenuItem,
   Select,
+  Slide,
   Stack,
   Toolbar,
   Typography,
@@ -20,6 +21,7 @@ import { LeftPanelToggle, RightPanelToggle } from "../LeftPanelToggle";
 import SearchBar from "../search/SearchBar";
 import { M1, M2, M3, M4 } from "../../statics";
 import { useContainedIfSelected, Pages } from "./Pages";
+import { useLayout } from "../../LayoutProvider";
 
 export interface TopBarAppBarProps {
   /**
@@ -42,24 +44,41 @@ export const TopBarAppBar: React.FC<TopBarAppBarProps> = ({
   const { theme, themeName, setTheme, customThemes } = useThemeStore();
   const navigate = useNavigate();
   const { data: user } = useUser();
+  const { showTopBar } = useLayout();
   // Resolve the per-route variants once per render so the JSX
   // stays clean and so the hook lint rule sees the hook call in
   // a stable position at the top of the component body.
   const homeVariant = useContainedIfSelected(Pages.HOME);
   const graphVariant = useContainedIfSelected(Pages.GRAPH);
 
+  // The scroll-driven show / hide animation needs `<Slide>` to wrap
+  // the `position: fixed` `AppBar` directly. Wrapping the `AppBar`
+  // with a static `<Box>` (the previous structure) makes the slide
+  // target un-anchorable and silently kills the animation; the
+  // AppBar's own `position: fixed` is what gives `<Slide direction="down">`
+  // a stable origin to translate against.
   return (
-    <AppBar
-      position="fixed"
-      elevation={4}
-      sx={{
-        mt: M3,
-        borderRadius: "2rem",
-        left: "1rem",
-        right: "1rem",
-        width: "auto",
+    <Slide
+      appear={false}
+      direction="down"
+      in={showTopBar}
+      timeout={theme.transitions.duration.standard}
+      easing={{
+        enter: theme.transitions.easing.easeInOut,
+        exit: theme.transitions.easing.easeInOut,
       }}
     >
+      <AppBar
+        position="fixed"
+        elevation={4}
+        sx={{
+          mt: M3,
+          borderRadius: "2rem",
+          left: "1rem",
+          right: "1rem",
+          width: "auto",
+        }}
+      >
       <Toolbar>
         <Stack
           direction="row"
@@ -174,6 +193,7 @@ export const TopBarAppBar: React.FC<TopBarAppBarProps> = ({
         </Stack>
       </Toolbar>
     </AppBar>
+    </Slide>
   );
 };
 
