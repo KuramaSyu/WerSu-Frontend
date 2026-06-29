@@ -79,120 +79,120 @@ export const TopBarAppBar: React.FC<TopBarAppBarProps> = ({
           width: "auto",
         }}
       >
-      <Toolbar>
-        <Stack
-          direction="row"
-          spacing={M2}
-          sx={{
-            flexGrow: 1,
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          {/* Side panel toggle */}
-          <LeftPanelToggle />
+        <Toolbar>
+          <Stack
+            direction="row"
+            spacing={M2}
+            sx={{
+              flexGrow: 1,
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            {/* Side panel toggle */}
+            <LeftPanelToggle />
 
-          {/* Title */}
-          <Box sx={{ minWidth: 1 / 10 }}>
-            <Button
-              onClick={() => navigate("/")}
+            {/* Title */}
+            <Box sx={{ minWidth: 1 / 10 }}>
+              <Button
+                onClick={() => navigate("/")}
+                sx={{
+                  fontSize: theme.typography.h4.fontSize,
+                  fontWeight: 300,
+                  fontFamily: '"Fira Sans", sans-serif',
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontSize: "inherit",
+                    fontFamily: "inherit",
+                    fontWeight: "inherit",
+                    color: theme.palette.primary.light,
+                  }}
+                >
+                  Wer
+                </Typography>
+                <Typography
+                  sx={{
+                    fontSize: "inherit",
+                    fontFamily: "inherit",
+                    fontWeight: "inherit",
+                    color: theme.palette.secondary.light,
+                  }}
+                >
+                  Su
+                </Typography>
+              </Button>
+            </Box>
+
+            {/* Centered search */}
+            <Box
               sx={{
-                fontSize: theme.typography.h4.fontSize,
-                fontWeight: 300,
-                fontFamily: '"Fira Sans", sans-serif',
+                display: "flex",
+                justifyContent: "center",
+                minWidth: 3 / 10,
               }}
             >
-              <Typography
-                sx={{
-                  fontSize: "inherit",
-                  fontFamily: "inherit",
-                  fontWeight: "inherit",
-                  color: theme.palette.primary.light,
-                }}
-              >
-                Wer
-              </Typography>
-              <Typography
-                sx={{
-                  fontSize: "inherit",
-                  fontFamily: "inherit",
-                  fontWeight: "inherit",
-                  color: theme.palette.secondary.light,
-                }}
-              >
-                Su
-              </Typography>
-            </Button>
-          </Box>
+              <SearchBar />
+            </Box>
 
-          {/* Centered search */}
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "center",
-              minWidth: 3 / 10,
-            }}
-          >
-            <SearchBar />
-          </Box>
-
-          {/* Right cluster: theme + nav + avatar */}
-          <Box
-            sx={{
-              gap: M1,
-              display: "flex",
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "flex-end",
-              minWidth: 2 / 5,
-            }}
-          >
-            <FormControl size="small" sx={{ minWidth: 150 }}>
-              <Select
-                value={themeName}
-                onChange={(event) => setTheme(event.target.value)}
-                displayEmpty
-                sx={{
-                  borderRadius: M4,
-                  "& .MuiSelect-select": {
-                    py: "0.35rem",
-                  },
-                }}
-                inputProps={{ "aria-label": "Select theme" }}
-              >
-                {customThemes.map((theme) => (
-                  <MenuItem
-                    key={theme.custom.themeName}
-                    value={theme.custom.themeName}
-                  >
-                    {theme.custom.longName}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            <Button
-              variant={homeVariant}
-              onClick={() => navigate(Pages.HOME)}
-              color="inherit"
+            {/* Right cluster: theme + nav + avatar */}
+            <Box
+              sx={{
+                gap: M1,
+                display: "flex",
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "flex-end",
+                minWidth: 2 / 5,
+              }}
             >
-              <HomeIcon />
-            </Button>
-            <Button
-              variant={graphVariant}
-              onClick={() => navigate(Pages.GRAPH)}
-              color="inherit"
-            >
-              <AccountTreeIcon />
-            </Button>
-            <Button onClick={onOpenUserDrawer} color="inherit">
-              <UserAvatarButton user={user} />
-            </Button>
-            <RightPanelToggle />
-          </Box>
-        </Stack>
-      </Toolbar>
-    </AppBar>
+              <FormControl size="small" sx={{ minWidth: 150 }}>
+                <Select
+                  value={themeName}
+                  onChange={(event) => setTheme(event.target.value)}
+                  displayEmpty
+                  sx={{
+                    borderRadius: M4,
+                    "& .MuiSelect-select": {
+                      py: "0.35rem",
+                    },
+                  }}
+                  inputProps={{ "aria-label": "Select theme" }}
+                >
+                  {customThemes.map((theme) => (
+                    <MenuItem
+                      key={theme.custom.themeName}
+                      value={theme.custom.themeName}
+                    >
+                      {theme.custom.longName}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              <Button
+                variant={homeVariant}
+                onClick={() => navigate(Pages.HOME)}
+                color="inherit"
+              >
+                <HomeIcon />
+              </Button>
+              <Button
+                variant={graphVariant}
+                onClick={() => navigate(Pages.GRAPH)}
+                color="inherit"
+              >
+                <AccountTreeIcon />
+              </Button>
+              <Button onClick={onOpenUserDrawer} color="inherit">
+                <UserAvatarButton user={user} />
+              </Button>
+              <RightPanelToggle />
+            </Box>
+          </Stack>
+        </Toolbar>
+      </AppBar>
     </Slide>
   );
 };

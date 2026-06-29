@@ -145,7 +145,9 @@ describe("computeNextShowBar()", () => {
 
     it("honours a custom trigger delta", () => {
       // 7-px delta → below custom trigger → null.
-      expect(computeNextShowBar(107, 100, customTopPx, customTrigger)).toBeNull();
+      expect(
+        computeNextShowBar(107, 100, customTopPx, customTrigger),
+      ).toBeNull();
       // Larger delta, past the custom top band → false.
       expect(
         computeNextShowBar(
@@ -167,7 +169,9 @@ describe("computeNextShowBar()", () => {
       const lastY = customTopPx;
       expect(y - lastY).toBeGreaterThan(customTrigger);
       expect(y).toBeGreaterThan(customTopPx);
-      expect(computeNextShowBar(y, lastY, customTopPx, customTrigger)).toBe(false);
+      expect(computeNextShowBar(y, lastY, customTopPx, customTrigger)).toBe(
+        false,
+      );
     });
   });
 });
