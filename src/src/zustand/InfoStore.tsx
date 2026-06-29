@@ -127,8 +127,7 @@ const useInfoStore = create<AppState>((set) => ({
     })),
   logs: [],
   clearLogs: () => set({ logs: [] }),
-  removeLog: (id) =>
-    set((s) => ({ logs: s.logs.filter((e) => e.id !== id) })),
+  removeLog: (id) => set((s) => ({ logs: s.logs.filter((e) => e.id !== id) })),
   markAsRead: (id) =>
     set((s) => ({
       logs: s.logs.map((e) =>
