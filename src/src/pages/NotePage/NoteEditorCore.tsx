@@ -87,12 +87,6 @@ export interface NoteEditorProps {
   onNoteUpdated: (note: Note) => void;
 }
 
-// Kept so the legacy `AppLayoutProps` from the old barrel is still
-// re-exportable from `Editor.tsx` if anything imports it.
-export interface AppLayoutProps {
-  children: ReactNode;
-}
-
 export interface NoteEditorCoreProps extends NoteEditorProps {
   ydoc: Y.Doc | null;
   provider: HocuspocusProvider | null;
@@ -488,10 +482,13 @@ export const NoteEditorCore: React.FC<NoteEditorCoreProps> = ({
     provider.on("authenticationFailed", onAuthenticationFailed);
 
     // Seed the status from the current provider state — needed because we
-    // may subscribe *after* the socket has already opened.
-    const current = (provider as { status?: string }).status;
-    if (current === "connected") setStatus("connected");
-    else if (current === "connecting") setStatus("connecting");
+    // may subscribe *after* the socket has already opened. The actual
+    // status lives on the inner `HocuspocusProviderWebsocket` (the
+    // `HocuspocusProvider` itself has no `status` field), so reach
+    // through `provider.configuration.websocketProvider` to read it.
+    const wsStatus = provider.configuration.websocketProvider.status;
+    if (wsStatus === "connected") setStatus("connected");
+    else if (wsStatus === "connecting") setStatus("connecting");
     else setStatus("disconnected");
 
     return () => {
@@ -532,7 +529,12 @@ export const NoteEditorCore: React.FC<NoteEditorCoreProps> = ({
     return () => {
       provider.off("synced", onSynced);
     };
-  }, [editor, note?.id, provider]);
+    // `editMode` is required here: without it, flipping from write to
+    // read (or back) doesn't trigger the `provider.disconnect()` path
+    // above, so the socket stays open across mode toggles and the
+    // server-side `messageReconnectTimeout` closes it ~30 s later,
+    // causing the badge to flap to "Offline" on the second write.
+  }, [editor, note?.id, provider, editMode]);
 
   // Uploads file from clipboard and inserts into editor
   async function handlePasteAndUpload(file: File): Promise<string> {
