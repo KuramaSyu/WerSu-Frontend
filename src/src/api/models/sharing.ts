@@ -68,34 +68,50 @@ export type GetShareByIdEndpointRequest = GetShareByIdRequest;
 export type GetShareByIdEndpointReply = NoteShareReply;
 
 /**
+ * Possible values for `GetPublicShareResponse.permission`. Mirrors the proto
+ * enum `SharePermission` documented in the Go backend.
+ */
+export type SharePermission =
+  | "SHARE_PERMISSION_UNSPECIFIED"
+  | "SHARE_PERMISSION_READ"
+  | "SHARE_PERMISSION_WRITE";
+
+/**
  * Public, unauthenticated view of a share — what the backend returns from
  * `GET /api/shares?share_id=...` (or by hitting the share URL directly).
  *
  * This is the "public token" grant: it tells the client which note the share
- * exposes, what access level (`access_as`) the bearer gets, and the active
+ * exposes, what access level (`permission`) the bearer gets, and the active
  * time window during which the share is valid.
  *
- * When the backend issues a share JWT inline it is exposed via `share_token`.
- * If absent, callers should call `SharingApi.fetchShareAccessToken(share_id)`
- * to obtain one.
+ * Callers obtain a JWT by POSTing to `/api/auth/public-access-token` via
+ * `SharingApi.fetchPublicAccessToken(share_id)` — there is no inline
+ * `share_token` in this response.
  */
 export interface GetPublicShareResponse {
   note_id?: string;
+  /**
+   * @deprecated Kept for parity with the wire format; prefer `permission`.
+   * Will be removed once the backend stops returning it.
+   */
   access_as?: string;
+  /**
+   * The granted access level. Canonical source of truth for "what can the
+   * viewer do with the shared note".
+   */
+  permission?: SharePermission;
   online_since?: string;
   online_until?: string;
-  /** Optional share access JWT, attached to `Authorization: Bearer <token>`. */
-  share_token?: string;
 }
 
 /**
- * Reply of `fetchShareAccessToken` — the share JWT plus its expiry in seconds.
- * Mirrors `GetAcccessTokenResponse` for the regular user JWT.
+ * Reply of `fetchPublicAccessToken` — the share JWT issued by
+ * `POST /api/auth/public-access-token`. The token's `exp` claim already
+ * encodes `online_until`, so clients don't need `expires_in` to schedule
+ * a rotation.
  */
-export interface FetchShareAccessTokenResponse {
+export interface PostPublicAccessTokenReply {
   token: string;
-  /** Seconds until the token expires, if the backend reports it. */
-  expires_in?: number;
 }
 
 export interface GetPublicShareRequest {

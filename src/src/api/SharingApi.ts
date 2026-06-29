@@ -15,7 +15,6 @@ import type {
   CreateShareEndpointRequest,
   DeleteSharesEndpointReply,
   DeleteSharesEndpointRequest,
-  FetchShareAccessTokenResponse,
   GetPublicShareEndpointReply,
   GetPublicShareEndpointRequest,
   GetShareByIdEndpointReply,
@@ -24,6 +23,7 @@ import type {
   GetSharesByIdEndpointRequest,
   GetSharesEndpointReply,
   GetSharesEndpointRequest,
+  PostPublicAccessTokenReply,
   UpdateShareEndpointReply,
   UpdateShareEndpointRequest,
 } from "./models/sharing";
@@ -116,13 +116,13 @@ export interface SharingApi {
   /**
    * Fetch a JWT for anonymous public-share access.
    *
-   * Returns a `token` that the caller should store in `useAuthStore.shareAccessToken`
-   * and forward as `Authorization: Bearer <token>` on subsequent requests via
+   * Hits `POST /api/auth/public-access-token` with body `{ share_id }`.
+   * This endpoint is unauthenticated by design — the share ID IS the
+   * grant. The returned token is stored in `useAuthStore.shareAccessToken`
+   * and forwarded as `Authorization: Bearer <token>` by APIs that extend
    * the `ShareTokenBearer` mixin.
    */
-  fetchShareAccessToken(
-    shareId: string,
-  ): Promise<FetchShareAccessTokenResponse>;
+  fetchPublicAccessToken(shareId: string): Promise<PostPublicAccessTokenReply>;
 }
 
 export abstract class AbstractSharingApi implements SharingApi {
@@ -147,9 +147,9 @@ export abstract class AbstractSharingApi implements SharingApi {
   abstract getPublicShare(
     request: GetPublicShareEndpointRequest,
   ): Promise<GetPublicShareEndpointReply>;
-  abstract fetchShareAccessToken(
+  abstract fetchPublicAccessToken(
     shareId: string,
-  ): Promise<FetchShareAccessTokenResponse>;
+  ): Promise<PostPublicAccessTokenReply>;
 }
 
 export class RestSharingApi extends AbstractSharingApi {
@@ -226,20 +226,21 @@ export class RestSharingApi extends AbstractSharingApi {
   }
 
   /**
-   * Hits `GET /api/shares/<share_id>/access-token` to obtain the share JWT.
+   * Hits `POST /api/auth/public-access-token` to obtain the share JWT.
    *
-   * This endpoint is unauthenticated by design — the share ID IS the grant.
-   * The returned token is then stored in `useAuthStore.shareAccessToken` and
-   * injected into every other API via `apiRegistry.installShareTokenProvider(...)`.
+   * Body: `{ share_id }`. The endpoint is unauthenticated by design — the
+   * share ID IS the grant. The returned token is then stored in
+   * `useAuthStore.shareAccessToken` and injected into every other API via
+   * `apiRegistry.installShareTokenProvider(...)`.
    */
-  async fetchShareAccessToken(
+  async fetchPublicAccessToken(
     shareId: string,
-  ): Promise<FetchShareAccessTokenResponse> {
-    const endpoint = `${BACKEND_BASE}/api/shares/${encodeURIComponent(
-      shareId,
-    )}/access-token`;
-    return await requestJson<FetchShareAccessTokenResponse>(endpoint, {
-      method: "GET",
+  ): Promise<PostPublicAccessTokenReply> {
+    const endpoint = `${BACKEND_BASE}/api/auth/public-access-token`;
+    return await requestJson<PostPublicAccessTokenReply>(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ share_id: shareId }),
     });
   }
 }

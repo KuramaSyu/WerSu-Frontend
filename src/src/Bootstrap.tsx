@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useUserStore } from "./zustand/userStore";
 import { useAuthStore } from "./zustand/useAuthStore";
@@ -9,38 +10,62 @@ import { useAccessToken } from "./api/queries/useAccessToken";
 import { apiRegistry } from "./api/apiRegistry";
 
 /**
- * Installs / uninstalls the share-token provider on every registered API
- * based on whether the current viewer is logged in.
+ * Routes under `/public/*` are served by the share JWT only — never by
+ * user cookies. Match by `pathname.startsWith("/public/")` so we catch
+ * `/public/n/<share-id>` and any future siblings (e.g. `/public/d/...`).
+ */
+const isPublicRoute = (pathname: string): boolean =>
+  pathname.startsWith("/public/");
+
+/**
+ * Installs / uninstalls the share-token provider on every registered API.
  *
- *   - logged-in user  -> provider = null
- *     (the user JWT + cookies are used; no share header is attached)
+ * Three cases (evaluated on every pathname / user change):
  *
- *   - anonymous viewer -> provider = () => useAuthStore.getState().shareAccessToken
- *     (lazily reads the share JWT from zustand; returns null when no share
- *      is active, which collapses to "no header" without explicit uninstall)
+ *   - on `/public/*`                -> install the share-JWT provider
+ *     regardless of `user`. Logged-in viewers of a share link use the
+ *     share grant, not their cookies — keeps the public route isolated.
  *
- * The provider re-reads from zustand at request time, so swapping the token
- * mid-session doesn't require re-installing the provider — only the
- * "logged in / anonymous" mode change does.
+ *   - logged-in user, NOT on /public -> uninstall the share provider
+ *     (user JWT + cookies are used, no share header is attached).
+ *
+ *   - anonymous viewer, NOT on /public -> install the share provider
+ *     as well. The provider lazily returns `null` when no share JWT is
+ *     in zustand, which collapses to "no header" without explicit
+ *     uninstall. This mirrors the previous behaviour.
+ *
+ * The provider reads `useAuthStore.shareAccessToken` synchronously on
+ * every request, so swapping the token mid-session doesn't require
+ * re-installing the provider — only the route / user mode change does.
  */
 function useShareTokenMode() {
   const user = useUserStore((s) => s.user);
+  const { pathname } = useLocation();
 
   useEffect(() => {
+    if (isPublicRoute(pathname)) {
+      // /public/* — always use the share JWT. Logged-in users on this
+      // route ignore their cookies to avoid leaking identity.
+      apiRegistry.installShareTokenProvider(
+        () => useAuthStore.getState().shareAccessToken,
+      );
+      return () => apiRegistry.installShareTokenProvider(null);
+    }
+
     if (user) {
-      // Logged in: explicitly disable share-token injection so the user
-      // JWT + cookies are the sole auth mechanism.
+      // Logged in off a public route: explicitly disable share-token
+      // injection so user JWT + cookies are the sole auth mechanism.
       apiRegistry.installShareTokenProvider(null);
       return;
     }
 
-    // Anonymous: install a provider that reads the share token from
-    // zustand on every request. When `shareAccessToken` is null (no share
-    // active) the provider returns null and no header is attached.
+    // Anonymous off a public route: install the same provider. When
+    // no share is active it returns null and no header is attached.
     apiRegistry.installShareTokenProvider(
       () => useAuthStore.getState().shareAccessToken,
     );
-  }, [user]);
+    return () => apiRegistry.installShareTokenProvider(null);
+  }, [user, pathname]);
 }
 
 /**

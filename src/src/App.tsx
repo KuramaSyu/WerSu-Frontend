@@ -18,6 +18,7 @@ import { NotePage } from "./pages/NotePage/Main";
 import { DirectoryView } from "./pages/DirectoryView/Main";
 import { DirectoryEditPage } from "./pages/DirectoryEdit/Main";
 import { FileGraphPage } from "./pages/FileGraph/Main";
+import { PublicNotePage } from "./pages/NotePage/PublicNotePage";
 import { recordNavigation } from "./utils/navigationMemento";
 import { Bootstrap } from "./Bootstrap";
 import "@fontsource/fira-sans/300.css";
@@ -47,9 +48,13 @@ function App() {
 
   // QueryClientProvider lives in main.tsx; do not add a second one here
   // or imperative `queryClient` invalidations target the wrong cache.
+  // `<Bootstrap />` lives INSIDE the Router on purpose: its
+  // `useShareTokenMode` reads `useLocation()` to decide whether the
+  // current route is `/public/*` and switch the auth-header provider
+  // accordingly. Render it before `<NavigationRecorder />` so the
+  // pathname is known by the time anything else observes it.
   return (
     <ThemeProvider theme={theme}>
-      <Bootstrap />
       {/* <CssBaseline /> */}
       <Router>
         <Box
@@ -62,6 +67,7 @@ function App() {
             backgroundColor: theme.palette.background.default,
           }}
         >
+          <Bootstrap />
           <NavigationRecorder />
           <LayoutProvider>
             <Routes>
@@ -71,6 +77,10 @@ function App() {
                 <Route path="/d/:id" element={<DirectoryView />} />
                 <Route path="/d/:id/edit" element={<DirectoryEditPage />} />
                 <Route path="/graph" element={<FileGraphPage />} />
+                <Route
+                  path="/public/n/:share_id"
+                  element={<PublicNotePage />}
+                />
                 <Route path="/docs/*" element={<SwaggerDocs />} />
               </Route>
             </Routes>

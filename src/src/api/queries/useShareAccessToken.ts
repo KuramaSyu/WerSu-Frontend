@@ -1,21 +1,6 @@
-import {
-  useQuery,
-  type QueryKey,
-  type UseQueryResult,
-} from "@tanstack/react-query";
+import { useCallback, useEffect, useRef } from "react";
 import { sharingApi } from "../SharingApi";
 import { useAuthStore } from "../../zustand/useAuthStore";
-
-const isExpired = (token: string): boolean => {
-  try {
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    const exp = payload.exp;
-    const now = Math.floor(Date.now() / 1000);
-    return typeof exp === "number" && exp < now;
-  } catch {
-    return false;
-  }
-};
 
 /**
  * Buffer (seconds) by which the share JWT is refreshed BEFORE its `exp` claim.
@@ -23,79 +8,102 @@ const isExpired = (token: string): boolean => {
  */
 const JWT_REFRESH_BUFFER = 60;
 
-export const SHARE_TOKEN_QUERY_KEY: QueryKey = ["shareAccessToken"];
+/**
+ * Fallback interval when we can't recover the JWT's `exp` claim — keeps
+ * the page from going silent on transient failures.
+ */
+const FALLBACK_REFRESH_MS = 30_000;
 
 /**
- * Options for `useShareAccessToken`.
- *
- * Pass `shareId` to opt in to fetching. When omitted (or empty), the query
- * is disabled — the caller's intent is "no public share active right now",
- * so nothing is fetched and `useAuthStore.shareAccessToken` is cleared.
+ * Try to read the `exp` claim from a JWT without verifying the signature.
+ * The backend embeds the share's `online_until` as `exp`, so this gives us
+ * the exact moment we need to rotate.
  */
+const jwtExpSeconds = (token: string): number | null => {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    const exp = payload.exp;
+    return typeof exp === "number" ? exp : null;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * How many ms before `exp` (in epoch seconds) we should fire the next refresh.
+ * Clamped at 0 so an already-expired token still triggers an immediate refetch.
+ */
+const scheduleRefreshMs = (expEpochSeconds: number): number => {
+  const waitMs =
+    expEpochSeconds * 1000 - Date.now() - JWT_REFRESH_BUFFER * 1000;
+  return Math.max(0, waitMs);
+};
+
 export interface UseShareAccessTokenOptions {
+  /** Opt in to fetching; pass the share ID. Empty/null disables the loop. */
   shareId?: string | null;
-  /** Optional explicit JWT to seed the cache with (e.g. from `getPublicShare`). */
-  initialToken?: string | null;
-  /**
-   * Optional override of the refresh interval (ms). Defaults to
-   * "15 minutes minus buffer" — the same cadence as the user JWT.
-   */
-  refetchIntervalMs?: number;
 }
 
 /**
- * Hook that owns the lifecycle of the share access JWT.
+ * Owns the lifecycle of the share JWT for the public-note page.
  *
- * - When `shareId` is provided, fetches a JWT from
- *   `SharingApi.fetchShareAccessToken(shareId)` and writes it into
- *   `useAuthStore.shareAccessToken`.
- * - When `shareId` becomes empty/null, clears the token from the store.
- * - Re-fetches periodically so a long-running session never holds an
- *   expired JWT.
+ * - Mounts with a `shareId` → POSTs `/api/auth/public-access-token` and
+ *   writes the returned JWT into `useAuthStore.shareAccessToken`.
+ * - Re-schedules a refresh `JWT_REFRESH_BUFFER` seconds before `exp` so
+ *   a long-running session never holds an expired token.
+ * - Unmount / `shareId` clearing → clears the JWT from the store.
  *
- * Consumers should NOT read this hook's `data` directly — read
- * `useAuthStore.shareAccessToken` instead. This mirrors the pattern that
- * `useAccessToken` already documents at the top of its file.
+ * Consumers should NOT depend on this hook's return value — read
+ * `useAuthStore.shareAccessToken` directly (the share-token provider in
+ * `Bootstrap` does the same). Mirrors the contract documented at the
+ * top of `useAccessToken`.
  */
 export function useShareAccessToken(
   options: UseShareAccessTokenOptions = {},
-): UseQueryResult<string, Error> {
-  const { shareId, initialToken, refetchIntervalMs } = options;
-  const interval =
-    refetchIntervalMs ?? 15 * 60 * 1000 - JWT_REFRESH_BUFFER * 1000;
+): void {
+  const { shareId } = options;
+  const handle = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  return useQuery({
-    queryKey: [...SHARE_TOKEN_QUERY_KEY, shareId ?? null],
-    enabled: !!shareId,
+  const clearTimer = () => {
+    if (handle.current !== null) {
+      clearTimeout(handle.current);
+      handle.current = null;
+    }
+  };
 
-    // Use the initial token as the seed so consumers don't see a blank state
-    // immediately after `getPublicShare` resolves.
-    initialData: initialToken ?? undefined,
-
-    queryFn: async () => {
-      if (!shareId) {
-        useAuthStore.getState().setShareAccessToken(null);
-        return "" as string;
+  const refresh = useCallback(async () => {
+    if (!shareId) {
+      useAuthStore.getState().setShareAccessToken(null);
+      return;
+    }
+    try {
+      const { token } = await sharingApi.fetchPublicAccessToken(shareId);
+      useAuthStore.getState().setShareAccessToken(token);
+      const exp = jwtExpSeconds(token);
+      if (exp !== null) {
+        clearTimer();
+        handle.current = setTimeout(refresh, scheduleRefreshMs(exp));
+      } else {
+        // No readable exp — fall back to a fixed cadence so we don't
+        // accidentally hold an expired token indefinitely.
+        clearTimer();
+        handle.current = setTimeout(refresh, FALLBACK_REFRESH_MS);
       }
+    } catch (err) {
+      console.error("useShareAccessToken: refresh failed", err);
+      clearTimer();
+      handle.current = setTimeout(refresh, FALLBACK_REFRESH_MS);
+    }
+  }, [shareId]);
 
-      const data = await sharingApi.fetchShareAccessToken(shareId);
-      const token = data.token;
-
-      // Skip the write when the cached value is still fresh — keeps the
-      // zustand listeners from firing needlessly.
-      const current = useAuthStore.getState().shareAccessToken;
-      if (current !== token && !isExpired(token)) {
-        console.log(
-          "Fetched new share access token:",
-          token.substring(0, 10) + "...",
-        );
-        useAuthStore.getState().setShareAccessToken(token);
-      }
-
-      return token;
-    },
-
-    staleTime: interval,
-    refetchInterval: interval,
-  });
+  useEffect(() => {
+    if (!shareId) {
+      // No active share → make sure we don't leak a JWT from a previous
+      // mount (e.g. navigating between two share URLs).
+      useAuthStore.getState().setShareAccessToken(null);
+      return;
+    }
+    void refresh();
+    return clearTimer;
+  }, [shareId, refresh]);
 }
