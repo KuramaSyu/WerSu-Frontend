@@ -163,7 +163,7 @@ export const NotificationsPanel: React.FC = () => {
       <Divider />
 
       {logs.length === 0 ? (
-        <Box sx={{ p: M3, textAlign: "center" }}>
+        <Box sx={{ p: M3, textAlign: "left" }}>
           <Typography variant="body2" color="text.secondary">
             No notifications yet.
           </Typography>

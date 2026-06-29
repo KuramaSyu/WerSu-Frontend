@@ -8,6 +8,7 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  Stack,
   Typography,
 } from "@mui/material";
 import Logout from "@mui/icons-material/Logout";
@@ -15,7 +16,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useUser } from "../../api/queries/useUser";
-import { M1, M2, M3 } from "../../statics";
+import { M1, M2, M3, M4 } from "../../statics";
 import { NotificationsPanel } from "./NotificationsPanel";
 
 export interface UserPanelProps {
@@ -65,11 +66,10 @@ export const UserPanel: React.FC<UserPanelProps> = ({ onRequestClose }) => {
     // content keeps its own intrinsic width.
     <>
       {isMobile && (
-        <Box
+        <Stack
           sx={{
-            display: "flex",
-            justifyContent: "center",
             alignItems: "center",
+            justifyContent: "center",
             py: M1,
             cursor: "pointer",
           }}
@@ -87,18 +87,29 @@ export const UserPanel: React.FC<UserPanelProps> = ({ onRequestClose }) => {
               },
             }}
           />
-        </Box>
+        </Stack>
       )}
 
       {/* Profile header */}
-      <Box sx={{ p: M3, textAlign: "center" }}>
+      <Stack
+        spacing={M3}
+        direction="row"
+        sx={{
+          alignItems: "center",
+          justifyContent: "center",
+          px: M4,
+          py: M3,
+          textAlign: "center",
+        }}
+      >
         <Avatar
-          sx={{ width: 80, height: 80, mx: "auto", mb: M2 }}
+          sx={{ width: 80, height: 80 }}
           src={user?.getAvatarUrl()}
           alt={user?.username ?? ""}
         />
+        <Divider orientation="vertical" flexItem />
         <Typography variant="h6">{user?.username ?? "Guest"}</Typography>
-      </Box>
+      </Stack>
 
       <Divider />
 

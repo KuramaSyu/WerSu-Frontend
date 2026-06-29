@@ -166,20 +166,8 @@ export const TopBarAppBar: React.FC<TopBarAppBarProps> = ({
             >
               <AccountTreeIcon />
             </Button>
-            <Button
-              onClick={onOpenUserDrawer}
-              color="inherit"
-              sx={{
-                // `gap` puts a hairline between avatar and username
-                // so they read as a pair without crowding each
-                // other. `px` keeps a consistent edge against
-                // adjacent nav buttons.
-                gap: M2,
-                px: M1,
-              }}
-            >
+            <Button onClick={onOpenUserDrawer} color="inherit">
               <UserAvatarButton user={user} />
-              <UserNameLabel user={user} />
             </Button>
             <RightPanelToggle />
           </Box>
@@ -190,9 +178,9 @@ export const TopBarAppBar: React.FC<TopBarAppBarProps> = ({
 };
 
 /**
- * Small helpers so the AppBar stays focused on layout. The parent
- * (`TopBar`) owns the click handler via `onOpenUserDrawer`, so these
- * components stay purely presentational.
+ * Tiny helper so the AppBar stays focused on layout. The button
+ * itself is plain — it just wraps the avatar — and the parent owns
+ * the click handler via `onOpenUserDrawer`.
  */
 const UserAvatarButton: React.FC<{
   user: ReturnType<typeof useUser>["data"];
@@ -202,23 +190,6 @@ const UserAvatarButton: React.FC<{
     src={user ? user.getAvatarUrl() : undefined}
     alt={user ? user.username : ""}
   />
-);
-
-/**
- * Username sits directly to the right of the avatar in the AppBar.
- * `noWrap` keeps the layout from jumping when a long username
- * (rare, but possible) would otherwise wrap onto two lines.
- */
-const UserNameLabel: React.FC<{
-  user: ReturnType<typeof useUser>["data"];
-}> = ({ user }) => (
-  <Typography
-    variant="body2"
-    noWrap
-    sx={{ fontWeight: 500, color: "inherit" }}
-  >
-    {user?.username ?? "Guest"}
-  </Typography>
 );
 
 export default TopBarAppBar;
