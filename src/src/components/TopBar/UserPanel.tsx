@@ -16,7 +16,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useUser } from "../../api/queries/useUser";
-import { M1, M2, M3, M4 } from "../../statics";
+import { M1, M3, M4 } from "../../statics";
 import { NotificationsPanel } from "./NotificationsPanel";
 
 export interface UserPanelProps {
