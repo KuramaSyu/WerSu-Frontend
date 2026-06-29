@@ -7,7 +7,7 @@ import { HOCUSPOCUS_WS_URL } from "../statics";
 import { useAccessToken } from "../api/queries/useAccessToken";
 import { collabStatusStore } from "../zustand/useCollabStatusStore";
 
-type CollabCacheEntry = {
+export type CollabCacheEntry = {
   ydoc: Y.Doc;
   provider: HocuspocusProvider;
   persistence: IndexeddbPersistence;
