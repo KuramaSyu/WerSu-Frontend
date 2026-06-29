@@ -15,6 +15,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import CollapseToggleButton from "../../components/CollapseToggleButton";
 import { M1, M2, M3 } from "../../statics";
 import {
+  NEVER_EXPIRES,
   SCHEDULE_OPTIONS,
   type Permission,
   type ShareFormValue,
@@ -114,9 +115,12 @@ export const ShareFormSection: React.FC<ShareFormSectionProps> = ({
    * Resolve `onlineUntil` (ISO) into "seconds from now". Used both to
    * highlight the matching quick-pick chip and to drive the "active
    * chip" math. A negative value means the share is already expired;
-   * we still compute it so the UI can show that to the user.
+   * we still compute it so the UI can show that to the user. An empty
+   * `onlineUntil` ("Never expires") yields `null` here so the bucket
+   * loop skips it.
    */
   const secondsFromNow = useMemo(() => {
+    if (value.onlineUntil === "") return null;
     const ts = Date.parse(value.onlineUntil);
     if (Number.isNaN(ts)) return null;
     return Math.round((ts - Date.now()) / 1000);
@@ -129,19 +133,33 @@ export const ShareFormSection: React.FC<ShareFormSectionProps> = ({
    * inside [B/2, 2*B). That window is wide enough that picking a chip
    * re-highlights it, even after a minute has passed, but narrow
    * enough that two adjacent chips (1H vs 1D) don't both light up.
+   * The "Never" chip uses `NEVER_EXPIRES` as its key and lights up
+   * when `onlineUntil` is the empty string.
    */
   const activeChipValue = useMemo(() => {
+    if (value.onlineUntil === "") return NEVER_EXPIRES;
     if (secondsFromNow === null) return null;
     for (const item of SCHEDULE_OPTIONS) {
+      if (item.value === NEVER_EXPIRES) continue;
       const lo = item.value / 2;
       const hi = item.value * 2;
       if (secondsFromNow >= lo && secondsFromNow < hi) return item.value;
     }
     return null;
-  }, [secondsFromNow]);
+  }, [secondsFromNow, value.onlineUntil]);
 
-  const handleChipClick = (seconds: number) => {
-    update("onlineUntil", new Date(Date.now() + seconds * 1000).toISOString());
+  const handleChipClick = (item: (typeof SCHEDULE_OPTIONS)[number]) => {
+    // "Never" clears the expiry so the share is submitted without
+    // `online_until`; everything else resolves to a fresh ISO timestamp
+    // `item.value` seconds from now.
+    if (item.value === NEVER_EXPIRES) {
+      update("onlineUntil", "");
+      return;
+    }
+    update(
+      "onlineUntil",
+      new Date(Date.now() + item.value * 1000).toISOString(),
+    );
   };
 
   return (
@@ -274,10 +292,11 @@ export const ShareFormSection: React.FC<ShareFormSectionProps> = ({
           value={isoToDatetimeLocal(value.onlineUntil)}
           onChange={(e) => {
             const iso = datetimeLocalToIso(e.target.value);
-            // Guard against transient empty / invalid strings so we don't
-            // clobber `onlineUntil` with garbage mid-edit. The parent
-            // validator (in ShareDialog) still rejects a past timestamp.
-            if (iso !== null) update("onlineUntil", iso);
+            // An empty `local` (cleared input) means "Never expires";
+            // any non-empty unparseable string lands here as `null`
+            // too, but the parent validator (in ShareDialog) will
+            // reject that with a user-facing message before submit.
+            update("onlineUntil", iso ?? "");
           }}
           slotProps={{
             // MUI v5/v6 doesn't accept native `<input>` attrs (like
@@ -299,13 +318,16 @@ export const ShareFormSection: React.FC<ShareFormSectionProps> = ({
         >
           {SCHEDULE_OPTIONS.map((item) => (
             <Chip
-              key={item.value}
+              // `children` is unique across options and stable, so it's
+              // a safe React key even for the "Never" entry whose
+              // `value` collapses to `null`.
+              key={item.children}
               label={item.whenSelected}
               size="small"
               clickable
               color={activeChipValue === item.value ? "primary" : "default"}
               variant={activeChipValue === item.value ? "filled" : "outlined"}
-              onClick={() => handleChipClick(item.value)}
+              onClick={() => handleChipClick(item)}
             />
           ))}
         </Stack>

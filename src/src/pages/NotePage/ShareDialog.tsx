@@ -44,8 +44,6 @@ export interface ShareDialogProps {
   onClose: () => void;
 }
 
-const Months_1 = 60 * 60 * 24 * 30;
-
 /**
  * The backend's proto3 default for the permission enum. A share must
  * never be submitted with this value — it means "the user picked
@@ -86,6 +84,11 @@ const validateShareForm = (formValue: ShareFormValue): string | null => {
   if (!permission || permission === SHARE_PERMISSION_UNSPECIFIED) {
     return "Please select an access level (read or write) before sharing.";
   }
+  // Empty `onlineUntil` means "Never expires" (the new chip) — a
+  // legitimate state, so we short-circuit before the parse/future check.
+  if (formValue.onlineUntil.trim() === "") {
+    return null;
+  }
   const expiryTs = Date.parse(formValue.onlineUntil);
   if (Number.isNaN(expiryTs)) {
     return "Please pick a valid expiry date and time.";
@@ -108,11 +111,12 @@ interface EditBaseline {
 
 const baselineFromShare = (share: NoteShareReply): EditBaseline => ({
   permission: permissionFromString(share.permission),
-  // When the existing share has no `online_until`, default to one
-  // month from now so the user sees a sane value rather than a blank
-  // datetime input the first time they edit.
-  onlineUntil:
-    share.online_until ?? new Date(Date.now() + Months_1 * 1000).toISOString(),
+  // When the existing share has no `online_until` it's an
+  // open-ended ("Never expires") share — preserve that by treating
+  // the empty form string as the baseline. Otherwise the form would
+  // appear dirty the moment the user opens it for edit, because the
+  // previous default (one month from now) would never match.
+  onlineUntil: share.online_until ?? "",
   description: share.description ?? "",
 });
 
@@ -275,7 +279,12 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
         note_id: noteId,
         description: formValue.description.trim() || undefined,
         // The form owns the absolute ISO timestamp; send it as-is.
-        online_until: formValue.onlineUntil,
+        // An empty form value ("Never expires") omits the field so the
+        // backend keeps the share open-ended.
+        online_until:
+          formValue.onlineUntil.trim() === ""
+            ? undefined
+            : formValue.onlineUntil,
         online_since: new Date().toISOString(),
         permission: permissionToString(formValue.permission)!,
       },
@@ -298,7 +307,11 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
         id: editingShare.id,
         note_id: editingShare.note_id,
         description: formValue.description.trim() || undefined,
-        online_until: formValue.onlineUntil,
+        // Same "Never expires" → omit-the-field translation as create.
+        online_until:
+          formValue.onlineUntil.trim() === ""
+            ? undefined
+            : formValue.onlineUntil,
         online_since: editingShare.online_since ?? new Date().toISOString(),
         permission: permissionToString(formValue.permission)!,
       },
