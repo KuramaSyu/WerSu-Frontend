@@ -3,28 +3,23 @@
 //
 // Thin wrappers that pick a collaboration hook and forward its
 // `{ ydoc, provider }` to the collab-agnostic `NoteEditorCore`.
-// `NoteEditorCore` lives in `./NoteEditorCore.tsx` and is also re-
-// exported below for callers that want to drive the core directly.
 //
-// `markdownToProsemirror` and `imageLinkToBlock` are re-exported from
-// the core file as well — `editorStore.ts` and other call sites still
-// import them from `./Editor`.
+// This file is intentionally a small barrel: it re-exports nothing.
+// Callers that need the core directly should import `NoteEditorCore`
+// from `./NoteEditorCore`, the format helpers from
+// `./editorFormatUtils`, and the types from the same source files
+// (e.g. `NoteEditorProps` from `./NoteEditorCore`). Keeping imports
+// pointed at the original module instead of through this barrel
+// makes the dependency graph easier to follow and avoids the
+// re-export indirection that `verbatimModuleSyntax: true` makes
+// awkward in some configurations.
 // ---------------------------------------------------------------------------
 
 import type React from "react";
 import { useNoteCollaboration } from "../../hooks/useNoteCollaboration";
 import { usePublicNoteCollaboration } from "../../hooks/usePublicNoteCollaboration";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
-import {
-  NoteEditorCore,
-  type NoteEditorProps,
-  type AppLayoutProps,
-  markdownToProsemirror,
-  imageLinkToBlock,
-} from "./NoteEditorCore";
-
-export { NoteEditorCore, markdownToProsemirror, imageLinkToBlock };
-export type { NoteEditorProps, AppLayoutProps };
+import { NoteEditorCore, type NoteEditorProps } from "./NoteEditorCore";
 
 /**
  * Private-note editor: opens a JWT-authenticated Hocuspocus session via

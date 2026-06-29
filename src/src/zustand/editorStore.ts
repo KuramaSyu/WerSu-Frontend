@@ -2,7 +2,7 @@ import { create } from "zustand";
 import type { Note } from "../api/models/search";
 import type { Editor } from "@tiptap/core";
 import { useEditorSettings } from "./useEditorSettings";
-import { markdownToProsemirror } from "../pages/NotePage/Editor";
+import { markdownToProsemirror } from "../pages/NotePage/editorFormatUtils";
 import { NoteApi } from "../api/NoteApi";
 import { queryClient } from "../api/queryClient";
 import useInfoStore, { SnackbarUpdateImpl } from "./InfoStore";

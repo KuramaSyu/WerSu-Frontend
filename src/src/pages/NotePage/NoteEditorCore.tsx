@@ -24,12 +24,7 @@ import {
 } from "react";
 import { Box, Input, Paper, Stack, TextField, Typography } from "@mui/material";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
-import {
-  useEditor,
-  EditorContent,
-  Editor,
-  type JSONContent,
-} from "@tiptap/react";
+import { useEditor, EditorContent } from "@tiptap/react";
 import DragHandle from "@tiptap/extension-drag-handle-react";
 import StarterKit from "@tiptap/starter-kit";
 import Collaboration from "@tiptap/extension-collaboration";
@@ -68,7 +63,6 @@ import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { InsertSpeedDial } from "./SpeedDial";
 import { LatexDialog, type LatexDialogProps } from "./LatexDialog";
 import { CustomImage } from "../../components/Editor/View/CustomImage";
-import { normalizeTables } from "../../components/Editor/jsonNormalization";
 import { useUser } from "../../api/queries/useUser";
 import { useLiveUsersStore } from "../../zustand/useLiveUsersStore";
 import {
@@ -82,6 +76,7 @@ import { randomMatchingColor } from "../../utils/blendWithContrast";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
 import * as Y from "yjs";
 import { Awareness } from "y-protocols/awareness";
+import { imageLinkToBlock } from "./editorFormatUtils";
 
 const lowlight = createLowlight(all);
 
@@ -706,32 +701,10 @@ export const NoteEditorCore: React.FC<NoteEditorCoreProps> = ({
 /**
  * when inserting an image, we need to check if the tiptap editor or source mode is used. The tiptap editor
  * gets an HTML img block, where as the source editor gets the markdown image link.
- * @param imageLink link to build block of
- * @param editorMode editor mode
- * @returns the block for the current editor mode
+ *
+ * `imageLinkToBlock` and `markdownToProsemirror` are defined in
+ * `./editorFormatUtils.ts` and imported at the top of this file
+ * (so the component body can call them). They are also re-exported
+ * from `./Editor.tsx` for backwards-compat with consumers that
+ * imported them from the old barrel.
  */
-export function imageLinkToBlock(
-  imageLink: string,
-  editorMode: "rich" | "source",
-) {
-  if (editorMode === "rich") {
-    return `<img src="${imageLink}" />`;
-  } else {
-    return `![image](${imageLink})`;
-  }
-}
-
-export function markdownToProsemirror(
-  editor: Editor,
-  markdown: string,
-): JSONContent {
-  // first parse markdown normally with builtin markdown extension
-  const pmDoc = editor.storage.markdown.manager.parse(markdown);
-  // now: a table cell containing an image with text gets rendered to
-  // <p>text <img/></p>. The problem with it is, that when now the user
-  // starts editing the text, the image just gets deleted and ctrl z is also
-  // not possible. Hence we normalize the JSON structure, to render it as <p>text</p><img/>
-  // keep in mind, that it parses a JSON, not HTML. I just used HTML for describing
-  const normalizedDoc = normalizeTables(pmDoc);
-  return normalizedDoc;
-}
