@@ -353,11 +353,15 @@ export class AttachmentApi implements IAttachmentApi {
 
 // Register the default singleton + a typed token so consumers can resolve
 // it via `getAttachmentApi()`.
-apiRegistry.register(new AttachmentApi());
+//
+// IMPORTANT: broadcast-set + typed-token must be the SAME instance.
+// See NoteApi for the bug history.
+const attachmentApiSingleton = new AttachmentApi();
+apiRegistry.register(attachmentApiSingleton);
 export const ATTACHMENT_API_TOKEN: ApiToken<AttachmentApi> = Symbol(
   "AttachmentApi",
 ) as ApiToken<AttachmentApi>;
-apiRegistry.register(new AttachmentApi(), ATTACHMENT_API_TOKEN);
+apiRegistry.register(attachmentApiSingleton, ATTACHMENT_API_TOKEN);
 
 /**
  * Resolve the registered `AttachmentApi` singleton.

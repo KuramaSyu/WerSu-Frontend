@@ -149,11 +149,15 @@ export class ActivityApi implements IActivityApi {
 
 // Register the default singleton + a typed token so consumers can resolve
 // it via `getActivityApi()`.
-apiRegistry.register(new ActivityApi());
+//
+// IMPORTANT: broadcast-set + typed-token must be the SAME instance.
+// See NoteApi for the bug history.
+const activityApiSingleton = new ActivityApi();
+apiRegistry.register(activityApiSingleton);
 export const ACTIVITY_API_TOKEN: ApiToken<ActivityApi> = Symbol(
   "ActivityApi",
 ) as ApiToken<ActivityApi>;
-apiRegistry.register(new ActivityApi(), ACTIVITY_API_TOKEN);
+apiRegistry.register(activityApiSingleton, ACTIVITY_API_TOKEN);
 
 /**
  * Resolve the registered `ActivityApi` singleton.

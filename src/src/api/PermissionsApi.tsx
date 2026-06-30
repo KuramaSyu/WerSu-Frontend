@@ -109,11 +109,15 @@ export class PermissionsApi implements IPermissionsApi {
 
 // Register the default singleton + a typed token so consumers can resolve
 // it via `getPermissionsApi()`.
-apiRegistry.register(new PermissionsApi());
+//
+// IMPORTANT: broadcast-set + typed-token must be the SAME instance.
+// See NoteApi for the bug history.
+const permissionsApiSingleton = new PermissionsApi();
+apiRegistry.register(permissionsApiSingleton);
 export const PERMISSIONS_API_TOKEN: ApiToken<PermissionsApi> = Symbol(
   "PermissionsApi",
 ) as ApiToken<PermissionsApi>;
-apiRegistry.register(new PermissionsApi(), PERMISSIONS_API_TOKEN);
+apiRegistry.register(permissionsApiSingleton, PERMISSIONS_API_TOKEN);
 
 /**
  * Resolve the registered `PermissionsApi` singleton.

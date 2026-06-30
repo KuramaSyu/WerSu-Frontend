@@ -191,10 +191,10 @@ export class DirectoryApi
   }
 }
 
-// Register the default singleton so `apiRegistry.installShareTokenProvider(...)`
-// reaches it. Consumers that create their own `DirectoryApi` instances should
-// call `apiRegistry.register(instance)` themselves.
-apiRegistry.register(new DirectoryApi());
+// IMPORTANT: broadcast-set + typed-token must be the SAME instance.
+// See NoteApi for the bug history.
+const directoryApiSingleton = new DirectoryApi();
+apiRegistry.register(directoryApiSingleton);
 
 /**
  * Typed token for retrieving the registered `DirectoryApi` singleton from
@@ -205,7 +205,8 @@ export const DIRECTORY_API_TOKEN: ApiToken<DirectoryApi> = Symbol(
   "DirectoryApi",
 ) as ApiToken<DirectoryApi>;
 
-apiRegistry.register(new DirectoryApi(), DIRECTORY_API_TOKEN);
+// Register the SAME instance under the typed token too - see above.
+apiRegistry.register(directoryApiSingleton, DIRECTORY_API_TOKEN);
 
 /**
  * Resolve the registered `DirectoryApi` singleton.
