@@ -6,7 +6,7 @@ import { useAuthStore } from "./zustand/useAuthStore";
 import { getSearchNotesApi } from "./api/SearchNotesApi";
 import { RestNotesSearchType } from "./api/models/search";
 import { getUserApi } from "./api/UserApi";
-import { useAccessToken } from "./api/queries/useAccessToken";
+import { useShareAccessToken } from "./api/queries/useShareAccessToken";
 import { apiRegistry } from "./api/apiRegistry";
 
 /**
@@ -43,24 +43,49 @@ function useShareTokenMode() {
   const { pathname } = useLocation();
 
   useEffect(() => {
-    if (isPublicRoute(pathname)) {
-      // /public/* — always use the share JWT. Logged-in users on this
+    const publicRoute = isPublicRoute(pathname);
+    console.debug(
+      "[share-token-mode] effect — pathname=",
+      pathname,
+      "isPublic=",
+      publicRoute,
+      "user=",
+      user ? user.id : null,
+    );
+    if (publicRoute) {
+      // /public/* -> always use the share JWT. Logged-in users on this
       // route ignore their cookies to avoid leaking identity.
-      apiRegistry.installShareTokenProvider(
-        () => useAuthStore.getState().shareAccessToken,
-      );
-      return () => apiRegistry.installShareTokenProvider(null);
+      const provider = () => {
+        const tok = useAuthStore.getState().shareAccessToken;
+        console.debug(
+          "[share-token-mode] provider invoked on public route, returning token prefix=",
+          tok ? tok.slice(0, 12) + "..." : "(null)",
+        );
+        return tok;
+      };
+      apiRegistry.installShareTokenProvider(provider);
+      console.debug("[share-token-mode] installed share-token provider");
+      return () => {
+        console.debug("[share-token-mode] uninstalling share-token provider");
+        apiRegistry.installShareTokenProvider(null);
+      };
     }
 
     if (user) {
       // Logged in off a public route: explicitly disable share-token
       // injection so user JWT + cookies are the sole auth mechanism.
+      console.debug(
+        "[share-token-mode] logged-in user off /public - clearing share provider",
+      );
       apiRegistry.installShareTokenProvider(null);
       return;
     }
 
     // Anonymous off a public route: install the same provider. When
     // no share is active it returns null and no header is attached.
+    console.debug(
+      "[share-token-mode] anonymous off /public - installing same share provider (returns null when no share is active)",
+    );
     apiRegistry.installShareTokenProvider(
       () => useAuthStore.getState().shareAccessToken,
     );
@@ -73,6 +98,17 @@ function useShareTokenMode() {
  */
 export const Bootstrap: React.FC = () => {
   useShareTokenMode();
+  // Mount `useShareAccessToken` here (before any page-level query)
+  // so the share JWT lands in the auth store before `useNote` fires
+  // GET /api/notes/:id - otherwise the request goes out without an
+  // Authorization header and falls back to session-based auth (401).
+  const { pathname } = useLocation();
+  const onPublicRoute = isPublicRoute(pathname);
+  const shareIdMatch = pathname.match(/^\/public\/n\/([^/?#]+)/);
+  const shareId = shareIdMatch ? shareIdMatch[1] : null;
+  // Hook no-ops on null `shareId`, so the conditional is in the arg.
+  useShareAccessToken({ shareId: onPublicRoute ? shareId : null });
+
   const { user } = useUserStore();
 
   // Resolve once and reuse the references below. The helpers throw if the
@@ -89,9 +125,13 @@ export const Bootstrap: React.FC = () => {
     staleTime: Infinity, // cache forever
   });
 
+  // `userQuery` and the access-token query only run off /public/* -
+  // there the user is anonymous, the cookie session is missing, and
+  // these calls would just 401 and clutter the log.
   const userQuery = useQuery({
     queryKey: ["user-load"], // load once - there shouldn't be a reason to load a user multiple times
     queryFn: async () => await userApi.fetchUser(),
+    enabled: !onPublicRoute,
     staleTime: Infinity, // cache forever
   });
 
@@ -99,7 +139,36 @@ export const Bootstrap: React.FC = () => {
   // store by the time the user enters write mode. Without this, users who
   // land on a read-mode note and toggle to write see the badge stuck on
   // "Awaiting login" until the fetch resolves.
-  useAccessToken();
+  useQuery({
+    queryKey: ["accessToken"],
+    // Same as `useAccessToken()` but with `enabled: !onPublicRoute`
+    // so /public/* doesn't fire a doomed /api/auth/access-token call.
+    enabled: !onPublicRoute,
+    retry: 5,
+    // Exponential backoff capped at 15s, so transient 401s recover in
+    // ~30s instead of locking the user out for the full refetchInterval.
+    retryDelay: (i) => Math.min(15_000, 1_000 * 2 ** i),
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    // `always` so the query still runs when navigator.onLine is false
+    // and the badge can show a useful diagnostic instead of silence.
+    networkMode: "always",
+    queryFn: async () => {
+      const data = await userApi.fetchAccessToken();
+      const token = data.token;
+      if (!token) {
+        throw new Error("Backend returned 2xx but no JWT in body");
+      }
+
+      const current = useAuthStore.getState().accessToken;
+      if (current !== token) {
+        useAuthStore.getState().setAccessToken(token);
+      }
+      return token;
+    },
+    staleTime: 15 * 60 * 1000 - 60 * 1000,
+    refetchInterval: 15 * 60 * 1000 - 60 * 1000,
+  });
 
   // Refetch the JWT once the user-load settles — the session cookie may
   // not have been valid when the query first fired. `useRef` latch
