@@ -8,20 +8,13 @@ import { collabStatusStore } from "../zustand/useCollabStatusStore";
 import type { CollabCacheEntry } from "./useNoteCollaboration";
 
 /**
- * Public, anonymous, read-mostly collaboration hook.
+ * Public, anonymous collaboration hook.
  *
- * Intended for shared-note URLs where the viewer isn't authenticated
- * (or is authenticated but the note is opened through a share token).
- * The Y.Doc is still required so Tiptap's `Collaboration` extension has
- * a document to bind to, but we don't use the user's JWT — the share
- * token is used instead to authenticate against Hocuspocus.
- *
- * NOTE: This is a structural stub. The connection / persistence logic
- * is intentionally not implemented yet — the public endpoint and the
- * exact behaviour of `disconnect on unmount` need to be decided first.
- * The signature mirrors `useNoteCollaboration` so the editor core
- * (which only cares about `{ ydoc, provider } | null`) doesn't need
- * to know which one is in use.
+ * Mirror of `useNoteCollaboration` for shared-note URLs. The Y.Doc
+ * is still required for Tiptap's `Collaboration` extension, but
+ * auth uses the share JWT (`useAuthStore.shareAccessToken`) rather
+ * than the user's JWT. `token` is a function so JWT rotations land
+ * on the handshake without recreating the provider.
  */
 
 type PublicCollabCacheEntry = CollabCacheEntry;
@@ -48,6 +41,16 @@ export function usePublicNoteCollaboration(
     () => null,
   );
 
+  // Reconnect cached providers when the share JWT rotates so the
+  // refresh (driven by `online_until`) lands on the open socket.
+  useEffect(() => {
+    return useAuthStore.subscribe((s, prev) => {
+      if (s.shareAccessToken !== prev.shareAccessToken) {
+        publicCollabCache.forEach(({ provider }) => provider.connect());
+      }
+    });
+  }, []);
+
   useEffect(() => {
     if (!noteId) return;
     if (!shareAccessToken) {
@@ -66,19 +69,15 @@ export function usePublicNoteCollaboration(
       return;
     }
 
-    // TODO: implement the public connection. For now we open a no-op
-    // Y.Doc so the editor can mount, but we DO NOT open a Hocuspocus
-    // WebSocket and we DO NOT persist via IndexedDB (public viewers
-    // shouldn't accumulate local drafts on shared machines).
     const ydoc = new Y.Doc();
     const persistence = new IndexeddbPersistence(`public-note-${noteId}`, ydoc);
     const provider = new HocuspocusProvider({
       url: HOCUSPOCUS_WS_URL,
       document: ydoc,
       name: `public-note-${noteId}`,
-      // TODO: real auth payload — likely `{ token: shareAccessToken }`
-      // or a dedicated /public endpoint.
-      token: shareAccessToken,
+      // Read fresh on every handshake so the share JWT rotation lands
+      // without us having to recreate the provider.
+      token: () => useAuthStore.getState().shareAccessToken ?? "",
     });
     publicCollabCache.set(noteId, { ydoc, provider, persistence });
     emit();
