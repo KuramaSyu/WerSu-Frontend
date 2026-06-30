@@ -18,7 +18,6 @@ import { NotePage } from "./pages/NotePage/Main";
 import { DirectoryView } from "./pages/DirectoryView/Main";
 import { DirectoryEditPage } from "./pages/DirectoryEdit/Main";
 import { FileGraphPage } from "./pages/FileGraph/Main";
-import { PublicNotePage } from "./pages/NotePage/PublicNotePage";
 import { recordNavigation } from "./utils/navigationMemento";
 import { Bootstrap } from "./Bootstrap";
 import "@fontsource/fira-sans/300.css";
@@ -27,6 +26,7 @@ import "@fontsource/fira-sans/500.css";
 import "@fontsource/fira-sans/700.css";
 import { LayoutProvider } from "./LayoutProvider";
 import { AppShell } from "./AppShell";
+import { PublicNotePage } from "./pages/PublicNotePage/Main";
 
 /**
  * records the navigation of the user, so that the back button works as expected
