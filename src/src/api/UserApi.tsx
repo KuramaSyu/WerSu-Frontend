@@ -118,11 +118,15 @@ export class UserApi implements UserApiInterface {
 
 // Register the default singleton + a typed token so consumers can resolve
 // it via `getUserApi()`.
-apiRegistry.register(new UserApi());
+//
+// IMPORTANT: broadcast-set + typed-token must be the SAME instance.
+// See NoteApi for the bug history.
+const userApiSingleton = new UserApi();
+apiRegistry.register(userApiSingleton);
 export const USER_API_TOKEN: ApiToken<UserApi> = Symbol(
   "UserApi",
 ) as ApiToken<UserApi>;
-apiRegistry.register(new UserApi(), USER_API_TOKEN);
+apiRegistry.register(userApiSingleton, USER_API_TOKEN);
 
 /**
  * Resolve the registered `UserApi` singleton.
