@@ -83,11 +83,15 @@ export class SearchNotesApi implements ISearchNotesApi {
 
 // Register the default singleton + a typed token so consumers can resolve
 // it via `getSearchNotesApi()`.
-apiRegistry.register(new SearchNotesApi());
+//
+// IMPORTANT: broadcast-set + typed-token must be the SAME instance.
+// See NoteApi for the bug history.
+const searchNotesApiSingleton = new SearchNotesApi();
+apiRegistry.register(searchNotesApiSingleton);
 export const SEARCH_NOTES_API_TOKEN: ApiToken<SearchNotesApi> = Symbol(
   "SearchNotesApi",
 ) as ApiToken<SearchNotesApi>;
-apiRegistry.register(new SearchNotesApi(), SEARCH_NOTES_API_TOKEN);
+apiRegistry.register(searchNotesApiSingleton, SEARCH_NOTES_API_TOKEN);
 
 /**
  * Resolve the registered `SearchNotesApi` singleton.
