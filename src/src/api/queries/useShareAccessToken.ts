@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import { sharingApi } from "../SharingApi";
+import { publicSharingApi } from "../SharingApi";
 import { useAuthStore } from "../../zustand/useAuthStore";
 
 /**
@@ -73,37 +73,90 @@ export function useShareAccessToken(
 
   const refresh = useCallback(async () => {
     if (!shareId) {
+      console.debug("[share-jwt] refresh called with empty shareId — clearing");
       useAuthStore.getState().setShareAccessToken(null);
       return;
     }
+    console.debug(
+      "[share-jwt] refresh() starting POST /api/auth/public-access-token shareId=",
+      shareId,
+    );
     try {
-      const { token } = await sharingApi.fetchPublicAccessToken(shareId);
-      useAuthStore.getState().setShareAccessToken(token);
+      const { token } = await publicSharingApi.fetchPublicAccessToken(shareId);
       const exp = jwtExpSeconds(token);
+      const expIso = exp !== null ? new Date(exp * 1000).toISOString() : null;
+      console.debug(
+        "[share-jwt] refresh() got token — exp=",
+        exp,
+        "expIso=",
+        expIso,
+        "tokenPrefix=",
+        token ? token.slice(0, 12) + "..." : "(empty)",
+      );
+      useAuthStore.getState().setShareAccessToken(token);
+      const stored = useAuthStore.getState().shareAccessToken;
+      console.debug(
+        "[share-jwt] refresh() wrote to store; store now has prefix=",
+        stored ? stored.slice(0, 12) + "..." : "(null)",
+      );
       if (exp !== null) {
         clearTimer();
-        handle.current = setTimeout(refresh, scheduleRefreshMs(exp));
+        const waitMs = scheduleRefreshMs(exp);
+        console.debug(
+          "[share-jwt] scheduling next refresh in",
+          waitMs,
+          "ms (",
+          Math.round(waitMs / 1000),
+          "s)",
+        );
+        // `refresh` is a forward ref; the timer body only runs after
+        // mount, so the ref is resolved by then.
+        // eslint-disable-next-line react-hooks/immutability
+        handle.current = setTimeout(refresh, waitMs);
       } else {
-        // No readable exp — fall back to a fixed cadence so we don't
-        // accidentally hold an expired token indefinitely.
+        // No readable exp -> fall back to a fixed cadence so we don't
+        // hold an expired token indefinitely.
         clearTimer();
+        console.debug(
+          "[share-jwt] exp claim unreadable, using FALLBACK_REFRESH_MS=",
+          FALLBACK_REFRESH_MS,
+          "ms",
+        );
         handle.current = setTimeout(refresh, FALLBACK_REFRESH_MS);
       }
     } catch (err) {
-      console.error("useShareAccessToken: refresh failed", err);
+      console.error(
+        "[share-jwt] refresh() FAILED — shareId=",
+        shareId,
+        "err=",
+        err,
+      );
       clearTimer();
       handle.current = setTimeout(refresh, FALLBACK_REFRESH_MS);
     }
   }, [shareId]);
 
   useEffect(() => {
+    console.debug(
+      "[share-jwt] useEffect mount/change — shareId=",
+      shareId,
+      "currentStoreToken=",
+      useAuthStore.getState().shareAccessToken
+        ? useAuthStore.getState().shareAccessToken!.slice(0, 12) + "..."
+        : "(null)",
+    );
     if (!shareId) {
-      // No active share → make sure we don't leak a JWT from a previous
-      // mount (e.g. navigating between two share URLs).
+      // No active share -> clear any leftover JWT from a previous mount
+      // (e.g. navigating between two share URLs).
       useAuthStore.getState().setShareAccessToken(null);
       return;
     }
     void refresh();
-    return clearTimer;
+    return () => {
+      console.debug(
+        "[share-jwt] useEffect cleanup — clearing timer, leaving store intact",
+      );
+      clearTimer();
+    };
   }, [shareId, refresh]);
 }
