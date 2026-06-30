@@ -43,14 +43,18 @@ export class NoteApi extends ShareTokenBearerMixin implements INoteApi {
   }
 
   /**
-   * Returns the headers object for a request, merged with the share-token
-   * `Authorization` header when one is currently injected. Always `await` —
-   * the provider may be async.
+   * Returns the full URL + fetch-init the API will use for a given
+   * `GET /api/notes/:id` call. Used by the test surface in
+   * `NoteApi.test.ts` to assert the wire shape without spinning up
+   * jsdom or rendering React.
    */
-  private async authHeaders(
-    base: Record<string, string> = {},
-  ): Promise<Record<string, string>> {
-    return { ...base, ...(await this.resolveShareAuthHeader()) };
+  async requestInitForGet(
+    id: string,
+  ): Promise<{ url: string; init: RequestInit }> {
+    return {
+      url: `${BACKEND_BASE}/api/notes/${encodeURIComponent(id)}`,
+      init: await this.getFetchParameters("GET"),
+    };
   }
 
   /**
@@ -58,11 +62,28 @@ export class NoteApi extends ShareTokenBearerMixin implements INoteApi {
    * It sets `useUserStore` to the authenticated user
    * */
   async get(id: string): Promise<Note | undefined> {
-    const response = await fetch(`${BACKEND_BASE}/api/notes/${id}`, {
-      method: "GET",
-      credentials: "include",
-      headers: await this.authHeaders(),
-    });
+    const init = await this.getFetchParameters("GET");
+    const headerObj = init.headers as Record<string, string> | undefined;
+    console.debug(
+      "[note-api] get() sending request - url=",
+      `${BACKEND_BASE}/api/notes/${encodeURIComponent(id)}`,
+      "method=",
+      init.method,
+      "credentials=",
+      init.credentials,
+      "headers=",
+      headerObj,
+    );
+    const response = await fetch(
+      `${BACKEND_BASE}/api/notes/${encodeURIComponent(id)}`,
+      init,
+    );
+    console.debug(
+      "[note-api] get() response - status=",
+      response.status,
+      "url=",
+      response.url,
+    );
     if (!response.ok) {
       throw await this.buildUserError(response);
     }
@@ -89,11 +110,7 @@ export class NoteApi extends ShareTokenBearerMixin implements INoteApi {
   ): Promise<Note | undefined> {
     const response = await fetch(
       `${BACKEND_BASE}/api/notes/${id}/versions/${versionIndex}`,
-      {
-        method: "GET",
-        credentials: "include",
-        headers: await this.authHeaders(),
-      },
+      await this.getFetchParameters("GET"),
     );
     if (!response.ok) {
       throw await this.buildUserError(response, "Failed to load version");
@@ -112,9 +129,9 @@ export class NoteApi extends ShareTokenBearerMixin implements INoteApi {
 
   async post(title: string, content: string): Promise<Note> {
     const response = await fetch(`${BACKEND_BASE}/api/notes`, {
-      method: "POST",
-      credentials: "include",
-      headers: await this.authHeaders({ "Content-Type": "application/json" }),
+      ...(await this.getFetchParameters("POST", {
+        "Content-Type": "application/json",
+      })),
       body: JSON.stringify({ title, content }),
     });
     if (!response.ok) {
@@ -149,9 +166,9 @@ export class NoteApi extends ShareTokenBearerMixin implements INoteApi {
     }
 
     const response = await fetch(`${BACKEND_BASE}/api/notes`, {
-      method: "PATCH",
-      credentials: "include",
-      headers: await this.authHeaders({ "Content-Type": "application/json" }),
+      ...(await this.getFetchParameters("PATCH", {
+        "Content-Type": "application/json",
+      })),
       body: JSON.stringify(body),
     });
     if (!response.ok) {
@@ -250,11 +267,10 @@ export class NoteApi extends ShareTokenBearerMixin implements INoteApi {
   }
 
   async delete(id: string): Promise<boolean> {
-    const response = await fetch(`${BACKEND_BASE}/api/notes/${id}`, {
-      method: "DELETE",
-      credentials: "include",
-      headers: await this.authHeaders(),
-    });
+    const response = await fetch(
+      `${BACKEND_BASE}/api/notes/${encodeURIComponent(id)}`,
+      await this.getFetchParameters("DELETE"),
+    );
     if (!response.ok) {
       throw await this.buildUserError(response, "Failed to delete note");
     }
@@ -265,10 +281,12 @@ export class NoteApi extends ShareTokenBearerMixin implements INoteApi {
   }
 }
 
-// Register the default singleton so `apiRegistry.installShareTokenProvider(...)`
-// reaches it. Consumers that create their own `NoteApi` instances should call
-// `apiRegistry.register(instance)` themselves.
-apiRegistry.register(new NoteApi());
+// IMPORTANT: broadcast-set + typed-token must be the SAME instance,
+// otherwise `installShareTokenProvider` doesn't reach the API the page
+// actually uses (anonymous-public-page 401s). See the "Authorization
+// header not found" backend log for the original bug.
+const noteApiSingleton = new NoteApi();
+apiRegistry.register(noteApiSingleton);
 
 /**
  * Typed token for retrieving the registered `NoteApi` singleton from the
@@ -281,9 +299,8 @@ export const NOTE_API_TOKEN: ApiToken<NoteApi> = Symbol(
   "NoteApi",
 ) as ApiToken<NoteApi>;
 
-// Re-register the same instance under the typed token so both retrieval
-// styles work:
-apiRegistry.register(new NoteApi(), NOTE_API_TOKEN);
+// Register the SAME instance under the typed token too - see above.
+apiRegistry.register(noteApiSingleton, NOTE_API_TOKEN);
 
 /**
  * Resolve the registered `NoteApi` singleton.

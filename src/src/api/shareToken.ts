@@ -62,6 +62,18 @@ export interface ShareTokenBearer {
 
   /** Read back the currently installed provider, mostly for testing/diagnostics. */
   getShareTokenProvider(): ShareTokenProvider | null;
+
+  /**
+   * Builds the parameters for a fetch request, depending on the route.
+   *
+   * Public routes (`/public/*`): add `Authorization: Bearer <share-token>`
+   * and omit the cookie.
+   * Private routes: include the cookie. No share token used.
+   */
+  getFetchParameters(
+    method: "GET" | "POST" | "PATCH" | "DELETE",
+    baseHeaders: Record<string, string>,
+  ): Promise<RequestInit>;
 }
 
 /**
@@ -93,9 +105,40 @@ export abstract class ShareTokenBearerMixin implements ShareTokenBearer {
    */
   protected async resolveShareAuthHeader(): Promise<Record<string, string>> {
     if (!this._shareTokenProvider) {
+      console.debug(
+        "[share-token-bearer] resolveShareAuthHeader - NO provider installed; returning {}",
+      );
       return {};
     }
     const token = await this._shareTokenProvider();
-    return token ? { Authorization: `Bearer ${token}` } : {};
+    const result: Record<string, string> = token
+      ? { Authorization: `Bearer ${token}` }
+      : {};
+    console.debug(
+      "[share-token-bearer] resolveShareAuthHeader - provider returned token prefix=",
+      token ? token.slice(0, 12) + "..." : "(null)",
+      "-> headers=",
+      result,
+    );
+    return result;
+  }
+
+  async getFetchParameters(
+    method: "GET" | "POST" | "PATCH" | "DELETE",
+    baseHeaders: Record<string, string> = {},
+  ): Promise<RequestInit> {
+    const shareHeaders = await this.resolveShareAuthHeader();
+    const hasShareToken = Boolean(shareHeaders.Authorization);
+    return {
+      method,
+      // Omit the cookie when a share token is present - otherwise the
+      // backend's session-based auth fallback swallows the bearer header.
+      credentials: hasShareToken ? "omit" : "include",
+      headers: {
+        Accept: "application/json",
+        ...baseHeaders,
+        ...shareHeaders,
+      },
+    };
   }
 }
