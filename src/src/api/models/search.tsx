@@ -23,6 +23,8 @@ export interface MinimalNote {
 
 export interface NoteData extends MinimalNote {
   content: string;
+  // Optional attachment ID to JWT mapping, that public users can access images
+  tokens?: Record<string, string>;
 }
 
 export class Note implements NoteData {
@@ -33,6 +35,7 @@ export class Note implements NoteData {
   author_id: string;
   updated_at: string;
   permissions: PermissionRelationshipReply[];
+  tokens?: Record<string, string> | undefined;
 
   constructor(data: NoteData) {
     this.id = data.id;
@@ -42,6 +45,7 @@ export class Note implements NoteData {
     this.author_id = data.author_id;
     this.updated_at = data.updated_at;
     this.permissions = data.permissions ?? [];
+    this.tokens = data.tokens;
   }
 
   static fromJson(data: NoteData): Note {
