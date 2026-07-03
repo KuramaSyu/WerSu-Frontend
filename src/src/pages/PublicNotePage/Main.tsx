@@ -47,21 +47,22 @@ export const PublicNotePage: React.FC = () => {
   useEffect(() => {
     setLeftPanel(null);
     setRightPanel(null);
-    setLeftPanelOpen(true);
+    setLeftPanelOpen(false);
     setRightPanelOpen(false);
     return () => {
       setLeftPanel(null);
       setRightPanel(null);
-      setLeftPanelOpen(true);
-      setRightPanelOpen(false);
     };
   }, [setLeftPanel, setRightPanel, setLeftPanelOpen, setRightPanelOpen]);
 
   // Force read mode per default; the user can flip to write if the
-  // share grants it. On unmount: clear share token + collab provider.
+  // share grants it. On mount: reset the per-attachment JWT map so a
+  // prior share's tokens don't satisfy the new note's requests. On
+  // unmount: clear share token + collab provider + JWT map.
   useEffect(() => {
     if (!grant) return;
 
+    useAuthStore.getState().resetShareAttachmentTokens();
     useEditorSettings.getState().setWrite(false);
     useViewConfig.getState().setViewConfig({ readOnly: !isWrite });
 
@@ -69,6 +70,7 @@ export const PublicNotePage: React.FC = () => {
       useEditorSettings.getState().setWrite(false);
       useViewConfig.getState().resetViewConfig();
       useAuthStore.getState().setShareAccessToken(null);
+      useAuthStore.getState().resetShareAttachmentTokens();
       if (noteIdFromGrant) {
         getPublicCollabEntry(noteIdFromGrant)?.provider.disconnect();
       }
@@ -81,6 +83,18 @@ export const PublicNotePage: React.FC = () => {
     isError: noteIsError,
     error: noteError,
   } = useNote(noteIdFromGrant);
+
+  const shareAttachmentTokensLoaded = useAuthStore(
+    (s) => s.shareAttachmentTokensLoaded,
+  );
+
+  const noteReady = note !== undefined && shareAttachmentTokensLoaded;
+
+  useEffect(() => {
+    console.log("PublicNotePage - note", note);
+    useAuthStore.getState().setShareAttachmentTokens(note?.tokens ?? {});
+  }, [note]);
+
   const { mutate } = useUpdateNote();
   const updateNote = (n: Note) => {
     if (!noteIdFromGrant) return;
@@ -106,7 +120,7 @@ export const PublicNotePage: React.FC = () => {
       }}
     >
       <Fade
-        in={note === undefined}
+        in={!noteReady}
         timeout={{
           enter: theme.transitions.duration.enteringScreen,
           exit: theme.transitions.duration.complex,
@@ -123,7 +137,7 @@ export const PublicNotePage: React.FC = () => {
         </Box>
       </Fade>
       <Fade
-        in={note !== undefined}
+        in={noteReady}
         timeout={{
           enter: theme.transitions.duration.complex,
           exit: theme.transitions.duration.complex,
