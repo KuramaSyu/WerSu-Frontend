@@ -34,6 +34,7 @@ import { useActiveNoteStore } from "../../zustand/editorStore";
 import { queryClient } from "../../api/queryClient";
 import { useLiveUsers } from "../../zustand/useLiveUsersStore";
 import { useUsers } from "../../api/queries/useUser";
+import { displayInitials } from "../../utils/publicUserName";
 import { M1, M2 } from "../../statics";
 
 interface StatusMeta {
@@ -219,29 +220,34 @@ function TooltipLine(props: {
 }
 
 /**
- * Avatar-or-color fallback used by `LiveUserCard`. When the Discord
- * avatar URL has been resolved we show it; otherwise we paint a
- * dot in the user's awareness color so the row stays visually
- * anchored.
+ * Avatar-or-initials fallback used by `LiveUserCard`. When the
+ * Discord avatar URL has been resolved we show it; otherwise we
+ * render an initial avatar in the user's awareness color so the
+ * row stays visually anchored. Public viewers don't have a Discord
+ * profile so this is what most of the entries look like.
  */
 function LiveUserAvatar(props: {
   avatarUrl: string | undefined;
   awarenessColor: string | undefined;
+  displayName: string;
 }) {
   if (props.avatarUrl) {
     return <Avatar src={props.avatarUrl} sx={{ width: 28, height: 28 }} />;
   }
   return (
-    <Box
+    <Avatar
       sx={{
         width: 28,
         height: 28,
-        borderRadius: "50%",
-        backgroundColor: props.awarenessColor ?? "currentColor",
-        opacity: props.awarenessColor ? 1 : 0.4,
-        flexShrink: 0,
+        fontSize: 12,
+        fontWeight: 600,
+        backgroundColor: props.awarenessColor ?? "action.disabledBackground",
+        color: props.awarenessColor ? "#fff" : "text.primary",
+        opacity: props.awarenessColor ? 1 : 0.85,
       }}
-    />
+    >
+      {displayInitials(props.displayName)}
+    </Avatar>
   );
 }
 
@@ -258,6 +264,12 @@ const LiveUserCard: React.FC<{
   awarenessColor: string | undefined;
 }> = ({ userId, username, avatarUrl, awarenessColor }) => {
   const display = username ?? userId;
+  // Without a profile lookup, the userId IS the display (not a
+  // separate handle we want under it). The caption only added value
+  // when the display was the username; rendering it twice reads as
+  // a duplicated label, especially for public viewers whose userId
+  // is the generated handle from the awareness state.
+  const showIdCaption = Boolean(username) && display !== userId;
   return (
     <Paper
       sx={{
@@ -269,7 +281,11 @@ const LiveUserCard: React.FC<{
         minWidth: 180,
       }}
     >
-      <LiveUserAvatar avatarUrl={avatarUrl} awarenessColor={awarenessColor} />
+      <LiveUserAvatar
+        avatarUrl={avatarUrl}
+        awarenessColor={awarenessColor}
+        displayName={display}
+      />
       <Stack spacing={0.25} sx={{ minWidth: 0 }}>
         <Typography
           variant="body2"
@@ -282,7 +298,7 @@ const LiveUserCard: React.FC<{
         >
           {display}
         </Typography>
-        {!username && (
+        {showIdCaption && (
           <Typography
             variant="caption"
             sx={{ opacity: 0.6, fontFamily: "monospace" }}
