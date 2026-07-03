@@ -73,6 +73,7 @@ import { useActiveNoteStore } from "../../zustand/editorStore";
 import { useUpdateNote } from "../../api/queries/useNoteQueries";
 import { AttachmentLinkBuilder } from "../../api/utils/AttachmentLInkBuilder";
 import { randomMatchingColor } from "../../utils/blendWithContrast";
+import { generatePublicUserName } from "../../utils/publicUserName";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
 import * as Y from "yjs";
 import { Awareness } from "y-protocols/awareness";
@@ -191,6 +192,13 @@ export const NoteEditorCore: React.FC<NoteEditorCoreProps> = ({
     }
   }, [note?.id]);
 
+  // Public (anonymous) viewers don't have a Discord profile, so the
+  // awareness falls back to a friendly generated handle for both the
+  // display name and the id. They share a value so the live-users
+  // badge — which has no Discord lookup for them — has the id to
+  // render directly.
+  const publicUserName = generatePublicUserName();
+
   const editor = useEditor(
     {
       extensions: [
@@ -205,8 +213,8 @@ export const NoteEditorCore: React.FC<NoteEditorCoreProps> = ({
         CollaborationCaret.configure({
           provider: stableProvider,
           user: {
-            name: `${user?.username}`,
-            id: user?.id,
+            name: user?.username ?? publicUserName,
+            id: user?.id ?? publicUserName,
             // random color
             color: randomMatchingColor(theme),
           },
