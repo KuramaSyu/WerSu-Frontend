@@ -25,6 +25,7 @@ export function useUser(): UseQueryResult<DiscordUserImpl, Error> {
 
     // the cached entry is plain JSON -> recreate class
     select: (data) => new DiscordUserImpl(data),
+    retry: 3,
   });
 }
 
