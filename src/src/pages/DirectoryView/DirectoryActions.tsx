@@ -1,12 +1,15 @@
 import React from "react";
-import { Stack, Button, Divider } from "@mui/material";
+import { Stack } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
 import CreateIcon from "@mui/icons-material/Create";
+import ScheduleIcon from "@mui/icons-material/Schedule";
 import { RecentActivityPanel } from "../../components/RecentActivity/Main";
 import { DirectorySideView } from "../MainPage/DirectorySideView";
 import type { HirarchyItem } from "../../models/HirarchyItem";
 import type { NavigateFunction } from "react-router-dom";
+import { PanelButtons } from "../../components/Panels/PanelButtons";
+import { PanelSection } from "../../components/Panels/PanelSection";
 
 interface DirectoryActionsProps {
   currentNode: HirarchyItem;
@@ -37,42 +40,46 @@ export const DirectoryActions: React.FC<DirectoryActionsProps> = ({
 }) => {
   return (
     <Stack spacing={2}>
-      <Stack spacing={1}>
-        <Button
-          variant="outlined"
-          startIcon={<ArrowBackIcon />}
-          onClick={() => navigate(-1)}
-        >
-          Back
-        </Button>
-        <Button
-          variant="outlined"
-          startIcon={<MenuBookIcon />}
-          onClick={() => void handleRenameDirectory()}
-        >
-          Edit directory
-        </Button>
-        <Button
-          variant="contained"
-          startIcon={<CreateIcon />}
-          onClick={() => void handleCreateNote()}
-        >
-          Create note
-        </Button>
-      </Stack>
+      <PanelSection showDivider={false}>
+        <PanelButtons>
+          <PanelButtons.Secondary
+            startIcon={<ArrowBackIcon />}
+            onClick={() => navigate(-1)}
+          >
+            Back
+          </PanelButtons.Secondary>
+          <PanelButtons.Secondary
+            startIcon={<MenuBookIcon />}
+            onClick={() => void handleRenameDirectory()}
+          >
+            Edit directory
+          </PanelButtons.Secondary>
+          <PanelButtons.Primary
+            startIcon={<CreateIcon />}
+            onClick={() => void handleCreateNote()}
+          >
+            Create note
+          </PanelButtons.Primary>
+        </PanelButtons>
+      </PanelSection>
 
-      <Divider sx={{ opacity: 0.3 }} />
+      <PanelSection showDivider={false}>
+        <DirectorySideView />
+      </PanelSection>
 
-      <DirectorySideView />
-      <Divider sx={{ opacity: 0.3 }} />
-
-      <RecentActivityPanel
-        target={
-          currentNode.getId() === "root"
-            ? { type: "root" }
-            : { type: "directory", id: currentNode.getId() }
-        }
-      />
+      <PanelSection
+        title="Recent activity"
+        titleIcon={<ScheduleIcon fontSize="small" />}
+        collapsible
+      >
+        <RecentActivityPanel
+          target={
+            currentNode.getId() === "root"
+              ? { type: "root" }
+              : { type: "directory", id: currentNode.getId() }
+          }
+        />
+      </PanelSection>
     </Stack>
   );
 };

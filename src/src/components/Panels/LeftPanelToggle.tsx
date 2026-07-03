@@ -4,11 +4,11 @@ import {
   IconLayoutSidebarRightCollapseFilled,
   IconLayoutSidebarRightExpandFilled,
 } from "@tabler/icons-react";
-import { useLayout } from "../LayoutProvider";
+import { useLayout } from "../../LayoutProvider";
 import Box from "@mui/material/Box";
-import { M1 } from "../statics";
+import { M1 } from "../../statics";
 import { IconButton, Tooltip } from "@mui/material";
-import { useThemeStore } from "../zustand/useThemeStore";
+import { useThemeStore } from "../../zustand/useThemeStore";
 
 export const LeftPanelToggle: React.FC = () => {
   const { leftPanelOpen, setLeftPanelOpen } = useLayout();

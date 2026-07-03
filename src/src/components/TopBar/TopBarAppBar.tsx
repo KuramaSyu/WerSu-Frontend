@@ -17,7 +17,7 @@ import HomeIcon from "@mui/icons-material/Home";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useUser } from "../../api/queries/useUser";
-import { LeftPanelToggle, RightPanelToggle } from "../LeftPanelToggle";
+import { LeftPanelToggle, RightPanelToggle } from "../Panels/LeftPanelToggle";
 import SearchBar from "../search/SearchBar";
 import { M1, M2, M3, M4 } from "../../statics";
 import { useContainedIfSelected, Pages } from "./Pages";

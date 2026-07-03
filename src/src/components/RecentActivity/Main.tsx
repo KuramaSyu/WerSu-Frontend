@@ -39,33 +39,27 @@ export const RecentActivityPanel: React.FC<RecentActivityPanelProps> = ({
   );
 
   return (
-    <Box sx={{ px: 2, py: 2 }}>
-      <Stack spacing={M3}>
-        <Typography variant="subtitle2" color="textSecondary">
-          {title}
+    <>
+      {isLoading && (
+        <Typography variant="body2" color="textSecondary">
+          Loading activity...
         </Typography>
-        <Divider />
-        {isLoading && (
-          <Typography variant="body2" color="textSecondary">
-            Loading activity...
-          </Typography>
-        )}
-        {hasError && !isLoading && (
-          <Typography variant="body2" color="error">
-            Failed to load activity.
-          </Typography>
-        )}
-        {!isLoading && !hasError && activity.length === 0 && (
-          <Typography variant="body2" color="textSecondary">
-            No recent activity.
-          </Typography>
-        )}
-        <Stack spacing={1.5}>
-          {activity.map((entry) => (
-            <RecentActivityView key={entry.version_id} entry={entry} />
-          ))}
-        </Stack>
+      )}
+      {hasError && !isLoading && (
+        <Typography variant="body2" color="error">
+          Failed to load activity.
+        </Typography>
+      )}
+      {!isLoading && !hasError && activity.length === 0 && (
+        <Typography variant="body2" color="textSecondary">
+          No recent activity.
+        </Typography>
+      )}
+      <Stack spacing={1.5}>
+        {activity.map((entry) => (
+          <RecentActivityView key={entry.version_id} entry={entry} />
+        ))}
       </Stack>
-    </Box>
+    </>
   );
 };
