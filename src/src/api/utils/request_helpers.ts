@@ -139,6 +139,57 @@ export function extractShareIdFromUrl(input: string): string {
 }
 
 /**
+ * Pulls the attachment key out of an attachment URL.
+ *
+ * Two URL shapes exist in this codebase:
+ *   1. `/api/attachments/image?key=<encoded>` — produced by
+ *      `AttachmentApi.generateImageLink(...)`.
+ *   2. `/attachments/<encoded key>[?width=...&jwt=...]` — produced by
+ *      `linkAttachment(...)`, the URL that gets persisted in note
+ *      content. Decoration params (`width`, `format`, `jwt`, ...) ride
+ *      along on the query string and should be ignored.
+ *
+ * Strategy: first try the `key` query param, then fall back to the
+ * last non-empty path segment. The result is `decodeURIComponent`-d
+ * so callers always see the raw key.
+ *
+ * Returns an empty string when the input isn't a URL or has neither
+ * a `key` param nor a trailing path segment — callers should treat
+ * that as "not one of ours" and skip any per-attachment work.
+ */
+export function extractAttachmentKeyFromUrl(input: string): string {
+  const trimmed = input?.trim() ?? "";
+  if (!trimmed) return "";
+
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    return "";
+  }
+
+  const queryKey = url.searchParams.get("key");
+  if (queryKey) {
+    return safeDecode(queryKey);
+  }
+
+  const segments = url.pathname.split("/").filter((s) => s.length > 0);
+  if (segments.length === 0) return "";
+
+  return safeDecode(segments[segments.length - 1]);
+}
+
+function safeDecode(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    // Malformed percent-encoding — fall back to the raw segment rather
+    // than throwing; the JWT lookup will simply miss.
+    return value;
+  }
+}
+
+/**
  * Optional extra headers to merge into the outgoing request.
  *
  * Use `shareAuthHeader` to pass a pre-resolved `{ Authorization: "Bearer ..." }`

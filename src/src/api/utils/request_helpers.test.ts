@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { ApiError } from "../SharingApi";
 import {
   errorMessageFromPayload,
+  extractAttachmentKeyFromUrl,
   extractShareIdFromUrl,
   readErrorPayload,
   requestJson,
@@ -277,5 +278,84 @@ describe("extractShareIdFromUrl", () => {
 
   it("returns empty string for a URL with no path segments or query ID", () => {
     expect(extractShareIdFromUrl("https://app.example.com/")).toBe("");
+  });
+});
+
+describe("extractAttachmentKeyFromUrl", () => {
+  it("extracts the key query parameter from an image URL", () => {
+    expect(
+      extractAttachmentKeyFromUrl(
+        "https://api.example.com/api/attachments/image?key=0195f8f4-1167-7f89-b5ec-b40a8f08f4cb&width=720&format=webp",
+      ),
+    ).toBe("0195f8f4-1167-7f89-b5ec-b40a8f08f4cb");
+  });
+
+  it("extracts the key from a raw /api/attachments/?key=... URL", () => {
+    expect(
+      extractAttachmentKeyFromUrl(
+        "https://api.example.com/api/attachments/?key=abc%2F123",
+      ),
+    ).toBe("abc/123");
+  });
+
+  it("falls back to the last path segment when no key= query param is present", () => {
+    // This is the URL shape that linkAttachment() writes into note
+    // content: /attachments/<encoded uuid>, optionally followed by
+    // decoration params (width/format/jwt) on the query string.
+    expect(
+      extractAttachmentKeyFromUrl(
+        "https://api.example.com/attachments/0195f8f4-1167-7f89-b5ec-b40a8f08f4cb",
+      ),
+    ).toBe("0195f8f4-1167-7f89-b5ec-b40a8f08f4cb");
+  });
+
+  it("handles /attachments/image/<uuid> path-segment image URLs", () => {
+    // Image variant where the key is a path segment under
+    // /attachments/image/. Decoration params ride along on the query
+    // string and must not confuse the extractor.
+    expect(
+      extractAttachmentKeyFromUrl(
+        "https://api.example.com/attachments/image/0195f8f4-1167-7f89-b5ec-b40a8f08f4cb?width=720&format=webp&jwt=tok",
+      ),
+    ).toBe("0195f8f4-1167-7f89-b5ec-b40a8f08f4cb");
+  });
+
+  it("decodes URL-encoded path-segment keys", () => {
+    expect(
+      extractAttachmentKeyFromUrl(
+        "https://api.example.com/api/attachments/abc%2F123",
+      ),
+    ).toBe("abc/123");
+  });
+
+  it("ignores decoration query params when falling back to the path", () => {
+    expect(
+      extractAttachmentKeyFromUrl(
+        "https://api.example.com/attachments/0195f8f4-1167-7f89-b5ec-b40a8f08f4cb?width=720&format=webp&jwt=abc",
+      ),
+    ).toBe("0195f8f4-1167-7f89-b5ec-b40a8f08f4cb");
+  });
+
+  it("prefers the key= query param over the path when both are present", () => {
+    // Defensive: in practice only one shape is emitted, but if some
+    // future URL builder produces both, the query param wins so we
+    // stay consistent with the documented contract.
+    expect(
+      extractAttachmentKeyFromUrl(
+        "https://api.example.com/attachments/path-key?key=query-key",
+      ),
+    ).toBe("query-key");
+  });
+
+  it("returns empty string when no key param or path segment is present", () => {
+    expect(extractAttachmentKeyFromUrl("https://api.example.com/")).toBe("");
+  });
+
+  it("returns empty string for non-URL input", () => {
+    expect(extractAttachmentKeyFromUrl("not a url")).toBe("");
+  });
+
+  it("returns empty string for empty input", () => {
+    expect(extractAttachmentKeyFromUrl("")).toBe("");
   });
 });
