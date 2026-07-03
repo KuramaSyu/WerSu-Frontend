@@ -1,4 +1,10 @@
-import { createContext, type ReactNode, useContext, useState } from "react";
+import {
+  createContext,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 
 type LayoutContextType = {
   leftPanel: ReactNode | null;
@@ -63,4 +69,38 @@ export function useLayout(): LayoutContextType {
     throw new Error("useLayout must be used within an AppLayout");
   }
   return context;
+}
+
+// Mount a component directly into the left panel on render - no `useEffect` needed.
+// Pass `null` to clear.
+export function useLeftPanel(panel: ReactNode | null): void {
+  const { leftPanel, setLeftPanel, setLeftPanelOpen, clearPanels } =
+    useLayout();
+
+  useEffect(() => {
+    if (panel !== leftPanel) {
+      setLeftPanel(panel);
+    }
+    if (panel !== null) {
+      setLeftPanelOpen(true);
+    }
+    return () => clearPanels();
+  }, []);
+}
+
+// Mount a component directly into the right panel on render - no `useEffect` needed.
+// Pass `null` to clear.
+export function useRightPanel(panel: ReactNode | null): void {
+  const { rightPanel, setRightPanel, setRightPanelOpen, clearPanels } =
+    useLayout();
+
+  useEffect(() => {
+    if (panel !== rightPanel) {
+      setRightPanel(panel);
+    }
+    if (panel !== null) {
+      setRightPanelOpen(true);
+    }
+    return () => clearPanels();
+  }, []);
 }
