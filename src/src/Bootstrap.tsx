@@ -98,10 +98,6 @@ function useShareTokenMode() {
  */
 export const Bootstrap: React.FC = () => {
   useShareTokenMode();
-  // Mount `useShareAccessToken` here (before any page-level query)
-  // so the share JWT lands in the auth store before `useNote` fires
-  // GET /api/notes/:id - otherwise the request goes out without an
-  // Authorization header and falls back to session-based auth (401).
   const { pathname } = useLocation();
   const onPublicRoute = isPublicRoute(pathname);
   const shareIdMatch = pathname.match(/^\/public\/n\/([^/?#]+)/);
@@ -111,9 +107,6 @@ export const Bootstrap: React.FC = () => {
 
   const { user } = useUserStore();
 
-  // Resolve once and reuse the references below. The helpers throw if the
-  // API isn't registered — that surfaces missing-registration bugs at
-  // startup instead of as silent fetch failures later.
   const searchNotesApi = getSearchNotesApi();
   const userApi = getUserApi();
 
@@ -125,26 +118,19 @@ export const Bootstrap: React.FC = () => {
     staleTime: Infinity, // cache forever
   });
 
-  // `userQuery` and the access-token query only run off /public/* -
-  // there the user is anonymous, the cookie session is missing, and
-  // these calls would just 401 and clutter the log.
+  // prevent 401 responses by caching the user
   const userQuery = useQuery({
-    queryKey: ["user-load"], // load once - there shouldn't be a reason to load a user multiple times
+    queryKey: ["user-load"],
     queryFn: async () => await userApi.fetchUser(),
     enabled: !onPublicRoute,
-    staleTime: Infinity, // cache forever
+    staleTime: Infinity,
   });
 
-  // Mount the access-token query at app boot so the JWT is in the auth
-  // store by the time the user enters write mode. Without this, users who
-  // land on a read-mode note and toggle to write see the badge stuck on
-  // "Awaiting login" until the fetch resolves.
+  // Mount the access-token query at app boot so the JWT is in the auth store
   useQuery({
     queryKey: ["accessToken"],
-    // Same as `useAccessToken()` but with `enabled: !onPublicRoute`
-    // so /public/* doesn't fire a doomed /api/auth/access-token call.
     enabled: !onPublicRoute,
-    retry: 5,
+    retry: 3,
     // Exponential backoff capped at 15s, so transient 401s recover in
     // ~30s instead of locking the user out for the full refetchInterval.
     retryDelay: (i) => Math.min(15_000, 1_000 * 2 ** i),
