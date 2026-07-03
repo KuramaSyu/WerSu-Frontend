@@ -12,6 +12,7 @@ export class AttachmentLinkBuilder {
   as_html: boolean;
   as_markdown: boolean;
   contentType: string | null;
+  jwt: string | null;
 
   constructor(api: IAttachmentApi) {
     this.api = api;
@@ -21,6 +22,7 @@ export class AttachmentLinkBuilder {
     this.as_html = false;
     this.as_markdown = false;
     this.contentType = "image/*";
+    this.jwt = null;
   }
 
   public asHtml(): AttachmentLinkBuilder {
@@ -53,12 +55,23 @@ export class AttachmentLinkBuilder {
     return this;
   }
 
+  public setJwt(jwt: string | null): AttachmentLinkBuilder {
+    this.jwt = jwt;
+    return this;
+  }
+
   private getHtml(link: string): string {
     return `<img src="${link}" alt="Attachment Image" />`;
   }
 
   private getMarkdown(link: string): string {
     return `![Attachment Image](${link})`;
+  }
+
+  private appendJwt(link: string): string {
+    if (!this.jwt) return link;
+    const separator = link.includes("?") ? "&" : "?";
+    return `${link}${separator}jwt=${encodeURIComponent(this.jwt)}`;
   }
 
   public getLink(key: string): string {
@@ -74,6 +87,8 @@ export class AttachmentLinkBuilder {
     } else {
       link = `${BACKEND_BASE}${ATTACHMENTS_API_PATH}/?key=${encodeURIComponent(key)}`;
     }
+
+    link = this.appendJwt(link);
 
     if (this.as_html) {
       return this.getHtml(link);
