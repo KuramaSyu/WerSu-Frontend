@@ -36,7 +36,7 @@ export const DirectoryActions: React.FC<DirectoryActionsProps> = ({
   handleRenameDirectory,
 }) => {
   return (
-    <Stack spacing={2} sx={{ p: 2 }}>
+    <Stack spacing={2}>
       <Stack spacing={1}>
         <Button
           variant="outlined"
