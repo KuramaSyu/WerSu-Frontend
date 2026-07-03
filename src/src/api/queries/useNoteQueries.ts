@@ -226,6 +226,11 @@ export function useCreateNote() {
 
       // Update the detail cache
       queryClient.setQueryData(["notes", createdNote.id], createdNote);
+
+      // Refresh activity lists so the new note appears immediately
+      queryClient.invalidateQueries({
+        queryKey: ["activity"],
+      });
     },
   });
 }

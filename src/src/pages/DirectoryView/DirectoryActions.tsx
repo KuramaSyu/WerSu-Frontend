@@ -3,7 +3,7 @@ import { Stack, Button, Divider } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
 import CreateIcon from "@mui/icons-material/Create";
-import { RecentActivityPanel } from "../../components/RecentActivityPanel";
+import { RecentActivityPanel } from "../../components/RecentActivity/Main";
 import { DirectorySideView } from "../MainPage/DirectorySideView";
 import type { HirarchyItem } from "../../models/HirarchyItem";
 import type { NavigateFunction } from "react-router-dom";
@@ -63,6 +63,9 @@ export const DirectoryActions: React.FC<DirectoryActionsProps> = ({
 
       <Divider sx={{ opacity: 0.3 }} />
 
+      <DirectorySideView />
+      <Divider sx={{ opacity: 0.3 }} />
+
       <RecentActivityPanel
         target={
           currentNode.getId() === "root"
@@ -70,10 +73,6 @@ export const DirectoryActions: React.FC<DirectoryActionsProps> = ({
             : { type: "directory", id: currentNode.getId() }
         }
       />
-
-      <Divider sx={{ opacity: 0.3 }} />
-
-      <DirectorySideView />
     </Stack>
   );
 };

@@ -34,7 +34,7 @@ import {
   DirectoryHierarchyBuilder,
   type HirarchyItem,
 } from "../../models/HirarchyItem";
-import { RecentActivityPanel } from "../../components/RecentActivityPanel";
+import { RecentActivityPanel } from "../../components/RecentActivity/Main";
 import { LeftPanel } from "../MainPage/LeftPanel";
 import { NoteActionPanel } from "./NoteActionPanel";
 import { AttachmentApi } from "../../api/AttachmentApi";
