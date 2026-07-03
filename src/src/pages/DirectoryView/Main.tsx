@@ -13,7 +13,8 @@ import { M3, M4 } from "../../statics";
  * directories, and notes for the current directory.
  *
  * Display only - data loading, hierarchy resolution, and action handlers
- * are owned by `useDirectoryFeatures`.
+ * are owned by `useDirectoryFeatures`. The right-panel title actions are
+ * mounted by `useDirectoryFeatures` via `useRightPanel`.
  */
 export const DirectoryView: React.FC = () => {
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(
@@ -27,19 +28,10 @@ export const DirectoryView: React.FC = () => {
     notesByDirectory,
     notesInDirectory,
     title,
-    handleCreateNote,
-    handleRenameDirectory,
     navigate,
   } = useDirectoryFeatures();
 
-  useLeftPanel(
-    <DirectoryActions
-      currentNode={currentNode}
-      navigate={navigate}
-      handleCreateNote={handleCreateNote}
-      handleRenameDirectory={handleRenameDirectory}
-    />,
-  );
+  useLeftPanel(<DirectoryActions currentNode={currentNode} />);
 
   return (
     <Paper

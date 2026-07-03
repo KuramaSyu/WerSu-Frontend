@@ -14,6 +14,8 @@ import { NoteApi } from "../../api/NoteApi";
 import { note_of_date_at_hour } from "../../utils/NoteTitleTemplates";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { UserError } from "../../api/models/UserError";
+import { useRightPanel } from "../../LayoutProvider";
+import { DirectoryRightPanel } from "./DirectoryRightPanel";
 
 const findNodeById = (root: HirarchyItem, id: string): HirarchyItem | null => {
   if (root.getId() === id) {
@@ -210,6 +212,17 @@ export function useDirectoryFeatures(): DirectoryFeatures {
 
     navigate(`/d/${currentNode.getId()}/edit`);
   };
+
+  // Mount the title-level directory actions in the right panel while this
+  // view is active. The hook clears the panel on unmount.
+  useRightPanel(
+    <DirectoryRightPanel
+      currentNode={currentNode}
+      navigate={navigate}
+      handleCreateNote={handleCreateNote}
+      handleRenameDirectory={handleRenameDirectory}
+    />,
+  );
 
   return {
     currentNode,
