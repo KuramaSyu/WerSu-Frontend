@@ -74,7 +74,7 @@ export function usePublicNoteCollaboration(
     const provider = new HocuspocusProvider({
       url: HOCUSPOCUS_WS_URL,
       document: ydoc,
-      name: `public-note-${noteId}`,
+      name: `note-${noteId}`,
       // Read fresh on every handshake so the share JWT rotation lands
       // without us having to recreate the provider.
       token: () => useAuthStore.getState().shareAccessToken ?? "",
