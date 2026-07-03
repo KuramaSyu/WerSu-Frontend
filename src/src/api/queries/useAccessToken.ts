@@ -18,7 +18,7 @@ const JWT_REFRESH_BUFFER = 60; // seconds
 export function useAccessToken(): UseQueryResult<string, Error> {
   return useQuery({
     queryKey: ["accessToken"],
-    retry: 5,
+    retry: 3,
     // Exponential backoff capped at 15s, so transient 401s (e.g. cookie
     // just expired) recover in ~30s instead of locking the user out for
     // the full `refetchInterval` (14 min).
