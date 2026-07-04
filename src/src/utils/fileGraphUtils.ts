@@ -20,16 +20,24 @@ export function getNoteParentDirectoryIds(
     return [];
   }
 
-  return permissions
-    .filter((permission) => {
-      const isParentRelation =
-        permission.relation === "parent" ||
-        permission.relation === "parent_directory";
-      const isDirectorySubject =
-        permission.subject.object_type === "PERMISSION_OBJECT_TYPE_DIRECTORY";
-      return isParentRelation && isDirectorySubject;
-    })
-    .map((permission) => permission.subject.object_id);
+  // Dedupe so a note with both `parent` and `parent_directory` entries for the
+  // same directory doesn't end up in that directory's group twice (which also
+  // collides on React `key={note.id}` in the directory view).
+  return [
+    ...new Set(
+      permissions
+        .filter((permission) => {
+          const isParentRelation =
+            permission.relation === "parent" ||
+            permission.relation === "parent_directory";
+          const isDirectorySubject =
+            permission.subject.object_type ===
+            "PERMISSION_OBJECT_TYPE_DIRECTORY";
+          return isParentRelation && isDirectorySubject;
+        })
+        .map((permission) => permission.subject.object_id),
+    ),
+  ];
 }
 
 /**

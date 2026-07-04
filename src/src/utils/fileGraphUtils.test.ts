@@ -52,6 +52,34 @@ describe("fileGraphUtils", () => {
     expect(getNoteParentDirectoryIds(permissions)).toEqual(["dir-1", "dir-2"]);
   });
 
+  it("deduplicates when both parent and parent_directory target the same directory", () => {
+    const permissions: PermissionRelationshipReply[] = [
+      {
+        relation: "parent",
+        resource: {
+          object_id: "note-1",
+          object_type: "PERMISSION_OBJECT_TYPE_NOTE",
+        },
+        subject: {
+          object_id: "dir-1",
+          object_type: "PERMISSION_OBJECT_TYPE_DIRECTORY",
+        },
+      },
+      {
+        relation: "parent_directory",
+        resource: {
+          object_id: "note-1",
+          object_type: "PERMISSION_OBJECT_TYPE_NOTE",
+        },
+        subject: {
+          object_id: "dir-1",
+          object_type: "PERMISSION_OBJECT_TYPE_DIRECTORY",
+        },
+      },
+    ];
+    expect(getNoteParentDirectoryIds(permissions)).toEqual(["dir-1"]);
+  });
+
   it("uses display name when building directory labels", () => {
     const directory: DirectoryReply = {
       id: "dir-1",
