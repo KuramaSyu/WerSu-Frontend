@@ -2,10 +2,14 @@ import React from "react";
 import { Stack } from "@mui/material";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
 import CreateIcon from "@mui/icons-material/Create";
+import StarIcon from "@mui/icons-material/Star";
+import StarBorderIcon from "@mui/icons-material/StarBorder";
 import type { HirarchyItem } from "../../models/HirarchyItem";
 import { PanelButtons } from "../../components/Panels/PanelButtons";
 import { UpperPanel } from "../../components/Panels/UpperPanel";
 import { PanelSection } from "../../components/Panels/PanelSection";
+import { useFavouritesStore } from "../../zustand/useFavouritesStore";
+import { useParams } from "react-router-dom";
 
 export interface DirectoryRightPanelProps {
   currentNode: HirarchyItem;
@@ -14,17 +18,20 @@ export interface DirectoryRightPanelProps {
 }
 
 /**
- * Right-panel content for the directory view.
- *
- * Renders the directory actions: Edit directory, Create note. Back/Forward
- * navigation lives in the left panel as `NavigationSection`.
+ * Right-panel for directory providing actions for it
  */
 export const DirectoryRightPanel: React.FC<DirectoryRightPanelProps> = ({
   currentNode,
   handleCreateNote,
   handleRenameDirectory,
 }) => {
+  const { id: directoryId } = useParams();
   const isRoot = currentNode.getId() === "root";
+
+  const isFavourite = useFavouritesStore((s) =>
+    directoryId ? Boolean(s.directories[directoryId]) : false,
+  );
+  const toggleDirectory = useFavouritesStore((s) => s.toggleDirectory);
 
   return (
     <UpperPanel>
@@ -43,6 +50,17 @@ export const DirectoryRightPanel: React.FC<DirectoryRightPanelProps> = ({
           >
             Create note
           </PanelButtons.Primary>
+          <PanelButtons.Secondary
+            startIcon={
+              isFavourite ? <StarIcon color="primary" /> : <StarBorderIcon />
+            }
+            disabled={isRoot}
+            // `aria-pressed` lets assistive tech announce toggle state.
+            aria-pressed={isFavourite}
+            onClick={() => directoryId && toggleDirectory(directoryId)}
+          >
+            {isFavourite ? "Favourited" : "Favourite"}
+          </PanelButtons.Secondary>
         </PanelButtons>
       </PanelSection>
     </UpperPanel>
