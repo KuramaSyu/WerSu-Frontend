@@ -63,7 +63,7 @@ export const LeftPanel: React.FC<LeftSideViewProps> = ({
       <Paper
         elevation={1}
         sx={{
-          width: `clamp(250px, 100%, 400px)`,
+          width: `100%`,
           flex: `0 0 ${leftWidth}px`,
           overflow: "hidden",
           transition: "width 220ms ease, flex-basis 220ms ease",

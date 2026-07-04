@@ -20,7 +20,7 @@ import { LeftPanel } from "./LeftPanel";
 import NewNoteSpeedDial from "../../components/NewNoteSpeedDial";
 import { getNoteParentDirectoryIds } from "../../utils/fileGraphUtils";
 import { useLatestNotes, useMoveNote } from "../../api/queries/useNoteQueries";
-import { useLayout } from "../../LayoutProvider";
+import { useLayout, useLeftPanel, usePanelSize } from "../../LayoutProvider";
 import { useNavigate } from "react-router-dom";
 import { PopupNoteModal } from "./Modals/PopupNoteModal";
 import { set } from "zod";
@@ -34,26 +34,6 @@ export const MainContent: React.FC = () => {
   const { setMessage } = useInfoStore();
   const [leftPaneOpen, setLeftPaneOpen] = useState(true);
   const navigate = useNavigate();
-  const { setLeftPanel, setLeftPanelOpen } = useLayout();
-
-  useEffect(() => {
-    setLeftPaneOpen(true);
-    setLeftPanel(
-      <LeftPanel open={leftPaneOpen} setOpen={setLeftPaneOpen}>
-        <Stack direction="row" sx={{ justifyContent: "flex-end" }}>
-          <IconButton
-            size="small"
-            color="primary"
-            onClick={() => void handleCreateDirectory()}
-          >
-            <AddIcon />
-          </IconButton>
-        </Stack>
-        <DirectorySideView isLoading={directoriesLoading} />
-      </LeftPanel>,
-    );
-    return () => setLeftPanel(undefined);
-  }, []);
 
   type DragEndEvent = Parameters<DragDropEvents["dragend"]>[0];
 
@@ -170,6 +150,22 @@ export const MainContent: React.FC = () => {
 
   const { data: directories, isLoading: directoriesLoading } =
     useDirectoriesQuery(directoryListQuery, hasDirectoryReferences);
+
+  usePanelSize({ left: "clamp(20rem, 25vw, 30rem)" });
+  useLeftPanel(
+    <LeftPanel open={leftPaneOpen} setOpen={setLeftPaneOpen}>
+      <Stack direction="row" sx={{ justifyContent: "flex-end" }}>
+        <IconButton
+          size="small"
+          color="primary"
+          onClick={() => void handleCreateDirectory()}
+        >
+          <AddIcon />
+        </IconButton>
+      </Stack>
+      <DirectorySideView isLoading={directoriesLoading} />
+    </LeftPanel>,
+  );
 
   // Mirror the server-state cache into the local entity map store used by the
   // UI. This gives components O(1) ID lookups and a single shared source for

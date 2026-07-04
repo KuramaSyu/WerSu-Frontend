@@ -10,8 +10,15 @@ import TopBar from "./components/TopBar";
 import { useThemeStore } from "./zustand/useThemeStore";
 
 export const AppShell: React.FC = () => {
-  const { leftPanel, rightPanel, leftPanelOpen, rightPanelOpen, showTopBar } =
-    useLayout();
+  const {
+    leftPanel,
+    rightPanel,
+    leftPanelOpen,
+    rightPanelOpen,
+    leftPanelSize,
+    rightPanelSize,
+    showTopBar,
+  } = useLayout();
   const [showSplashScreen, setShowSplashScreen] = useState(false);
   const [exitPercentage, setExitPercentage] = useState(
     Math.round(Math.random() * 100),
@@ -74,7 +81,7 @@ export const AppShell: React.FC = () => {
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: `${leftPanelOpen ? "280px" : "0px"} 1fr ${rightPanelOpen ? "280px" : "0px"}`,
+          gridTemplateColumns: `${leftPanelOpen ? leftPanelSize : "0px"} minmax(0, 1fr) ${rightPanelOpen ? rightPanelSize : "0px"}`,
           transition: `grid-template-columns ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}, padding-top ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
           pt: showTopBar ? `calc(${M3} + ${M5} + ${M3})` : "0px",
           height: "100vh",
