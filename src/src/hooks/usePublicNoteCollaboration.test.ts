@@ -157,7 +157,8 @@ describe("usePublicNoteCollaboration - token gating", () => {
 
     expect(mockedProvider).toHaveBeenCalledTimes(1);
     const config = mockedProvider.mock.calls[0][0];
-    expect(config.name).toBe("public-note-n-token-gate-2");
+    // assume correct name for the collab id. Should be the same like the private one.
+    expect(config.name).toBe("note-n-token-gate-2");
     // The dev .env wires the WS URL to the local Hocuspocus server.
     expect(config.url).toBe("ws://localhost:8666");
     // The token is a function so JWT rotations land on handshake.
