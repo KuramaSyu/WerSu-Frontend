@@ -10,7 +10,7 @@ import CssBaseline from "@mui/material/CssBaseline";
 import { useThemeStore } from "./zustand/useThemeStore";
 
 import "./App.css";
-import { MainPage } from "./pages/MainPage/Main";
+import { HomePage } from "./pages/Home/Main";
 import { Box } from "@mui/material";
 import { SwaggerDocs } from "./pages/docs/Main";
 import InfoDisplay from "./pages/MainPage/InfoDisplay";
@@ -18,6 +18,7 @@ import { NotePage } from "./pages/NotePage/Main";
 import { DirectoryView } from "./pages/DirectoryView/Main";
 import { DirectoryEditPage } from "./pages/DirectoryEdit/Main";
 import { FileGraphPage } from "./pages/FileGraph/Main";
+import { WorkspacePage } from "./pages/WorkspacePage/Main";
 import { recordNavigation } from "./utils/navigationMemento";
 import { Bootstrap } from "./Bootstrap";
 import "@fontsource/fira-sans/300.css";
@@ -72,11 +73,12 @@ function App() {
           <LayoutProvider>
             <Routes>
               <Route element={<AppShell />}>
-                <Route path="/" element={<MainPage />} />
+                <Route path="/" element={<HomePage />} />
                 <Route path="/n/:id" element={<NotePage />} />
                 <Route path="/d/:id" element={<DirectoryView />} />
                 <Route path="/d/:id/edit" element={<DirectoryEditPage />} />
                 <Route path="/graph" element={<FileGraphPage />} />
+                <Route path="/workspace" element={<WorkspacePage />} />
                 <Route
                   path="/public/n/:share_id"
                   element={<PublicNotePage />}
