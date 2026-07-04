@@ -1,30 +1,29 @@
 import React from "react";
-import { Stack } from "@mui/material";
 import ScheduleIcon from "@mui/icons-material/Schedule";
 import { RecentActivityPanel } from "../../components/RecentActivity/Main";
 import { DirectorySideView } from "../MainPage/DirectorySideView";
 import type { HirarchyItem } from "../../models/HirarchyItem";
 import { PanelSection } from "../../components/Panels/PanelSection";
+import { NavigationSection } from "../../components/Panels/NavigationSection";
+import { UpperPanel } from "../../components/Panels/UpperPanel";
 
 interface DirectoryActionsProps {
   currentNode: HirarchyItem;
 }
 
 /**
- * Left-panel directory actions: directory tree + recent activity.
- *
- * The Back / Edit / Create buttons live in `DirectoryRightPanel`.
+ * Left-panel directory actions: navigation, directory tree, recent activity.
  */
-export const DirectoryActions: React.FC<DirectoryActionsProps> = ({
+export const DirectoryLeftPanel: React.FC<DirectoryActionsProps> = ({
   currentNode,
 }) => {
   return (
-    <Stack spacing={2}>
+    <UpperPanel>
+      <NavigationSection />
       <DirectorySideView />
       <PanelSection
         title="Recent activity"
         titleIcon={<ScheduleIcon fontSize="small" />}
-        collapsible
       >
         <RecentActivityPanel
           target={
@@ -34,6 +33,6 @@ export const DirectoryActions: React.FC<DirectoryActionsProps> = ({
           }
         />
       </PanelSection>
-    </Stack>
+    </UpperPanel>
   );
 };

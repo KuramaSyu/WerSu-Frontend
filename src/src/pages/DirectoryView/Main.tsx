@@ -1,7 +1,7 @@
 import { Divider, Paper, Stack, Typography } from "@mui/material";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useState } from "react";
-import { DirectoryActions } from "./DirectoryActions";
+import { DirectoryLeftPanel } from "./LeftPanel";
 import { useLeftPanel } from "../../LayoutProvider";
 import { DirectoryBreadCrumbs } from "./DirectoryBreadCrumbs";
 import { DirectoryItem } from "./DirectoryItem";
@@ -31,7 +31,7 @@ export const DirectoryView: React.FC = () => {
     navigate,
   } = useDirectoryFeatures();
 
-  useLeftPanel(<DirectoryActions currentNode={currentNode} />);
+  useLeftPanel(<DirectoryLeftPanel currentNode={currentNode} />);
 
   return (
     <Paper

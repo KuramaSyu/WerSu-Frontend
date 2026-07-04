@@ -10,6 +10,8 @@ import {
 import type { MinimalNote } from "../../api/models/search";
 import { getNoteParentDirectoryIds } from "../../utils/fileGraphUtils";
 import { useLatestNotes } from "../../api/queries/useNoteQueries";
+import { useCreateNote } from "../../api/queries/useNoteQueries";
+import { getNoteApi } from "../../api/NoteApi";
 import { NoteApi } from "../../api/NoteApi";
 import { note_of_date_at_hour } from "../../utils/NoteTitleTemplates";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
@@ -100,6 +102,7 @@ export function useDirectoryFeatures(): DirectoryFeatures {
   const directoryId = id ?? "root";
   const { directoriesById, setDirectories } = useDirectoryStore();
   const { data: notes } = useLatestNotes();
+  const { mutateAsync: createNoteMutate } = useCreateNote();
   const { setMessage } = useInfoStore();
 
   useEffect(() => {
@@ -156,9 +159,10 @@ export function useDirectoryFeatures(): DirectoryFeatures {
    */
   const handleCreateNote = async () => {
     try {
-      const api = new NoteApi();
-      // Backend requires non-empty content, so seed with a single whitespace.
-      const note = await api.post(note_of_date_at_hour(), " ");
+      const note = await createNoteMutate({
+        title: note_of_date_at_hour(),
+        content: "123",
+      });
       if (!note) {
         setMessage(new SnackbarUpdateImpl("Failed to create note", "error"));
         return;
@@ -171,7 +175,13 @@ export function useDirectoryFeatures(): DirectoryFeatures {
         currentNode.getId() !== "root" &&
         currentNode.getId() !== note.get_dir()
       ) {
-        const moved = await api.patchDirectory(note.id, currentNode.getId());
+        // Use the registered NoteApi singleton so the share-token provider
+        // installed on Bootstrap reaches this call (a fresh `new NoteApi()`
+        // would not). See useNoteQueries for rationale.
+        const moved = await getNoteApi().patchDirectory(
+          note.id,
+          currentNode.getId(),
+        );
         if (!moved) {
           setMessage(
             new SnackbarUpdateImpl(
@@ -218,7 +228,6 @@ export function useDirectoryFeatures(): DirectoryFeatures {
   useRightPanel(
     <DirectoryRightPanel
       currentNode={currentNode}
-      navigate={navigate}
       handleCreateNote={handleCreateNote}
       handleRenameDirectory={handleRenameDirectory}
     />,
