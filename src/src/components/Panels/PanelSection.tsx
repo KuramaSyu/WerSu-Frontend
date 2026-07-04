@@ -9,7 +9,7 @@ import {
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useState } from "react";
-import { M1, M2, M3, M4 } from "../../statics";
+import { M1, M3 } from "../../statics";
 import { useThemeStore } from "../../zustand/useThemeStore";
 
 export interface PanelSectionProps {
@@ -17,11 +17,13 @@ export interface PanelSectionProps {
   title?: string;
   /** Optional icon rendered to the left of the title. */
   titleIcon?: React.ReactNode;
+  /** Optional content rendered to the right of the title (e.g. action buttons). */
+  titleAction?: React.ReactNode;
   /** Body content. */
-  children: React.ReactNode;
+  children?: React.ReactNode;
   /** Spacing multiplier between items. Defaults to 2. */
   spacing?: number;
-  /** Opacity for the divider. Defaults to 0.3 to match existing usages. */
+  /** Opacity for the divider. Defaults to 0.8. */
   dividerOpacity?: number;
   /** Show a divider between title and body. Defaults to true when a title is present. */
   showDivider?: boolean;
@@ -42,9 +44,10 @@ export interface PanelSectionProps {
 export const PanelSection: React.FC<PanelSectionProps> = ({
   title,
   titleIcon,
+  titleAction,
   children,
   spacing = 2,
-  dividerOpacity = 0.3,
+  dividerOpacity = 0.8,
   showDivider,
   collapsible = false,
   defaultExpanded = true,
@@ -55,115 +58,121 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
 
   const body = <Stack spacing={spacing}>{children}</Stack>;
 
-  if (!collapsible || title === undefined) {
+  // Single source of truth for the title row. `inAccordion` tweaks the
+  // spacing for use inside an `AccordionSummary` (which already reserves
+  // its own vertical padding).
+  const renderTitleRow = (inAccordion: boolean) => (
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: 1,
+        mb: inAccordion ? 0 : M1,
+        minHeight: 24,
+        width: "100%",
+      }}
+    >
+      {titleIcon !== undefined && (
+        <Box
+          sx={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 24,
+            height: 24,
+            px: M1,
+          }}
+        >
+          {titleIcon}
+        </Box>
+      )}
+      <Typography
+        color="textSecondary"
+        variant="body1"
+        sx={{
+          textTransform: "uppercase",
+        }}
+      >
+        {title}
+      </Typography>
+      <Box sx={{ ml: "auto", display: "flex", alignItems: "center" }}>
+        {titleAction}
+      </Box>
+    </Box>
+  );
+
+  // No title -> just the body. The divider still renders if the caller
+  // explicitly asked for one (e.g. with `showDivider`).
+  if (title === undefined) {
     return (
       <Box>
-        {title !== undefined && (
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-              mb: M1,
-              minHeight: 24,
-            }}
-          >
-            {titleIcon !== undefined && (
-              <Box
-                sx={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: 24,
-                  height: 24,
-                }}
-              >
-                {titleIcon}
-              </Box>
-            )}
-            <Typography variant="subtitle2" color="textSecondary">
-              {title}
-            </Typography>
-          </Box>
-        )}
         {renderDivider && <Divider sx={{ opacity: dividerOpacity, mb: 1.5 }} />}
         {body}
       </Box>
     );
   }
 
-  return (
-    <Accordion
-      expanded={expanded}
-      onChange={(_, isExpanded) => setExpanded(isExpanded)}
-      disableGutters
-      elevation={0}
-      square
-      sx={{
-        backgroundColor: "transparent",
-        "&:before": { display: "none" },
-        "&.MuiAccordion-root": {
-          margin: 0,
-        },
-        "& .MuiAccordionSummary-root": {
-          minHeight: 32,
-          px: 0,
-          "&:hover": {
-            backgroundColor: "action.hover",
+  // Collapsible title -> borderless Accordion wrapping the shared title
+  // row plus the body.
+  if (collapsible) {
+    return (
+      <Accordion
+        expanded={expanded}
+        onChange={(_, isExpanded) => setExpanded(isExpanded)}
+        disableGutters
+        elevation={0}
+        square
+        sx={{
+          backgroundColor: "transparent",
+          "&:before": { display: "none" },
+          "&.MuiAccordion-root": {
+            margin: 0,
           },
-          "&.Mui-expanded": {
+          "& .MuiAccordionSummary-root": {
             minHeight: 32,
-          },
-          "& .MuiAccordionSummary-content": {
-            my: 0,
+            px: 0,
+            "&:hover": {
+              backgroundColor: "action.hover",
+            },
             "&.Mui-expanded": {
+              minHeight: 32,
+            },
+            "& .MuiAccordionSummary-content": {
               my: 0,
+              "&.Mui-expanded": {
+                my: 0,
+              },
             },
           },
-        },
-        "& .MuiAccordionDetails-root": {
-          px: 0,
-          py: 1,
-        },
-      }}
-    >
-      <AccordionSummary expandIcon={<ExpandMoreIcon fontSize="small" />}>
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-            minHeight: 24,
-          }}
-        >
-          {titleIcon !== undefined && (
-            <Box
-              sx={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: 24,
-                height: 24,
-                px: M1,
-                py: M3,
-              }}
-            >
-              {titleIcon}
-            </Box>
+          "& .MuiAccordionDetails-root": {
+            px: 0,
+            py: 1,
+          },
+        }}
+      >
+        <AccordionSummary expandIcon={<ExpandMoreIcon fontSize="small" />}>
+          {renderTitleRow(true)}
+        </AccordionSummary>
+        {renderDivider && <Divider sx={{ opacity: dividerOpacity }} />}
+        <AccordionDetails>
+          <Box sx={{ px: M3, color: theme.palette.text.secondary }}>{body}</Box>
+        </AccordionDetails>
+      </Accordion>
+    );
+  }
+
+  // Plain (non-collapsible) title -> shared title row + optional divider + body.
+  return (
+    <Box>
+      {renderTitleRow(false)}
+      {children && (
+        <>
+          {renderDivider && (
+            <Divider sx={{ opacity: dividerOpacity, mb: 1.5 }} />
           )}
-          <Typography
-            variant="subtitle2"
-            color="textSecondary"
-            sx={{ textTransform: "uppercase" }}
-          >
-            {title}
-          </Typography>
-        </Box>
-      </AccordionSummary>
-      {renderDivider && <Divider sx={{ opacity: dividerOpacity }} />}
-      <AccordionDetails>
-        <Box sx={{ px: M3, color: theme.palette.text.secondary }}>{body}</Box>
-      </AccordionDetails>
-    </Accordion>
+          {body}
+        </>
+      )}
+    </Box>
   );
 };
