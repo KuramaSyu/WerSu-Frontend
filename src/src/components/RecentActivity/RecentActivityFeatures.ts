@@ -120,11 +120,7 @@ export const formatActivityLabel = (
 ): string => {
   const note = queryClient.getQueryData<Note>(["notes", activity.note_id]);
   const v = activity.version_index;
-  return (
-    (v == 1 ? `Created ` : ``) +
-    `${note?.title || activity.note_id} ` +
-    (v > 1 ? `(v${v})` : "")
-  );
+  return `${note?.title || activity.note_id} ` + (v > 1 ? `(v${v})` : "");
 };
 
 /**

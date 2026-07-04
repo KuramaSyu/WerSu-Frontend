@@ -8,13 +8,14 @@ import {
   getActivityKind,
   type ActivityKind,
 } from "./RecentActivityFeatures";
+import { useThemeStore } from "../../zustand/useThemeStore";
 
 export interface RecentActivityViewProps {
   entry: NoteVersionSummaryReply;
 }
 
 const ACTIVITY_ICONS: Record<ActivityKind, React.ReactNode> = {
-  created: <AddIcon fontSize="small" color="success" />,
+  created: <AddIcon fontSize="small" color="action" />,
   edited: <EditIcon fontSize="small" color="action" />,
 };
 
@@ -29,9 +30,14 @@ export const RecentActivityView: React.FC<RecentActivityViewProps> = ({
   entry,
 }) => {
   const kind = getActivityKind(entry);
+  const { theme } = useThemeStore();
 
   return (
-    <Stack direction="row" spacing={1} sx={{ alignItems: "flex-start" }}>
+    <Stack
+      direction="row"
+      spacing={theme.spacing(1)}
+      sx={{ alignItems: "flex-start" }}
+    >
       <Box sx={{ pt: 0.25 }}>{ACTIVITY_ICONS[kind]}</Box>
       <Box sx={{ flex: 1 }}>
         <Typography variant="body2" sx={{ fontWeight: 600 }}>

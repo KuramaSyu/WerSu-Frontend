@@ -5,6 +5,7 @@ import {
   type ActivityTarget,
 } from "./RecentActivityFeatures";
 import { RecentActivityView } from "./RecentActivityView";
+import { useThemeStore } from "../../zustand/useThemeStore";
 
 /**
  * Props for the RecentActivityPanel component.
@@ -37,9 +38,10 @@ export const RecentActivityPanel: React.FC<RecentActivityPanelProps> = ({
     limit,
     maxDepth,
   );
+  const { theme } = useThemeStore();
 
   return (
-    <>
+    <Box sx={{ color: theme.palette.text.secondary }}>
       {isLoading && (
         <Typography variant="body2" color="textSecondary">
           Loading activity...
@@ -55,11 +57,11 @@ export const RecentActivityPanel: React.FC<RecentActivityPanelProps> = ({
           No recent activity.
         </Typography>
       )}
-      <Stack spacing={1.5}>
+      <Stack spacing={theme.spacing(2)}>
         {activity.map((entry) => (
           <RecentActivityView key={entry.version_id} entry={entry} />
         ))}
       </Stack>
-    </>
+    </Box>
   );
 };
