@@ -4,6 +4,7 @@ import type {
   DirectoryReply,
   PatchDirectoryBody,
 } from "./models/directory.ts";
+import type { MinimalNote } from "./models/search";
 import { ShareTokenBearerMixin } from "./shareToken";
 import { apiRegistry, type ApiToken } from "./apiRegistry";
 
@@ -15,9 +16,18 @@ export interface ListDirectoriesQuery {
   offset?: number;
 }
 
+export interface ListDirectoryNotesQuery {
+  limit?: number;
+  offset?: number;
+}
+
 export interface IDirectoryApi {
   list(query?: ListDirectoriesQuery): Promise<DirectoryReply[]>;
   get(id: string): Promise<DirectoryReply | undefined>;
+  listNotes(
+    id: string,
+    query?: ListDirectoryNotesQuery,
+  ): Promise<MinimalNote[]>;
   create(payload: CreateDirectoryBody): Promise<DirectoryReply | undefined>;
   patch(payload: PatchDirectoryBody): Promise<DirectoryReply | undefined>;
   setParent(
@@ -134,6 +144,55 @@ export class DirectoryApi
 
   async delete(id: string): Promise<DirectoryReply | undefined> {
     return this.requestWithoutBody("DELETE", `${DIRECTORIES_API_PATH}/${id}`);
+  }
+
+  /**
+   * Lists notes in a directory. Hits `GET /api/directories/:id/notes`.
+   *
+   * The backend routes this path without a trailing slash; sending the
+   * slashed variant triggers a 301 redirect whose response is missing the
+   * CORS headers gin adds on real responses. The browser then refuses to
+   * follow the redirect cross-origin.
+   *
+   * The backend guarantees the README note (`title === "README.md"`) is
+   * included on the first page with full content; other notes are returned
+   * with stripped content only. Consumers that need full bodies for non-README
+   * notes should call `NoteApi.get(noteId)` for those.
+   */
+  async listNotes(
+    id: string,
+    query?: ListDirectoryNotesQuery,
+  ): Promise<MinimalNote[]> {
+    const urlPart = `${DIRECTORIES_API_PATH}/${encodeURIComponent(id)}/notes`;
+
+    const url = new URL(`${BACKEND_BASE}${urlPart}`);
+    if (query?.limit !== undefined) {
+      url.searchParams.append("limit", query.limit.toString());
+    }
+    if (query?.offset !== undefined) {
+      url.searchParams.append("offset", query.offset.toString());
+    }
+
+    const response = await fetch(url.toString(), {
+      method: "GET",
+      credentials: "include",
+      headers: await this.authHeaders(),
+    });
+
+    if (!response.ok) {
+      this.logError(
+        `${urlPart}?${url.searchParams.toString()}`,
+        `Response not ok: ${response.status}; ${response.statusText}`,
+      );
+      return [];
+    }
+
+    const notes = await response.json().catch((e) => {
+      this.logError(`${urlPart}?${url.searchParams.toString()}`, e);
+      return null;
+    });
+
+    return (notes ?? []) as MinimalNote[];
   }
 
   private async requestWithBody(
