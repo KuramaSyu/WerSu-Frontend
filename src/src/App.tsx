@@ -18,7 +18,6 @@ import { NotePage } from "./pages/NotePage/Main";
 import { DirectoryView } from "./pages/DirectoryView/Main";
 import { DirectoryEditPage } from "./pages/DirectoryEdit/Main";
 import { FileGraphPage } from "./pages/FileGraph/Main";
-import { WorkspacePage } from "./pages/WorkspacePage/Main";
 import { recordNavigation } from "./utils/navigationMemento";
 import { Bootstrap } from "./Bootstrap";
 import "@fontsource/fira-sans/300.css";
@@ -78,7 +77,6 @@ function App() {
                 <Route path="/d/:id" element={<DirectoryView />} />
                 <Route path="/d/:id/edit" element={<DirectoryEditPage />} />
                 <Route path="/graph" element={<FileGraphPage />} />
-                <Route path="/workspace" element={<WorkspacePage />} />
                 <Route
                   path="/public/n/:share_id"
                   element={<PublicNotePage />}
