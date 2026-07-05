@@ -95,37 +95,41 @@ export function useLayout(): LayoutContextType {
   return context;
 }
 
-// Mount a component directly into the left panel on render - no `useEffect` needed.
-// Pass `null` to clear.
+// Mount `panel` into the left side-panel on mount; clear it on unmount.
+//
+// Mount-only on purpose: the earlier `[panel]` dep forced callers to memoize
+// the JSX they passed in (otherwise the effect would fire on every render
+// and re-render the provider, creating an infinite loop). Route navigation
+// in this app already remounts the routed page component, so a mount/unmount
+// model swaps panels correctly without leaking that requirement to every
+// caller.
 export function useLeftPanel(panel: ReactNode | null): void {
-  const { leftPanel, setLeftPanel, setLeftPanelOpen, clearPanels } =
-    useLayout();
+  const { setLeftPanel, setLeftPanelOpen } = useLayout();
 
   useEffect(() => {
-    if (panel !== leftPanel) {
-      setLeftPanel(panel);
-    }
+    setLeftPanel(panel);
     if (panel !== null) {
       setLeftPanelOpen(true);
     }
-    return () => clearPanels();
+    // return () => {
+    //   setLeftPanel(null);
+    // };
   }, []);
 }
 
-// Mount a component directly into the right panel on render - no `useEffect` needed.
-// Pass `null` to clear.
+// Mount `panel` into the right side-panel on mount; clear it on unmount.
+// See `useLeftPanel` for the rationale behind the mount-only contract.
 export function useRightPanel(panel: ReactNode | null): void {
-  const { rightPanel, setRightPanel, setRightPanelOpen, clearPanels } =
-    useLayout();
+  const { setRightPanel, setRightPanelOpen } = useLayout();
 
   useEffect(() => {
-    if (panel !== rightPanel) {
-      setRightPanel(panel);
-    }
+    setRightPanel(panel);
     if (panel !== null) {
       setRightPanelOpen(true);
     }
-    return () => clearPanels();
+    // return () => {
+    //   setRightPanel(null);
+    // };
   }, []);
 }
 
