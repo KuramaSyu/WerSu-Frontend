@@ -12,6 +12,7 @@ import { useThemeStore } from "../../zustand/useThemeStore";
 
 export interface RecentActivityViewProps {
   entry: NoteVersionSummaryReply;
+  onClick: (entry: NoteVersionSummaryReply) => void;
 }
 
 const ACTIVITY_ICONS: Record<ActivityKind, React.ReactNode> = {
@@ -28,6 +29,7 @@ const ACTIVITY_ICONS: Record<ActivityKind, React.ReactNode> = {
  */
 export const RecentActivityView: React.FC<RecentActivityViewProps> = ({
   entry,
+  onClick,
 }) => {
   const kind = getActivityKind(entry);
   const { theme } = useThemeStore();
@@ -36,7 +38,21 @@ export const RecentActivityView: React.FC<RecentActivityViewProps> = ({
     <Stack
       direction="row"
       spacing={theme.spacing(1)}
-      sx={{ alignItems: "flex-start" }}
+      sx={{
+        alignItems: "flex-start",
+        cursor: "pointer",
+        borderRadius: 1,
+        px: 1,
+        py: 0.5,
+        transition: theme.transitions.create(
+          ["background-color", "transform"],
+          { duration: theme.transitions.duration.short },
+        ),
+        "&:hover": {
+          backgroundColor: theme.palette.action.hover,
+        },
+      }}
+      onClick={() => onClick(entry)}
     >
       <Box sx={{ pt: 0.25 }}>{ACTIVITY_ICONS[kind]}</Box>
       <Box sx={{ flex: 1 }}>
