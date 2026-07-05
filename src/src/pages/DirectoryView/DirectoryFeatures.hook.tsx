@@ -12,7 +12,6 @@ import { getNoteParentDirectoryIds } from "../../utils/fileGraphUtils";
 import { useLatestNotes } from "../../api/queries/useNoteQueries";
 import { useCreateNote } from "../../api/queries/useNoteQueries";
 import { getNoteApi } from "../../api/NoteApi";
-import { NoteApi } from "../../api/NoteApi";
 import { note_of_date_at_hour } from "../../utils/NoteTitleTemplates";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { UserError } from "../../api/models/UserError";
@@ -55,6 +54,8 @@ const findPathById = (root: HirarchyItem, id: string): HirarchyItem[] => {
 
 /**
  * Organizes an array of notes into a dictionary, grouping them by their parent directory ID.
+ *
+ * The directory's `README.md` note is filtered out
  */
 const buildNotesByDirectory = (
   notes: MinimalNote[],
@@ -62,6 +63,9 @@ const buildNotesByDirectory = (
   const dict: Record<string, MinimalNote[]> = {};
 
   notes.forEach((note) => {
+    if (note.title === "README.md") {
+      return;
+    }
     const parentIds = getNoteParentDirectoryIds(note.permissions);
     const targetDirs = parentIds.length === 0 ? ["root"] : parentIds;
     targetDirs.forEach((dir) => {
