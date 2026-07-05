@@ -107,10 +107,15 @@ export const MainContent: React.FC = () => {
   };
 
   // Arrange notes into a Dict[directoryId, List[Note]] with multi-parent support.
+  // The directory's `README.md` note is filtered out — it carries the
+  // directory's description / image and shouldn't appear as a regular card.
   const notesByDirectory = useMemo(() => {
     console.time("Grouping notes by directory in MainContent");
     const dict: Record<string, Note[]> = {};
     Object.values(latestNotes ?? []).forEach((noteData) => {
+      if (noteData.title === "README.md") {
+        return;
+      }
       const notedata: NoteData = {
         ...noteData,
         content: noteData.stripped_content,
