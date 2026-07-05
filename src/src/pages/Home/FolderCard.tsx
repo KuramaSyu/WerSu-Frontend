@@ -1,15 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useDirectoryStore } from "../../zustand/useDirectoryStore";
-import { getDirectoryApi } from "../../api/DirectoryApi";
 import { getActivityApi } from "../../api/ActivityApi";
-import type { DirectoryReply } from "../../api/models/directory";
+import { useDirectory } from "../../api/queries/useDirectoryQuery";
 import { FolderCardView } from "./FolderCardView";
+import type { NoteVersionSummaryReply } from "../../api/models/activity";
 
 export interface FolderCardProps {
   /** ID of the directory to render. */
   directoryId: string;
 }
+
+const activityApi = getActivityApi();
 
 /**
  * Feature wrapper for a favourite directory card.
@@ -18,8 +21,10 @@ export interface FolderCardProps {
  * hands it resolved props - the view itself has no fetch / store / route
  * logic. Data sources:
  *
- * - directory metadata: `useDirectoryStore` cache first, then `directoryApi.get`
- * - last modification: `activityApi.getDirectoryActivityById` with limit=1
+ * - directory metadata: `useDirectoryStore` cache first, then the
+ *   `useDirectory` TanStack hook (cache miss path).
+ * - last modification: an inline `useQuery` against the directory
+ *   activity endpoint.
  */
 export const FolderCard: React.FC<FolderCardProps> = ({ directoryId }) => {
   const navigate = useNavigate();
@@ -32,120 +37,55 @@ export const FolderCard: React.FC<FolderCardProps> = ({ directoryId }) => {
   // it has no real metadata and must never be rendered as a folder card.
   const isRoot = directoryId === "root";
 
-  // Local fetched copy used only when the store cache misses. Cache wins
-  // on reads so an entry that lands in the cache after mount supersedes
-  // the fetched copy.
-  const [fetchedDirectory, setFetchedDirectory] = useState<
-    DirectoryReply | undefined
-  >(undefined);
-  const [directoryFetched, setDirectoryFetched] = useState<boolean>(
-    cachedDirectory !== undefined,
-  );
-  const [directoryMissing, setDirectoryMissing] = useState<boolean>(false);
+  // Skip the fetch when we already have a cached record - the store is
+  // kept fresh by `useDirectoriesQuery` on DirectoryView / MainContent.
+  const { data: fetchedDirectory, isPending: isDirectoryPending } =
+    useDirectory(cachedDirectory || isRoot ? undefined : directoryId);
 
-  const directory = cachedDirectory ?? fetchedDirectory;
-  const directoryLoading =
-    directory === undefined && !directoryFetched && !directoryMissing;
-
-  // Fetch directory metadata when the cache doesn't have it yet.
+  // Mirror fetched records back into the store so other consumers (the
+  // breadcrumb, the parent selector, etc.) see the metadata immediately.
   useEffect(() => {
-    if (
-      isRoot ||
-      cachedDirectory !== undefined ||
-      fetchedDirectory !== undefined ||
-      directoryMissing
-    ) {
-      return;
+    if (fetchedDirectory) {
+      upsertDirectory(fetchedDirectory);
     }
-    let isMounted = true;
-    const fetchDirectory = async (): Promise<void> => {
-      try {
-        const api = getDirectoryApi();
-        const result = await api.get(directoryId);
-        if (!isMounted) {
-          return;
-        }
-        if (result) {
-          setFetchedDirectory(result);
-          upsertDirectory(result);
-        } else {
-          setDirectoryMissing(true);
-        }
-      } catch (error) {
-        console.error("Failed to load directory", error);
-        if (isMounted) {
-          setDirectoryMissing(true);
-        }
-      } finally {
-        if (isMounted) {
-          setDirectoryFetched(true);
-        }
-      }
-    };
-    void fetchDirectory();
-    return () => {
-      isMounted = false;
-    };
-  }, [
-    isRoot,
-    directoryId,
-    cachedDirectory,
-    fetchedDirectory,
-    directoryMissing,
-    upsertDirectory,
-  ]);
+  }, [fetchedDirectory, upsertDirectory]);
 
-  // While the activity fetch is in flight, `lastModified` stays undefined
-  // and the view renders "No activity yet". Resolve it once and let the
-  // view decide how to express the loading state visually.
-  const [lastModified, setLastModified] = useState<string | undefined>(
-    undefined,
-  );
+  const directory = cachedDirectory ?? fetchedDirectory ?? null;
+  const isMissing = !isDirectoryPending && !directory;
+  const isLoading = !!directoryId && isDirectoryPending && !cachedDirectory;
 
-  useEffect(() => {
-    if (isRoot) {
-      return;
-    }
-    let isMounted = true;
-    const fetchActivity = async (): Promise<void> => {
-      try {
-        const api = getActivityApi();
-        const activity = await api.getDirectoryActivityById(directoryId, {
-          limit: 1,
-          offset: 0,
-          max_depth: 1,
-          directory_id: directoryId,
-        });
-        if (!isMounted) {
-          return;
-        }
-        if (activity.length > 0) {
-          setLastModified(activity[0].created_at);
-        } else {
-          setLastModified(undefined);
-        }
-      } catch (error) {
-        console.error("Failed to load directory activity", error);
-      }
-    };
-    void fetchActivity();
-    return () => {
-      isMounted = false;
-    };
-  }, [isRoot, directoryId]);
+  // Latest activity timestamp (single row). Inlined `useQuery` because
+  // this is the only consumer right now - if a second consumer appears,
+  // lift into `useDirectoryActivityQuery` next to `useDirectory`.
+  const { data: activity } = useQuery<NoteVersionSummaryReply[]>({
+    queryKey: ["activity", "directory", directoryId],
+    queryFn: () =>
+      activityApi.getDirectoryActivityById(directoryId, {
+        limit: 1,
+        offset: 0,
+        max_depth: 1,
+        directory_id: directoryId,
+      }),
+    enabled: !isRoot,
+  });
+  const lastModified =
+    activity && activity.length > 0 ? activity[0].created_at : undefined;
 
   const displayName = useMemo(
     () => directory?.display_name ?? directory?.name ?? "Untitled",
     [directory],
   );
 
+  console.log("directory:", directory);
+
   return (
     <FolderCardView
       displayName={displayName}
       onClick={() => navigate(`/d/${directoryId}`)}
+      imageUrl={directory?.image_url}
       lastModified={lastModified}
-      loading={directoryLoading}
-      hidden={isRoot || directoryMissing || !directory}
+      loading={isLoading}
+      hidden={isRoot || isMissing}
     />
   );
 };

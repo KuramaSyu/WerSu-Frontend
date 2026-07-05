@@ -15,6 +15,7 @@ export interface FolderCardViewProps {
    * renders "Modified <relative time>"; when omitted it renders
    * "No activity yet".
    */
+  imageUrl?: string;
   lastModified?: string;
   /** When true, render the skeleton placeholder instead of the populated card. */
   loading?: boolean;
@@ -34,6 +35,7 @@ export const FolderCardView: React.FC<FolderCardViewProps> = ({
   displayName,
   onClick,
   lastModified,
+  imageUrl = undefined,
   loading = false,
   hidden = false,
 }) => {
@@ -70,6 +72,7 @@ export const FolderCardView: React.FC<FolderCardViewProps> = ({
         width: 220,
         cursor: onClick ? "pointer" : "default",
         transition: "all 0.2s ease-in-out",
+        overflow: "hidden",
         "&:hover": onClick
           ? {
               transform: "scale(1.04)",
@@ -84,28 +87,49 @@ export const FolderCardView: React.FC<FolderCardViewProps> = ({
       }}
       onClick={onClick}
     >
-      {/* Image placeholder. Replace with <CardMedia image={...} /> once
-          the directory backend exposes cover images. */}
-      <Box
-        sx={{
-          height: 120,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: blendWithContrast(
-            theme.palette.primary.main,
-            theme,
-            3 / 4,
-          ),
-        }}
-      >
-        <FolderIcon
+      {imageUrl ? (
+        <Box
+          component="img"
+          src={imageUrl}
+          alt={`${displayName} cover`}
           sx={{
-            fontSize: 48,
-            color: blendWithContrast(theme.palette.primary.main, theme, 1 / 4),
+            width: "100%",
+            height: 120,
+            objectFit: "cover",
+            display: "block",
+            backgroundColor: blendWithContrast(
+              theme.palette.primary.main,
+              theme,
+              3 / 4,
+            ),
           }}
         />
-      </Box>
+      ) : (
+        <Box
+          sx={{
+            height: 120,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: blendWithContrast(
+              theme.palette.primary.main,
+              theme,
+              3 / 4,
+            ),
+          }}
+        >
+          <FolderIcon
+            sx={{
+              fontSize: 48,
+              color: blendWithContrast(
+                theme.palette.primary.main,
+                theme,
+                1 / 4,
+              ),
+            }}
+          />
+        </Box>
+      )}
       <CardContent sx={{ p: M2 }}>
         <Typography
           variant="h6"
