@@ -11,7 +11,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useDirectoryStore } from "../../zustand/useDirectoryStore";
 import {
   DirectoryHierarchyBuilder,
@@ -21,6 +21,39 @@ import {
 interface DirectoryTreeNodeProps {
   item: HirarchyItem;
 }
+
+/**
+ * Resolves the path from the root of a hierarchy to the node with the given id.
+ *
+ * Returns an empty array when the id is not present in the tree.
+ */
+const findPathById = (root: HirarchyItem, id: string): HirarchyItem[] => {
+  if (root.getId() === id) {
+    return [root];
+  }
+
+  for (const child of root.getChildren()) {
+    const path = findPathById(child, id);
+    if (path.length > 0) {
+      return [root, ...path];
+    }
+  }
+
+  return [];
+};
+
+/**
+ * Extracts the current directory id from a URL pathname.
+ *
+ * Matches `/d/:id` and `/d/:id/<anything>` (e.g. `/d/:id/edit`) so the same
+ * directory stays highlighted on its edit sub-route. Returns null for any
+ * other path, so unrelated routes (e.g. `/n/:id`) never accidentally
+ * highlight a directory.
+ */
+const getDirectoryIdFromPath = (pathname: string): string | null => {
+  const match = pathname.match(/^\/d\/([^/]+)(?:\/.*)?$/);
+  return match ? match[1] : null;
+};
 
 /**
  * Recursive tree node that registers each directory item as a dnd-kit
@@ -122,6 +155,33 @@ export const DirectorySideView: React.FC<{ isLoading?: boolean }> = ({
   isLoading = false,
 }) => {
   const { directoriesById } = useDirectoryStore();
+  const location = useLocation();
+
+  // Pull the active directory id from the URL so the tree highlights the
+  // row the user is actually viewing, even after a refresh or deep-link.
+  const currentDirectoryId = React.useMemo(
+    () => getDirectoryIdFromPath(location.pathname),
+    [location.pathname],
+  );
+
+  const directoryHirarchy = React.useMemo(
+    () => new DirectoryHierarchyBuilder(directoriesById).build("Stacks"),
+    [directoriesById],
+  );
+
+  // Auto-expand the path to the selected directory so the highlighted row
+  // is visible even when nested deep. The set is re-applied on every
+  // navigation by keying the tree on the active directory id below.
+  const defaultExpandedItems = React.useMemo(() => {
+    const ids = new Set<string>([directoryHirarchy.getId()]);
+    if (currentDirectoryId) {
+      const path = findPathById(directoryHirarchy, currentDirectoryId);
+      for (const node of path) {
+        ids.add(node.getId());
+      }
+    }
+    return Array.from(ids);
+  }, [directoryHirarchy, currentDirectoryId]);
 
   if (isLoading) {
     return (
@@ -174,12 +234,14 @@ export const DirectorySideView: React.FC<{ isLoading?: boolean }> = ({
     );
   }
 
-  const directoryHirarchy = new DirectoryHierarchyBuilder(
-    directoriesById,
-  ).build("Stacks");
-
   return (
-    <SimpleTreeView defaultExpandedItems={[directoryHirarchy.getId()]}>
+    <SimpleTreeView
+      // Keying on the active directory remounts the tree on navigation so
+      // the auto-expanded path is reapplied to the freshly-mounted tree.
+      key={currentDirectoryId ?? "none"}
+      defaultExpandedItems={defaultExpandedItems}
+      selectedItems={currentDirectoryId}
+    >
       <DirectoryTreeNode item={directoryHirarchy} />
     </SimpleTreeView>
   );
