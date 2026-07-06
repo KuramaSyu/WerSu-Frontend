@@ -1,7 +1,9 @@
 import React, { useState } from "react";
-import { Box, IconButton, Stack, Tooltip, Typography } from "@mui/material";
+import { Box, Stack, Typography } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import CreateIcon from "@mui/icons-material/Create";
+import FolderIcon from "@mui/icons-material/Folder";
+import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import ScheduleIcon from "@mui/icons-material/Schedule";
 import StarIcon from "@mui/icons-material/Star";
 import { useNavigate } from "react-router-dom";
@@ -9,46 +11,39 @@ import {
   usePanelSize,
   useLeftPanel,
   useRightPanel,
+  useLayout,
 } from "../../LayoutProvider";
 import { UpperPanel } from "../../components/Panels/UpperPanel";
 import { PanelSection } from "../../components/Panels/PanelSection";
+import { PanelButtons } from "../../components/Panels/PanelButtons";
 import { NavigationSection } from "../../components/Panels/NavigationSection";
 import { DirectorySideView } from "../MainPage/DirectorySideView";
 import { RecentActivityPanel } from "../../components/RecentActivity/Main";
+import { FrequentlyUsedPanel } from "../../components/FrequentlyUsed/Main";
 import { CreateNote } from "../MainPage/CreateNote";
 import { DirectoryApi } from "../../api/DirectoryApi";
 import { useDirectoryStore } from "../../zustand/useDirectoryStore";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { FavouriteDirectories } from "./FavouriteDirectories";
-import { M3 } from "../../statics";
+import { AllDirectories } from "./AllDirectories";
+import { M3, M4 } from "../../statics";
+import { useThemeStore } from "../../zustand/useThemeStore";
 
 /**
  * Home page.
  *
  * Layout:
- *   - left panel: navigation memento, directory tree, recent activity
+ *   - left panel: navigation, actions (new directory / new note), recent
+ *     activity, then the directory tree at the bottom
  *   - body: favourite directories section
- *   - right panel: create-directory and create-note action buttons
  */
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const upsertDirectory = useDirectoryStore((s) => s.upsertDirectory);
   const setMessage = useInfoStore((s) => s.setMessage);
   const [createNoteOpen, setCreateNoteOpen] = useState(false);
-
-  usePanelSize({ left: "clamp(20rem, 25vw, 30rem)" });
-  useLeftPanel(
-    <UpperPanel>
-      <NavigationSection />
-      <DirectorySideView />
-      <PanelSection
-        title="Recent activity"
-        titleIcon={<ScheduleIcon fontSize="small" />}
-      >
-        <RecentActivityPanel target={{ type: "root" }} />
-      </PanelSection>
-    </UpperPanel>,
-  );
+  const { rightPanelOpen } = useLayout();
+  const { theme } = useThemeStore();
 
   const handleCreateDirectory = async (): Promise<void> => {
     const nextName = window.prompt("New directory name");
@@ -72,36 +67,68 @@ export const HomePage: React.FC = () => {
     navigate(`/d/${created.id}`);
   };
 
-  useRightPanel(
-    <Stack
-      direction="row"
-      spacing={1}
-      sx={{ p: 1.5, justifyContent: "flex-end" }}
-    >
-      <Tooltip title="New directory">
-        <IconButton
-          color="primary"
-          onClick={() => void handleCreateDirectory()}
-        >
-          <AddIcon />
-        </IconButton>
-      </Tooltip>
-      <Tooltip title="New note">
-        <IconButton color="primary" onClick={() => setCreateNoteOpen(true)}>
-          <CreateIcon />
-        </IconButton>
-      </Tooltip>
-    </Stack>,
+  useRightPanel(null);
+  usePanelSize({ left: "clamp(20rem, 25vw, 30rem)" });
+  useLeftPanel(
+    <UpperPanel sx={{ backgroundColor: theme.palette.background.paper }}>
+      <NavigationSection />
+      <PanelSection title="Actions" showDivider>
+        <PanelButtons>
+          <PanelButtons.Secondary
+            startIcon={<AddIcon />}
+            onClick={() => void handleCreateDirectory()}
+          >
+            New directory
+          </PanelButtons.Secondary>
+          <PanelButtons.Primary
+            startIcon={<CreateIcon />}
+            onClick={() => setCreateNoteOpen(true)}
+          >
+            New note
+          </PanelButtons.Primary>
+        </PanelButtons>
+      </PanelSection>
+      <PanelSection
+        title="Frequently used"
+        titleIcon={<LocalFireDepartmentIcon fontSize="small" />}
+      >
+        <FrequentlyUsedPanel />
+      </PanelSection>
+      <PanelSection
+        title="Recent activity"
+        titleIcon={<ScheduleIcon fontSize="small" />}
+      >
+        <RecentActivityPanel target={{ type: "root" }} />
+      </PanelSection>
+      <DirectorySideView />
+    </UpperPanel>,
   );
 
   return (
-    <Box sx={{ width: "100%", height: "100%", p: 4, overflow: "auto" }}>
-      <Stack spacing={M3}>
-        <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-          <StarIcon color="primary" fontSize="small" />
-          <Typography variant="h5">Favourite directories</Typography>
+    <Box
+      sx={{
+        width: "100%",
+        height: "100%",
+        p: 1,
+        overflow: "auto",
+      }}
+    >
+      <Stack spacing={3}>
+        <Stack direction="column" spacing={2}>
+          <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+            <StarIcon color="primary" fontSize="small" />
+            <Typography variant="h5">Favourite directories</Typography>
+          </Stack>
+          <FavouriteDirectories />
         </Stack>
-        <FavouriteDirectories />
+
+        <Stack direction="column" spacing={2}>
+          <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+            <FolderIcon color="primary" fontSize="small" />
+            <Typography variant="h5">All directories</Typography>
+          </Stack>
+          <AllDirectories />
+        </Stack>
       </Stack>
       <CreateNote open={createNoteOpen} onOpenChange={setCreateNoteOpen} />
     </Box>
