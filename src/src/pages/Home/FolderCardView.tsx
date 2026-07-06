@@ -1,9 +1,61 @@
 import { Box, Card, CardContent, Skeleton, Typography } from "@mui/material";
 import FolderIcon from "@mui/icons-material/Folder";
 import { formatDistanceToNow } from "date-fns";
-import { M1, M2 } from "../../statics";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { blendWithContrast } from "../../utils/blendWithContrast";
+
+/** Visual size preset for the card; resolved to concrete dimensions below. */
+export type CardSize = "small" | "medium" | "large";
+
+interface CardDimensions {
+  width: number;
+  height: number;
+  imageHeight: number;
+  iconSize: number;
+  titleVariant: "h5" | "h6" | "subtitle1" | "subtitle2";
+  subtitleVariant: "body2" | "caption";
+  // CardContent padding + the bottom margin under the title. Smaller
+  // cards use tighter padding so the title/subtitle don't crush against
+  // the image; larger cards step up to match the bigger type.
+  contentPadding: string;
+  titleBottomMargin: string;
+}
+
+// Concrete dimensions per `CardSize`. The Home page renders favourites at
+// `medium` and the full directory list at `small`; `large` is reserved
+// for hero spots where the card needs more breathing room.
+const CARD_DIMENSIONS: Record<CardSize, CardDimensions> = {
+  small: {
+    width: 160,
+    height: 150,
+    imageHeight: 80,
+    iconSize: 32,
+    titleVariant: "subtitle1",
+    subtitleVariant: "caption",
+    contentPadding: "0.375rem",
+    titleBottomMargin: "0.125rem",
+  },
+  medium: {
+    width: 220,
+    height: 200,
+    imageHeight: 120,
+    iconSize: 48,
+    titleVariant: "h6",
+    subtitleVariant: "caption",
+    contentPadding: "0.5rem",
+    titleBottomMargin: "0.25rem",
+  },
+  large: {
+    width: 300,
+    height: 260,
+    imageHeight: 160,
+    iconSize: 64,
+    titleVariant: "h5",
+    subtitleVariant: "body2",
+    contentPadding: "0.75rem",
+    titleBottomMargin: "0.5rem",
+  },
+};
 
 export interface FolderCardViewProps {
   /** Display name shown on the card. */
@@ -21,6 +73,8 @@ export interface FolderCardViewProps {
   loading?: boolean;
   /** Hide the card entirely (e.g. when the underlying directory is missing). */
   hidden?: boolean;
+  /** Visual size preset; defaults to `medium`. */
+  size?: CardSize;
 }
 
 /**
@@ -38,8 +92,10 @@ export const FolderCardView: React.FC<FolderCardViewProps> = ({
   imageUrl = undefined,
   loading = false,
   hidden = false,
+  size = "medium",
 }) => {
   const { theme } = useThemeStore();
+  const dims = CARD_DIMENSIONS[size];
 
   if (hidden) {
     return null;
@@ -50,13 +106,17 @@ export const FolderCardView: React.FC<FolderCardViewProps> = ({
       <Card
         variant="outlined"
         sx={{
-          width: 220,
-          height: 200,
+          width: dims.width,
+          height: dims.height,
           display: "flex",
           flexDirection: "column",
         }}
       >
-        <Skeleton variant="rectangular" height={120} animation="wave" />
+        <Skeleton
+          variant="rectangular"
+          height={dims.imageHeight}
+          animation="wave"
+        />
         <CardContent sx={{ flex: 1 }}>
           <Skeleton variant="text" width="70%" animation="wave" />
           <Skeleton variant="text" width="50%" animation="wave" />
@@ -69,7 +129,7 @@ export const FolderCardView: React.FC<FolderCardViewProps> = ({
     <Card
       variant="outlined"
       sx={{
-        width: 220,
+        width: dims.width,
         cursor: onClick ? "pointer" : "default",
         transition: "all 0.2s ease-in-out",
         overflow: "hidden",
@@ -94,7 +154,7 @@ export const FolderCardView: React.FC<FolderCardViewProps> = ({
           alt={`${displayName} cover`}
           sx={{
             width: "100%",
-            height: 120,
+            height: dims.imageHeight,
             objectFit: "cover",
             display: "block",
             backgroundColor: blendWithContrast(
@@ -107,7 +167,7 @@ export const FolderCardView: React.FC<FolderCardViewProps> = ({
       ) : (
         <Box
           sx={{
-            height: 120,
+            height: dims.imageHeight,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -120,7 +180,7 @@ export const FolderCardView: React.FC<FolderCardViewProps> = ({
         >
           <FolderIcon
             sx={{
-              fontSize: 48,
+              fontSize: dims.iconSize,
               color: blendWithContrast(
                 theme.palette.primary.main,
                 theme,
@@ -130,20 +190,20 @@ export const FolderCardView: React.FC<FolderCardViewProps> = ({
           />
         </Box>
       )}
-      <CardContent sx={{ p: M2 }}>
+      <CardContent sx={{ p: dims.contentPadding }}>
         <Typography
-          variant="h6"
+          variant={dims.titleVariant}
           sx={{
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
-            mb: M1,
+            mb: dims.titleBottomMargin,
           }}
         >
           {displayName}
         </Typography>
         <Typography
-          variant="caption"
+          variant={dims.subtitleVariant}
           sx={{
             color: blendWithContrast(theme.palette.text.primary, theme, 1 / 4),
           }}
