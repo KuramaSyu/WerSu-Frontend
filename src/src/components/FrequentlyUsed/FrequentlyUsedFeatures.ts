@@ -1,7 +1,10 @@
 import { useMemo } from "react";
 import type { HistoryFilter } from "../../api/models/history";
 import { useMostUsedActivity } from "../../api/queries/historyQueries";
-import type { HistoryRowEntry, HistoryState } from "../RecentActivity/HistoryRowFeatures";
+import type {
+  HistoryRowEntry,
+  HistoryState,
+} from "../RecentActivity/HistoryRowFeatures";
 
 /**
  * Fetches aggregated most-used rows for the Frequently Used panel.
