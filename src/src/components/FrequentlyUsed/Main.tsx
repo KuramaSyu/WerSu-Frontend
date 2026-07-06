@@ -1,8 +1,6 @@
 import { Box, Stack, Typography } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import {
-  useFrequentlyUsedRows,
-} from "./FrequentlyUsedFeatures";
+import { useFrequentlyUsedRows } from "./FrequentlyUsedFeatures";
 import type { HistoryRowEntry } from "../RecentActivity/HistoryRowFeatures";
 
 import { useThemeStore } from "../../zustand/useThemeStore";
