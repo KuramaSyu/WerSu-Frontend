@@ -110,6 +110,8 @@ export function useLeftPanel(panel: ReactNode | null): void {
     setLeftPanel(panel);
     if (panel !== null) {
       setLeftPanelOpen(true);
+    } else {
+      setLeftPanelOpen(false);
     }
     // return () => {
     //   setLeftPanel(null);
@@ -126,6 +128,8 @@ export function useRightPanel(panel: ReactNode | null): void {
     setRightPanel(panel);
     if (panel !== null) {
       setRightPanelOpen(true);
+    } else {
+      setRightPanelOpen(false);
     }
     // return () => {
     //   setRightPanel(null);
