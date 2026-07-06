@@ -1,56 +1,74 @@
-import { Box, Divider, Stack, Typography } from "@mui/material";
+import { Box, Stack, Typography } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import { M3 } from "../../statics";
 import {
-  useRecentActivityFeatures,
-  type ActivityTarget,
-} from "./RecentActivityFeatures";
-import { RecentActivityView } from "./RecentActivityView";
+  useHistoryRows,
+  type HistoryRowEntry,
+  type HistoryTarget,
+} from "./HistoryRowFeatures";
+
 import { useThemeStore } from "../../zustand/useThemeStore";
-import type { NoteVersionSummaryReply } from "../../api/models/activity";
+import { HistoryRowView } from "./HistoryRowView";
 
 /**
  * Props for the RecentActivityPanel component.
  */
 export interface RecentActivityPanelProps {
   /** Target entity to fetch activity for. */
-  target: ActivityTarget;
+  target: HistoryTarget;
   /** Optional title override. */
   title?: string;
   /** Max number of items to fetch and render. */
   limit?: number;
-  /** Directory recursion depth for directory/root queries. */
-  maxDepth?: number;
+  /**
+   * Time window the backend uses to scope the activity log
+   * (`days` parameter on `/api/history`). Mirrors the previous
+   * `maxDepth` knob at the panel level but lives one layer down.
+   */
+  days?: number;
 }
 
 /**
- * Generic panel that shows recent note-version activity for a note/directory.
+ * Generic panel that shows recent activity for a note/directory.
  *
- * Data loading is owned by `useRecentActivityFeatures`; each row is rendered
- * by `RecentActivityView`.
+ * Data loading is owned by `useHistoryRows` (which wraps the
+ * `/api/history` `mode=history` TanStack Query hook); each row is
+ * rendered by `HistoryRowView`. The same component will power the
+ * upcoming Frequently Used panel -- there it will be fed from the
+ * `mode=most_used` sibling hook instead.
  */
 export const RecentActivityPanel: React.FC<RecentActivityPanelProps> = ({
   target,
   title = "Recent activity",
   limit = 8,
-  maxDepth = 3,
+  days = 30,
 }) => {
-  const { activity, isLoading, hasError } = useRecentActivityFeatures(
-    target,
-    limit,
-    maxDepth,
-  );
+  const { rows, isLoading, hasError } = useHistoryRows(target, limit, days);
   const { theme } = useThemeStore();
   const navigate = useNavigate();
 
+  // Hide rows that carry a `score` here -- those are the
+  // most-used variant and belong to the upcoming Frequently Used
+  // panel. The `score` field still exists on `HistoryRowEntry`,
+  // and the chip / flame icon branch in `HistoryRowView` is still
+  // reachable for callers that build rows from `mode=most_used`
+  // themselves.
+  const recentRows = rows.filter((r) => r.score === undefined);
+
   // when clicking, reroute to /n/<note_id>
-  const handleItemClick = (entry: NoteVersionSummaryReply) => {
-    const noteId = entry.note_id;
-    navigate(`/n/${noteId}`);
+  const handleItemClick = (entry: HistoryRowEntry) => {
+    navigate(`/n/${entry.note_id}`);
   };
 
   return (
     <Box sx={{ color: theme.palette.text.secondary }}>
+      {title && (
+        <Typography
+          variant="subtitle2"
+          sx={{ fontWeight: 600, mb: theme.spacing(1) }}
+        >
+          {title}
+        </Typography>
+      )}
       {isLoading && (
         <Typography variant="body2" color="textSecondary">
           Loading activity...
@@ -61,15 +79,15 @@ export const RecentActivityPanel: React.FC<RecentActivityPanelProps> = ({
           Failed to load activity.
         </Typography>
       )}
-      {!isLoading && !hasError && activity.length === 0 && (
+      {!isLoading && !hasError && recentRows.length === 0 && (
         <Typography variant="body2" color="textSecondary">
           No recent activity.
         </Typography>
       )}
-      <Stack spacing={theme.spacing(2)}>
-        {activity.map((entry) => (
-          <RecentActivityView
-            key={entry.version_id}
+      <Stack spacing={1}>
+        {recentRows.map((entry) => (
+          <HistoryRowView
+            key={entry.id ?? entry.note_id}
             entry={entry}
             onClick={handleItemClick}
           />
