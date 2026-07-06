@@ -4,37 +4,32 @@ import { useNavigate } from "react-router-dom";
 import { useDirectoryStore } from "../../zustand/useDirectoryStore";
 import { getActivityApi } from "../../api/ActivityApi";
 import { useDirectory } from "../../api/queries/useDirectoryQuery";
-import { FolderCardView } from "./FolderCardView";
+import { FolderCardView, type CardSize } from "./FolderCardView";
 import type { NoteVersionSummaryReply } from "../../api/models/activity";
 
 export interface FolderCardProps {
   /** ID of the directory to render. */
   directoryId: string;
+  /** Visual size preset forwarded to `FolderCardView`. */
+  size?: CardSize;
 }
 
 const activityApi = getActivityApi();
 
 /**
  * Feature wrapper for a favourite directory card.
- *
- * Resolves the data needed to render a directory (`FolderCardView`) and
- * hands it resolved props - the view itself has no fetch / store / route
- * logic. Data sources:
- *
- * - directory metadata: `useDirectoryStore` cache first, then the
- *   `useDirectory` TanStack hook (cache miss path).
- * - last modification: an inline `useQuery` against the directory
- *   activity endpoint.
+ * which fetches it using `useDirectory` if it's not in cache (`useDirectoryStore`).
  */
-export const FolderCard: React.FC<FolderCardProps> = ({ directoryId }) => {
+export const FolderCard: React.FC<FolderCardProps> = ({
+  directoryId,
+  size = "medium",
+}) => {
   const navigate = useNavigate();
   const cachedDirectory = useDirectoryStore(
     (s) => s.directoriesById[directoryId],
   );
   const upsertDirectory = useDirectoryStore((s) => s.upsertDirectory);
 
-  // The synthetic top-level hierarchy node carries the literal id "root";
-  // it has no real metadata and must never be rendered as a folder card.
   const isRoot = directoryId === "root";
 
   // Skip the fetch when we already have a cached record - the store is
@@ -76,8 +71,6 @@ export const FolderCard: React.FC<FolderCardProps> = ({ directoryId }) => {
     [directory],
   );
 
-  console.log("directory:", directory);
-
   return (
     <FolderCardView
       displayName={displayName}
@@ -86,6 +79,7 @@ export const FolderCard: React.FC<FolderCardProps> = ({ directoryId }) => {
       lastModified={lastModified}
       loading={isLoading}
       hidden={isRoot || isMissing}
+      size={size}
     />
   );
 };
