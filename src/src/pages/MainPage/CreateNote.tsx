@@ -18,7 +18,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import CreateIcon from "@mui/icons-material/Create";
 import { note_of_date_at_hour } from "../../utils/NoteTitleTemplates";
-import { NoteApi } from "../../api/NoteApi";
+import { getNoteApi, NoteApi } from "../../api/NoteApi";
 import { UserError } from "../../api/models/UserError";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { useThemeStore } from "../../zustand/useThemeStore";
@@ -28,11 +28,19 @@ import { useUpdateNote } from "../../api/queries/useNoteQueries";
 export interface CreateNoteProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * When set, the freshly created note is moved into this directory
+   * via `patchDirectory` after the create succeeds. `undefined` (and
+   * `"root"`) leave the note at the root, matching the Home page
+   * behaviour.
+   */
+  currentDirectoryId?: string;
 }
 
 export const CreateNote: React.FC<CreateNoteProps> = ({
   open,
   onOpenChange,
+  currentDirectoryId,
 }) => {
   const { theme } = useThemeStore();
   const navigate = useNavigate();
@@ -62,6 +70,29 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
 
       setSnackbarState({ open: true });
       updateNote({ noteId: note.id, title: note.title, content: note.content });
+
+      // Move the new note into the current directory when the dialog
+      // is mounted from a directory context. Skipping this for the Home
+      // page preserves the original behaviour (note lands at root).
+      if (
+        currentDirectoryId &&
+        currentDirectoryId !== "root" &&
+        currentDirectoryId !== note.get_dir()
+      ) {
+        const moved = await getNoteApi().patchDirectory(
+          note.id,
+          currentDirectoryId,
+        );
+        if (!moved) {
+          setMessage(
+            new SnackbarUpdateImpl(
+              "Note created, but failed to assign directory",
+              "warning",
+            ),
+          );
+        }
+      }
+
       return note;
     } catch (error) {
       if (error instanceof UserError) {
