@@ -12,8 +12,8 @@ import { useParams } from "react-router-dom";
 
 export interface DirectoryRightPanelProps {
   currentNode: HirarchyItem;
-  handleCreateNote: () => Promise<void> | void;
-  handleRenameDirectory: () => Promise<void> | void;
+  handleCreateNote: () => void;
+  handleRenameDirectory: () => void;
 }
 
 /**
@@ -39,13 +39,13 @@ export const DirectoryRightPanel: React.FC<DirectoryRightPanelProps> = ({
           <PanelButtons.Secondary
             startIcon={<MenuBookIcon />}
             disabled={isRoot}
-            onClick={() => void handleRenameDirectory()}
+            onClick={handleRenameDirectory}
           >
             Edit directory
           </PanelButtons.Secondary>
           <PanelButtons.Primary
             startIcon={<CreateIcon />}
-            onClick={() => void handleCreateNote()}
+            onClick={handleCreateNote}
           >
             Create note
           </PanelButtons.Primary>

@@ -10,13 +10,18 @@ import {
 import type { MinimalNote } from "../../api/models/search";
 import { getNoteParentDirectoryIds } from "../../utils/fileGraphUtils";
 import { useLatestNotes } from "../../api/queries/useNoteQueries";
-import { useCreateNote } from "../../api/queries/useNoteQueries";
-import { getNoteApi } from "../../api/NoteApi";
-import { note_of_date_at_hour } from "../../utils/NoteTitleTemplates";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
-import { UserError } from "../../api/models/UserError";
 import { useRightPanel } from "../../LayoutProvider";
 import { DirectoryRightPanel } from "./DirectoryRightPanel";
+
+export interface UseDirectoryFeaturesOptions {
+  /**
+   * Invoked when the user picks "Create note" from the right-panel
+   * actions. The host component owns the dialog state and is
+   * responsible for mounting the shared `CreateNote` dialog.
+   */
+  onOpenCreateNote?: () => void;
+}
 
 const findNodeById = (root: HirarchyItem, id: string): HirarchyItem | null => {
   if (root.getId() === id) {
@@ -86,7 +91,7 @@ export interface DirectoryFeatures {
   notesByDirectory: Record<string, MinimalNote[]>;
   notesInDirectory: MinimalNote[];
   title: string;
-  handleCreateNote: () => Promise<void>;
+  handleCreateNote: () => void;
   handleRenameDirectory: () => void;
   navigate: ReturnType<typeof useNavigate>;
 }
@@ -98,15 +103,16 @@ export interface DirectoryFeatures {
  * - fetching the directory list and notes
  * - building the hierarchy tree and resolving the current node
  * - grouping notes by their parent directory
- * - creating new notes and renaming directories
+ * - opening the create-note dialog and renaming directories
  */
-export function useDirectoryFeatures(): DirectoryFeatures {
+export function useDirectoryFeatures(
+  options: UseDirectoryFeaturesOptions = {},
+): DirectoryFeatures {
   const { id } = useParams();
   const navigate = useNavigate();
   const directoryId = id ?? "root";
   const { directoriesById, setDirectories } = useDirectoryStore();
   const { data: notes } = useLatestNotes();
-  const { mutateAsync: createNoteMutate } = useCreateNote();
   const { setMessage } = useInfoStore();
 
   useEffect(() => {
@@ -158,58 +164,17 @@ export function useDirectoryFeatures(): DirectoryFeatures {
     currentNode.getId() === "root" ? "Directory View" : currentNode.getName();
 
   /**
-   * Creates a new note and (optionally) assigns it to the current directory.
-   * The user is then navigated into the note editor.
+   * Asks the host to open the shared `CreateNote` dialog, scoped to the
+   * current directory. The dialog handles creation, directory
+   * assignment, and navigation once the note is saved.
    */
-  const handleCreateNote = async () => {
-    try {
-      const note = await createNoteMutate({
-        title: note_of_date_at_hour(),
-        content: "123",
-      });
-      if (!note) {
-        setMessage(new SnackbarUpdateImpl("Failed to create note", "error"));
-        return;
-      }
-
-      console.log(
-        `currend node id: ${currentNode.getId()}, note dir: ${note.get_dir()}, perms: ${JSON.stringify(note.permissions)}`,
+  const handleCreateNote = () => {
+    if (options.onOpenCreateNote) {
+      options.onOpenCreateNote();
+    } else {
+      setMessage(
+        new SnackbarUpdateImpl("Create note is not wired up here", "error"),
       );
-      if (
-        currentNode.getId() !== "root" &&
-        currentNode.getId() !== note.get_dir()
-      ) {
-        // Use the registered NoteApi singleton so the share-token provider
-        // installed on Bootstrap reaches this call (a fresh `new NoteApi()`
-        // would not). See useNoteQueries for rationale.
-        const moved = await getNoteApi().patchDirectory(
-          note.id,
-          currentNode.getId(),
-        );
-        if (!moved) {
-          setMessage(
-            new SnackbarUpdateImpl(
-              "Note created, but failed to assign directory",
-              "warning",
-            ),
-          );
-        }
-      }
-
-      navigate(`/n/${note.id}`);
-    } catch (error) {
-      if (error instanceof UserError) {
-        setMessage(
-          new SnackbarUpdateImpl(
-            error.title,
-            "error",
-            undefined,
-            error.description,
-          ),
-        );
-        return;
-      }
-      setMessage(new SnackbarUpdateImpl("Unexpected error", "error"));
     }
   };
 
