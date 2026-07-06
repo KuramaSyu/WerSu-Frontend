@@ -215,6 +215,16 @@ export class CustomThemeImpl implements CustomTheme {
       return darken(color, numCoef);
     };
 
+    this.spacing = (...args: Array<number | string>): string => {
+      return args
+        .map((factor) => {
+          const numFactor =
+            typeof factor === "string" ? parseFloat(factor) : factor;
+          return `${0.25 * Math.pow(2, numFactor)}rem`;
+        })
+        .join(" ");
+    };
+
     this.borderRadius = {
       root: { borderRadius: 64, "&:hover": { borderRadius: 8 } },
     };
