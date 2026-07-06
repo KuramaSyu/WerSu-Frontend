@@ -1,5 +1,5 @@
 import React from "react";
-import { Stack } from "@mui/material";
+import { Stack, type SxProps } from "@mui/material";
 import { M1 } from "../../statics";
 import { useThemeStore } from "../../zustand/useThemeStore";
 
@@ -8,6 +8,7 @@ export interface UpperPanelProps {
   children: React.ReactNode;
   /** Spacing multiplier between sections. Defaults to 2. */
   spacing?: number;
+  sx?: SxProps;
 }
 
 /**
@@ -19,10 +20,11 @@ export interface UpperPanelProps {
 export const UpperPanel: React.FC<UpperPanelProps> = ({
   children,
   spacing = 4,
+  sx,
 }) => {
   const { theme } = useThemeStore();
   return (
-    <Stack spacing={theme.spacing(spacing)} sx={{ px: M1 }}>
+    <Stack spacing={theme.spacing(spacing)} sx={{ px: M1, ...sx }}>
       {children}
     </Stack>
   );
