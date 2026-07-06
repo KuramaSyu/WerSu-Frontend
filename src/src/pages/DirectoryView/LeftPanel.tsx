@@ -6,6 +6,7 @@ import type { HirarchyItem } from "../../models/HirarchyItem";
 import { PanelSection } from "../../components/Panels/PanelSection";
 import { NavigationSection } from "../../components/Panels/NavigationSection";
 import { UpperPanel } from "../../components/Panels/UpperPanel";
+import { useDirectory } from "../../api/queries/useDirectoryQuery";
 
 interface DirectoryActionsProps {
   currentNode: HirarchyItem;
@@ -17,6 +18,9 @@ interface DirectoryActionsProps {
 export const DirectoryLeftPanel: React.FC<DirectoryActionsProps> = ({
   currentNode,
 }) => {
+  const { data: dir } = useDirectory(
+    currentNode.getId() === "root" ? undefined : currentNode.getId(),
+  );
   return (
     <UpperPanel>
       <NavigationSection />
@@ -32,6 +36,11 @@ export const DirectoryLeftPanel: React.FC<DirectoryActionsProps> = ({
               : { type: "directory", id: currentNode.getId() }
           }
         />
+      </PanelSection>
+      <PanelSection title="Description" titleIcon={<></>}>
+        <p style={{ fontSize: "0.8rem" }}>
+          {dir?.description || "No description"}
+        </p>
       </PanelSection>
     </UpperPanel>
   );
