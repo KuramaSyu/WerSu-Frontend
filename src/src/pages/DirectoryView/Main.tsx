@@ -6,6 +6,7 @@ import { useLeftPanel } from "../../LayoutProvider";
 import { DirectoryBreadCrumbs } from "./DirectoryBreadCrumbs";
 import { DirectoryItem } from "./DirectoryItem";
 import { useDirectoryFeatures } from "./DirectoryFeatures.hook";
+import { CreateNote } from "../MainPage/CreateNote";
 import { M3, M4 } from "../../statics";
 
 /**
@@ -20,6 +21,7 @@ export const DirectoryView: React.FC = () => {
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(
     null,
   );
+  const [createNoteOpen, setCreateNoteOpen] = useState(false);
 
   const {
     currentNode,
@@ -29,7 +31,7 @@ export const DirectoryView: React.FC = () => {
     notesInDirectory,
     title,
     navigate,
-  } = useDirectoryFeatures();
+  } = useDirectoryFeatures({ onOpenCreateNote: () => setCreateNoteOpen(true) });
 
   useLeftPanel(<DirectoryLeftPanel currentNode={currentNode} />);
 
@@ -108,6 +110,11 @@ export const DirectoryView: React.FC = () => {
           </Paper>
         </Stack>
       </DragDropProvider>
+      <CreateNote
+        open={createNoteOpen}
+        onOpenChange={setCreateNoteOpen}
+        currentDirectoryId={currentNode.getId()}
+      />
     </Paper>
   );
 };
