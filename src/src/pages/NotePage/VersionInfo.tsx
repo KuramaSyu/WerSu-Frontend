@@ -23,6 +23,7 @@ import { NoteApi } from "../../api/NoteApi";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { NoteVersionsDrawer } from "../../components/NoteVersionsDrawer";
 import { useNoteActivity } from "../../api/queries/recentActivity";
+import { useNote } from "../../api/queries/useNoteQueries";
 import { formatDistanceToNow } from "date-fns";
 import type { Note } from "../../api/models/search";
 import { IconArrowNarrowRight } from "@tabler/icons-react";
@@ -76,10 +77,23 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
     }
     setSelectedVersion(version);
   };
-  const { data: selectedVersionContent } = useNoteVersion(
+
+  // The auto-select effect below picks the latest version in read mode;
+  // its content is already served by `useNote(noteId)`, so skip the
+  // per-version fetch when the selection matches the latest index.
+  const latestVersionIndex = versions?.[0]?.version_index;
+  const isLatestSelected =
+    selectedVersion?.version_index !== undefined &&
+    selectedVersion.version_index === latestVersionIndex;
+  const { data: fetchedSelectedVersionContent } = useNoteVersion(
     noteId,
-    selectedVersion?.version_index,
+    isLatestSelected ? undefined : selectedVersion?.version_index,
   );
+  // Fall back to the `useNote(noteId)` cache for the latest version.
+  const { data: cachedNote } = useNote(noteId);
+  const selectedVersionContent: Note | undefined = isLatestSelected
+    ? (cachedNote ?? undefined)
+    : fetchedSelectedVersionContent;
 
   /*   clear user from an old version as soon as he enters the edit window.
   also select the latest version if he is not in editor mode e.g. read mode */
@@ -105,6 +119,7 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
       }
     }
   }, [usersById, selectedVersion]);
+
   // Restores a version by saving its content as the latest note state.
   const handleRestoreVersion = async (
     version: NoteVersionSummaryReply,
