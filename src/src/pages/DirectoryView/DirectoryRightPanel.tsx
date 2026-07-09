@@ -1,12 +1,14 @@
-import React from "react";
+import React, { useState } from "react";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
 import CreateIcon from "@mui/icons-material/Create";
 import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
+import DeleteIcon from "@mui/icons-material/Delete";
 import type { HirarchyItem } from "../../models/HirarchyItem";
 import { PanelButtons } from "../../components/Panels/PanelButtons";
 import { UpperPanel } from "../../components/Panels/UpperPanel";
 import { PanelSection } from "../../components/Panels/PanelSection";
+import { ConfirmationModal } from "../Settings/ConfirmationModal";
 import { useFavouritesStore } from "../../zustand/useFavouritesStore";
 import { useParams } from "react-router-dom";
 
@@ -14,6 +16,7 @@ export interface DirectoryRightPanelProps {
   currentNode: HirarchyItem;
   handleCreateNote: () => void;
   handleRenameDirectory: () => void;
+  handleDeleteDirectory: () => void;
 }
 
 /**
@@ -23,9 +26,11 @@ export const DirectoryRightPanel: React.FC<DirectoryRightPanelProps> = ({
   currentNode,
   handleCreateNote,
   handleRenameDirectory,
+  handleDeleteDirectory,
 }) => {
   const { id: directoryId } = useParams();
   const isRoot = currentNode.getId() === "root";
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const isFavourite = useFavouritesStore((s) =>
     directoryId ? Boolean(s.directories[directoryId]) : false,
@@ -60,8 +65,27 @@ export const DirectoryRightPanel: React.FC<DirectoryRightPanelProps> = ({
           >
             {isFavourite ? "Favourited" : "Favourite"}
           </PanelButtons.Secondary>
+          <PanelButtons.Secondary
+            startIcon={<DeleteIcon />}
+            disabled={isRoot}
+            color="error"
+            onClick={() => setConfirmDeleteOpen(true)}
+          >
+            Delete directory
+          </PanelButtons.Secondary>
         </PanelButtons>
       </PanelSection>
+      <ConfirmationModal
+        title="Delete this directory?"
+        message="This will delete the directory. Notes inside may become unassigned."
+        confirmLabel="Delete"
+        open={confirmDeleteOpen}
+        onCancel={() => setConfirmDeleteOpen(false)}
+        onConfirm={() => {
+          setConfirmDeleteOpen(false);
+          handleDeleteDirectory();
+        }}
+      />
     </UpperPanel>
   );
 };
