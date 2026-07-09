@@ -142,10 +142,30 @@ export const NoteVersionsDrawer: React.FC<NoteVersionsDrawerProps> = ({
   const [previewTab, setPreviewTab] = useState(0);
 
   const getCurrentContent = useActiveNoteStore((s) => s.getContent);
-  const { data: selectedNote } = useNoteVersion(
+
+  // Resolve the latest version's index from the activity list. When the
+  // selected version matches the latest, we skip the per-version fetch
+  // and reuse the note content from the `useNote(noteId)` cache.
+  const latestVersionIndex = activity?.[0]?.version_index;
+  const isLatestSelected =
+    selectedVersion?.version_index !== undefined &&
+    selectedVersion.version_index === latestVersionIndex;
+
+  // Fetches the selected version's content; disabled when the selection
+  // is the latest version (we already have that content in `useNote`).
+  const { data: fetchedSelectedNote } = useNoteVersion(
     noteId,
-    selectedVersion?.version_index,
+    isLatestSelected ? undefined : selectedVersion?.version_index,
   );
+  // Fall back to the note cache when the selected version is the latest.
+  const { data: cachedNote } = useNote(noteId);
+
+  // Compose the view used by the diff / preview rendering below.
+  // For the latest version we read from `useNote`; for older versions
+  // we read from the version fetch.
+  const selectedNote: Note | undefined = isLatestSelected
+    ? (cachedNote ?? undefined)
+    : fetchedSelectedNote;
   const selectedContent =
     selectedNote?.content || selectedNote?.stripped_content || "";
   const currentContent = getCurrentContent();

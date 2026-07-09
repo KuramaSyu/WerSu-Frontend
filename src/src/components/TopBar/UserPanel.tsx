@@ -12,12 +12,15 @@ import {
   Typography,
 } from "@mui/material";
 import Logout from "@mui/icons-material/Logout";
+import SettingsIcon from "@mui/icons-material/Settings";
 import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useUser } from "../../api/queries/useUser";
 import { M1, M3, M4 } from "../../statics";
 import { NotificationsPanel } from "./NotificationsPanel";
+import { Pages } from "./Pages";
 
 export interface UserPanelProps {
   /**
@@ -45,6 +48,7 @@ export const UserPanel: React.FC<UserPanelProps> = ({ onRequestClose }) => {
   const { isMobile } = useBreakpoint();
   const { data: user } = useUser();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   /**
    * Logout clears the React Query cache so user-bound queries don't
@@ -55,6 +59,12 @@ export const UserPanel: React.FC<UserPanelProps> = ({ onRequestClose }) => {
    */
   const handleLogout = () => {
     queryClient.clear();
+    onRequestClose();
+  };
+
+  /** Navigate to /settings and dismiss the drawer. */
+  const handleOpenSettings = () => {
+    navigate(Pages.SETTINGS);
     onRequestClose();
   };
 
@@ -118,6 +128,12 @@ export const UserPanel: React.FC<UserPanelProps> = ({ onRequestClose }) => {
       <Divider />
 
       <List>
+        <ListItemButton onClick={handleOpenSettings}>
+          <ListItemIcon>
+            <SettingsIcon />
+          </ListItemIcon>
+          <ListItemText primary="Settings" />
+        </ListItemButton>
         <ListItemButton onClick={handleLogout}>
           <ListItemIcon>
             <Logout />

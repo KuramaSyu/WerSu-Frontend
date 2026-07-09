@@ -26,18 +26,12 @@ import type {
   HistoryFilter,
 } from "../../api/models/history";
 import { useActivityHistory } from "../../api/queries/historyQueries";
+import { crumble } from "../../utils/stringCrumbler";
 
-/**
- * Row shape consumed by `HistoryRowView`.
- *
- * Mirrors the union of `ActivityReply` (history mode) and
- * `ActivityScoreReply` (most-used mode): carries everything either
- * response shape can populate, plus an optional `score` for the
- * Frequently Used panel.
- *
- * `note_id` is the only required field -- it resolves the note
- * title via the query cache (`["notes", entry.note_id]`).
- */
+/** Cap on the description preview rendered per history row. */
+const HISTORY_ROW_DESCRIPTION_CAP = 120;
+
+/** Row shape consumed by `HistoryRowView`; mirrors the union of `ActivityReply` and `ActivityScoreReply`, plus optional `score` for the Frequently Used panel. */
 export interface HistoryRowEntry {
   /** Note id the row refers to. Required. */
   note_id: string;
@@ -61,21 +55,14 @@ export interface HistoryRowEntry {
 
   /** Most-used score; populated only for `mode=most_used` rows. */
   score?: number;
+
+  /** Pre-rendered note title; optional. */
+  title?: string;
+  /** Pre-rendered description preview; optional. */
+  description?: string;
 }
 
-/**
- * Visual variant of a row. Each known `ActivityKind` maps to its
- * own variant so the panel can render distinct icons + labels +
- * colours instead of lumping everything into "edited".
- *
- * `unknown` is the fallback for rows that arrive without an
- * `action` (and a non-score row). The panel renders this as a
- * neutral icon.
- *
- * `trending` is not derived from any single action -- a row with
- * a `score` is by construction a frequently-used row regardless
- * of its underlying action.
- */
+/** Visual variant of a row; each `ActivityKind` maps to its own variant so the panel can render distinct icons + labels + colours. `trending` is the score-bearing variant, `unknown` is the no-action fallback. */
 export type HistoryRowKind =
   | "created"
   | "edited"
@@ -98,14 +85,7 @@ export type HistoryRowKind =
   | "trending"
   | "unknown";
 
-/**
- * Per-variant display metadata. Centralising this keeps icon and
- * label changes in one place -- the view component reads from
- * `VARIANT_META[kind]` and doesn't need a parallel map.
- *
- * `color` is intentionally a MUI palette key rather than a hex
- * value so it re-themes with the rest of the app.
- */
+/** Per-variant display metadata; centralised so icon / label changes happen in one place. `color` is a MUI palette key so it re-themes with the rest of the app. */
 export interface HistoryRowVariantMeta {
   /** MUI icon component. */
   icon: React.ComponentType<{ fontSize?: "small" | "medium" | "large" }>;
@@ -166,17 +146,7 @@ export const VARIANT_META: Record<HistoryRowKind, HistoryRowVariantMeta> = {
   unknown: { icon: EditIcon, label: "Activity", color: "info" },
 };
 
-/**
- * Maps every `ActivityKind` literal to its canonical `HistoryRowKind`
- * bucket. Single source of truth -- the view / helpers read from
- * this map.
- *
- * `note_viewed` / `note_published` / `note_shared` /
- * `note_unshared` / `note_restored` / `note_archived` /
- * `note_version_restored` used to fold into the generic `edited`
- * bucket and lose their identity. Each one now has a distinct row
- * variant with its own icon + colour + label.
- */
+/** Maps every `ActivityKind` literal to its canonical `HistoryRowKind`; single source of truth for the view and helpers. */
 export const ACTION_VARIANT: Record<ActivityKind, HistoryRowKind> = {
   note_viewed: "viewed",
   note_created: "created",
@@ -198,32 +168,19 @@ export const ACTION_VARIANT: Record<ActivityKind, HistoryRowKind> = {
   role_change: "role_changed",
 };
 
-/**
- * Exhaustiveness guard for switches that need it. Kept for callers
- * that handle `ActivityKind` literal-by-literal; `ACTION_VARIANT`
- * itself is a `Record<ActivityKind, ...>` which is exhaustive by
- * construction so no switch lives in this file.
- *
- * @internal
- */
+/** Exhaustiveness guard for switches; `ACTION_VARIANT` is exhaustive by construction so no switch lives in this file. @internal */
 export const assertExhaustive = (value: never): never => {
   throw new Error(
     `HistoryRowFeatures: unhandled ${JSON.stringify(value)} -- update ACTION_VARIANT`,
   );
 };
 
-/**
- * Convenience: the union of all actions that turn into the
- * `created` variant. Kept around because callers can still ask
- * "was this a creation?" without going through `getHistoryRowKind`.
- */
+/** Union of actions that turn into the `created` variant. */
 export const CREATED_ACTIONS: ReadonlySet<ActivityKind> = new Set<ActivityKind>(
   ["note_created", "directory_created"],
 );
 
-/**
- * Action prefixes that are "note-target" events.
- */
+/** Note-target action prefixes. */
 export const NOTE_TARGET_ACTIONS: ReadonlySet<ActivityKind> =
   new Set<ActivityKind>([
     "note_viewed",
@@ -239,9 +196,7 @@ export const NOTE_TARGET_ACTIONS: ReadonlySet<ActivityKind> =
     "note_attachment_added",
   ]);
 
-/**
- * Action prefixes that are "directory-target" events.
- */
+/** Directory-target action prefixes. */
 export const DIRECTORY_TARGET_ACTIONS: ReadonlySet<ActivityKind> =
   new Set<ActivityKind>([
     "directory_created",
@@ -250,23 +205,11 @@ export const DIRECTORY_TARGET_ACTIONS: ReadonlySet<ActivityKind> =
     "directory_deleted",
   ]);
 
-/**
- * Action prefixes that are "role-target" events.
- */
+/** Role-target action prefixes. */
 export const ROLE_TARGET_ACTIONS: ReadonlySet<ActivityKind> =
   new Set<ActivityKind>(["role_grant", "role_revoke", "role_change"]);
 
-/**
- * Resolves the row variant from the entry.
- *
- * Priority:
- * 1. `score !== undefined` -> "trending" (frequently-used rows).
- * 2. `action` present -> the variant recorded for it in
- *    `ACTION_VARIANT`. Pinning the map (not a switch) keeps the
- *    per-kind routing a single source of truth that the view and
- *    helpers all read from.
- * 3. `action` missing -> "unknown" (rendered as a neutral icon).
- */
+/** Resolves the row variant from the entry: `score` -> "trending", `action` -> the variant in `ACTION_VARIANT`, missing -> "unknown". */
 export const getHistoryRowKind = (entry: HistoryRowEntry): HistoryRowKind => {
   if (entry.score !== undefined) {
     return "trending";
@@ -277,56 +220,32 @@ export const getHistoryRowKind = (entry: HistoryRowEntry): HistoryRowKind => {
   return ACTION_VARIANT[entry.action];
 };
 
-/**
- * Returns the display metadata for an entry's variant. The
- * `HistoryRowView` calls this once per render to drive its icon,
- * caption, and palette key -- keeps the view dumb.
- */
+/** Returns the display metadata for an entry's variant (icon + caption + palette key). */
 export const getHistoryRowMeta = (
   entry: HistoryRowEntry,
 ): HistoryRowVariantMeta => VARIANT_META[getHistoryRowKind(entry)];
 
-/**
- * Returns the short label string for an entry's variant (e.g.
- * "Viewed", "Shared"). The view prepends this to the note title.
- */
+/** Returns the short label string for an entry's variant (e.g. "Viewed", "Shared"). */
 export const getHistoryRowVariantLabel = (entry: HistoryRowEntry): string =>
   VARIANT_META[getHistoryRowKind(entry)].label;
 
-/**
- * `true` when the entry carries an aggregated `score`. Used by the
- * Recent Activity panel to filter out most-used rows (the
- * Frequently Used panel consumes those instead).
- */
+/** `true` when the entry carries an aggregated `score`. */
 export const hasScore = (entry: HistoryRowEntry): boolean =>
   entry.score !== undefined;
 
-/**
- * `true` when the variant would render with a `created` icon.
- */
+/** `true` when the variant would render with a `created` icon. */
 export const isCreatedRow = (entry: HistoryRowEntry): boolean =>
   getHistoryRowKind(entry) === "created";
 
-/**
- * `true` when the variant would render with the generic `edited`
- * icon (a true plain edit, not viewed / shared / etc.).
- */
+/** `true` when the variant would render with the generic `edited` icon (a true plain edit, not viewed / shared / etc.). */
 export const isEditedRow = (entry: HistoryRowEntry): boolean =>
   getHistoryRowKind(entry) === "edited";
 
-/**
- * `true` when the variant would render as `trending` (flame icon +
- * score chip). Equivalent to `hasScore`.
- */
+/** `true` when the variant would render as `trending` (flame icon + score chip). Equivalent to `hasScore`. */
 export const isTrendingRow = (entry: HistoryRowEntry): boolean =>
   getHistoryRowKind(entry) === "trending";
 
-/**
- * Per-action predicates for the most common semantic buckets.
- * Each is a thin wrapper over `ACTION_VARIANT` so the wire between
- * "is this a view?" and "does it render the eye icon?" stays
- * single-sourced from `ACTION_VARIANT`.
- */
+/** Per-action predicates; thin wrappers over `ACTION_VARIANT` so the wire between action and rendered icon stays single-sourced. */
 export const isViewedRow = (entry: HistoryRowEntry): boolean =>
   entry.action !== undefined && ACTION_VARIANT[entry.action] === "viewed";
 
@@ -351,31 +270,19 @@ export const isRestoredRow = (entry: HistoryRowEntry): boolean =>
   (ACTION_VARIANT[entry.action] === "restored" ||
     ACTION_VARIANT[entry.action] === "version_restored");
 
-/**
- * `true` when the entry's action targets a note (the `note_`
- * prefix in the `ActivityKind` union). Used by panels that need to
- * scope their filter to one target kind.
- */
+/** `true` when the entry's action targets a note. */
 export const isNoteEvent = (entry: HistoryRowEntry): boolean =>
   entry.action !== undefined && NOTE_TARGET_ACTIONS.has(entry.action);
 
-/**
- * `true` when the entry's action targets a directory.
- */
+/** `true` when the entry's action targets a directory. */
 export const isDirectoryEvent = (entry: HistoryRowEntry): boolean =>
   entry.action !== undefined && DIRECTORY_TARGET_ACTIONS.has(entry.action);
 
-/**
- * `true` when the entry's action targets a role.
- */
+/** `true` when the entry's action targets a role. */
 export const isRoleEvent = (entry: HistoryRowEntry): boolean =>
   entry.action !== undefined && ROLE_TARGET_ACTIONS.has(entry.action);
 
-/**
- * Formats an ISO timestamp into a human-friendly string. Returns
- * the raw input unchanged when parsing fails so callers still see
- * something instead of `Invalid Date`.
- */
+/** Formats an ISO timestamp into a human-friendly string; returns the raw input on parse failure. */
 export const formatHistoryRowTimestamp = (iso: string): string => {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) {
@@ -384,55 +291,56 @@ export const formatHistoryRowTimestamp = (iso: string): string => {
   return formatDistanceToNow(date, { addSuffix: true });
 };
 
-/**
- * Builds the label for a row entry. Looks up the note title via the
- * query cache; falls back to the raw `note_id` when the note hasn't
- * been fetched yet.
- */
+/** Builds the label for a row entry; looks up the note title via the query cache, falls back to `note_id`. */
 export const formatHistoryRowLabel = (entry: HistoryRowEntry): string => {
   const note = queryClient.getQueryData<Note>(["notes", entry.note_id]);
   return note?.title || entry.note_id;
 };
 
-/**
- * Target entity for the Recent Activity panel -- mirrors the
- * historical `ActivityTarget` shape so existing callers don't
- * change.
- */
+/** Extracts `note_title` / `note_content` from `metadata_json` for note events; returns empty strings for non-notes / malformed / missing. */
+export const extractNoteMetadata = (
+  row: HistoryRowEntry,
+): { title: string; description: string } => {
+  if (row.action === undefined || !row.action.startsWith("note_")) {
+    return { title: "", description: "" };
+  }
+  if (!row.metadata_json) {
+    return { title: "", description: "" };
+  }
+  let parsed: { note_title?: string; note_content?: string };
+  try {
+    parsed = JSON.parse(row.metadata_json);
+  } catch {
+    return { title: "", description: "" };
+  }
+  const title = parsed.note_title ?? "";
+  const content = parsed.note_content ?? "";
+  const description = content
+    ? (crumble(content, HISTORY_ROW_DESCRIPTION_CAP)[0] ?? "")
+    : "";
+  return { title, description };
+};
+
+/** Target entity for the Recent Activity panel; mirrors the historical `ActivityTarget` shape. */
 export type HistoryTarget =
   | { type: "note"; id: string }
   | { type: "directory"; id: string }
   | { type: "root" };
 
-/**
- * Resolved activity state for the panel.
- */
+/** Resolved activity state for the panel. */
 export interface HistoryState {
   rows: HistoryRowEntry[];
   isLoading: boolean;
   hasError: boolean;
 }
 
-/**
- * Maps the panel's `target` to a `HistoryFilter` and fetches the
- * rows. The backend exposes `/api/history`, which is the single
- * source of truth for both note/directory/root activity and the
- * upcoming most-used panel.
- *
- * Pagination/policy:
- * - `limit` controls the page size; the panel defaults to 8 rows.
- * - `mode` is forced to `history`; the `most_used` panel uses
- *   `useMostUsedActivity` instead.
- * - `days` defaults to 30 so the panel stays cheap on large logs;
- *   override at the call site when a different window is wanted.
- */
+/** Maps the panel's `target` to a `HistoryFilter` and fetches the rows; `limit` controls page size (default 8), `days` is the time window (default 30). */
 export function useHistoryRows(
   target: HistoryTarget,
   limit: number = 8,
   days: number = 30,
 ): HistoryState {
-  // Stable filter object: same target + same options => same
-  // queryKey => react-query reuses the cache instead of refetching.
+  // Stable filter object so react-query reuses the cache when target/limit/days don't change.
   const filter = useMemo<HistoryFilter>(() => {
     const base: HistoryFilter = {
       mode: "history",
@@ -461,9 +369,15 @@ export function useHistoryRows(
 
   const result = useActivityHistory(filter);
 
-  // `ActivityReply` rows already match `HistoryRowEntry` shape --
-  // the type is a structural superset (note_id, action, at, ...).
-  const rows = (result.data ?? []) as unknown as HistoryRowEntry[];
+  // `ActivityReply` rows are a structural superset of `HistoryRowEntry`; lift `title` / `description` from `metadata_json` so the view doesn't parse JSON.
+  const rows: HistoryRowEntry[] = (result.data ?? []).map((row) => {
+    const { title, description } = extractNoteMetadata(row);
+    return {
+      ...row,
+      ...(title ? { title } : {}),
+      ...(description ? { description } : {}),
+    };
+  });
 
   return {
     rows,

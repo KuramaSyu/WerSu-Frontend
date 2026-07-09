@@ -34,7 +34,6 @@ import {
   DirectoryHierarchyBuilder,
   type HirarchyItem,
 } from "../../models/HirarchyItem";
-import { RecentActivityPanel } from "../../components/RecentActivity/Main";
 import { LeftPanel } from "../MainPage/LeftPanel";
 import { NoteActionPanel } from "./NoteActionPanel";
 import { AttachmentApi } from "../../api/AttachmentApi";
@@ -299,12 +298,10 @@ export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
           {note && <AttachmentPanelSection note={note} />}
           <Divider sx={{ opacity: 0.3 }} />
           <VersionInfo noteId={noteId} />
-
-          <Divider sx={{ opacity: 0.3 }} />
-
-          <RecentActivityPanel
-            target={noteId ? { type: "note", id: noteId } : { type: "root" }}
-          />
+          {/* RecentActivityPanel intentionally omitted: the per-note
+              `/api/history?note_id=...` query currently 500s on the
+              backend, and the `VersionInfo` timeline already serves
+              as the per-note activity listing. */}
         </Stack>
       </LeftPanel>
 

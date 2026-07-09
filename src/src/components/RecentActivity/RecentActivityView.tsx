@@ -22,10 +22,6 @@ const ACTIVITY_ICONS: Record<ActivityKind, React.ReactNode> = {
 
 /**
  * Renders a single recent-activity entry: kind icon + label + timestamp.
- *
- * Pure view component - the label string is built by `formatActivityLabel`,
- * the timestamp by `formatActivityTimestamp`, and the kind by
- * `getActivityKind`, all of which can be unit-tested independently of the panel.
  */
 export const RecentActivityView: React.FC<RecentActivityViewProps> = ({
   entry,

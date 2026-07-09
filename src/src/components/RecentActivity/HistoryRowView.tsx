@@ -120,43 +120,59 @@ export const HistoryRowView: React.FC<HistoryRowViewProps> = ({
   const { theme } = useThemeStore();
 
   return (
-    <Stack
-      direction="row"
-      spacing={theme.spacing(1)}
-      sx={{
-        alignItems: "flex-start",
-        cursor: "pointer",
-        borderRadius: 1,
-        px: 1,
-        py: 0.5,
-        transition: theme.transitions.create(
-          ["background-color", "transform"],
-          { duration: theme.transitions.duration.short },
-        ),
-        "&:hover": {
-          backgroundColor: theme.palette.action.hover,
-        },
-      }}
-      onClick={() => onClick(entry)}
-    >
-      <Tooltip title={kind} placement="right">
-        <Box sx={{ pt: 0.25, display: "flex", alignItems: "center" }}>
-          {renderRowIcon(entry)}
-        </Box>
-      </Tooltip>
-      <Box sx={{ flex: 1 }}>
-        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-          {formatHistoryRowLabel(entry)}
-        </Typography>
-        {entry.at && (
-          <Typography variant="caption" color="textSecondary">
-            {formatHistoryRowTimestamp(entry.at)}
+    <Tooltip title={JSON.stringify(entry)} placement="right">
+      <Stack
+        direction="row"
+        spacing={theme.spacing(1)}
+        sx={{
+          alignItems: "flex-start",
+          cursor: "pointer",
+          borderRadius: 1,
+          px: 1,
+          py: 0.5,
+          transition: theme.transitions.create(
+            ["background-color", "transform"],
+            { duration: theme.transitions.duration.short },
+          ),
+          "&:hover": {
+            backgroundColor: theme.palette.action.hover,
+          },
+        }}
+        onClick={() => onClick(entry)}
+      >
+        <Tooltip title={kind} placement="right">
+          <Box sx={{ pt: 0.25, display: "flex", alignItems: "center" }}>
+            {renderRowIcon(entry)}
+          </Box>
+        </Tooltip>
+        <Box sx={{ flex: 1, minWidth: 0 }} aria-label={"Creation time"}>
+          <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>
+            {entry.title ?? formatHistoryRowLabel(entry)}
           </Typography>
-        )}
-      </Box>
-      {hasScore(entry) && (
-        <Chip size="small" label={entry.score} sx={{ alignSelf: "center" }} />
-      )}
-    </Stack>
+          {entry.description && (
+            <Typography
+              variant="caption"
+              color="textSecondary"
+              sx={{
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }}
+            >
+              {entry.description}
+            </Typography>
+          )}
+          {!entry.description && entry.at && (
+            <Typography variant="caption" color="textSecondary">
+              {formatHistoryRowTimestamp(entry.at)}
+            </Typography>
+          )}
+        </Box>
+        {/* {hasScore(entry) && (
+            <Chip size="small" label={entry.score} sx={{ alignSelf: "center" }} />
+          )} */}
+      </Stack>
+    </Tooltip>
   );
 };

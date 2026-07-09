@@ -13,6 +13,7 @@ import {
   ACTION_VARIANT,
   CREATED_ACTIONS,
   DIRECTORY_TARGET_ACTIONS,
+  extractNoteMetadata,
   formatHistoryRowLabel,
   formatHistoryRowTimestamp,
   getHistoryRowKind,
@@ -381,5 +382,94 @@ describe("formatHistoryRowTimestamp", () => {
 
   it("returns the raw input for an empty string", () => {
     expect(formatHistoryRowTimestamp("")).toBe("");
+  });
+});
+
+describe("extractNoteMetadata", () => {
+  const noteMetadata = (title: string, content: string): string =>
+    JSON.stringify({ note_title: title, note_content: content });
+
+  it("returns title and description for a note event with valid metadata", () => {
+    const row = baseRow({ metadata_json: noteMetadata("Hello", "World body") });
+    expect(extractNoteMetadata(row)).toEqual({
+      title: "Hello",
+      description: "World body",
+    });
+  });
+
+  it("returns empty strings for a directory event", () => {
+    const row = baseRow({
+      action: "directory_created",
+      metadata_json: noteMetadata("ignored", "ignored"),
+    });
+    expect(extractNoteMetadata(row)).toEqual({ title: "", description: "" });
+  });
+
+  it("returns empty strings for a role event", () => {
+    const row = baseRow({
+      action: "role_grant",
+      metadata_json: noteMetadata("ignored", "ignored"),
+    });
+    expect(extractNoteMetadata(row)).toEqual({ title: "", description: "" });
+  });
+
+  it("returns empty strings when metadata_json is missing", () => {
+    const row = baseRow({ metadata_json: undefined });
+    expect(extractNoteMetadata(row)).toEqual({ title: "", description: "" });
+  });
+
+  it("returns empty strings when metadata_json is not valid JSON", () => {
+    const row = baseRow({ metadata_json: "not-json{" });
+    expect(extractNoteMetadata(row)).toEqual({ title: "", description: "" });
+  });
+
+  it("returns an empty title and a populated description when only note_content is present", () => {
+    const row = baseRow({
+      metadata_json: JSON.stringify({ note_content: "body" }),
+    });
+    expect(extractNoteMetadata(row)).toEqual({
+      title: "",
+      description: "body",
+    });
+  });
+
+  it("returns a populated title and an empty description when only note_title is present", () => {
+    const row = baseRow({
+      metadata_json: JSON.stringify({ note_title: "Hello" }),
+    });
+    expect(extractNoteMetadata(row)).toEqual({
+      title: "Hello",
+      description: "",
+    });
+  });
+
+  it("truncates the description to the 120-char cap via crumble", () => {
+    const long = "x".repeat(500);
+    const row = baseRow({ metadata_json: noteMetadata("Hello", long) });
+    const { description } = extractNoteMetadata(row);
+    expect(description.length).toBeLessThanOrEqual(120);
+    expect(description.length).toBeGreaterThan(0);
+  });
+
+  it("returns title only when note_content is an empty string", () => {
+    const row = baseRow({ metadata_json: noteMetadata("Hello", "") });
+    expect(extractNoteMetadata(row)).toEqual({
+      title: "Hello",
+      description: "",
+    });
+  });
+
+  it("ignores extra fields in the metadata payload", () => {
+    const row = baseRow({
+      metadata_json: JSON.stringify({
+        note_title: "Hello",
+        note_content: "body",
+        future_field: 42,
+      }),
+    });
+    expect(extractNoteMetadata(row)).toEqual({
+      title: "Hello",
+      description: "body",
+    });
   });
 });

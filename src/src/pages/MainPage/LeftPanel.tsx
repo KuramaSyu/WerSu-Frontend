@@ -81,7 +81,7 @@ export const LeftPanel: React.FC<LeftSideViewProps> = ({
           <Stack
             direction="row"
             sx={{
-              p: 1.5,
+              p: 1,
               borderBottom: "1px solid",
               borderColor: "divider",
               justifyContent: "space-between",
