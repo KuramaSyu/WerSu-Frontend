@@ -1,7 +1,11 @@
 import { useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useDirectoriesQuery } from "../../api/queries/directoryQueries";
-import type { ListDirectoriesQuery } from "../../api/DirectoryApi";
+import {
+  DirectoryApi,
+  type ListDirectoriesQuery,
+} from "../../api/DirectoryApi";
 import { useDirectoryStore } from "../../zustand/useDirectoryStore";
 import {
   DirectoryHierarchyBuilder,
@@ -93,6 +97,7 @@ export interface DirectoryFeatures {
   title: string;
   handleCreateNote: () => void;
   handleRenameDirectory: () => void;
+  handleDeleteDirectory: () => void;
   navigate: ReturnType<typeof useNavigate>;
 }
 
@@ -111,9 +116,11 @@ export function useDirectoryFeatures(
   const { id } = useParams();
   const navigate = useNavigate();
   const directoryId = id ?? "root";
-  const { directoriesById, setDirectories } = useDirectoryStore();
+  const { directoriesById, setDirectories, removeDirectory } =
+    useDirectoryStore();
   const { data: notes } = useLatestNotes();
   const { setMessage } = useInfoStore();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     console.log("DirectoryView: notes updated: ", notes);
@@ -192,6 +199,34 @@ export function useDirectoryFeatures(
     navigate(`/d/${currentNode.getId()}/edit`);
   };
 
+  /**
+   * Deletes the current directory via the REST API, drops it from
+   * the in-memory store, invalidates the cached directory queries
+   * so other pages re-fetch, and navigates the user back home.
+   * No-op for the synthetic root node.
+   */
+  const handleDeleteDirectory = async () => {
+    const targetId = currentNode.getId();
+    if (targetId === "root") {
+      setMessage(
+        new SnackbarUpdateImpl("Root directory cannot be deleted", "info"),
+      );
+      return;
+    }
+
+    const deleted = await new DirectoryApi().delete(targetId);
+    if (!deleted) {
+      setMessage(new SnackbarUpdateImpl("Failed to delete directory", "error"));
+      return;
+    }
+
+    removeDirectory(targetId);
+    queryClient.invalidateQueries({ queryKey: ["directories"] });
+    queryClient.invalidateQueries({ queryKey: ["directory", targetId] });
+    setMessage(new SnackbarUpdateImpl("Directory deleted", "success"));
+    navigate("/");
+  };
+
   // Mount the title-level directory actions in the right panel while this
   // view is active. The hook clears the panel on unmount.
   useRightPanel(
@@ -199,6 +234,7 @@ export function useDirectoryFeatures(
       currentNode={currentNode}
       handleCreateNote={handleCreateNote}
       handleRenameDirectory={handleRenameDirectory}
+      handleDeleteDirectory={handleDeleteDirectory}
     />,
   );
 
@@ -211,6 +247,7 @@ export function useDirectoryFeatures(
     title,
     handleCreateNote,
     handleRenameDirectory,
+    handleDeleteDirectory,
     navigate,
   };
 }
