@@ -245,6 +245,9 @@ describe("HistoryApi - response shape", () => {
     const { calls } = mockFetchOk(body);
 
     const rows = await api.getActivityHistory(baseHistoryFilter());
+    // Returns the raw wire shape; consumers wrap it via the
+    // `select` option on the typed query hooks in
+    // `queries/historyQueries.ts` (see `useActivityHistoryEntries`).
     expect(rows).toEqual(body);
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toMatch(/mode=history/);
@@ -259,6 +262,8 @@ describe("HistoryApi - response shape", () => {
     const { calls } = mockFetchOk(body);
 
     const scores = await api.getMostUsed(baseMostUsedFilter());
+    // Same deal: wire shape, wrapper class is opt-in via
+    // `useMostUsedActivityEntries`.
     expect(scores).toEqual(body);
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toMatch(/mode=most_used/);

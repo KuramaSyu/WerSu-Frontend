@@ -1,15 +1,14 @@
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { getHistoryApi } from "../HistoryApi";
-import type {
-  ActivityReply,
-  ActivityScoreReply,
-  HistoryFilter,
+import {
+  Activity,
+  ActivityScore,
+  type ActivityReply,
+  type ActivityScoreReply,
+  type HistoryFilter,
 } from "../models/history";
 
-// Use the registered singleton so the share-token provider
-// installed on `Bootstrap` reaches this instance. See
-// `useNoteQueries` for rationale (a fresh `new HistoryApi()`
-// would not receive the provider).
+// Use the registered singleton so the share-token provider installed on `Bootstrap` reaches this instance.
 const historyApi = getHistoryApi();
 
 export const historyQueryKeys = {
@@ -19,14 +18,7 @@ export const historyQueryKeys = {
     ["history", "most-used", filter] as const,
 };
 
-/**
- * Fetches activity history rows for the given filter.
- *
- * The hook is gated on `filter.mode` being `"history"`. If a
- * caller accidentally passes a `most_used` filter, the request is
- * not fired (the dedicated `useMostUsedActivity` hook should be
- * used instead).
- */
+/** Fetches activity history rows for the given filter; gated on `filter.mode === "history"`. Returns the raw `ActivityReply[]` wire shape. */
 export function useActivityHistory(
   filter: HistoryFilter,
 ): UseQueryResult<ActivityReply[], Error> {
@@ -37,11 +29,19 @@ export function useActivityHistory(
   });
 }
 
-/**
- * Fetches aggregated most-used note scores for the given filter.
- *
- * The hook is gated on `filter.mode` being `"most_used"`.
- */
+/** Fetches activity history rows and converts each row to the `Activity` wrapper class via `select`. */
+export function useActivityHistoryEntries(
+  filter: HistoryFilter,
+): UseQueryResult<Activity[], Error> {
+  return useQuery({
+    queryKey: historyQueryKeys.activity(filter),
+    queryFn: () => historyApi.getActivityHistory(filter),
+    enabled: filter.mode === "history",
+    select: (rows) => rows.map((r) => Activity.fromJson(r)),
+  });
+}
+
+/** Fetches aggregated most-used note scores for the given filter; gated on `filter.mode === "most_used"`. Returns the raw `ActivityScoreReply[]` wire shape. */
 export function useMostUsedActivity(
   filter: HistoryFilter,
 ): UseQueryResult<ActivityScoreReply[], Error> {
@@ -49,5 +49,17 @@ export function useMostUsedActivity(
     queryKey: historyQueryKeys.mostUsed(filter),
     queryFn: () => historyApi.getMostUsed(filter),
     enabled: filter.mode === "most_used",
+  });
+}
+
+/** Fetches aggregated most-used note scores and converts each row to the `ActivityScore` wrapper class via `select`. */
+export function useMostUsedActivityEntries(
+  filter: HistoryFilter,
+): UseQueryResult<ActivityScore[], Error> {
+  return useQuery({
+    queryKey: historyQueryKeys.mostUsed(filter),
+    queryFn: () => historyApi.getMostUsed(filter),
+    enabled: filter.mode === "most_used",
+    select: (rows) => rows.map((r) => ActivityScore.fromJson(r)),
   });
 }

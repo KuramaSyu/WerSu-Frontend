@@ -11,16 +11,7 @@ import { toQueryString } from "./utils/request_helpers";
 /** Path mounted by the Go `ActivityController.GetActivityHistory`. */
 const HISTORY_API_PATH = "/api/history";
 
-/**
- * REST surface for `GET /api/history`.
- *
- * The endpoint serves two response shapes, selected via `mode`:
- *   - `mode=history` (default) returns `ActivityReply[]`
- *   - `mode=most_used` returns `ActivityScoreReply[]`
- *
- * Both methods here pin `mode` for the caller so consumers can't
- * accidentally ask for the wrong shape.
- */
+/** REST surface for `GET /api/history`; both methods pin `mode` so callers can't ask for the wrong shape. */
 export interface IHistoryApi {
   /**
    * Stream activity history (when `filter.mode` is `history`).
@@ -40,13 +31,7 @@ export interface IHistoryApi {
   getMostUsed(filter: HistoryFilter): Promise<ActivityScoreReply[]>;
 }
 
-// Extends `ShareTokenBearerMixin` so the API can attach an
-// `Authorization: Bearer <share-jwt>` header when a public share
-// is active. The endpoint currently requires a logged-in user
-// (`UserFromContext` on the Go side), so in practice the bearer
-// header is never sent -- the mixin is here for parity with
-// `NoteApi` / `DirectoryApi` and to avoid touching this file
-// again if a public-share variant is added later.
+// Extends `ShareTokenBearerMixin` for parity with `NoteApi`/`DirectoryApi`; bearer is unused in practice (`UserFromContext` required server-side).
 export class HistoryApi extends ShareTokenBearerMixin implements IHistoryApi {
   private logError(urlPart: string, error: unknown): void {
     console.error(
@@ -55,24 +40,17 @@ export class HistoryApi extends ShareTokenBearerMixin implements IHistoryApi {
     );
   }
 
-  /**
-   * Builds the request URL for a given filter, pinning `mode`.
-   */
+  /** Builds the request URL for a given filter, pinning `mode`. */
   private buildUrl(
     filter: HistoryFilter,
     mode: "history" | "most_used",
   ): string {
-    // Preserve the caller's filter shape, then pin `mode` last so
-    // an accidental `mode` in `filter` can't override the typed
-    // variant this method serves.
+    // Pin `mode` last so an accidental `mode` in `filter` can't override the typed variant.
     const params = { ...filter, mode };
     return `${BACKEND_BASE}${HISTORY_API_PATH}${toQueryString(params)}`;
   }
 
-  /**
-   * Shared GET handler. Errors degrade to `[]` so the UI can show
-   * an empty state -- matches the existing `ActivityApi` policy.
-   */
+  /** Shared GET handler; errors degrade to `[]` to match `ActivityApi` policy. */
   private async fetchJson<T>(url: string): Promise<T> {
     const init = await this.getFetchParameters("GET");
     const response = await fetch(url, init);
@@ -101,22 +79,13 @@ export class HistoryApi extends ShareTokenBearerMixin implements IHistoryApi {
   }
 }
 
-// Register the default singleton + a typed token so consumers can
-// resolve it via `getHistoryApi()`. IMPORTANT: broadcast-set +
-// typed-token must be the SAME instance. See NoteApi for the bug
-// history.
+// Broadcast-set and typed-token must be the SAME instance; see `NoteApi` for the bug history.
 const historyApiSingleton = new HistoryApi();
 apiRegistry.register(historyApiSingleton);
 export const HISTORY_API_TOKEN: ApiToken<HistoryApi> = Symbol("HistoryApi");
 apiRegistry.register(historyApiSingleton, HISTORY_API_TOKEN);
 
-/**
- * Resolve the registered `HistoryApi` singleton.
- *
- * Throws if the API isn't registered -- see `getNoteApi` for
- * rationale (silent undefined is the #1 source of "why is my
- * fetch missing the auth header" bugs).
- */
+/** Resolve the registered `HistoryApi` singleton; throws if not registered (matches `getNoteApi`). */
 export function getHistoryApi(): HistoryApi {
   return apiRegistry.get<HistoryApi>(HISTORY_API_TOKEN);
 }
