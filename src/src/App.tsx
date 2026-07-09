@@ -27,6 +27,7 @@ import "@fontsource/fira-sans/700.css";
 import { LayoutProvider } from "./LayoutProvider";
 import { AppShell } from "./AppShell";
 import { PublicNotePage } from "./pages/PublicNotePage/Main";
+import SettingsPage from "./pages/Settings/Main";
 
 /**
  * records the navigation of the user, so that the back button works as expected
@@ -77,6 +78,7 @@ function App() {
                 <Route path="/d/:id" element={<DirectoryView />} />
                 <Route path="/d/:id/edit" element={<DirectoryEditPage />} />
                 <Route path="/graph" element={<FileGraphPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
                 <Route
                   path="/public/n/:share_id"
                   element={<PublicNotePage />}
