@@ -28,6 +28,7 @@ import { FavouriteDirectories } from "./FavouriteDirectories";
 import { AllDirectories } from "./AllDirectories";
 import { M3, M4 } from "../../statics";
 import { useThemeStore } from "../../zustand/useThemeStore";
+import { useRequireAuth } from "../../hooks/useRequireAuth";
 
 /**
  * Home page.
@@ -44,6 +45,7 @@ export const HomePage: React.FC = () => {
   const [createNoteOpen, setCreateNoteOpen] = useState(false);
   const { rightPanelOpen } = useLayout();
   const { theme } = useThemeStore();
+  useRequireAuth();
 
   const handleCreateDirectory = async (): Promise<void> => {
     const nextName = window.prompt("New directory name");

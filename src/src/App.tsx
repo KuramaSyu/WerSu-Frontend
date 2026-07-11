@@ -28,6 +28,7 @@ import { LayoutProvider } from "./LayoutProvider";
 import { AppShell } from "./AppShell";
 import { PublicNotePage } from "./pages/PublicNotePage/Main";
 import SettingsPage from "./pages/Settings/Main";
+import { LoginPage } from "./pages/LoginPage/Main";
 
 /**
  * records the navigation of the user, so that the back button works as expected
@@ -73,6 +74,7 @@ function App() {
           <LayoutProvider>
             <Routes>
               <Route element={<AppShell />}>
+                <Route path="/login" element={<LoginPage />} />
                 <Route path="/" element={<HomePage />} />
                 <Route path="/n/:id" element={<NotePage />} />
                 <Route path="/d/:id" element={<DirectoryView />} />

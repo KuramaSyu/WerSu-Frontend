@@ -20,10 +20,11 @@ export const LoginPage: React.FC = () => {
   const { isMobile } = useBreakpoint();
   const containerRef = React.useRef<HTMLDivElement>(null);
   const size = useMinSquareSize(containerRef);
-  const { setLeftPanelOpen } = useLayout();
+  const { setLeftPanelOpen, setRightPanelOpen } = useLayout();
 
   useEffect(() => {
     setLeftPanelOpen(false);
+    setRightPanelOpen(false);
   }, []);
   useEffect(() => {
     if (theme.custom.themeName !== "default") {
