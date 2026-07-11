@@ -4,7 +4,6 @@ import { M1, M2, M3, M4, M5 } from "./statics";
 import { useLayout } from "./LayoutProvider";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { useUser } from "./api/queries/useUser";
 import { LoadingPage } from "./pages/LoadingPage/Main";
 import TopBar from "./components/TopBar";
 import { useThemeStore } from "./zustand/useThemeStore";
@@ -24,7 +23,6 @@ export const AppShell: React.FC = () => {
     Math.round(Math.random() * 100),
   );
   const { theme } = useThemeStore();
-  const { data: user } = useUser();
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(
     null,
   );
