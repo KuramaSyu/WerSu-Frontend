@@ -13,6 +13,7 @@ import { AttachmentApi } from "../../../api/AttachmentApi";
 import { AttachmentLinkBuilder } from "../../../api/utils/AttachmentLInkBuilder";
 import { extractAttachmentKeyFromUrl } from "../../../api/utils/request_helpers";
 import { useUser } from "../../../api/queries/useUser";
+import { prepareBackendLink } from "../../../utils/prepareBackendLink";
 
 export function ImageNodeView({ node, selected, getPos }: NodeViewProps) {
   const { theme } = useThemeStore();
@@ -25,6 +26,10 @@ export function ImageNodeView({ node, selected, getPos }: NodeViewProps) {
   // we need to patch the URL by appending an JWT
   // just generated for public users for this one attachment 15 minutes.
   const resolvedSrc = (src: string) => {
+    // Normalise backend-relative URLs (e.g. `/api/attachments/...`)
+    // to absolute URLs so the JWT-append step below can extract the
+    // attachment key consistently.
+    src = prepareBackendLink(src);
     const attachmentKey = extractAttachmentKeyFromUrl(src);
 
     if (!attachmentKey) return src;

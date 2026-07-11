@@ -3,6 +3,7 @@ import FolderIcon from "@mui/icons-material/Folder";
 import { formatDistanceToNow } from "date-fns";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { blendWithContrast } from "../../utils/blendWithContrast";
+import { prepareBackendLink } from "../../utils/prepareBackendLink";
 
 /** Visual size preset for the card; resolved to concrete dimensions below. */
 export type CardSize = "small" | "medium" | "large";
@@ -96,6 +97,11 @@ export const FolderCardView: React.FC<FolderCardViewProps> = ({
 }) => {
   const { theme } = useThemeStore();
   const dims = CARD_DIMENSIONS[size];
+  // Directory `image_url` can come in three shapes: absolute (a hosted
+  // CDN URL the user pasted), data:/blob: (a preview URL), or
+  // backend-relative (`/api/attachments/...` produced by the upload
+  // modal). Normalise so the `<img>` always loads regardless.
+  const resolvedImageUrl = imageUrl ? prepareBackendLink(imageUrl) : undefined;
 
   if (hidden) {
     return null;
@@ -147,10 +153,10 @@ export const FolderCardView: React.FC<FolderCardViewProps> = ({
       }}
       onClick={onClick}
     >
-      {imageUrl ? (
+      {resolvedImageUrl ? (
         <Box
           component="img"
-          src={imageUrl}
+          src={resolvedImageUrl}
           alt={`${displayName} cover`}
           sx={{
             width: "100%",
