@@ -34,6 +34,7 @@ export const ColoredToggleButton = styled(ToggleButton, {
   color: accentColor,
   border: `1px solid ${accentColor}`,
   borderRadius: "2rem",
+  alignSelf: "flex-start",
   "&:hover": {
     //color: blendAgainstContrast(accentColor, theme, 0.3),
     borderColor: blendAgainstContrast(accentColor, theme, 0.3),
@@ -57,6 +58,7 @@ export const OutlinedToggleButton = styled(ToggleButton, {
   color: theme.palette.text.disabled,
   border: `1px solid ${theme.palette.text.disabled}`,
   borderRadius: "2rem",
+  alignSelf: "flex-start",
   "&:hover": {
     color: theme.palette.text.primary,
     border: `1px solid ${theme.palette.text.primary}`,
