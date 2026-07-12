@@ -2,9 +2,11 @@ import { useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDirectoriesQuery } from "../../api/queries/directoryQueries";
+import { useDirectoryNotesQuery } from "../../api/queries/useDirectoryNotesQuery";
 import {
   DirectoryApi,
   type ListDirectoriesQuery,
+  type ListDirectoryNotesQuery,
 } from "../../api/DirectoryApi";
 import { useDirectoryStore } from "../../zustand/useDirectoryStore";
 import {
@@ -140,32 +142,46 @@ export function useDirectoryFeatures(
     }
   }, [directories, setDirectories]);
 
-  // Build a full hierarchy tree so we can find the current node and its path.
+  // Build the hierarchy once per `directoriesById` snapshot.
   const directoryHierarchy = useMemo(
     () => new DirectoryHierarchyBuilder(directoriesById).build("Stacks"),
     [directoriesById],
   );
 
-  // Resolve the currently visible node; fall back to root when not found.
+  // Fall back to the synthetic root when the route id is unknown.
   const currentNode = useMemo(
     () => findNodeById(directoryHierarchy, directoryId) ?? directoryHierarchy,
     [directoryHierarchy, directoryId],
   );
 
-  // Precompute breadcrumb path for the current node.
+  // Directory-scoped fetch: `GET /api/directories/:id/notes?limit=500&offset=0`. Disabled on the root.
+  const directoryNotesQuery = useMemo<ListDirectoryNotesQuery>(
+    () => ({ limit: 500, offset: 0 }),
+    [],
+  );
+  const notesDirectoryId =
+    currentNode.getId() === "root" ? undefined : currentNode.getId();
+  const { data: directoryNotes } = useDirectoryNotesQuery(
+    notesDirectoryId,
+    directoryNotesQuery,
+  );
+
+  // Breadcrumb path for the current node.
   const path = useMemo(
     () => findPathById(directoryHierarchy, currentNode.getId()),
     [directoryHierarchy, currentNode],
   );
 
-  // Group notes by their parent directory to render the list efficiently.
+  // Drives the per-child pageCount badges across the whole tree.
   const notesByDirectory = useMemo(
     () => buildNotesByDirectory(notes ?? []),
     [notes],
   );
 
   const childDirectories = currentNode.getChildren();
-  const notesInDirectory = notesByDirectory[currentNode.getId()] ?? [];
+  // Directory-scoped fetch wins; fall back to the latest-notes grouping while loading or on the root.
+  const notesInDirectory =
+    directoryNotes ?? notesByDirectory[currentNode.getId()] ?? [];
 
   const title =
     currentNode.getId() === "root" ? "Directory View" : currentNode.getName();

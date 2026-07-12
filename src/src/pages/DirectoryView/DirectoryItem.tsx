@@ -1,6 +1,8 @@
-import { Box, ButtonBase, Typography } from "@mui/material";
+import { Box, ButtonBase } from "@mui/material";
 import type { MinimalNote } from "../../api/models/search";
 import { useThemeStore } from "../../zustand/useThemeStore";
+import { ChapterRowView } from "./ChapterRowView";
+import { NoteRowView } from "./NoteRowView";
 
 interface BaseProps {
   onClick: () => void;
@@ -10,7 +12,8 @@ interface BaseProps {
 interface DirectoryVariantProps extends BaseProps {
   variant: "directory";
   name: string;
-  pageCount: number;
+  pages: number;
+  subdirectories: number;
   directoryId: string;
 }
 
@@ -27,8 +30,12 @@ const DIRECTORY_COLORS = ["#C27C3B", "#3B7CC2"] as const;
  * Renders a single clickable row in the directory view.
  *
  * Two variants:
- * - `directory`: shows a name + page count, navigates to the child directory.
+ * - `directory`: shows a name + counts, navigates to the child directory.
  * - `note`: shows a title + truncated content, navigates to the note editor.
+ *
+ * Pure view rendering for each variant lives in `ChapterRowView` and
+ * `NoteRowView` so the same presentation can be reused inside the chapter
+ * accordion body.
  */
 export const DirectoryItem: React.FC<DirectoryItemProps> = (props) => {
   const { onClick, index, variant } = props;
@@ -65,52 +72,17 @@ export const DirectoryItem: React.FC<DirectoryItemProps> = (props) => {
           width: "100%",
         }}
       >
-        <Box
-          sx={{
-            width: 4,
-            height: "100%",
-            minHeight: variant === "directory" ? 36 : 44,
-            borderRadius: 999,
-            backgroundColor: accentColor,
-          }}
-        />
-        <Box sx={{ flex: 1 }}>{renderBody(props)}</Box>
+        {variant === "directory" ? (
+          <ChapterRowView
+            name={props.name}
+            pages={props.pages}
+            subdirectories={props.subdirectories}
+            accentColor={accentColor}
+          />
+        ) : (
+          <NoteRowView note={props.note} accentColor={accentColor} />
+        )}
       </Box>
     </ButtonBase>
   );
 };
-
-function renderBody(props: DirectoryItemProps) {
-  if (props.variant === "directory") {
-    return (
-      <>
-        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-          {props.name}
-        </Typography>
-        <Typography variant="body2" color="textSecondary">
-          {props.pageCount} Pages
-        </Typography>
-      </>
-    );
-  }
-
-  return (
-    <>
-      <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-        {props.note.title}
-      </Typography>
-      <Typography
-        variant="body2"
-        color="textSecondary"
-        sx={{
-          display: "-webkit-box",
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: "vertical",
-          overflow: "hidden",
-        }}
-      >
-        {props.note.stripped_content}
-      </Typography>
-    </>
-  );
-}
