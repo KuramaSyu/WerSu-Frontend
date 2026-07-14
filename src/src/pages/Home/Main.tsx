@@ -104,6 +104,7 @@ export const HomePage: React.FC = () => {
       </PanelSection>
       <DirectorySideView />
     </UpperPanel>,
+    [theme],
   );
 
   return (

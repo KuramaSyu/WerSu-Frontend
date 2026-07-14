@@ -100,7 +100,7 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => ({
     set({ isSaving: true });
     try {
       const saved = await get().updateNote(finalTitle, finalContent);
-      onNoteUpdated?.(saved); // call hook
+      await onNoteUpdated?.(saved); // call hook
       set({ title: finalTitle });
       useInfoStore
         .getState()

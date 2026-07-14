@@ -1,5 +1,6 @@
 import {
   createContext,
+  type DependencyList,
   type ReactNode,
   useContext,
   useEffect,
@@ -103,7 +104,10 @@ export function useLayout(): LayoutContextType {
 // in this app already remounts the routed page component, so a mount/unmount
 // model swaps panels correctly without leaking that requirement to every
 // caller.
-export function useLeftPanel(panel: ReactNode | null): void {
+export function useLeftPanel(
+  panel: ReactNode | null,
+  deps: DependencyList = [],
+): void {
   const { setLeftPanel, setLeftPanelOpen } = useLayout();
 
   useEffect(() => {
@@ -116,12 +120,19 @@ export function useLeftPanel(panel: ReactNode | null): void {
     // return () => {
     //   setLeftPanel(null);
     // };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
 }
 
 // Mount `panel` into the right side-panel on mount; clear it on unmount.
 // See `useLeftPanel` for the rationale behind the mount-only contract.
-export function useRightPanel(panel: ReactNode | null): void {
+//
+// `deps` works the same way as in `useLeftPanel`: pass an optional array
+// to re-set the panel when one of those values changes.
+export function useRightPanel(
+  panel: ReactNode | null,
+  deps: DependencyList = [],
+): void {
   const { setRightPanel, setRightPanelOpen } = useLayout();
 
   useEffect(() => {
@@ -134,7 +145,8 @@ export function useRightPanel(panel: ReactNode | null): void {
     // return () => {
     //   setRightPanel(null);
     // };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
 }
 
 export interface PanelSizeOptions {

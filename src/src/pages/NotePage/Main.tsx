@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Box, Fade } from "@mui/material";
 import { LoginPage } from "../LoginPage/Main";
@@ -6,13 +6,15 @@ import { LoadingPage } from "../LoadingPage/Main";
 import { M1, M3, M4, M5 } from "../../statics";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { useLoadingStore } from "../../zustand/loadingStore";
-import { useUserStore } from "../../zustand/userStore";
-import { NoteApi } from "../../api/NoteApi";
 import type { Note } from "../../api/models/search";
 import TopBar from "../../components/TopBar";
 import { NoteEditor } from "./Editor";
 import { NoteSidePanel } from "./NoteSidePanel";
-import { useNote, useUpdateNote } from "../../api/queries/useNoteQueries";
+import {
+  useNote,
+  useUpdateNote,
+  type UpdateNoteVariables,
+} from "../../api/queries/useNoteQueries";
 import { useUser } from "../../api/queries/useUser";
 import { useLayout } from "../../LayoutProvider";
 import { NoteEditorSkeleton } from "./NoteEditorSkeleton";
@@ -26,17 +28,49 @@ export const NotePage: React.FC = () => {
   const { theme } = useThemeStore();
 
   const { data: note } = useNote(id);
-  const { mutate } = useUpdateNote();
-  const updateNote = (note: Note) => {
-    mutate({ noteId: id!, title: note.title, content: note.content });
-  };
+  const { mutateAsync: mutateNote } = useUpdateNote();
+
+  const sameStringArray = (left: string[], right: string[]) =>
+    left.length === right.length &&
+    left.every((value, index) => value === right[index]);
+
+  const updateNote = useCallback(
+    async (nextNote: Note) => {
+      if (!id) {
+        return;
+      }
+
+      const patch: UpdateNoteVariables = { noteId: id };
+      const currentDirectoryIds = note?.directory_ids ?? [];
+      const currentTagIds = note?.tag_ids ?? [];
+
+      if (note?.title !== nextNote.title) {
+        patch.title = nextNote.title;
+      }
+      if (note?.content !== nextNote.content) {
+        patch.content = nextNote.content;
+      }
+      if (!sameStringArray(currentDirectoryIds, nextNote.directory_ids)) {
+        patch.directory_ids = nextNote.directory_ids;
+      }
+      if (!sameStringArray(currentTagIds, nextNote.tag_ids)) {
+        patch.tag_ids = nextNote.tag_ids;
+      }
+
+      if (Object.keys(patch).length === 1) {
+        return;
+      }
+
+      await mutateNote(patch);
+    },
+    [id, mutateNote, note],
+  );
   const { setLeftPanel, leftPanelOpen } = useLayout();
 
   useEffect(() => {
     setLeftPanel(
       <NoteSidePanel note={note} noteId={id} onNoteUpdated={updateNote} />,
     );
-    return () => setLeftPanel(null);
   }, [id]);
 
   if (user === null) {

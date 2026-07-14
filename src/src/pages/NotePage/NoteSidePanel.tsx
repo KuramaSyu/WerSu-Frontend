@@ -20,10 +20,9 @@ import {
   Typography,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import type { Note } from "../../api/models/search";
+import { Note, type NoteData } from "../../api/models/search";
 import { useDirectoriesQuery } from "../../api/queries/directoryQueries";
 import type { ListDirectoriesQuery } from "../../api/DirectoryApi";
-import { NoteApi } from "../../api/NoteApi";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { useDirectoryStore } from "../../zustand/useDirectoryStore";
 import { useUsersStore } from "../../zustand/userStore";
@@ -232,27 +231,19 @@ export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
   }, [directoriesById, currentParentId]);
 
   const handleChangeParentDirectory = async () => {
-    if (!noteId) {
+    if (!noteId || !note) {
       return;
     }
 
     setIsUpdatingParent(true);
     try {
-      const api = new NoteApi();
-      const nextParentId =
-        selectedParentId === ROOT_PARENT_ID ? undefined : selectedParentId;
-      const updated = await api.patchDirectory(noteId, nextParentId);
-      if (!updated) {
-        setMessage(
-          new SnackbarUpdateImpl("Failed to update parent directory", "error"),
-        );
-        return;
-      }
+      const updatedNote = new Note({
+        ...note,
+        directory_ids:
+          selectedParentId === ROOT_PARENT_ID ? [] : [selectedParentId],
+      } as NoteData);
 
-      const refreshedNote = await api.get(noteId);
-      if (refreshedNote) {
-        onNoteUpdated(refreshedNote);
-      }
+      await onNoteUpdated(updatedNote);
 
       setMessage(new SnackbarUpdateImpl("Parent directory updated", "success"));
       setMoveDialogOpen(false);
@@ -314,7 +305,6 @@ export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
                   setSelectedParentId(String(event.target.value))
                 }
               >
-                <MenuItem value={ROOT_PARENT_ID}>Root</MenuItem>
                 {selectableDirectories.map((directory) => (
                   <MenuItem key={directory.id} value={directory.id}>
                     {directory.display_name ?? directory.name}

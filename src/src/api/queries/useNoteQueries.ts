@@ -24,6 +24,14 @@ import { useDirectoryStore } from "../../zustand/useDirectoryStore";
 import { useTagStore } from "../../zustand/useTagStore";
 import { DiscordUserImpl } from "../../components/DiscordLogin";
 
+export interface UpdateNoteVariables {
+  noteId: string;
+  title?: string;
+  content?: string;
+  directory_ids?: string[];
+  tag_ids?: string[];
+}
+
 // Use the registered singletons so the share-token provider installed on
 // `Bootstrap` reaches these instances (a fresh `new NoteApi()` would not
 // receive the provider). `getNoteApi()` throws if not registered — that's
@@ -227,11 +235,10 @@ export function useUpdateNote() {
       noteId,
       title,
       content,
-    }: {
-      noteId: string;
-      title?: string;
-      content?: string;
-    }) => noteApi.patch(noteId, title, content),
+      directory_ids,
+      tag_ids,
+    }: UpdateNoteVariables) =>
+      noteApi.patch(noteId, title, content, directory_ids, tag_ids),
 
     /**
      * refresh detail cache instantly

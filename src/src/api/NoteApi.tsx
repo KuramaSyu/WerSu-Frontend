@@ -9,7 +9,13 @@ export interface INoteApi {
   /** Fetch a specific note version by its monotonic version index. */
   getVersion(id: string, versionIndex: number): Promise<Note | undefined>;
   post(title: string, content: string): Promise<Note>;
-  patch(id: string, title?: string, content?: string): Promise<Note>;
+  patch(
+    id: string,
+    title?: string,
+    content?: string,
+    directory_ids?: string[],
+    tag_ids?: string[],
+  ): Promise<Note>;
   /**
    * Reassigns a note's parent directories. Passing `undefined` removes
    * the note from every directory (root). Passing a single id keeps
@@ -160,7 +166,13 @@ export class NoteApi extends ShareTokenBearerMixin implements INoteApi {
     throw new Error("Failed to create note");
   }
 
-  async patch(id: string, title?: string, content?: string): Promise<Note> {
+  async patch(
+    id: string,
+    title?: string,
+    content?: string,
+    directory_ids?: string[],
+    tag_ids?: string[],
+  ): Promise<Note> {
     const body: {
       id: string;
       title?: string;
@@ -174,7 +186,13 @@ export class NoteApi extends ShareTokenBearerMixin implements INoteApi {
     if (content !== undefined) {
       body.content = content;
     }
-
+    if (directory_ids !== undefined) {
+      body.directory_ids = directory_ids;
+    }
+    if (tag_ids !== undefined) {
+      body.tag_ids = tag_ids;
+    }
+    console.log("patch body: ", JSON.stringify(body));
     const response = await fetch(`${BACKEND_BASE}/api/notes`, {
       ...(await this.getFetchParameters("PATCH", {
         "Content-Type": "application/json",
@@ -214,37 +232,21 @@ export class NoteApi extends ShareTokenBearerMixin implements INoteApi {
    */
   async patchDirectory(
     id: string,
-    directoryId?: string | string[],
+    directoryId: string | string[],
   ): Promise<boolean> {
-    const directoryIds =
-      directoryId === undefined
-        ? []
-        : Array.isArray(directoryId)
-          ? directoryId
-          : [directoryId];
+    const directories = [];
+    directories.push(
+      ...(Array.isArray(directoryId) ? directoryId : [directoryId]),
+    );
 
-    const body: {
-      id: string;
-      directory_ids: string[];
-    } = {
+    const note = await this.patch(
       id,
-      directory_ids: directoryIds,
-    };
-
-    const response = await fetch(`${BACKEND_BASE}/api/notes`, {
-      ...(await this.getFetchParameters("PATCH", {
-        "Content-Type": "application/json",
-      })),
-      body: JSON.stringify(body),
-    });
-    if (!response.ok) {
-      this.logError(
-        `/api/notes`,
-        `Response not ok: ${response.status}; ${response.statusText}`,
-      );
-      return false;
-    }
-    return true;
+      undefined,
+      undefined,
+      directories,
+      undefined,
+    );
+    return note !== undefined;
   }
 
   async delete(id: string): Promise<boolean> {
