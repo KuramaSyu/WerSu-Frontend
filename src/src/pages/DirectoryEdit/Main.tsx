@@ -118,21 +118,23 @@ export const DirectoryEditPage: React.FC = () => {
   // 2. README discovery. The hook fetches the directory's notes; the
   //    README (if any) is the entry with `title === "README.md"`. We
   //    hydrate form state once per directory id.
-  const { data: directoryNotes } = useDirectoryNotesQuery(id, { limit: 100 });
+  const { data: directoryNotesReply } = useDirectoryNotesQuery(id, {
+    limit: 100,
+  });
 
   useEffect(() => {
-    if (!id || !directoryNotes) {
+    if (!id || !directoryNotesReply) {
       return;
     }
     if (readmeHydratedFor === id) {
       return;
     }
-    const readme = findReadme(directoryNotes);
+    const readme = findReadme(directoryNotesReply.notes);
     console.log("Hydrating README for directory", id, readme);
     setReadmeNoteId(readme?.id ?? null);
     setReadmeBody(extractReadmeBody(readme?.stripped_content));
     setReadmeHydratedFor(id);
-  }, [id, directoryNotes, readmeHydratedFor]);
+  }, [id, directoryNotesReply, readmeHydratedFor]);
 
   // Reset the hydration marker when the user navigates to a different
   // directory so the next mount re-reads the README.
@@ -146,9 +148,9 @@ export const DirectoryEditPage: React.FC = () => {
     if (!directory) {
       return;
     }
-    setName(directory.display_name ?? directory.name);
+    setName(directory.display_name ?? directory.name ?? directory.slug ?? "");
     setDescription(directory.description ?? "");
-    setParentId(directory.parent_id ?? ROOT_PARENT_ID);
+    setParentId(directory.parent_dir_ids?.[0] ?? ROOT_PARENT_ID);
     setImageUrl(directory.image_url ?? "");
   }, [directory]);
 
@@ -232,7 +234,7 @@ export const DirectoryEditPage: React.FC = () => {
     }
 
     const current = directoriesById[id];
-    const nextParentId = parentId === ROOT_PARENT_ID ? null : parentId;
+    const nextParentIds = parentId === ROOT_PARENT_ID ? null : [parentId];
 
     const serializedReadme = serializeReadme(
       {
@@ -279,7 +281,8 @@ export const DirectoryEditPage: React.FC = () => {
       // 2. Sync directory metadata (name / description / image_url).
       const shouldPatchDetails =
         !current ||
-        trimmedName !== (current.display_name ?? current.name) ||
+        trimmedName !==
+          (current.display_name ?? current.name ?? current.slug) ||
         description !== (current.description ?? "") ||
         imageUrl !== (current.image_url ?? "");
 
@@ -302,14 +305,15 @@ export const DirectoryEditPage: React.FC = () => {
       }
 
       // 3. Move the directory if the parent changed.
-      const parentChanged =
-        (current?.parent_id ?? ROOT_PARENT_ID) !==
-        (nextParentId ?? ROOT_PARENT_ID);
+      const currentParentId = current?.parent_dir_ids?.[0] ?? ROOT_PARENT_ID;
+      const nextParentId =
+        nextParentIds === null ? ROOT_PARENT_ID : nextParentIds[0];
+      const parentChanged = currentParentId !== nextParentId;
 
       if (parentChanged) {
         const updatedParent = await new DirectoryApi().setParent(
           id,
-          nextParentId,
+          nextParentIds,
         );
 
         if (!updatedParent) {
@@ -379,7 +383,9 @@ export const DirectoryEditPage: React.FC = () => {
     return Object.values(directoriesById)
       .filter((directory) => directory.id !== id)
       .sort((a, b) =>
-        (a.display_name ?? a.name).localeCompare(b.display_name ?? b.name),
+        (a.display_name ?? a.name ?? a.slug ?? a.id).localeCompare(
+          b.display_name ?? b.name ?? b.slug ?? b.id,
+        ),
       );
   }, [directoriesById, id]);
 

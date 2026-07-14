@@ -6,6 +6,7 @@ import type {
   HistoryState,
 } from "../RecentActivity/HistoryRowFeatures";
 import { crumble } from "../../utils/stringCrumbler";
+import { markdownPreview } from "../../utils/markdownPreview";
 
 /** Cap on the description preview rendered per frequently-used row. */
 const FREQUENTLY_USED_DESCRIPTION_CAP = 120;
@@ -26,10 +27,17 @@ export function useFrequentlyUsedRows(
 
   const result = useMostUsedActivity(filter);
 
-  // Map wire shape into the shared `HistoryRowEntry`; `crumble` keeps the preview under 120 chars.
+  // Map wire shape into the shared `HistoryRowEntry`. Markdown stripping
+  // runs first so table pipes, bold/italic markers etc. don't reach the
+  // row preview; `crumble` then enforces the 120-char display cap.
   const rows: HistoryRowEntry[] = (result.data ?? []).map((r) => {
     const description = r.stripped_content
-      ? (crumble(r.stripped_content, FREQUENTLY_USED_DESCRIPTION_CAP)[0] ?? "")
+      ? (crumble(
+          markdownPreview(r.stripped_content, {
+            maxLength: FREQUENTLY_USED_DESCRIPTION_CAP,
+          }),
+          FREQUENTLY_USED_DESCRIPTION_CAP,
+        )[0] ?? "")
       : "";
     return {
       note_id: r.note_id,

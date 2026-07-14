@@ -216,9 +216,10 @@ describe("ActivityScore.get_note", () => {
     expect(note.stripped_content).toBe("");
   });
 
-  it("does not set permissions (left undefined for the consumer to fill)", () => {
+  it("does not set directory_ids / tag_ids (left empty for the consumer to fill)", () => {
     const score = ActivityScore.fromJson(scoreRow());
     const note = score.get_note();
-    expect(note.permissions).toBeUndefined();
+    expect(note.directory_ids).toEqual([]);
+    expect(note.tag_ids).toEqual([]);
   });
 });

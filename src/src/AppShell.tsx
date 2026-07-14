@@ -1,4 +1,4 @@
-import { Box } from "@mui/material";
+import { Box, Stack } from "@mui/material";
 import { Outlet } from "react-router-dom";
 import { M1, M2, M3, M4, M5 } from "./statics";
 import { useLayout } from "./LayoutProvider";
@@ -97,25 +97,24 @@ export const AppShell: React.FC = () => {
         </Box>
 
         <Box
+          aria-label="Main content"
           ref={setScrollElement}
           sx={{
             overflowY: "auto", // make it scrollable
             display: "block",
-
             scrollbarWidth: "none",
           }}
         >
-          {/* add margin for the actual margin, topbar, and margin of top bar */}
-          <Box>
+          <Stack direction={"column"} sx={{ position: "relative" }}>
             <Outlet />
             <Box
               sx={{
                 width: "100%",
-                height: "10vh",
+                height: "140vh",
                 background: theme.palette.background.default,
               }}
             ></Box>
-          </Box>
+          </Stack>
         </Box>
         <Box
           sx={{

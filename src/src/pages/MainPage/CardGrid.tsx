@@ -63,7 +63,8 @@ export const CardGrid: React.FC<CardGridProps> = ({
         author_id: "loading",
         updated_at: new Date().toISOString(),
         stripped_content: "Loading content",
-        permissions: [],
+        directory_ids: [],
+        tag_ids: [],
       }),
     );
 

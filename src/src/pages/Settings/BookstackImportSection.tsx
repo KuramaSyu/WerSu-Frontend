@@ -13,6 +13,7 @@ import {
   getBookstackImportApi,
   type BookstackBookImportReply,
 } from "../../api/BookstackImportApi";
+import { queryClient } from "../../api/queryClient";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 
 /**
@@ -90,6 +91,10 @@ export const BookstackImportSection: React.FC = () => {
     try {
       const reply = await getBookstackImportApi().importBook(file);
       setResult(reply);
+      // Import adds new dirs/notes/attachments -> nuke every cache except user
+      queryClient.invalidateQueries({
+        predicate: (q) => q.queryKey[0] !== "user" && q.queryKey[0] !== "users",
+      });
       setMessage(
         new SnackbarUpdateImpl(
           `Imported ${reply.pages_imported} page(s) from ${file.name}`,

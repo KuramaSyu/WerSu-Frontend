@@ -53,7 +53,9 @@ vi.mock("./api/queryClient", () => ({
   queryClient: { invalidateQueries: vi.fn() },
 }));
 vi.mock("./api/SearchNotesApi", () => ({
-  getSearchNotesApi: () => ({ search: vi.fn() }),
+  getSearchNotesApi: () => ({
+    search: vi.fn().mockResolvedValue({ notes: [], directories: [], tags: [] }),
+  }),
 }));
 vi.mock("./api/UserApi", () => ({
   getUserApi: () => ({ fetchUser: vi.fn() }),

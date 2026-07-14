@@ -1,16 +1,13 @@
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
+import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
 import type { SettingsCategory } from "./types";
 import { BookstackImportSection } from "./BookstackImportSection";
+import { CacheSection } from "./CacheSection";
 
 /**
- * Ordered list of categories rendered in the Settings page's left rail.
- *
  * Add new categories here; both the left rail and the right-column
  * body read this list, so a new entry shows up in both places
  * automatically.
- *
- * The first entry is BookStack import per the original ask; later
- * entries (look-and-feel, account, etc.) can be appended below.
  */
 export const settingsCategories: SettingsCategory[] = [
   {
@@ -18,5 +15,11 @@ export const settingsCategories: SettingsCategory[] = [
     label: "BookStack Import",
     icon: <CloudUploadIcon />,
     settingsContent: <BookstackImportSection />,
+  },
+  {
+    id: "cache",
+    label: "Cache",
+    icon: <DeleteSweepIcon />,
+    settingsContent: <CacheSection />,
   },
 ];

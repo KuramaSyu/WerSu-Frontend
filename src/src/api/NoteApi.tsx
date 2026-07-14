@@ -1,7 +1,6 @@
 import { BACKEND_BASE } from "../statics";
 import { Note, type NoteData } from "./models/search";
 import { UserError } from "./models/UserError";
-import { getPermissionsApi } from "./PermissionsApi";
 import { ShareTokenBearerMixin } from "./shareToken";
 import { apiRegistry, type ApiToken } from "./apiRegistry";
 
@@ -11,7 +10,12 @@ export interface INoteApi {
   getVersion(id: string, versionIndex: number): Promise<Note | undefined>;
   post(title: string, content: string): Promise<Note>;
   patch(id: string, title?: string, content?: string): Promise<Note>;
-  patchDirectory(id: string, directoryId?: string): Promise<boolean>;
+  /**
+   * Reassigns a note's parent directories. Passing `undefined` removes
+   * the note from every directory (root). Passing a single id keeps
+   * backwards compatibility with single-parent flows.
+   */
+  patchDirectory(id: string, directoryId?: string | string[]): Promise<boolean>;
   delete(id: string): Promise<boolean>;
 }
 
@@ -157,7 +161,13 @@ export class NoteApi extends ShareTokenBearerMixin implements INoteApi {
   }
 
   async patch(id: string, title?: string, content?: string): Promise<Note> {
-    const body: { id: string; title?: string; content?: string } = { id };
+    const body: {
+      id: string;
+      title?: string;
+      content?: string;
+      directory_ids?: string[];
+      tag_ids?: string[];
+    } = { id };
     if (title !== undefined) {
       body.title = title;
     }
@@ -189,81 +199,52 @@ export class NoteApi extends ShareTokenBearerMixin implements INoteApi {
   }
 
   /**
-   * Reassigns a note to a directory by updating its `parent` permission
-   * relationships. Passing `undefined` as `directoryId` moves the note to root.
+   * Replaces the note's parent directories via `PATCH /api/notes`.
+   *
+   * `directoryId` may be a single id (single-parent flow used by the
+   * drag-and-drop and side-panel "Change parent" UI) or an array of ids
+   * (multi-parent flow). Passing `undefined` clears the parent set so
+   * the note lives at the root.
+   *
+   * The backend has moved away from `parent` / `parent_directory`
+   * permission relationships and now exposes parents directly as
+   * `directory_ids` on the note. This call replaces the previous
+   * permissions-based implementation that walked every existing parent
+   * relation to delete it before creating a new one.
    */
-  async patchDirectory(id: string, directoryId?: string): Promise<boolean> {
-    // Use the registered singleton so the share-token provider installed on
-    // `Bootstrap` reaches this internal helper. See `useNoteQueries` for
-    // rationale.
-    const permissionsApi = getPermissionsApi();
-    const existingPermissions = await permissionsApi.get("note", id);
-    if (!existingPermissions) {
+  async patchDirectory(
+    id: string,
+    directoryId?: string | string[],
+  ): Promise<boolean> {
+    const directoryIds =
+      directoryId === undefined
+        ? []
+        : Array.isArray(directoryId)
+          ? directoryId
+          : [directoryId];
+
+    const body: {
+      id: string;
+      directory_ids: string[];
+    } = {
+      id,
+      directory_ids: directoryIds,
+    };
+
+    const response = await fetch(`${BACKEND_BASE}/api/notes`, {
+      ...(await this.getFetchParameters("PATCH", {
+        "Content-Type": "application/json",
+      })),
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
       this.logError(
-        "/api/permissions",
-        `Could not read permissions for note ${id}`,
+        `/api/notes`,
+        `Response not ok: ${response.status}; ${response.statusText}`,
       );
       return false;
     }
-
-    const parentRelations = existingPermissions.relationships.filter(
-      (relationship) => {
-        const isParentRelation =
-          relationship.relation === "parent" ||
-          relationship.relation === "parent_directory";
-        const isDirectorySubject =
-          relationship.subject.object_type ===
-          "PERMISSION_OBJECT_TYPE_DIRECTORY";
-        return isParentRelation && isDirectorySubject;
-      },
-    );
-
-    // Remove all existing directory parent links first to avoid duplicates.
-    for (const relation of parentRelations) {
-      const removed = await permissionsApi.delete({
-        object_id: id,
-        object_type: "note",
-        relationship: {
-          relation:
-            relation.relation === "parent" ? "parent" : "parent_directory",
-          resource: {
-            object_id: id,
-            object_type: "note",
-          },
-          subject: {
-            object_id: relation.subject.object_id,
-            object_type: "directory",
-          },
-        },
-      });
-
-      if (!removed) {
-        return false;
-      }
-    }
-
-    // Root drop means "no parent directory" after cleanup.
-    if (!directoryId) {
-      return true;
-    }
-
-    const created = await permissionsApi.post({
-      object_id: id,
-      object_type: "note",
-      relationship: {
-        relation: "parent_directory",
-        resource: {
-          object_id: id,
-          object_type: "note",
-        },
-        subject: {
-          object_id: directoryId,
-          object_type: "directory",
-        },
-      },
-    });
-
-    return created !== undefined;
+    return true;
   }
 
   async delete(id: string): Promise<boolean> {

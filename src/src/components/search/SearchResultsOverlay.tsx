@@ -94,15 +94,15 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
   const { directoriesById } = useDirectoryStore();
 
   // get results
-  const { data } = useInfiniteNoteSearch(searchType, debouncedSearchText, 200);
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useInfiniteNoteSearch(searchType, debouncedSearchText, 30);
 
   // extracted notes, but only if data is not loading -> otherwise short flickering
   // when changed the search query with text, that nothing was found, since data is undefined for a short time
   const notes = useRef<Note[]>([]);
   if (data !== undefined) {
     notes.current =
-      data?.pages.flat().map((note) => new Note({ content: "", ...note })) ??
-      [];
+      data?.map((note) => new Note({ content: "", ...note })) ?? [];
   }
 
   // list of all dirs which appear in the current note results
@@ -272,7 +272,7 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
                   onClick={onClose}
                   color="primary"
                   sx={{
-                    px: 6,
+                    px: 4,
                     gap: 1,
                     width: "20%",
                     borderRadius: theme.shape.borderRadius,
@@ -289,12 +289,16 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
               {/* selected dirs */}
               <Stack
                 direction="row"
+                useFlexGap
                 sx={{
                   display: "flex",
                   width: "50%",
                   justifyContent: "flex-start",
+                  flexWrap: "wrap",
+                  maxHeight: 72,
+                  overflowY: "auto",
                 }}
-                spacing={2}
+                spacing={1}
               >
                 {uniqueDirs.map((dir) => {
                   const isSelected = !excludeDirs.has(dir);
@@ -319,6 +323,7 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
                           }}
                           accentColor={colorFromString(dir, theme)}
                         >
+                          <CloseIcon sx={{ fontSize: "1rem", mr: 0.5 }} />
                           {directoriesById[dir]?.display_name ||
                             directoriesById[dir]?.name ||
                             "root"}
@@ -331,12 +336,16 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
               {/* unselected dirs */}
               <Stack
                 direction="row"
+                useFlexGap
                 sx={{
                   display: "flex",
                   width: "50%",
                   justifyContent: "flex-end",
+                  flexWrap: "wrap",
+                  maxHeight: 72,
+                  overflowY: "auto",
                 }}
-                spacing={2}
+                spacing={1}
               >
                 {uniqueDirs.map((dir) => {
                   const isSelected = !excludeDirs.has(dir);
@@ -359,6 +368,7 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
                         }}
                         accentColor={colorFromString(dir, theme)}
                       >
+                        <CloseIcon sx={{ fontSize: "1rem", mr: 0.5 }} />
                         {directoriesById[dir]?.display_name ||
                           directoriesById[dir]?.name ||
                           "root"}
@@ -390,6 +400,12 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
                     return !excludeDirs.has(dir);
                   })}
                   setSeacrhQuery={setSearchQuery}
+                />
+                {/* Load next page when the sentinel scrolls into view */}
+                <InfiniteScrollSentinel
+                  hasNextPage={!!hasNextPage}
+                  isFetchingNextPage={isFetchingNextPage}
+                  onLoadMore={() => void fetchNextPage()}
                 />
               </Box>
             </Box>
@@ -651,5 +667,48 @@ const ResultContent = ({
         </Stack>
       </Fade>
     </>
+  );
+};
+
+interface InfiniteScrollSentinelProps {
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  onLoadMore: () => void;
+}
+
+// Triggers onLoadMore once when scrolled into view; minimal styling.
+const InfiniteScrollSentinel: React.FC<InfiniteScrollSentinelProps> = ({
+  hasNextPage,
+  isFetchingNextPage,
+  onLoadMore,
+}) => {
+  const ref = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const node = ref.current;
+    if (!node || !hasNextPage || isFetchingNextPage) return;
+    // Walk up to the scroll container; the immediate parent isn't scrollable.
+    let scrollRoot: Element | null = node.parentElement;
+    while (scrollRoot && getComputedStyle(scrollRoot).overflowY !== "auto") {
+      scrollRoot = scrollRoot.parentElement;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // Disconnect immediately so repeated intersection frames don't refire.
+        if (entries.some((e) => e.isIntersecting)) {
+          observer.disconnect();
+          onLoadMore();
+        }
+      },
+      { root: scrollRoot, rootMargin: "200px" },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, onLoadMore]);
+
+  if (!hasNextPage && !isFetchingNextPage) return null;
+  return (
+    <Box ref={ref} sx={{ display: "flex", justifyContent: "center", py: M3 }}>
+      {isFetchingNextPage && <CircularProgress size={20} />}
+    </Box>
   );
 };

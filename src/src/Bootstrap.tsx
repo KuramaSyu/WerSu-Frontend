@@ -8,6 +8,7 @@ import { RestNotesSearchType } from "./api/models/search";
 import { getUserApi } from "./api/UserApi";
 import { useShareAccessToken } from "./api/queries/useShareAccessToken";
 import { apiRegistry } from "./api/apiRegistry";
+import { queryClient } from "./api/queryClient";
 
 /**
  * Routes under `/public/*` are served by the share JWT only — never by
@@ -94,10 +95,56 @@ function useShareTokenMode() {
 }
 
 /**
+ * Invalidates every cached query when the user identity changes
+ * (login: `null` -> id, logout: id -> `null`, or user switch in a
+ * shared tab).
+ *
+ * Why: caches keyed on user id (notes list, search, activity,
+ * directories, ...) would otherwise surface the previous user's data
+ * until each entry individually refetches. A blanket invalidation
+ * forces every observer to re-issue its `queryFn`, which now sees
+ * the new session cookie + user JWT.
+ *
+ * The `useRef` latch is the same pattern as the JWT-refetch effect
+ * below: Strict Mode's double-mount would otherwise fire the
+ * invalidation twice on first render.
+ */
+function useInvalidateQueriesOnUserChange() {
+  const user = useUserStore((s) => s.user);
+  const previousUserIdRef = useRef<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    const previousUserId = previousUserIdRef.current;
+    const nextUserId = user?.id ?? null;
+
+    // First render: just record the starting state, don't invalidate.
+    if (previousUserId === undefined) {
+      previousUserIdRef.current = nextUserId;
+      return;
+    }
+
+    if (previousUserId === nextUserId) {
+      return;
+    }
+
+    previousUserIdRef.current = nextUserId;
+    console.debug(
+      "[invalidate-on-user-change] user changed from",
+      previousUserId,
+      "to",
+      nextUserId,
+      "- invalidating all queries",
+    );
+    queryClient.invalidateQueries();
+  }, [user]);
+}
+
+/**
  * Ensures, that on page load the user and notes get loaded
  */
 export const Bootstrap: React.FC = () => {
   useShareTokenMode();
+  useInvalidateQueriesOnUserChange();
   const { pathname } = useLocation();
   const onPublicRoute = isPublicRoute(pathname);
   const shareIdMatch = pathname.match(/^\/public\/n\/([^/?#]+)/);

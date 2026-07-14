@@ -119,10 +119,9 @@ export const MainContent: React.FC = () => {
       const notedata: NoteData = {
         ...noteData,
         content: noteData.stripped_content,
-        permissions: noteData.permissions ?? [],
       };
       const note = new Note(notedata);
-      const parentIds = getNoteParentDirectoryIds(note.permissions);
+      const parentIds = getNoteParentDirectoryIds(note.directory_ids);
 
       const targetDirs = parentIds.length === 0 ? ["root"] : parentIds;
       targetDirs.forEach((dir) => {

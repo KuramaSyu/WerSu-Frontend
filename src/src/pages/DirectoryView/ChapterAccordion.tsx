@@ -61,7 +61,7 @@ export const ChapterAccordion: React.FC<ChapterAccordionProps> = ({
   const accentColor = DIRECTORY_COLORS[index % DIRECTORY_COLORS.length];
 
   const subdirectories = subdirectoriesQuery.data ?? [];
-  const notes = (notesQuery.data ?? []).filter(
+  const notes = (notesQuery.data?.notes ?? []).filter(
     (note) => note.title !== "README.md",
   );
   const isLoading =
@@ -126,9 +126,14 @@ export const ChapterAccordion: React.FC<ChapterAccordionProps> = ({
         }}
       >
         <ChapterRowView
-          name={directory.display_name ?? directory.name}
-          pages={directory.pages ?? 0}
-          subdirectories={directory.subdirectories ?? 0}
+          name={
+            directory.display_name ??
+            directory.name ??
+            directory.slug ??
+            directory.id
+          }
+          pages={directory.child_note_ids?.length ?? 0}
+          subdirectories={directory.child_dir_ids?.length ?? 0}
           accentColor={accentColor}
         />
       </AccordionSummary>

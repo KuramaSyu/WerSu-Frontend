@@ -1,9 +1,5 @@
 import type { DirectoryReply } from "../api/models/directory";
-import type {
-  MinimalNote,
-  NoteData,
-  PermissionRelationshipReply,
-} from "../api/models/search";
+import type { MinimalNote, NoteData } from "../api/models/search";
 
 /**
  * Common contract for all hierarchy nodes.
@@ -125,21 +121,33 @@ export class RootHirarchyItem extends CompositeHirarchyItem {
 /**
  * Composite node that wraps a directory API model.
  *
- * Directory nodes can contain both child directories and notes.
+ * Directory nodes can contain both child directories and notes. The
+ * `parent_dir_ids` array on `DirectoryReply` makes a directory
+ * multi-parent (the previous single `parent_id` field is gone); the
+ * hierarchy treats the first id as the canonical parent for breadcrumb
+ * rendering and falls back to root when the array is empty.
  */
 export class DirectoryHirarchyItem extends CompositeHirarchyItem {
   /** Creates a hierarchy node from directory model data. */
   constructor(
     private readonly directory: Pick<
-      // Only include fields which are relevant
       DirectoryReply,
-      "id" | "name" | "display_name" | "parent_id"
+      | "id"
+      | "name"
+      | "display_name"
+      | "slug"
+      | "parent_dir_ids"
+      | "child_dir_ids"
+      | "child_note_ids"
     >,
   ) {
     super(
       directory.id,
-      directory.display_name ?? directory.name,
-      directory.parent_id ?? undefined,
+      directory.display_name ??
+        directory.name ??
+        directory.slug ??
+        directory.id,
+      directory.parent_dir_ids?.[0],
     );
   }
 
@@ -151,66 +159,52 @@ export class DirectoryHirarchyItem extends CompositeHirarchyItem {
   /** Returns the wrapped directory model used to create this node. */
   getDirectory(): Pick<
     DirectoryReply,
-    "id" | "name" | "display_name" | "parent_id"
+    | "id"
+    | "name"
+    | "display_name"
+    | "slug"
+    | "parent_dir_ids"
+    | "child_dir_ids"
+    | "child_note_ids"
   > {
     return this.directory;
+  }
+
+  /** Returns every parent directory id declared by the backend. */
+  getParentDirectoryIds(): string[] {
+    return [...(this.directory.parent_dir_ids ?? [])];
   }
 }
 
 /**
- * Extracts the parent directory id from note permissions.
- *
- * Notes encode directory placement as permission relationships (`parent` or
- * `parent_directory`) targeting a directory subject.
- */
-const findNoteParentDirectory = (
-  permissions?: PermissionRelationshipReply[],
-): string | undefined => {
-  if (!permissions) {
-    return undefined;
-  }
-
-  for (const permission of permissions) {
-    const isParentRelation =
-      permission.relation === "parent" ||
-      permission.relation === "parent_directory";
-    const isDirectory =
-      permission.subject.object_type === "PERMISSION_OBJECT_TYPE_DIRECTORY";
-
-    if (isParentRelation && isDirectory) {
-      return permission.subject.object_id;
-    }
-  }
-
-  return undefined;
-};
-
-/**
  * Leaf hierarchy node that wraps a note model.
  *
- * Notes cannot contain child nodes.
+ * Notes cannot contain child nodes and live under every parent they
+ * declare via `directory_ids`. The hierarchy exposes the full list
+ * through `getParentDirectoryIds()`; `getParent()` (inherited from the
+ * base contract) keeps returning the first parent for backwards
+ * compatibility with single-parent code paths.
  */
 export class NoteHirarchyItem extends BaseHirarchyItem {
   private readonly noteId: string;
   private readonly title: string;
+  private readonly parentDirectoryIds: string[];
 
   /** Creates a note node with an optional parent directory id. */
-  constructor(id: string, title: string, parentId?: string) {
-    super(id, parentId);
+  constructor(id: string, title: string, parentDirectoryIds: string[] = []) {
+    super(id, parentDirectoryIds[0]);
     this.noteId = id;
     this.title = title;
+    this.parentDirectoryIds = [...new Set(parentDirectoryIds)];
   }
 
   /**
    * Factory helper for constructing a note node from supported note models.
-   * Parent directory is resolved from permission relationships when present.
+   * Parent directories are resolved from `directory_ids` (the new wire
+   * field). Empty array = unparented (root) note.
    */
   static fromNoteData(note: MinimalNote | NoteData): NoteHirarchyItem {
-    return new NoteHirarchyItem(
-      note.id,
-      note.title,
-      findNoteParentDirectory(note.permissions),
-    );
+    return new NoteHirarchyItem(note.id, note.title, note.directory_ids ?? []);
   }
 
   /** Returns the note title used as display label in the hierarchy. */
@@ -237,14 +231,19 @@ export class NoteHirarchyItem extends BaseHirarchyItem {
   getNoteId(): string {
     return this.noteId;
   }
+
+  /** Returns the deduplicated list of parent directory ids. */
+  getParentDirectoryIds(): string[] {
+    return [...this.parentDirectoryIds];
+  }
 }
 
 /**
- * Builds a hierarchy tree from notes that include permission relationships.
+ * Builds a hierarchy tree from notes that declare `directory_ids`.
  *
- * Since notes only expose the target directory id via permissions, this builder
- * creates synthetic directory nodes (id + name=id) when necessary and attaches
- * them directly under the root.
+ * Each note is attached under every directory id it lists; notes with
+ * no parents land directly under the root. Missing parent directories
+ * become synthetic nodes so the tree is still a valid hierarchy.
  */
 export class NoteHierarchyBuilder {
   private readonly notes: Array<MinimalNote | NoteData>;
@@ -254,8 +253,8 @@ export class NoteHierarchyBuilder {
   }
 
   /**
-   * Creates a hierarchy rooted at `RootHirarchyItem` and groups notes by their
-   * parent directory relation (`parent` / `parent_directory`) when available.
+   * Creates a hierarchy rooted at `RootHirarchyItem` and groups notes by
+   * the directory ids in `note.directory_ids`.
    */
   build(
     rootName = "Root",
@@ -265,8 +264,8 @@ export class NoteHierarchyBuilder {
     const directoryNodes = new Map<string, DirectoryHirarchyItem>();
 
     /**
-     * helper lookup by id function. construct directory node from lookup map, or
-     * create a synthetic one with only IDs
+     * Helper lookup by id function. Construct a directory node from the
+     * lookup map, or create a synthetic one with only the id.
      */
     const getDirectoryNode = (id: string): DirectoryHirarchyItem => {
       if (directoryLookup && directoryLookup[id]) {
@@ -276,33 +275,33 @@ export class NoteHierarchyBuilder {
         id,
         name: id,
         display_name: id,
-        parent_id: undefined,
+        parent_dir_ids: [],
+        child_dir_ids: [],
+        child_note_ids: [],
       });
     };
 
-    // iterate over all notes
+    // Iterate over all notes.
     for (const note of this.notes) {
       const noteNode = NoteHirarchyItem.fromNoteData(note);
-      const parentDirectoryId = noteNode.getParent();
+      const parentDirectoryIds = noteNode.getParentDirectoryIds();
 
-      // if note has no parent, then add it as child of root
-      if (!parentDirectoryId) {
+      // Unparented notes attach directly to the root.
+      if (parentDirectoryIds.length === 0) {
         root.addChild(noteNode);
         continue;
       }
 
-      // check if a parent is found via permissions
-      let parentDirectoryNode = directoryNodes.get(parentDirectoryId);
-
-      // if the parent don't exist yet, create it first
-      if (!parentDirectoryNode) {
-        parentDirectoryNode = getDirectoryNode(parentDirectoryId);
-        directoryNodes.set(parentDirectoryId, parentDirectoryNode);
-        root.addChild(parentDirectoryNode);
+      for (const parentDirectoryId of parentDirectoryIds) {
+        // Cache directory nodes so we don't allocate fresh ones per note.
+        let parentDirectoryNode = directoryNodes.get(parentDirectoryId);
+        if (!parentDirectoryNode) {
+          parentDirectoryNode = getDirectoryNode(parentDirectoryId);
+          directoryNodes.set(parentDirectoryId, parentDirectoryNode);
+          root.addChild(parentDirectoryNode);
+        }
+        parentDirectoryNode.addChild(noteNode);
       }
-
-      // add the note as child of the parent directory node
-      parentDirectoryNode.addChild(noteNode);
     }
 
     return root;
@@ -312,9 +311,10 @@ export class NoteHierarchyBuilder {
 /**
  * Builds a hierarchy tree from directories only.
  *
- * Directories are attached to their parent when `parent_id` points to another
- * directory present in the lookup map. Directories with missing parents are
- * attached directly to the root.
+ * Directories are attached to their parent when `parent_dir_ids` lists
+ * another directory present in the lookup map. The first id in the list
+ * is treated as the canonical parent for tree placement. Directories
+ * with missing parents are attached directly to the root.
  */
 export class DirectoryHierarchyBuilder {
   private readonly directoryLookup: Record<string, DirectoryReply>;
@@ -330,7 +330,7 @@ export class DirectoryHierarchyBuilder {
     const root = new RootHirarchyItem(rootName);
     const directoryNodes = new Map<string, DirectoryHirarchyItem>();
 
-    // convert all directories into a Node, then insert it into a map for easy lookup when building the tree
+    // Convert all directories into a Node, then insert into a map for easy lookup when building the tree.
     for (const directory of Object.values(this.directoryLookup)) {
       directoryNodes.set(
         directory.id,
@@ -338,17 +338,17 @@ export class DirectoryHierarchyBuilder {
       );
     }
 
-    // build the tree out of the Node-Map
+    // Build the tree out of the Node-Map.
     for (const directoryNode of directoryNodes.values()) {
       const parentId = directoryNode.getParent();
 
-      // note has no parent -> root
+      // Directory has no parent -> root.
       if (!parentId || parentId === directoryNode.getId()) {
         root.addChild(directoryNode);
         continue;
       }
 
-      // note has parent -> get parent, and add it a child
+      // Directory has parent -> get parent, and add it as a child.
       const parentDirectoryNode = directoryNodes.get(parentId);
       if (!parentDirectoryNode) {
         root.addChild(directoryNode);

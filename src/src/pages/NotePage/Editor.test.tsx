@@ -78,6 +78,8 @@ function makeNote(
     stripped_content: "Some content",
     author_id: "u1",
     updated_at: "2024-01-01T00:00:00Z",
+    directory_ids: [],
+    tag_ids: [],
     ...overrides,
   });
 }

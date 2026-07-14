@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Note, type MinimalNote } from "../api/models/search";
+import { Note, type MinimalNote, type NotesReply } from "../api/models/search";
 import { useDirectoryStore } from "../zustand/useDirectoryStore";
 import type { DirectoryReply } from "../api/models/directory";
 
@@ -12,12 +12,12 @@ import type { DirectoryReply } from "../api/models/directory";
  * // Returns: "root > subfolder > notes"
  */
 export function getDirectoryPath(noteID: string): string {
-  const notes = useQueryClient()
-    .getQueriesData<{ pages: MinimalNote[] }>({
+  const replies = useQueryClient()
+    .getQueriesData<NotesReply>({
       queryKey: ["notes", "search"],
     })
-    ?.flatMap(([, notes]) => notes?.pages ?? [])
-    .flat();
+    ?.flatMap(([, reply]) => (reply ? [reply] : []));
+  const notes: MinimalNote[] = replies?.flatMap((reply) => reply.notes) ?? [];
   console.log("notes in getDirectoryPath", notes);
   if (!notes) {
     return "no path";
@@ -28,10 +28,10 @@ export function getDirectoryPath(noteID: string): string {
     return "no path";
   }
 
-  var path = [];
+  const path: string[] = [];
   const parent = new Note({ content: "", ...note }).get_dir();
   for (const dir of getDirectoryPathFromDirectory(parent, []) ?? []) {
-    path.push(dir.display_name || dir.name);
+    path.push(dir.display_name || dir.name || dir.slug || dir.id);
   }
   return path.join(" > ");
 }
@@ -52,8 +52,12 @@ function getDirectoryPathFromDirectory(
   if (directories.length === 0) {
     return getDirectoryPathFromDirectory(directoryID, [currentDir]);
   }
+  // Walk the first parent id backwards (single-parent breadcrumb).
   return [
-    ...(getDirectoryPathFromDirectory(currentDir.parent_id, directories) ?? []),
+    ...(getDirectoryPathFromDirectory(
+      currentDir.parent_dir_ids?.[0],
+      directories,
+    ) ?? []),
     currentDir,
   ].flat();
 }

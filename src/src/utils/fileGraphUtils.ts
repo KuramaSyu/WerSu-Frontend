@@ -1,8 +1,5 @@
 import type { DirectoryReply } from "../api/models/directory";
-import type {
-  MinimalNote,
-  PermissionRelationshipReply,
-} from "../api/models/search";
+import type { MinimalNote } from "../api/models/search";
 import type { GraphEdge, GraphNode } from "../pages/FileGraph/types";
 
 export interface GraphViewport {
@@ -11,33 +8,16 @@ export interface GraphViewport {
 }
 
 /**
- * Returns all parent directory ids for a note based on permission relationships.
+ * Returns every parent directory id declared by the note.
+ *
+ * The backend exposes parents directly as `directory_ids` (replacing
+ * the older `parent` / `parent_directory` permission relationships).
  */
-export function getNoteParentDirectoryIds(
-  permissions?: PermissionRelationshipReply[],
-): string[] {
-  if (!permissions) {
+export function getNoteParentDirectoryIds(directoryIds?: string[]): string[] {
+  if (!directoryIds) {
     return [];
   }
-
-  // Dedupe so a note with both `parent` and `parent_directory` entries for the
-  // same directory doesn't end up in that directory's group twice (which also
-  // collides on React `key={note.id}` in the directory view).
-  return [
-    ...new Set(
-      permissions
-        .filter((permission) => {
-          const isParentRelation =
-            permission.relation === "parent" ||
-            permission.relation === "parent_directory";
-          const isDirectorySubject =
-            permission.subject.object_type ===
-            "PERMISSION_OBJECT_TYPE_DIRECTORY";
-          return isParentRelation && isDirectorySubject;
-        })
-        .map((permission) => permission.subject.object_id),
-    ),
-  ];
+  return [...new Set(directoryIds)];
 }
 
 /**
@@ -107,10 +87,10 @@ export function buildGraphLayout(
   const edgesList: GraphEdge[] = [];
 
   sortedDirectories.forEach((directory) => {
-    if (directory.parent_id) {
+    for (const parentId of directory.parent_dir_ids ?? []) {
       edgesList.push({
-        id: `dir-${directory.parent_id}-${directory.id}`,
-        sourceId: directory.parent_id,
+        id: `dir-${parentId}-${directory.id}`,
+        sourceId: parentId,
         targetId: directory.id,
         type: "directory",
       });
@@ -118,7 +98,7 @@ export function buildGraphLayout(
   });
 
   sortedNotes.forEach((note) => {
-    const parents = getNoteParentDirectoryIds(note.permissions);
+    const parents = getNoteParentDirectoryIds(note.directory_ids);
     parents.forEach((parentId) => {
       edgesList.push({
         id: `note-${parentId}-${note.id}`,
@@ -155,60 +135,33 @@ export function getConnectedNodeIds(
 }
 
 /**
- * Adds a parent directory relationship to a note, if missing.
+ * Adds a parent directory id to a note, if missing.
  */
 export function updateNoteParentLink(
   note: MinimalNote,
   parentDirectoryId: string,
 ): MinimalNote {
-  const nextPermissions = [...(note.permissions ?? [])];
-  const exists = nextPermissions.some(
-    (permission) =>
-      (permission.relation === "parent" ||
-        permission.relation === "parent_directory") &&
-      permission.subject.object_type === "PERMISSION_OBJECT_TYPE_DIRECTORY" &&
-      permission.subject.object_id === parentDirectoryId,
-  );
-
-  if (exists) {
+  const currentIds = note.directory_ids ?? [];
+  if (currentIds.includes(parentDirectoryId)) {
     return note;
   }
 
   return {
     ...note,
-    permissions: [
-      ...nextPermissions,
-      {
-        relation: "parent_directory",
-        resource: {
-          object_id: note.id,
-          object_type: "PERMISSION_OBJECT_TYPE_NOTE",
-        },
-        subject: {
-          object_id: parentDirectoryId,
-          object_type: "PERMISSION_OBJECT_TYPE_DIRECTORY",
-        },
-      },
-    ],
+    directory_ids: [...currentIds, parentDirectoryId],
   };
 }
 
 /**
- * Removes a specific parent directory relationship from a note.
+ * Removes a specific parent directory id from a note.
  */
 export function removeNoteParentLink(
   note: MinimalNote,
   parentDirectoryId: string,
 ): MinimalNote {
-  const nextPermissions = (note.permissions ?? []).filter(
-    (permission) =>
-      !(
-        (permission.relation === "parent" ||
-          permission.relation === "parent_directory") &&
-        permission.subject.object_type === "PERMISSION_OBJECT_TYPE_DIRECTORY" &&
-        permission.subject.object_id === parentDirectoryId
-      ),
+  const nextIds = (note.directory_ids ?? []).filter(
+    (id) => id !== parentDirectoryId,
   );
 
-  return { ...note, permissions: nextPermissions };
+  return { ...note, directory_ids: nextIds };
 }

@@ -140,6 +140,8 @@ export class Activity implements ActivityReply {
       author_id: "",
       updated_at: "",
       stripped_content: content,
+      directory_ids: [],
+      tag_ids: [],
     };
   }
 }
@@ -170,6 +172,8 @@ export class ActivityScore implements ActivityScoreReply {
       author_id: "",
       updated_at: "",
       stripped_content: this.stripped_content ?? "",
+      directory_ids: [],
+      tag_ids: [],
     };
   }
 }

@@ -1,4 +1,12 @@
-import { Box, darken, lighten, Paper, Popper, Typography } from "@mui/material";
+import {
+  alpha,
+  Box,
+  darken,
+  lighten,
+  Paper,
+  Popper,
+  Typography,
+} from "@mui/material";
 import { M1, M2 } from "../../statics";
 import { CodeBlockThemer } from "./CodeBlockThemer";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
@@ -55,6 +63,19 @@ export const ThemedEditorBox = ({
           "& th": {
             backgroundColor: "var(--gray-1)",
             fontWeight: 600,
+          },
+
+          // links
+          "& a": {
+            color: alpha(theme.palette.primary.light, 0.85),
+            fontWeight: 500,
+            textDecoration: "underline",
+            textDecorationColor: alpha(theme.palette.primary.light, 0.85),
+            textUnderlineOffset: "0.15em",
+          },
+          "& a:hover": {
+            color: theme.palette.primary.light,
+            textDecorationColor: theme.palette.primary.light,
           },
 
           "& code": {

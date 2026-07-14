@@ -61,7 +61,7 @@ export const AllDirectories: React.FC<AllDirectoriesProps> = ({
     }
     return directories.filter(
       (d) =>
-        (d.parent_id === null || d.parent_id === undefined) &&
+        (d.parent_dir_ids === undefined || d.parent_dir_ids.length === 0) &&
         !favouriteIds[d.id],
     );
   }, [directories, favouriteIds]);

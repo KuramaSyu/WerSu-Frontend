@@ -12,7 +12,6 @@ import {
 } from "../../api/models/search";
 import { SearchNotesApi } from "../../api/SearchNotesApi";
 import { NoteApi } from "../../api/NoteApi";
-import { PermissionsApi } from "../../api/PermissionsApi";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { M1, M2 } from "../../statics";
@@ -30,7 +29,6 @@ import {
 const directoryApi = new DirectoryApi();
 const searchNotesApi = new SearchNotesApi();
 const noteApi = new NoteApi();
-const permissionsApi = new PermissionsApi();
 /**
  * Renders the Obsidian-style file graph page.
  */
@@ -133,7 +131,7 @@ export function FileGraphPage(): React.ReactElement {
         }
 
         setDirectories(directoriesResult);
-        setNotes(notesResult);
+        setNotes(notesResult.notes);
       } catch (err) {
         if (!isActive) {
           return;
@@ -256,7 +254,7 @@ export function FileGraphPage(): React.ReactElement {
     }
 
     if (target.type === "directory") {
-      const updated = await directoryApi.setParent(target.id, parentId);
+      const updated = await directoryApi.setParent(target.id, [parentId]);
       if (!updated) {
         setLinkStatus("Failed to update directory parent.");
         return;
@@ -264,7 +262,7 @@ export function FileGraphPage(): React.ReactElement {
       setDirectories((prev) =>
         prev.map((directory) =>
           directory.id === target.id
-            ? { ...directory, parent_id: parentId }
+            ? { ...directory, parent_dir_ids: [parentId] }
             : directory,
         ),
       );
@@ -273,27 +271,21 @@ export function FileGraphPage(): React.ReactElement {
     }
 
     try {
-      const created = await permissionsApi.post({
-        object_id: target.id,
-        object_type: "note",
-        relationship: {
-          relation: "parent_directory",
-          resource: {
-            object_id: target.id,
-            object_type: "note",
-          },
-          subject: {
-            object_id: parentId,
-            object_type: "directory",
-          },
-        },
-      });
+      // Replace the note's parent set with the existing parents
+      // (deduped) plus the new directory id. The backend exposes
+      // parents directly as `directory_ids` on the note, so we no
+      // longer reach for the legacy permissions API.
+      const existingNote = notes.find((note) => note.id === target.id);
+      const previousParents = existingNote?.directory_ids ?? [];
+      const nextParents = Array.from(new Set([...previousParents, parentId]));
 
-      if (!created) {
+      const updated = await noteApi.patchDirectory(target.id, nextParents);
+
+      if (!updated) {
         setLinkStatus("Failed to add note parent.");
         setMessage(
           new SnackbarUpdateImpl(
-            "Permission update failed",
+            "Note update failed",
             "error",
             undefined,
             "Could not add a new parent directory for this note.",
@@ -306,7 +298,7 @@ export function FileGraphPage(): React.ReactElement {
       setLinkStatus("Failed to add note parent.");
       setMessage(
         new SnackbarUpdateImpl(
-          "Permission denied",
+          "Note update failed",
           "error",
           undefined,
           message,
@@ -343,7 +335,7 @@ export function FileGraphPage(): React.ReactElement {
       setDirectories((prev) =>
         prev.map((directory) =>
           directory.id === edge.targetId
-            ? { ...directory, parent_id: null }
+            ? { ...directory, parent_dir_ids: [] }
             : directory,
         ),
       );
@@ -352,23 +344,17 @@ export function FileGraphPage(): React.ReactElement {
     }
 
     try {
-      const deleted = await permissionsApi.delete({
-        object_id: edge.targetId,
-        object_type: "note",
-        relationship: {
-          relation: "parent_directory",
-          resource: {
-            object_id: edge.targetId,
-            object_type: "note",
-          },
-          subject: {
-            object_id: edge.sourceId,
-            object_type: "directory",
-          },
-        },
-      });
+      // Replace the note's parent set with every existing parent
+      // except the edge's source. The backend exposes parents directly
+      // as `directory_ids` on the note, so we no longer reach for the
+      // legacy permissions API.
+      const existingNote = notes.find((note) => note.id === edge.targetId);
+      const previousParents = existingNote?.directory_ids ?? [];
+      const nextParents = previousParents.filter((id) => id !== edge.sourceId);
 
-      if (!deleted) {
+      const updated = await noteApi.patchDirectory(edge.targetId, nextParents);
+
+      if (!updated) {
         setMessage(
           new SnackbarUpdateImpl(
             "Delete failed",
@@ -383,7 +369,7 @@ export function FileGraphPage(): React.ReactElement {
       const message = err instanceof Error ? err.message : String(err);
       setMessage(
         new SnackbarUpdateImpl(
-          "Permission denied",
+          "Note update failed",
           "error",
           undefined,
           message,

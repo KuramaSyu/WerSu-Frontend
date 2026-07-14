@@ -47,6 +47,8 @@ const cachedNote = new Note({
   updated_at: "2026-07-01T00:00:00Z",
   stripped_content: "",
   content: "",
+  directory_ids: [],
+  tag_ids: [],
 });
 
 const baseRow = (

@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type {
-  MinimalNote,
-  PermissionRelationshipReply,
-} from "../api/models/search";
+import type { MinimalNote } from "../api/models/search";
 import type { DirectoryReply } from "../api/models/directory";
 import {
   buildGraphLayout,
@@ -13,71 +10,42 @@ import {
   updateNoteParentLink,
 } from "./fileGraphUtils";
 
-function makePermission(directoryId: string): PermissionRelationshipReply {
-  return {
-    relation: "parent_directory",
-    resource: {
-      object_id: "note-1",
-      object_type: "PERMISSION_OBJECT_TYPE_NOTE",
-    },
-    subject: {
-      object_id: directoryId,
-      object_type: "PERMISSION_OBJECT_TYPE_DIRECTORY",
-    },
-  };
-}
-
-function makeNote(permissions?: PermissionRelationshipReply[]): MinimalNote {
+function makeNote(directoryIds?: string[]): MinimalNote {
   return {
     id: "note-1",
     title: "Note",
     author_id: "user-1",
     updated_at: new Date().toISOString(),
     stripped_content: "",
-    permissions,
+    directory_ids: directoryIds ?? [],
+    tag_ids: [],
   };
 }
 
-function makeDirectory(id: string, parentId?: string | null): DirectoryReply {
+function makeDirectory(id: string, parentIds: string[] = []): DirectoryReply {
   return {
     id,
     name: id,
-    parent_id: parentId,
+    parent_dir_ids: parentIds,
+    child_dir_ids: [],
+    child_note_ids: [],
   };
 }
 
 describe("fileGraphUtils", () => {
-  it("gets parent directory ids from permissions", () => {
-    const permissions = [makePermission("dir-1"), makePermission("dir-2")];
-    expect(getNoteParentDirectoryIds(permissions)).toEqual(["dir-1", "dir-2"]);
+  it("returns parent directory ids from directory_ids", () => {
+    expect(getNoteParentDirectoryIds(["dir-1", "dir-2"])).toEqual([
+      "dir-1",
+      "dir-2",
+    ]);
   });
 
-  it("deduplicates when both parent and parent_directory target the same directory", () => {
-    const permissions: PermissionRelationshipReply[] = [
-      {
-        relation: "parent",
-        resource: {
-          object_id: "note-1",
-          object_type: "PERMISSION_OBJECT_TYPE_NOTE",
-        },
-        subject: {
-          object_id: "dir-1",
-          object_type: "PERMISSION_OBJECT_TYPE_DIRECTORY",
-        },
-      },
-      {
-        relation: "parent_directory",
-        resource: {
-          object_id: "note-1",
-          object_type: "PERMISSION_OBJECT_TYPE_NOTE",
-        },
-        subject: {
-          object_id: "dir-1",
-          object_type: "PERMISSION_OBJECT_TYPE_DIRECTORY",
-        },
-      },
-    ];
-    expect(getNoteParentDirectoryIds(permissions)).toEqual(["dir-1"]);
+  it("deduplicates repeated directory ids", () => {
+    expect(getNoteParentDirectoryIds(["dir-1", "dir-1"])).toEqual(["dir-1"]);
+  });
+
+  it("returns an empty array when directory_ids is missing", () => {
+    expect(getNoteParentDirectoryIds(undefined)).toEqual([]);
   });
 
   it("uses display name when building directory labels", () => {
@@ -85,6 +53,9 @@ describe("fileGraphUtils", () => {
       id: "dir-1",
       name: "fallback",
       display_name: " Display ",
+      parent_dir_ids: [],
+      child_dir_ids: [],
+      child_note_ids: [],
     };
     expect(getDirectoryLabel(directory)).toBe("Display");
   });
@@ -92,9 +63,9 @@ describe("fileGraphUtils", () => {
   it("builds graph layout nodes and edges", () => {
     const directories = [
       makeDirectory("dir-1"),
-      makeDirectory("dir-2", "dir-1"),
+      makeDirectory("dir-2", ["dir-1"]),
     ];
-    const notes = [makeNote([makePermission("dir-1")])];
+    const notes = [makeNote(["dir-1"])];
     const { nodes, edges } = buildGraphLayout(directories, notes, {
       width: 800,
       height: 600,
@@ -121,9 +92,9 @@ describe("fileGraphUtils", () => {
   it("adds and removes note parent links", () => {
     const note = makeNote();
     const updated = updateNoteParentLink(note, "dir-9");
-    expect(getNoteParentDirectoryIds(updated.permissions)).toEqual(["dir-9"]);
+    expect(getNoteParentDirectoryIds(updated.directory_ids)).toEqual(["dir-9"]);
 
     const removed = removeNoteParentLink(updated, "dir-9");
-    expect(getNoteParentDirectoryIds(removed.permissions)).toEqual([]);
+    expect(getNoteParentDirectoryIds(removed.directory_ids)).toEqual([]);
   });
 });

@@ -20,10 +20,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import type {
-  Note,
-  PermissionRelationshipReply,
-} from "../../api/models/search";
+import type { Note } from "../../api/models/search";
 import { useDirectoriesQuery } from "../../api/queries/directoryQueries";
 import type { ListDirectoriesQuery } from "../../api/DirectoryApi";
 import { NoteApi } from "../../api/NoteApi";
@@ -114,25 +111,13 @@ const normalizePermissionRelation = (relation: string): string => {
 };
 
 /**
- * Extracts unique parent directory ids from permission relationships.
+ * Extracts unique parent directory ids from `note.directory_ids`.
  */
-const getParentDirectoryIds = (
-  permissions?: PermissionRelationshipReply[],
-): string[] => {
-  if (!permissions) {
+const getParentDirectoryIds = (directoryIds?: string[]): string[] => {
+  if (!directoryIds) {
     return [];
   }
-
-  const ids = permissions
-    .filter(
-      (permission) =>
-        (permission.relation === "parent" ||
-          permission.relation === "parent_directory") &&
-        permission.subject.object_type === "PERMISSION_OBJECT_TYPE_DIRECTORY",
-    )
-    .map((permission) => permission.subject.object_id);
-
-  return [...new Set(ids)];
+  return [...new Set(directoryIds)];
 };
 
 /**
@@ -201,8 +186,8 @@ export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
 
   // Track the parent directory ids for the current note.
   const parentDirectoryIds = useMemo(
-    () => getParentDirectoryIds(note?.permissions),
-    [note?.permissions],
+    () => getParentDirectoryIds(note?.directory_ids),
+    [note?.directory_ids],
   );
 
   const currentParentId = useMemo(
@@ -240,7 +225,9 @@ export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
     return Object.values(directoriesById)
       .filter((directory) => directory.id !== currentParentId)
       .sort((a, b) =>
-        (a.display_name ?? a.name).localeCompare(b.display_name ?? b.name),
+        (a.display_name ?? a.name ?? a.slug ?? a.id).localeCompare(
+          b.display_name ?? b.name ?? b.slug ?? b.id,
+        ),
       );
   }, [directoriesById, currentParentId]);
 

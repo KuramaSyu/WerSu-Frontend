@@ -6,6 +6,7 @@ import { useUsersStore, useUserStore } from "../zustand/userStore";
 import type { GetAcccessTokenResponse } from "./models/auth";
 import { th } from "zod/v4/locales";
 import { apiRegistry, type ApiToken } from "./apiRegistry";
+import { UserError } from "./models/UserError";
 
 export interface BackendApiInterface {}
 export interface UserApiInterface {
@@ -59,21 +60,30 @@ export class UserApi implements UserApiInterface {
   /**
    * tries to authenticate a user by coockie.
    * It sets `useUserStore` to the authenticated user
+   *
+   * Throws a `UserError` with the HTTP status when the request fails
+   * so callers (notably `useUser`'s retry policy) can tell a 404
+   * "definitely not logged in" apart from a transient network error.
    * */
   async fetchUser(): Promise<DiscordUser> {
-    const response = await fetch(`${BACKEND_BASE}/api/auth/user`, {
+    const urlPart = "/api/auth/user";
+    const response = await fetch(`${BACKEND_BASE}${urlPart}`, {
       credentials: "include",
     });
-    var userData: DiscordUser | null = null;
     if (response.ok) {
-      userData = await response.json();
-    }
-    if (userData) {
+      const userData = (await response.json()) as DiscordUser;
       return userData;
-    } else {
-      this.logError(`/api/auth/user`, response.json());
-      throw new Error("Failed to fetch user data");
     }
+    const description = await response.text().catch(() => "");
+    this.logError(urlPart, {
+      status: response.status,
+      body: description,
+    });
+    throw new UserError(
+      "Failed to fetch user",
+      description || response.statusText || "Unknown error",
+      response.status,
+    );
   }
 
   /**

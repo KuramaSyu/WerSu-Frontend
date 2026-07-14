@@ -27,6 +27,7 @@ import type {
 } from "../../api/models/history";
 import { useActivityHistory } from "../../api/queries/historyQueries";
 import { crumble } from "../../utils/stringCrumbler";
+import { markdownPreview } from "../../utils/markdownPreview";
 
 /** Cap on the description preview rendered per history row. */
 const HISTORY_ROW_DESCRIPTION_CAP = 120;
@@ -315,8 +316,13 @@ export const extractNoteMetadata = (
   }
   const title = parsed.note_title ?? "";
   const content = parsed.note_content ?? "";
+  // `content` is raw markdown; strip tables / emphasis before the crumble so
+  // a row preview shows "Name Description Platform", not "Name | Description | Platform".
   const description = content
-    ? (crumble(content, HISTORY_ROW_DESCRIPTION_CAP)[0] ?? "")
+    ? (crumble(
+        markdownPreview(content, { maxLength: HISTORY_ROW_DESCRIPTION_CAP }),
+        HISTORY_ROW_DESCRIPTION_CAP,
+      )[0] ?? "")
     : "";
   return { title, description };
 };

@@ -1,5 +1,6 @@
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { getUserApi } from "../UserApi";
+import { UserError } from "../models/UserError";
 import { useAuthStore } from "../../zustand/useAuthStore";
 import {
   DiscordUserImpl,
@@ -12,12 +13,27 @@ import {
 // lets us add share-token support later without touching call sites.
 const userApi = getUserApi();
 
+const USER_FETCH_RETRY_LIMIT = 3;
+
 /**
- * Hook to fetch the current user with discord login authentication
- * @returns
+ * `react-query` retry predicate. Returns `false` to skip further
+ * retries for a given error.
+ */
+const shouldRetryFetchUser = (
+  failureCount: number,
+  error: unknown,
+): boolean => {
+  if (error instanceof UserError && error.status === 404) {
+    return false;
+  }
+  return failureCount < USER_FETCH_RETRY_LIMIT;
+};
+
+/**
+ * Hook to fetch the current user with discord login authentication.
  */
 export function useUser(): UseQueryResult<DiscordUserImpl, Error> {
-  return useQuery({
+  return useQuery<DiscordUser, Error, DiscordUserImpl>({
     queryKey: ["user"],
     queryFn: async () => {
       return await userApi.fetchUser();
@@ -25,7 +41,7 @@ export function useUser(): UseQueryResult<DiscordUserImpl, Error> {
 
     // the cached entry is plain JSON -> recreate class
     select: (data) => new DiscordUserImpl(data),
-    retry: 3,
+    retry: shouldRetryFetchUser,
   });
 }
 

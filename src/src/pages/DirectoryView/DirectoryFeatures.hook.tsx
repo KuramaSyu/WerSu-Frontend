@@ -77,7 +77,7 @@ const buildNotesByDirectory = (
     if (note.title === "README.md") {
       return;
     }
-    const parentIds = getNoteParentDirectoryIds(note.permissions);
+    const parentIds = getNoteParentDirectoryIds(note.directory_ids);
     const targetDirs = parentIds.length === 0 ? ["root"] : parentIds;
     targetDirs.forEach((dir) => {
       if (!dict[dir]) {
@@ -161,10 +161,11 @@ export function useDirectoryFeatures(
   );
   const notesDirectoryId =
     currentNode.getId() === "root" ? undefined : currentNode.getId();
-  const { data: directoryNotes } = useDirectoryNotesQuery(
+  const { data: directoryNotesReply } = useDirectoryNotesQuery(
     notesDirectoryId,
     directoryNotesQuery,
   );
+  const directoryNotes = directoryNotesReply?.notes;
 
   // Breadcrumb path for the current node.
   const path = useMemo(

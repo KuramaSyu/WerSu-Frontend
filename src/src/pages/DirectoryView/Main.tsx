@@ -8,6 +8,8 @@ import { DirectoryItem } from "./DirectoryItem";
 import { useDirectoryFeatures } from "./DirectoryFeatures.hook";
 import { CreateNote } from "../MainPage/CreateNote";
 import { M3, M4 } from "../../statics";
+import { DirectoryHirarchyItem } from "../../models/HirarchyItem";
+import { ChapterAccordion } from "./ChapterAccordion";
 
 /**
  * Renders the directory view UI, including breadcrumb navigation, child
@@ -27,7 +29,6 @@ export const DirectoryView: React.FC = () => {
     currentNode,
     path,
     childDirectories,
-    notesByDirectory,
     notesInDirectory,
     title,
     navigate,
@@ -71,16 +72,24 @@ export const DirectoryView: React.FC = () => {
                 {childDirectories.length > 0 && (
                   <Stack spacing={1.5}>
                     {childDirectories.map((child, index) => (
-                      <DirectoryItem
+                      <ChapterAccordion
                         key={child.getId()}
-                        variant="directory"
                         index={index}
-                        name={child.getName()}
-                        directoryId={child.getId()}
-                        pageCount={
-                          (notesByDirectory[child.getId()] ?? []).length
+                        directory={
+                          child instanceof DirectoryHirarchyItem
+                            ? child.getDirectory()
+                            : {
+                                id: child.getId(),
+                                name: child.getName(),
+                                display_name: child.getName(),
+                                parent_dir_ids: child.getParent()
+                                  ? [child.getParent()!]
+                                  : [],
+                                child_dir_ids: [],
+                                child_note_ids: [],
+                              }
                         }
-                        onClick={() => navigate(`/d/${child.getId()}`)}
+                        onNavigate={navigate}
                       />
                     ))}
                   </Stack>
