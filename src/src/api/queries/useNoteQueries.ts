@@ -358,16 +358,40 @@ export function useMoveNote() {
       });
 
       const previous = queryClient.getQueryData<Note>(["notes", noteId]);
+      const previousParentId = previous?.directory_ids?.[0];
       queryClient.setQueryData(["notes", noteId], (note: Note | undefined) => {
         if (!note) {
           return note;
         }
 
-        return updateNoteParentDirectory(previous!, directoryId);
+        return updateNoteParentDirectory(note, directoryId);
       });
+
+      return { previousParentId };
     },
 
-    onSettled: (_, __, variables) => {
+    onSettled: (_, __, variables, context) => {
+      // get valid and used directories
+      const directoryIds: string[] = [];
+      for (const directoryId of [
+        context?.previousParentId,
+        variables.directoryId,
+      ]) {
+        if (!directoryId) continue;
+
+        if (directoryIds.includes(directoryId)) {
+          continue;
+        }
+        directoryIds.push(directoryId);
+      }
+
+      // invalidate their cache
+      for (const directoryId of directoryIds) {
+        queryClient.removeQueries({
+          queryKey: ["directory", "notes", directoryId],
+        });
+      }
+
       // invalidate default view
       queryClient.invalidateQueries({
         queryKey: ["notes"],
