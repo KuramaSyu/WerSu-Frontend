@@ -109,7 +109,7 @@ export class ActivityApi implements IActivityApi {
    */
   async getNoteActivity(
     noteId: string,
-    limit = 10,
+    limit = 30,
     offset = 0,
   ): Promise<NoteVersionSummaryReply[]> {
     const url = new URL(`${BACKEND_BASE}/api/notes/${noteId}/versions`);

@@ -1,8 +1,10 @@
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
+import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import type { SettingsCategory } from "./types";
 import { BookstackImportSection } from "./BookstackImportSection";
 import { CacheSection } from "./CacheSection";
+import { AdministrationSection } from "./AdministrationSection";
 
 /**
  * Add new categories here; both the left rail and the right-column
@@ -10,6 +12,12 @@ import { CacheSection } from "./CacheSection";
  * automatically.
  */
 export const settingsCategories: SettingsCategory[] = [
+  {
+    id: "administration",
+    label: "Administration",
+    icon: <AdminPanelSettingsIcon />,
+    settingsContent: <AdministrationSection />,
+  },
   {
     id: "bookstack-import",
     label: "BookStack Import",
