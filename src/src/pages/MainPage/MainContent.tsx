@@ -69,7 +69,7 @@ export const MainContent: React.FC = () => {
 
     const moved = await new NoteApi().patchDirectory(
       noteId,
-      normalizedDirectoryId,
+      normalizedDirectoryId ?? [],
     );
     if (!moved) {
       setMessage(new SnackbarUpdateImpl("Failed to move note", "error"));
