@@ -45,6 +45,7 @@ export const LoginPage: React.FC = () => {
   return (
     <Box
       sx={{
+        position: "relative",
         width: "100%",
         height: `calc(100vh - ${M3} - ${M4} - ${M5})`, // appshell does not set a height
         display: "flex",
@@ -61,7 +62,7 @@ export const LoginPage: React.FC = () => {
           top: 0,
           left: 0,
           width: "100%",
-          height: "100%",
+          height: `calc(100vh - ${M3} - ${M4} - ${M5})`,
           zIndex: 1,
         }}
       >

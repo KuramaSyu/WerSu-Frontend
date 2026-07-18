@@ -110,7 +110,7 @@ export const AppShell: React.FC = () => {
             <Box
               sx={{
                 width: "100%",
-                height: "140vh",
+                height: "20vh",
                 background: theme.palette.background.default,
               }}
             ></Box>
