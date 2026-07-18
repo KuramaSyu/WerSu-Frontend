@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { Box, Fade } from "@mui/material";
 import { LoginPage } from "../LoginPage/Main";
@@ -9,7 +9,7 @@ import { useLoadingStore } from "../../zustand/loadingStore";
 import type { Note } from "../../api/models/search";
 import TopBar from "../../components/TopBar";
 import { NoteEditor } from "./Editor";
-import { NoteSidePanel } from "./NoteSidePanel";
+import { NoteSidePanel } from "./panel/Main";
 import {
   useNote,
   useUpdateNote,
@@ -30,6 +30,13 @@ export const NotePage: React.FC = () => {
   const { data: note } = useNote(id);
   const { mutateAsync: mutateNote } = useUpdateNote();
 
+  // without this ref, adding a new dir and removing it
+  // would not work.
+  const noteRef = useRef<Note | undefined>(note);
+  useEffect(() => {
+    noteRef.current = note;
+  }, [note]);
+
   const sameStringArray = (left: string[], right: string[]) =>
     left.length === right.length &&
     left.every((value, index) => value === right[index]);
@@ -41,13 +48,14 @@ export const NotePage: React.FC = () => {
       }
 
       const patch: UpdateNoteVariables = { noteId: id };
-      const currentDirectoryIds = note?.directory_ids ?? [];
-      const currentTagIds = note?.tag_ids ?? [];
+      const currentNote = noteRef.current;
+      const currentDirectoryIds = currentNote?.directory_ids ?? [];
+      const currentTagIds = currentNote?.tag_ids ?? [];
 
-      if (note?.title !== nextNote.title) {
+      if (currentNote?.title !== nextNote.title) {
         patch.title = nextNote.title;
       }
-      if (note?.content !== nextNote.content) {
+      if (currentNote?.content !== nextNote.content) {
         patch.content = nextNote.content;
       }
       if (!sameStringArray(currentDirectoryIds, nextNote.directory_ids)) {
@@ -63,7 +71,7 @@ export const NotePage: React.FC = () => {
 
       await mutateNote(patch);
     },
-    [id, mutateNote, note],
+    [id, mutateNote],
   );
   const { setLeftPanel, leftPanelOpen } = useLayout();
 
@@ -93,12 +101,7 @@ export const NotePage: React.FC = () => {
         }}
         unmountOnExit
       >
-        <Box
-          sx={{
-            position: "absolute",
-            inset: 0,
-          }}
-        >
+        <Box>
           <NoteEditorSkeleton showSourceEditor={false} />
         </Box>
       </Fade>
@@ -112,8 +115,6 @@ export const NotePage: React.FC = () => {
       >
         <Box
           sx={{
-            position: "absolute",
-            inset: 0,
             display: "flex",
             flexDirection: "row",
             height: "100%",

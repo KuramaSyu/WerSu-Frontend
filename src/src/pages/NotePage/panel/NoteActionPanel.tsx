@@ -9,12 +9,12 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 
-interface ParentDirectoryPath {
+export interface ParentDirectoryPath {
   id: string;
   label: string;
 }
 
-interface PermissionSection {
+export interface PermissionSection {
   label: string;
   users: string[];
 }
@@ -31,11 +31,16 @@ interface NoteActionPanelProps {
   canRemoveParent: boolean;
 }
 
+/**
+ * Metadata block for the note side panel: last-edited timestamp, parent
+ * directory chips (with remove + add), and (commented out) permission
+ * sections. Renders nothing visually meaningful while `isLoading` is
+ * true.
+ */
 export const NoteActionPanel: React.FC<NoteActionPanelProps> = ({
   isLoading,
   lastEditedLabel,
   parentDirectories,
-  permissionSections,
   onNavigateToDirectory,
   onChangeParentClick,
   canChangeParent,
@@ -116,39 +121,6 @@ export const NoteActionPanel: React.FC<NoteActionPanelProps> = ({
               </ListItem>
             </List>
           </Stack>
-
-          {/* <Stack spacing={0.5}>
-            <Typography variant="caption" color="textSecondary">
-              Permissions
-            </Typography>
-            {permissionSections.length === 0 ? (
-              <Typography variant="body2" color="textSecondary">
-                No explicit user permissions.
-              </Typography>
-            ) : (
-              <Stack spacing={1}>
-                {permissionSections.map((section) => (
-                  <Stack key={section.label} spacing={0.5}>
-                    <Typography variant="body2">{section.label}</Typography>
-                    <Stack
-                      direction="row"
-                      spacing={0.5}
-                      sx={{ flexWrap: "wrap" }}
-                    >
-                      {section.users.map((user) => (
-                        <Chip
-                          key={`${section.label}-${user}`}
-                          label={user}
-                          size="small"
-                          variant="outlined"
-                        />
-                      ))}
-                    </Stack>
-                  </Stack>
-                ))}
-              </Stack>
-            )}
-          </Stack> */}
         </Stack>
       )}
     </Stack>

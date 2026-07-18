@@ -1,58 +1,25 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  type Dispatch,
-  type SetStateAction,
-} from "react";
-import {
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Divider,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Select,
-  Stack,
-  Typography,
-} from "@mui/material";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Divider, Stack } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import { Note, type NoteData } from "../../api/models/search";
-import { useDirectoriesQuery } from "../../api/queries/directoryQueries";
-import type { ListDirectoriesQuery } from "../../api/DirectoryApi";
-import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
-import { useDirectoryStore } from "../../zustand/useDirectoryStore";
-import { useUsersStore } from "../../zustand/userStore";
+import { Note, type NoteData } from "../../../api/models/search";
+import { useDirectoriesQuery } from "../../../api/queries/directoryQueries";
+import type { ListDirectoriesQuery } from "../../../api/DirectoryApi";
+import useInfoStore, { SnackbarUpdateImpl } from "../../../zustand/InfoStore";
 import {
   DirectoryHierarchyBuilder,
   type HirarchyItem,
-} from "../../models/HirarchyItem";
-import { LeftPanel } from "../MainPage/LeftPanel";
-import { NoteActionPanel } from "./NoteActionPanel";
-import { AttachmentApi } from "../../api/AttachmentApi";
-import type { AttachmentMetadata } from "../../api/models/attachment";
-import { AttachmentPanelSection } from "./AttachmentPanelSection";
-import { VersionInfo } from "./VersionInfo";
-import { useUser, useUsers } from "../../api/queries/useUser";
-import { useEditorSettings } from "../../zustand/useEditorSettings";
-import { useLiveUsers } from "../../zustand/useLiveUsersStore";
-import { useNote } from "../../api/queries/useNoteQueries";
-
-const ROOT_PARENT_ID = "root";
-
-interface ParentDirectoryPath {
-  id: string;
-  label: string;
-}
-
-interface PermissionSection {
-  label: string;
-  users: string[];
-}
+} from "../../../models/HirarchyItem";
+import { LeftPanel } from "../../MainPage/LeftPanel";
+import { AttachmentPanelSection } from "../AttachmentPanelSection";
+import { VersionInfo } from "../VersionInfo";
+import { useNote } from "../../../api/queries/useNoteQueries";
+import {
+  NoteActionPanel,
+  type ParentDirectoryPath,
+  type PermissionSection,
+} from "./NoteActionPanel";
+import { ManageParentsDialog } from "./ManageParentsDialog";
+import { ROOT_PARENT_ID } from "./DirectorySelect";
 
 interface NoteSidePanelProps {
   note?: Note;
@@ -100,17 +67,6 @@ const findPathById = (root: HirarchyItem, id: string): HirarchyItem[] => {
 };
 
 /**
- * Normalizes permission relation labels for display.
- */
-const normalizePermissionRelation = (relation: string): string => {
-  const normalized = relation.replace(/_/g, " ").trim();
-  if (!normalized) {
-    return "Unknown";
-  }
-  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
-};
-
-/**
  * Extracts unique parent directory ids from `note.directory_ids`.
  */
 const getParentDirectoryIds = (directoryIds?: string[]): string[] => {
@@ -120,32 +76,12 @@ const getParentDirectoryIds = (directoryIds?: string[]): string[] => {
   return [...new Set(directoryIds)];
 };
 
+const EMPTY_PERMISSION_SECTIONS: PermissionSection[] = [];
+
 /**
- * NoteSidePanel component that displays note metadata and management options in a side panel.
- *
- * Provides functionality to:
- * - Display note information including last edited timestamp, parent directories, and user permissions
- * - View recent activity related to the note
- * - Change the parent directory of the note through a dialog interface
- *
- * @component
- * @param {NoteSidePanelProps} props - The component props
- * @param {Note} props.note - The note object containing metadata and permissions
- * @param {string} props.noteId - The unique identifier of the note
- * @param {(note: Note) => void} props.onNoteUpdated - Callback invoked when the note is updated
- *
- * @returns {React.ReactElement} The rendered NoteSidePanel component with metadata display and move dialog
- *
- * @example
- * ```tsx
- * <NoteSidePanel
- *   note={note}
- *   noteId="123"
- *   open={true}
- *   setOpen={setOpen}
- *   onNoteUpdated={handleNoteUpdated}
- * />
- * ```
+ * Side-panel orchestrator for the note page. Composes the metadata
+ * block, attachments section, version timeline, and the dialog used to
+ * add/remove parent directories.
  */
 export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
   noteId,
@@ -154,9 +90,6 @@ export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
   const { data: note } = useNote(noteId);
   const navigate = useNavigate();
   const { setMessage } = useInfoStore();
-
-  // for version indicators
-  const { data: user } = useUser();
 
   const [isUpdatingParent, setIsUpdatingParent] = useState(false);
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
@@ -230,7 +163,15 @@ export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
         (a.display_name ?? a.name ?? a.slug ?? a.id).localeCompare(
           b.display_name ?? b.name ?? b.slug ?? b.id,
         ),
-      );
+      )
+      .map((directory) => ({
+        id: directory.id,
+        label:
+          directory.display_name ??
+          directory.name ??
+          directory.slug ??
+          directory.id,
+      }));
   }, [directoriesById, parentDirectoryIds]);
 
   const handleUpdateParentDirectories = async () => {
@@ -281,6 +222,19 @@ export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
         return;
       }
 
+      // The note must always have at least one parent directory.
+      if (parentDirectoryIds.length <= 1) {
+        setMessage(
+          new SnackbarUpdateImpl(
+            "Cannot remove the only parent directory",
+            "error",
+            undefined,
+            "A note must have at least one directory",
+          ),
+        );
+        return;
+      }
+
       try {
         const updatedNote = new Note({
           ...note,
@@ -310,7 +264,7 @@ export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
             isLoading={!note}
             lastEditedLabel={formatTimestamp(note?.updated_at)}
             parentDirectories={parentDirectoryPaths}
-            permissionSections={[]}
+            permissionSections={EMPTY_PERMISSION_SECTIONS}
             onNavigateToDirectory={(directoryId) =>
               navigate(`/d/${directoryId}`)
             }
@@ -330,62 +284,16 @@ export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
         </Stack>
       </LeftPanel>
 
-      <Dialog
+      <ManageParentsDialog
         open={moveDialogOpen}
-        onClose={() => setMoveDialogOpen(false)}
-        fullWidth
-        maxWidth="xs"
-      >
-        <DialogTitle>Manage parent directories</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ pt: 1 }}>
-            <Typography variant="body2" color="textSecondary">
-              Pick a directory to add it as an additional parent, or choose Root
-              to remove the note from all parents.
-            </Typography>
-            <FormControl fullWidth>
-              <InputLabel id="note-parent-label">Parent</InputLabel>
-              <Select
-                labelId="note-parent-label"
-                label="Parent"
-                value={selectedParentId}
-                onChange={(event) =>
-                  setSelectedParentId(String(event.target.value))
-                }
-              >
-                <MenuItem value={ROOT_PARENT_ID}>Root (no parent)</MenuItem>
-                {selectableDirectories.map((directory) => (
-                  <MenuItem key={directory.id} value={directory.id}>
-                    {directory.display_name ?? directory.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button variant="outlined" onClick={() => setMoveDialogOpen(false)}>
-            Cancel
-          </Button>
-          <Button
-            variant="contained"
-            onClick={() => void handleUpdateParentDirectories()}
-            disabled={
-              !note ||
-              isUpdatingParent ||
-              parentDirectoryIds.includes(selectedParentId) ||
-              (selectedParentId === ROOT_PARENT_ID &&
-                parentDirectoryIds.length === 0)
-            }
-          >
-            {isUpdatingParent
-              ? "Updating..."
-              : selectedParentId === ROOT_PARENT_ID
-                ? "Move to Root"
-                : "Add"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        isUpdating={isUpdatingParent}
+        selectedParentId={selectedParentId}
+        parentDirectoryIds={parentDirectoryIds}
+        selectableDirectories={selectableDirectories}
+        onChangeSelectedParent={setSelectedParentId}
+        onConfirm={() => void handleUpdateParentDirectories()}
+        onCancel={() => setMoveDialogOpen(false)}
+      />
     </>
   );
 };
