@@ -101,7 +101,12 @@ export const NotePage: React.FC = () => {
         }}
         unmountOnExit
       >
-        <Box>
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+          }}
+        >
           <NoteEditorSkeleton showSourceEditor={false} />
         </Box>
       </Fade>
