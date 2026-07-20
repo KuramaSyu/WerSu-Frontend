@@ -29,7 +29,7 @@ import DragHandle from "@tiptap/extension-drag-handle-react";
 import StarterKit from "@tiptap/starter-kit";
 import Collaboration from "@tiptap/extension-collaboration";
 import { CollaborationCaret } from "@tiptap/extension-collaboration-caret";
-import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
+import { CustomCodeBlock } from "../../components/Editor/View/CustomCodeBlock";
 import { all, createLowlight } from "lowlight";
 import { TaskItem, TaskList } from "@tiptap/extension-list";
 import { Youtube } from "@tiptap/extension-youtube";
@@ -219,7 +219,7 @@ export const NoteEditorCore: React.FC<NoteEditorCoreProps> = ({
             color: randomMatchingColor(theme),
           },
         }),
-        CodeBlockLowlight.configure({ lowlight }),
+        CustomCodeBlock.configure({ lowlight }),
         TaskList,
         TaskItem.configure({ nested: true }),
         Youtube.configure({ inline: false, width: 480, height: 320 }),
@@ -250,15 +250,19 @@ export const NoteEditorCore: React.FC<NoteEditorCoreProps> = ({
                 latexCode: node.attrs.latex,
                 initialLatexType: "block",
                 onClose: (newCalculation, inline, compressed) => {
-                  const chain = editor.chain().setNodeSelection(pos);
+                  try {
+                    const chain = editor.chain().setNodeSelection(pos);
 
-                  if (inline === "block") {
-                    chain.updateBlockMath({ latex: newCalculation });
-                  } else {
-                    chain.deleteBlockMath();
-                    chain.insertInlineMath({ latex: newCalculation });
+                    if (inline === "block") {
+                      chain.updateBlockMath({ latex: newCalculation });
+                    } else {
+                      chain.deleteBlockMath();
+                      chain.insertInlineMath({ latex: newCalculation });
+                    }
+                    chain.focus().run();
+                  } catch (error) {
+                    console.error("Failed to update block math", error);
                   }
-                  chain.focus().run();
 
                   setLatexDialogProps(getLatexDialogProps());
                 },
@@ -279,15 +283,19 @@ export const NoteEditorCore: React.FC<NoteEditorCoreProps> = ({
                 latexCode: node.attrs.latex,
                 initialLatexType: "inline",
                 onClose: (newCalculation, inline, compressed) => {
-                  const chain = editor.chain().setNodeSelection(pos);
+                  try {
+                    const chain = editor.chain().setNodeSelection(pos);
 
-                  if (inline === "inline") {
-                    chain.updateInlineMath({ latex: newCalculation });
-                  } else {
-                    chain.deleteInlineMath();
-                    chain.insertBlockMath({ latex: newCalculation });
+                    if (inline === "inline") {
+                      chain.updateInlineMath({ latex: newCalculation });
+                    } else {
+                      chain.deleteInlineMath();
+                      chain.insertBlockMath({ latex: newCalculation });
+                    }
+                    chain.focus().run();
+                  } catch (error) {
+                    console.error("Failed to update inline math", error);
                   }
-                  chain.focus().run();
                   setLatexDialogProps(getLatexDialogProps());
                 },
               });
