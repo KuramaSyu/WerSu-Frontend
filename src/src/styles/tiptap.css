@@ -17,6 +17,12 @@
   border-top: 2px solid color-mix(in srgb, currentColor 65%, transparent);
 }
 
+/* remove codeblock borders */
+.tiptap [data-node-view-content-react] {
+  border: 0 !important;
+  outline: 0 !important;
+}
+
 .tiptap table {
   width: 100%;
   table-layout: fixed;
