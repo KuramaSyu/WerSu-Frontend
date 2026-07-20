@@ -9,13 +9,20 @@ export const CodeBlockThemer = styled(Box)(({ theme }) => ({
     },
 
     pre: {
-      background: theme.palette.background.paper,
-      borderRadius: "0.5rem",
-      color: theme.palette.text.primary,
-      fontFamily: `'JetBrainsMono', monospace`,
-      margin: "1.5rem 0",
-      padding: "0.75rem 1rem",
-      overflowX: "auto",
+      // Static code-block fallback (no React node view).
+      // Node-view code blocks have `[data-node-view-content]` and
+      // style their own wrapper, so this rule is intentionally
+      // scoped to non-node-view `<pre>` to avoid the
+      // double-padding/border of both layers adding up.
+      "&:not([data-node-view-content])": {
+        background: theme.palette.background.paper,
+        borderRadius: "0.5rem",
+        color: theme.palette.text.primary,
+        fontFamily: `'JetBrainsMono', monospace`,
+        margin: "1.5rem 0",
+        padding: "0.75rem 1rem",
+        overflowX: "auto",
+      },
 
       code: {
         background: "none",
