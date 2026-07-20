@@ -16,8 +16,6 @@ import {
 } from "@mui/material";
 import ShareIcon from "@mui/icons-material/Share";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import EventIcon from "@mui/icons-material/Event";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import EditIcon from "@mui/icons-material/Edit";
@@ -25,7 +23,7 @@ import HelpIcon from "@mui/icons-material/Help";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
 import { M1, M2 } from "../../statics";
-import { MicroInteractionButton } from "../../components/MicroInteractionButton";
+import { CopyButton } from "../../components/CopyButton";
 import { formatDistanceToNowStrict } from "date-fns";
 import type { NoteShareReply } from "../../api/models/sharing";
 
@@ -336,19 +334,15 @@ export const ShareCard: React.FC<ShareCardProps> = ({
             >
               {shareUrl}
             </Typography>
-            <MicroInteractionButton
+            <CopyButton
               size="small"
               aria-label="copy share url"
-              disabled={!shareUrl}
-              icon={<ContentCopyIcon fontSize="small" />}
-              microInteraction={
-                <CheckCircleIcon fontSize="small" color="success" />
-              }
-              microDurationMs={Math.PI * 1000}
-              onTrigger={() => {
-                if (shareUrl && navigator.clipboard) {
-                  return navigator.clipboard.writeText(shareUrl);
-                }
+              text={shareUrl}
+              showToast={false}
+              onCopy={async (value) => {
+                if (!value || !navigator.clipboard) return false;
+                await navigator.clipboard.writeText(value);
+                return true;
               }}
             />
           </Stack>
