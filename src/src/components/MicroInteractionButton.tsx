@@ -27,7 +27,7 @@ import { useThemeStore } from "../zustand/useThemeStore";
  */
 export interface MicroInteractionButtonProps extends Omit<
   IconButtonProps,
-  "onClick"
+  "onClick" | "onCopy"
 > {
   icon: React.ReactNode;
   microInteraction: React.ReactNode;
