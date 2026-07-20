@@ -30,14 +30,7 @@ const NESTED_ACCENT_COLOR = "#3B7CC2";
 
 /**
  * Renders a chapter directory as a MUI Accordion.
- *
- * Clicking the chapter row (anywhere outside the expand chevron) opens the
- * chapter at `/d/:id`. Clicking the expand chevron toggles the body, which
- * lazily fetches child directories and notes the first time it expands.
- *
- * The expanded body uses the same row components as the top-level view so
- * nested chapters render as their own accordions and notes as the same
- * note row.
+ * The Accordion can get expanded and it can also be clicked to navigate to the chapter page.
  */
 export const ChapterAccordion: React.FC<ChapterAccordionProps> = ({
   directory,
@@ -90,23 +83,20 @@ export const ChapterAccordion: React.FC<ChapterAccordionProps> = ({
       <AccordionSummary
         expandIcon={<ExpandMoreIcon />}
         onClick={(e) => {
-          // Click on the expand chevron (or its enlarged hit area):
-          // always extend AND redirect. Setting `expanded` to true explicitly
-          // keeps the body open if the user clicks the chevron a second time
-          // while it's already expanded - the default AccordionSummary toggle
-          // would otherwise flip it back to collapsed.
+          // Click on the expand chevron (or its enlarged hit area): expand/collapse the accordion
+          // Click the body: navigate to the chapter.
           const target = e.target as HTMLElement;
           if (target.closest(".MuiAccordionSummary-expandIconWrapper")) {
-            setExpanded(true);
+            setExpanded(!expanded);
+            return;
           }
+          // Click anywhere else on the row navigates to the chapter.
           handleOpenChapter();
         }}
         slotProps={{
           expandIconWrapper: {
-            // Enlarge the click target around the chevron. The padding
-            // extends the hit area on all sides; the negative right margin
-            // compensates so the icon visually stays near the summary's
-            // right edge.
+            // Enlarge the click target around the chevron, so
+            // that it's easier to click
             sx: {
               p: 1.5,
               ml: 1,
