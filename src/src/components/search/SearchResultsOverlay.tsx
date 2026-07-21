@@ -131,7 +131,7 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
   }, [open, onClose, searchQuery]);
   // debouce search input to prevent lags while typings
   useEffect(() => {
-    if (!searchActive || searchQuery === "") {
+    if (searchQuery === "") {
       setDebouncedSearchText(searchQuery);
       return;
     }
