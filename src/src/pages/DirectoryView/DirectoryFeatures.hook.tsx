@@ -11,6 +11,7 @@ import {
 import { useDirectoryStore } from "../../zustand/useDirectoryStore";
 import {
   DirectoryHierarchyBuilder,
+  DirectoryHirarchyItem,
   type HirarchyItem,
 } from "../../models/HirarchyItem";
 import type { MinimalNote } from "../../api/models/search";
@@ -90,17 +91,47 @@ const buildNotesByDirectory = (
   return dict;
 };
 
+/**
+ * Pre-computed summary of what will be removed when deleting
+ * `currentNode`. Walking the subtree lets the confirmation dialog
+ * warn about cascade impact the user would otherwise be surprised by.
+ */
+export interface CascadePreview {
+  /**
+   * Notes that live directly inside the directory being deleted.
+   * Already excludes the README per `buildNotesByDirectory`.
+   */
+  directNotes: MinimalNote[];
+  /** All descendant directories of the one being deleted. */
+  subdirectories: HirarchyItem[];
+  /** Per-descendant-directory note count (README already excluded). */
+  notesPerSubdirectory: Record<string, number>;
+  /** Convenience: `subdirectories.length`. */
+  totalSubdirectories: number;
+  /** Convenience: total notes lost across this dir + every descendant. */
+  totalNotes: number;
+}
+
 export interface DirectoryFeatures {
   currentNode: HirarchyItem;
   path: HirarchyItem[];
   childDirectories: HirarchyItem[];
   notesByDirectory: Record<string, MinimalNote[]>;
   notesInDirectory: MinimalNote[];
+  /** Cascade-impact summary for the delete dialog. */
+  cascadePreview: CascadePreview;
   title: string;
   handleCreateNote: () => void;
   handleCreateSubdirectory: () => void;
   handleRenameDirectory: () => void;
-  handleDeleteDirectory: () => void;
+  /**
+   * Deletes the current directory via the REST API, drops it from
+   * the in-memory store, and invalidates the cached directory queries
+   * so other pages re-fetch. Returns `true` on success and `false`
+   * on failure. The caller is responsible for navigating away on
+   * success and for surfacing the error to the user.
+   */
+  handleDeleteDirectory: () => Promise<boolean>;
   navigate: ReturnType<typeof useNavigate>;
 }
 
@@ -187,8 +218,49 @@ export function useDirectoryFeatures(
 
   const childDirectories = currentNode.getChildren();
   // Directory-scoped fetch wins; fall back to the latest-notes grouping while loading or on the root.
-  const notesInDirectory =
-    directoryNotes ?? notesByDirectory[currentNode.getId()] ?? [];
+  // Memoized so the cascade-preview derivation below has a stable
+  // identity across renders when the directory-scoped fetch is loading.
+  const notesInDirectory = useMemo<MinimalNote[]>(
+    () => directoryNotes ?? notesByDirectory[currentNode.getId()] ?? [],
+    [directoryNotes, notesByDirectory, currentNode],
+  );
+
+  // Cascade-impact summary for the delete confirmation dialog.
+  // Walking the full subtree (not just direct children) is what
+  // catches the "I thought it was just one folder" surprise: deleting
+  // a directory cascades to every nested directory + every note that
+  // lives anywhere inside the tree.
+  const cascadePreview = useMemo<CascadePreview>(() => {
+    const subdirectories: HirarchyItem[] = [];
+    const notesPerSubdirectory: Record<string, number> = {};
+
+    const walk = (node: HirarchyItem) => {
+      for (const child of node.getChildren()) {
+        if (child instanceof DirectoryHirarchyItem) {
+          subdirectories.push(child);
+          notesPerSubdirectory[child.getId()] =
+            notesByDirectory[child.getId()]?.length ?? 0;
+          walk(child);
+        }
+      }
+    };
+    walk(currentNode);
+
+    const totalNotes =
+      notesInDirectory.length +
+      subdirectories.reduce(
+        (acc, d) => acc + (notesPerSubdirectory[d.getId()] ?? 0),
+        0,
+      );
+
+    return {
+      directNotes: notesInDirectory,
+      subdirectories,
+      notesPerSubdirectory,
+      totalSubdirectories: subdirectories.length,
+      totalNotes,
+    };
+  }, [currentNode, notesByDirectory, notesInDirectory]);
 
   const title =
     currentNode.getId() === "root" ? "Directory View" : currentNode.getName();
@@ -233,30 +305,31 @@ export function useDirectoryFeatures(
 
   /**
    * Deletes the current directory via the REST API, drops it from
-   * the in-memory store, invalidates the cached directory queries
-   * so other pages re-fetch, and navigates the user back home.
-   * No-op for the synthetic root node.
+   * the in-memory store, and invalidates the cached directory queries
+   * so other pages re-fetch. Returns `true` on success and `false`
+   * on failure so the caller (e.g. the confirmation dialog) can
+   * decide how to react. No-op for the synthetic root node.
    */
-  const handleDeleteDirectory = async () => {
+  const handleDeleteDirectory = async (): Promise<boolean> => {
     const targetId = currentNode.getId();
     if (targetId === "root") {
       setMessage(
         new SnackbarUpdateImpl("Root directory cannot be deleted", "info"),
       );
-      return;
+      return false;
     }
 
     const deleted = await new DirectoryApi().delete(targetId);
     if (!deleted) {
       setMessage(new SnackbarUpdateImpl("Failed to delete directory", "error"));
-      return;
+      return false;
     }
 
     removeDirectory(targetId);
     queryClient.invalidateQueries({ queryKey: ["directories"] });
     queryClient.invalidateQueries({ queryKey: ["directory", targetId] });
     setMessage(new SnackbarUpdateImpl("Directory deleted", "success"));
-    navigate("/");
+    return true;
   };
 
   // Mount the title-level directory actions in the right panel while this
@@ -270,6 +343,7 @@ export function useDirectoryFeatures(
   useRightPanel(
     <DirectoryRightPanel
       currentNode={currentNode}
+      cascadePreview={cascadePreview}
       handleCreateNote={handleCreateNote}
       handleCreateSubdirectory={handleCreateSubdirectory}
       handleRenameDirectory={handleRenameDirectory}
@@ -284,6 +358,7 @@ export function useDirectoryFeatures(
     childDirectories,
     notesByDirectory,
     notesInDirectory,
+    cascadePreview,
     title,
     handleCreateNote,
     handleCreateSubdirectory,
