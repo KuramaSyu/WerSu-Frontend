@@ -90,6 +90,13 @@ export function buildGraphData(
 /**
  * Performs an undirected BFS from `rootId` for `depth` hops and
  * returns the set of reached node ids (including the root).
+ *
+ * Tolerates `source`/`target` being either string ids (the shape
+ * `buildGraphData` produces) or node-object references (the shape
+ * `react-force-graph-2d` mutates the input links into at runtime).
+ * Without the coercion, the BFS would silently key the adjacency
+ * map by object references and never find any neighbors — so local
+ * mode would render only the focal node regardless of `depth`.
  */
 export function getNodesWithinDepth(
   rootId: string | null,
@@ -100,13 +107,22 @@ export function getNodesWithinDepth(
     return new Set();
   }
 
+  const linkEndpointId = (endpoint: GraphLink["source"]): string => {
+    if (typeof endpoint === "string") return endpoint;
+    if (typeof endpoint === "number") return String(endpoint);
+    return (endpoint as { id?: string }).id ?? "";
+  };
+
   const adjacency = new Map<string, string[]>();
   const connect = (a: string, b: string): void => {
     const list = adjacency.get(a) ?? [];
     list.push(b);
     adjacency.set(a, list);
   };
-  for (const { source, target } of links) {
+  for (const link of links) {
+    const source = linkEndpointId(link.source);
+    const target = linkEndpointId(link.target);
+    if (!source || !target) continue;
     connect(source, target);
     connect(target, source);
   }

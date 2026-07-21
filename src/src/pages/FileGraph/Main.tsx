@@ -25,6 +25,11 @@ import {
   updateNoteParentLink,
 } from "../../utils/fileGraphUtils";
 import { GraphToolsPanel, type GraphMode } from "./components/GraphToolsPanel";
+import {
+  useLeftPanel,
+  usePanelSize,
+  useRightPanel,
+} from "../../LayoutProvider";
 
 const directoryApi = new DirectoryApi();
 const searchNotesApi = new SearchNotesApi();
@@ -51,7 +56,7 @@ export function FileGraphPage(): React.ReactElement {
 
   // Local-vs-global state.
   const [mode, setMode] = useState<GraphMode>("global");
-  const [depth, setDepth] = useState(2);
+  const [depth, setDepth] = useState(5);
 
   // Status line shown after link mutations.
   const [linkStatus, setLinkStatus] = useState<string | null>(null);
@@ -103,16 +108,76 @@ export function FileGraphPage(): React.ReactElement {
     [directories, notes],
   );
 
-  // Visible-node set: all (global) or BFS-reachable (local).
-  const visibleNodeIds = useMemo(() => {
-    if (mode === "global") {
-      return new Set(graphData.nodes.map((n) => n.id));
+  // Subgraph actually rendered by the canvas. In global mode this is the
+  // full graph; in local mode we precompute the BFS-reachable node set
+  // and strip every node + edge outside of it from the payload. Doing
+  // the filter at the data level (rather than dimming at the canvas
+  // level) means hidden links are not painted at all, so local mode no
+  // longer leaves bare edges floating between dimmed nodes.
+  //
+  // `getNodesWithinDepth` does an undirected BFS, so depth expands
+  // outward in BOTH directions from the focal node: parents (notes /
+  // directories that point at the focal node) and children (nodes the
+  // focal node points at) are all included.
+  //
+  // Both the BFS and the link filter below tolerate `source`/`target`
+  // being either string ids or node-object references. force-graph
+  // mutates the input links in place during init, so by the time the
+  // user clicks a node the original string ids may already be gone.
+  const linkEndpointId = (endpoint: GraphLink["source"]): string => {
+    if (typeof endpoint === "string") return endpoint;
+    if (typeof endpoint === "number") return String(endpoint);
+    return (endpoint as { id?: string }).id ?? "";
+  };
+  const displayedGraphData = useMemo(() => {
+    if (mode === "global" || !selectedNodeId) {
+      return graphData;
     }
-    if (!selectedNodeId) {
-      return new Set(graphData.nodes.map((n) => n.id));
-    }
-    return getNodesWithinDepth(selectedNodeId, graphData.links, depth);
+    const ids = getNodesWithinDepth(selectedNodeId, graphData.links, depth);
+    return {
+      nodes: graphData.nodes.filter((n) => ids.has(n.id)),
+      links: graphData.links.filter((link) => {
+        const source = linkEndpointId(link.source);
+        const target = linkEndpointId(link.target);
+        return source !== "" && ids.has(source) && ids.has(target);
+      }),
+    };
   }, [mode, depth, selectedNodeId, graphData]);
+
+  // Re-anchor trigger key. We want the canvas to recenter whenever:
+  //
+  // - the user toggled into local mode AND has a selection,
+  // - the user moved the depth slider,
+  // - the user toggled out of local mode (back to the global view).
+  //
+  // We deliberately do NOT re-anchor on bare selection-clicks in local
+  // mode (too jumpy) — the button in the canvas's top-right corner is
+  // the manual escape hatch.
+  //
+  // `modeBump` is incremented by `setModeWithAnchor` so a single
+  // render sees both the new mode and a fresh bump count. Reading
+  // `modeBump` during render is fine because it's plain state (not a
+  // ref); the setter just wraps the user-provided transition with the
+  // bump increment.
+  const [modeBump, setModeBump] = useState(0);
+  const setModeWithAnchor = (next: GraphMode): void => {
+    setMode(next);
+    setModeBump((bump) => bump + 1);
+  };
+  const focusKey = `${mode}:${depth}:${modeBump}`;
+
+  // Visible-node set is the union of every node in the displayed payload
+  // — i.e. the canvas treats them all as equally visible, so no dimming
+  // is applied on top of the data filter above.
+  const visibleNodeIds = useMemo(
+    () => new Set(displayedGraphData.nodes.map((n) => n.id)),
+    [displayedGraphData],
+  );
+
+  // Local mode without a selection still renders the full graph so the
+  // user can pick a focal node. The tip is rendered as a floating
+  // overlay on top of the canvas rather than replacing it.
+  const showLocalTip = mode === "local" && !selectedNodeId;
 
   // Selected node + outgoing edges (used by the details panel).
   const selectedNode: GraphNode | undefined = useMemo(
@@ -276,6 +341,60 @@ export function FileGraphPage(): React.ReactElement {
     [graphData.nodes],
   );
 
+  // Right panel owns the tools + details cards; the left rail is empty
+  // for this view. Width pinned to 320px to match the original layout.
+  // Deps re-push the panel whenever any piece of state that the cards
+  // read changes, so the closures inside the panel handlers stay fresh.
+  useLeftPanel(null);
+  usePanelSize({ right: "21rem" });
+  useRightPanel(
+    <Stack spacing={2} sx={{ width: "100%", flexShrink: 0, height: "100%" }}>
+      <Box
+        sx={{
+          borderRadius: 4,
+          border: `1px solid ${theme.palette.divider}`,
+          backgroundColor: theme.palette.background.paper,
+          p: 2,
+        }}
+      >
+        <GraphToolsPanel
+          mode={mode}
+          onModeChange={setModeWithAnchor}
+          depth={depth}
+          onDepthChange={setDepth}
+          linkStatus={linkStatus}
+        />
+      </Box>
+      <GraphDetailsPanel
+        selectedNode={selectedNode}
+        selectedNote={selectedNote}
+        selectedDirectory={selectedDirectory}
+        isDetailsLoading={isDetailsLoading}
+        outgoingLinks={outgoingLinks}
+        directories={directoryNodes}
+        isMutating={isMutating}
+        onAddParent={(id) => {
+          void handleAddParent(id);
+        }}
+        onRemoveLink={(link) => {
+          void handleRemoveLink(link);
+        }}
+        onOpen={handleOpenNode}
+      />
+    </Stack>,
+    [
+      graphData,
+      selectedNodeId,
+      selectedNote,
+      selectedDirectory,
+      isDetailsLoading,
+      isMutating,
+      mode,
+      depth,
+      linkStatus,
+    ],
+  );
+
   return (
     <Box
       sx={{
@@ -338,50 +457,52 @@ export function FileGraphPage(): React.ReactElement {
             <Typography>No directories or notes yet.</Typography>
           </Stack>
         ) : (
-          <GraphCanvas
-            theme={theme}
-            data={graphData}
-            visibleNodeIds={visibleNodeIds}
-            selectedNodeId={selectedNodeId}
-            onSelectNode={(node) => {
-              void handleSelectNode(node);
-            }}
-          />
-        )}
-        <Stack spacing={2} sx={{ width: 320, flexShrink: 0, minHeight: 0 }}>
           <Box
             sx={{
-              borderRadius: 4,
-              border: `1px solid ${theme.palette.divider}`,
-              backgroundColor: theme.palette.background.paper,
-              p: 2,
+              position: "relative",
+              flex: 1,
+              minHeight: 0,
+              minWidth: 0,
             }}
           >
-            <GraphToolsPanel
-              mode={mode}
-              onModeChange={setMode}
-              depth={depth}
-              onDepthChange={setDepth}
-              linkStatus={linkStatus}
+            <GraphCanvas
+              theme={theme}
+              data={displayedGraphData}
+              visibleNodeIds={visibleNodeIds}
+              selectedNodeId={selectedNodeId}
+              focusKey={focusKey}
+              onSelectNode={(node) => {
+                void handleSelectNode(node);
+              }}
             />
+            {showLocalTip && (
+              <Stack
+                spacing={0.5}
+                sx={{
+                  position: "absolute",
+                  inset: 0,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  pointerEvents: "none",
+                }}
+              >
+                <Typography
+                  sx={{
+                    px: 2,
+                    py: 1,
+                    borderRadius: 2,
+                    backgroundColor: "background.paper",
+                    border: 1,
+                    borderColor: "divider",
+                    boxShadow: 1,
+                  }}
+                >
+                  Local mode — click a node to focus the local view.
+                </Typography>
+              </Stack>
+            )}
           </Box>
-          <GraphDetailsPanel
-            selectedNode={selectedNode}
-            selectedNote={selectedNote}
-            selectedDirectory={selectedDirectory}
-            isDetailsLoading={isDetailsLoading}
-            outgoingLinks={outgoingLinks}
-            directories={directoryNodes}
-            isMutating={isMutating}
-            onAddParent={(id) => {
-              void handleAddParent(id);
-            }}
-            onRemoveLink={(link) => {
-              void handleRemoveLink(link);
-            }}
-            onOpen={handleOpenNode}
-          />
-        </Stack>
+        )}
       </Box>
     </Box>
   );
