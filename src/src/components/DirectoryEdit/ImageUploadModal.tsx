@@ -48,6 +48,21 @@ export interface ImageUploadModalProps {
    * `readmeNoteId` state so subsequent uploads don't re-create.
    */
   getReadmeNoteId: () => Promise<string | null>;
+  /**
+   * When `true`, the modal skips its own upload step: the user picks a
+   * file, sees a preview, and the modal calls `onFilePicked(file)`
+   * instead of calling `AttachmentApi.createAttachment` itself. The
+   * caller is responsible for the actual upload + linking. Used by the
+   * `CreateSubdirectory` flow, which has to defer the upload until the
+   * directory exists.
+   */
+  deferUpload?: boolean;
+  /**
+   * Invoked with the picked file when `deferUpload` is `true`. The
+   * modal still calls this even if the user re-picks a file, so the
+   * caller can hold only the most recent selection.
+   */
+  onFilePicked?: (file: File) => void;
   attachmentsApi?: IAttachmentApi;
 }
 
@@ -74,6 +89,8 @@ export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
   readmeContent,
   currentImageUrl,
   getReadmeNoteId,
+  deferUpload,
+  onFilePicked,
   attachmentsApi,
 }) => {
   const api = attachmentsApi ?? new AttachmentApi();
@@ -146,6 +163,14 @@ export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
 
   const handleUpload = async () => {
     if (!selectedFile) {
+      return;
+    }
+    // Deferred-upload mode: hand the file back to the caller and let
+    // them drive the actual upload + README linking. The caller is
+    // expected to close the modal on success.
+    if (deferUpload) {
+      onFilePicked?.(selectedFile);
+      onClose();
       return;
     }
     setUploading(true);
@@ -369,7 +394,7 @@ export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
           disabled={!selectedFile || uploading}
           onClick={() => void handleUpload()}
         >
-          Upload
+          {deferUpload ? "Select" : "Upload"}
         </Button>
       </DialogActions>
     </Dialog>

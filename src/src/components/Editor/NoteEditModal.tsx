@@ -52,7 +52,7 @@ import "../../styles/tiptap.css";
 import { TableWithControls } from "./TableControlls/TableControlls";
 
 // codeblock extension + all languages
-import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
+import { CustomCodeBlock } from "./View/CustomCodeBlock";
 import { all, createLowlight } from "lowlight";
 
 const lowlight = createLowlight(all);
@@ -151,7 +151,7 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ codeBlock: false, dropcursor: {} }),
-      CodeBlockLowlight.configure({ lowlight }),
+      CustomCodeBlock.configure({ lowlight }),
       // Details,
       // DetailsSummary,
       // DetailsContent,

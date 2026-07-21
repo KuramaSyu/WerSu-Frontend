@@ -17,6 +17,7 @@ import InfoDisplay from "./pages/MainPage/InfoDisplay";
 import { NotePage } from "./pages/NotePage/Main";
 import { DirectoryView } from "./pages/DirectoryView/Main";
 import { DirectoryEditPage } from "./pages/DirectoryEdit/Main";
+import { CreateSubdirectoryPage } from "./pages/DirectoryCreate/Main";
 import { FileGraphPage } from "./pages/FileGraph/Main";
 import { recordNavigation } from "./utils/navigationMemento";
 import { Bootstrap } from "./Bootstrap";
@@ -79,6 +80,7 @@ function App() {
                 <Route path="/n/:id" element={<NotePage />} />
                 <Route path="/d/:id" element={<DirectoryView />} />
                 <Route path="/d/:id/edit" element={<DirectoryEditPage />} />
+                <Route path="/d/:id/new" element={<CreateSubdirectoryPage />} />
                 <Route path="/graph" element={<FileGraphPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route

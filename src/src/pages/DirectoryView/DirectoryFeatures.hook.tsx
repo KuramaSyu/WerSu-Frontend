@@ -98,6 +98,7 @@ export interface DirectoryFeatures {
   notesInDirectory: MinimalNote[];
   title: string;
   handleCreateNote: () => void;
+  handleCreateSubdirectory: () => void;
   handleRenameDirectory: () => void;
   handleDeleteDirectory: () => void;
   navigate: ReturnType<typeof useNavigate>;
@@ -118,7 +119,7 @@ export function useDirectoryFeatures(
   const { id } = useParams();
   const navigate = useNavigate();
   const directoryId = id ?? "root";
-  const { directoriesById, setDirectories, removeDirectory } =
+  const { directoriesById, setDirectories, upsertDirectory, removeDirectory } =
     useDirectoryStore();
   const { data: notes } = useLatestNotes();
   const { setMessage } = useInfoStore();
@@ -130,7 +131,12 @@ export function useDirectoryFeatures(
 
   // Stable query object so the directory list fetch is memoized across rerenders.
   const directoryListQuery = useMemo<ListDirectoriesQuery>(
-    () => ({ limit: 500, offset: 0 }),
+    () => ({
+      limit: 500,
+      offset: 0,
+      include_child_dirs: true,
+      include_child_notes: true,
+    }),
     [],
   );
 
@@ -203,6 +209,15 @@ export function useDirectoryFeatures(
   };
 
   /**
+   * Opens the dedicated `CreateSubdirectory` page, pre-scoped to the
+   * current directory via the `:id` route param. The page handles the
+   * form, validation, and the actual `POST /api/directories` call.
+   */
+  const handleCreateSubdirectory = (): void => {
+    navigate(`/d/${currentNode.getId()}/new`);
+  };
+
+  /**
    * Sends the user to the full directory edit page.
    */
   const handleRenameDirectory = () => {
@@ -245,14 +260,22 @@ export function useDirectoryFeatures(
   };
 
   // Mount the title-level directory actions in the right panel while this
-  // view is active. The hook clears the panel on unmount.
+  // view is active. We pass `[currentNode]` as the dep array so the
+  // panel re-pushes into the context once the directory store hydrates
+  // and the resolved node transitions from the synthetic root
+  // fallback to the real directory. Without the dep, the panel
+  // would mount once on the first render (with the loading-time
+  // fallback) and never refresh — leaving every `disabled={isRoot}`
+  // button grayed out on a hard reload of `/d/:id`.
   useRightPanel(
     <DirectoryRightPanel
       currentNode={currentNode}
       handleCreateNote={handleCreateNote}
+      handleCreateSubdirectory={handleCreateSubdirectory}
       handleRenameDirectory={handleRenameDirectory}
       handleDeleteDirectory={handleDeleteDirectory}
     />,
+    [currentNode],
   );
 
   return {
@@ -263,6 +286,7 @@ export function useDirectoryFeatures(
     notesInDirectory,
     title,
     handleCreateNote,
+    handleCreateSubdirectory,
     handleRenameDirectory,
     handleDeleteDirectory,
     navigate,

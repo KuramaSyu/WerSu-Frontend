@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
 import CreateIcon from "@mui/icons-material/Create";
+import CreateNewFolderIcon from "@mui/icons-material/CreateNewFolder";
 import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -15,6 +16,7 @@ import { useParams } from "react-router-dom";
 export interface DirectoryRightPanelProps {
   currentNode: HirarchyItem;
   handleCreateNote: () => void;
+  handleCreateSubdirectory: () => void;
   handleRenameDirectory: () => void;
   handleDeleteDirectory: () => void;
 }
@@ -25,6 +27,7 @@ export interface DirectoryRightPanelProps {
 export const DirectoryRightPanel: React.FC<DirectoryRightPanelProps> = ({
   currentNode,
   handleCreateNote,
+  handleCreateSubdirectory,
   handleRenameDirectory,
   handleDeleteDirectory,
 }) => {
@@ -47,6 +50,12 @@ export const DirectoryRightPanel: React.FC<DirectoryRightPanelProps> = ({
             onClick={handleRenameDirectory}
           >
             Edit directory
+          </PanelButtons.Secondary>
+          <PanelButtons.Secondary
+            startIcon={<CreateNewFolderIcon />}
+            onClick={handleCreateSubdirectory}
+          >
+            Create subdirectory
           </PanelButtons.Secondary>
           <PanelButtons.Primary
             startIcon={<CreateIcon />}

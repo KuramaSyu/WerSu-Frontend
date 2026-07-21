@@ -34,7 +34,12 @@ export const DirectoryView: React.FC = () => {
     navigate,
   } = useDirectoryFeatures({ onOpenCreateNote: () => setCreateNoteOpen(true) });
 
-  useLeftPanel(<DirectoryLeftPanel currentNode={currentNode} />);
+  console.log("DirectoryView: childDirectories", childDirectories);
+  // Same dep-array rationale as `useRightPanel` in the features hook:
+  // the left panel reads `currentNode` for the recent-activity target
+  // and the description fetch, so re-push on node changes once the
+  // store hydrates from the loading fallback.
+  useLeftPanel(<DirectoryLeftPanel currentNode={currentNode} />, [currentNode]);
 
   return (
     <Paper
