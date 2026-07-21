@@ -7,6 +7,7 @@ import type {
 import type { NotesReply } from "./models/search";
 import { ShareTokenBearerMixin } from "./shareToken";
 import { apiRegistry, type ApiToken } from "./apiRegistry";
+import { UserError } from "./models/UserError";
 
 const DIRECTORIES_API_PATH = "/api/directories";
 
@@ -143,7 +144,11 @@ export class DirectoryApi
         urlPart,
         `Response not ok: ${response.status}; ${response.statusText}`,
       );
-      return undefined;
+      throw new UserError(
+        "Failed to load directory",
+        response.statusText || "Unknown error",
+        response.status,
+      );
     }
 
     const directory = await response.json().catch((e) => {

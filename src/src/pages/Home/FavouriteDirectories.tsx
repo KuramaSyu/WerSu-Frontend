@@ -42,7 +42,6 @@ export const FavouriteDirectories: React.FC<FavouriteDirectoriesProps> = ({
   }, [favouriteIds]);
 
   const { theme } = useThemeStore();
-  console.log("favouriteIds", favouriteIds);
 
   if (filteredFavouriteIds.length === 0) {
     return (
