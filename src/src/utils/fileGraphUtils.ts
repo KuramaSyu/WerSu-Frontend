@@ -1,28 +1,44 @@
 import type { DirectoryReply } from "../api/models/directory";
-import type { MinimalNote } from "../api/models/search";
-import type { GraphEdge, GraphNode } from "../pages/FileGraph/types";
+import type {
+  MinimalDirectory,
+  MinimalNote,
+  MinimalTag,
+} from "../api/models/search";
 
-export interface GraphViewport {
-  width: number;
-  height: number;
+/** A node in the force graph. Coordinates are assigned by the physics sim. */
+export interface GraphNode {
+  /** Backend object id. */
+  id: string;
+  /** Label shown for the node. */
+  label: string;
+  /** Node kind used for styling and navigation. */
+  type: "directory" | "note";
+  /** Optional tag ids assigned to a note (drives coloring). */
+  tags?: string[];
 }
 
-/**
- * Returns every parent directory id declared by the note.
- *
- * The backend exposes parents directly as `directory_ids` (replacing
- * the older `parent` / `parent_directory` permission relationships).
- */
+/** A directed edge between two nodes. */
+export interface GraphLink {
+  /** Source node id. */
+  source: string;
+  /** Target node id. */
+  target: string;
+  /** Edge kind used for styling. */
+  type: "directory" | "note";
+}
+
+/** The graph payload consumed by `react-force-graph-2d`. */
+export interface GraphData {
+  nodes: GraphNode[];
+  links: GraphLink[];
+}
+
+/** Returns the unique parent directory ids declared by a note. */
 export function getNoteParentDirectoryIds(directoryIds?: string[]): string[] {
-  if (!directoryIds) {
-    return [];
-  }
-  return [...new Set(directoryIds)];
+  return [...new Set(directoryIds ?? [])];
 }
 
-/**
- * Builds a human-readable directory label with display name fallback.
- */
+/** Returns a human-readable directory label. */
 export function getDirectoryLabel(directory: DirectoryReply): string {
   return (
     directory.display_name?.trim() || directory.name || "Untitled Directory"
@@ -30,113 +46,122 @@ export function getDirectoryLabel(directory: DirectoryReply): string {
 }
 
 /**
- * Produces a radial layout for directories/notes and returns nodes + edges.
+ * Builds the graph payload for the force renderer.
+ * Coordinates are intentionally omitted — the physics sim assigns them.
  */
-export function buildGraphLayout(
+export function buildGraphData(
   directories: DirectoryReply[],
   notes: MinimalNote[],
-  viewport: GraphViewport,
-): { nodes: Map<string, GraphNode>; edges: GraphEdge[] } {
-  const width = viewport.width || 1;
-  const height = viewport.height || 1;
-  const centerX = width / 2;
-  const centerY = height / 2;
-
-  const sortedDirectories = [...directories].sort((a, b) =>
-    getDirectoryLabel(a).localeCompare(getDirectoryLabel(b)),
-  );
-  const sortedNotes = [...notes].sort((a, b) => a.title.localeCompare(b.title));
-
-  const dirCount = Math.max(sortedDirectories.length, 1);
-  const noteCount = Math.max(sortedNotes.length, 1);
-
-  const baseRadius = Math.min(width, height);
-  const directoryRing = baseRadius * 0.28;
-  const noteRing = baseRadius * 0.42;
-
-  const nodeMap = new Map<string, GraphNode>();
-
-  sortedDirectories.forEach((directory, index) => {
-    const angle = (2 * Math.PI * index) / dirCount - Math.PI / 2;
-    const x = centerX + Math.cos(angle) * directoryRing;
-    const y = centerY + Math.sin(angle) * directoryRing;
-    nodeMap.set(directory.id, {
+): GraphData {
+  const nodes: GraphNode[] = [
+    ...directories.map((directory) => ({
       id: directory.id,
       label: getDirectoryLabel(directory),
-      type: "directory",
-      x,
-      y,
-      radius: 18,
-    });
-  });
-
-  sortedNotes.forEach((note, index) => {
-    const angle = (2 * Math.PI * index) / noteCount - Math.PI / 2;
-    const x = centerX + Math.cos(angle) * noteRing;
-    const y = centerY + Math.sin(angle) * noteRing;
-    nodeMap.set(note.id, {
+      type: "directory" as const,
+    })),
+    ...notes.map((note) => ({
       id: note.id,
       label: note.title || "Untitled Note",
-      type: "note",
-      x,
-      y,
-      radius: 13,
-    });
-  });
+      type: "note" as const,
+      tags: note.tag_ids ?? [],
+    })),
+  ];
 
-  const edgesList: GraphEdge[] = [];
+  const links: GraphLink[] = [
+    ...directories.flatMap((directory) =>
+      (directory.parent_dir_ids ?? []).map((parentId) => ({
+        source: parentId,
+        target: directory.id,
+        type: "directory" as const,
+      })),
+    ),
+    ...notes.flatMap((note) =>
+      (note.directory_ids ?? []).map((parentId) => ({
+        source: parentId,
+        target: note.id,
+        type: "note" as const,
+      })),
+    ),
+  ];
 
-  sortedDirectories.forEach((directory) => {
-    for (const parentId of directory.parent_dir_ids ?? []) {
-      edgesList.push({
-        id: `dir-${parentId}-${directory.id}`,
-        sourceId: parentId,
-        targetId: directory.id,
-        type: "directory",
-      });
-    }
-  });
-
-  sortedNotes.forEach((note) => {
-    const parents = getNoteParentDirectoryIds(note.directory_ids);
-    parents.forEach((parentId) => {
-      edgesList.push({
-        id: `note-${parentId}-${note.id}`,
-        sourceId: parentId,
-        targetId: note.id,
-        type: "note",
-      });
-    });
-  });
-
-  return { nodes: nodeMap, edges: edgesList };
+  return { nodes, links };
 }
 
 /**
- * Returns the set of node ids directly connected to the selected node.
+ * Performs an undirected BFS from `rootId` for `depth` hops and
+ * returns the set of reached node ids (including the root).
  */
+export function getNodesWithinDepth(
+  rootId: string | null,
+  links: GraphLink[],
+  depth: number,
+): Set<string> {
+  if (!rootId || depth <= 0) {
+    return new Set();
+  }
+
+  const adjacency = new Map<string, string[]>();
+  const connect = (a: string, b: string): void => {
+    const list = adjacency.get(a) ?? [];
+    list.push(b);
+    adjacency.set(a, list);
+  };
+  for (const { source, target } of links) {
+    connect(source, target);
+    connect(target, source);
+  }
+
+  const visited = new Set<string>([rootId]);
+  let frontier = [rootId];
+  for (let hop = 0; hop < depth && frontier.length > 0; hop++) {
+    const next: string[] = [];
+    for (const id of frontier) {
+      for (const neighbor of adjacency.get(id) ?? []) {
+        if (!visited.has(neighbor)) {
+          visited.add(neighbor);
+          next.push(neighbor);
+        }
+      }
+    }
+    frontier = next;
+  }
+  return visited;
+}
+
+/** Finds the set of node ids directly connected to `selectedNodeId`. */
 export function getConnectedNodeIds(
   selectedNodeId: string | null,
-  edges: GraphEdge[],
+  links: GraphLink[],
 ): Set<string> | null {
   if (!selectedNodeId) {
     return null;
   }
   const connected = new Set<string>([selectedNodeId]);
-  edges.forEach((edge) => {
-    if (edge.sourceId === selectedNodeId) {
-      connected.add(edge.targetId);
+  for (const { source, target } of links) {
+    if (source === selectedNodeId) {
+      connected.add(target);
     }
-    if (edge.targetId === selectedNodeId) {
-      connected.add(edge.sourceId);
+    if (target === selectedNodeId) {
+      connected.add(source);
     }
-  });
+  }
   return connected;
 }
 
-/**
- * Adds a parent directory id to a note, if missing.
- */
+/** Returns the link connecting two nodes (in either direction) or undefined. */
+export function findLink(
+  links: GraphLink[],
+  sourceId: string,
+  targetId: string,
+): GraphLink | undefined {
+  return links.find(
+    (link) =>
+      (link.source === sourceId && link.target === targetId) ||
+      (link.source === targetId && link.target === sourceId),
+  );
+}
+
+/** Adds a parent directory id to a note if missing. */
 export function updateNoteParentLink(
   note: MinimalNote,
   parentDirectoryId: string,
@@ -145,16 +170,13 @@ export function updateNoteParentLink(
   if (currentIds.includes(parentDirectoryId)) {
     return note;
   }
-
   return {
     ...note,
     directory_ids: [...currentIds, parentDirectoryId],
   };
 }
 
-/**
- * Removes a specific parent directory id from a note.
- */
+/** Removes a parent directory id from a note. */
 export function removeNoteParentLink(
   note: MinimalNote,
   parentDirectoryId: string,
@@ -162,6 +184,53 @@ export function removeNoteParentLink(
   const nextIds = (note.directory_ids ?? []).filter(
     (id) => id !== parentDirectoryId,
   );
-
   return { ...note, directory_ids: nextIds };
+}
+
+/** A small, deterministic palette indexed by tag id. */
+const TAG_PALETTE = [
+  "#6366f1", // indigo
+  "#ec4899", // pink
+  "#f59e0b", // amber
+  "#10b981", // emerald
+  "#06b6d4", // cyan
+  "#8b5cf6", // violet
+  "#ef4444", // red
+  "#84cc16", // lime
+];
+
+/** Returns a stable color for a tag id. */
+export function tagColor(tagId: string): string {
+  let hash = 0;
+  for (let i = 0; i < tagId.length; i++) {
+    hash = (hash * 31 + tagId.charCodeAt(i)) | 0;
+  }
+  return TAG_PALETTE[Math.abs(hash) % TAG_PALETTE.length];
+}
+
+/** Returns a color for the note based on its first tag id. */
+export function noteColor(node: GraphNode, fallback: string): string {
+  const firstTag = node.tags?.[0];
+  return firstTag ? tagColor(firstTag) : fallback;
+}
+
+/** Builds a directory label map from a search/NotesReply payload. */
+export function buildDirectoryLabels(
+  directories: MinimalDirectory[],
+): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const directory of directories) {
+    map[directory.id] =
+      directory.display_name?.trim() || directory.slug || directory.id;
+  }
+  return map;
+}
+
+/** Builds a tag label map from a search/NotesReply payload. */
+export function buildTagLabels(tags: MinimalTag[]): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const tag of tags) {
+    map[tag.id] = tag.display_name?.trim() || tag.slug || tag.id;
+  }
+  return map;
 }

@@ -1,6 +1,5 @@
 import { Box, CircularProgress, Stack, Typography } from "@mui/material";
-import type React from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import TopBar from "../../components/TopBar";
 import { DirectoryApi } from "../../api/DirectoryApi";
@@ -17,18 +16,20 @@ import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { M1, M2 } from "../../statics";
 import { GraphCanvas } from "./components/GraphCanvas";
 import { GraphDetailsPanel } from "./components/GraphDetailsPanel";
-import { GraphToolsPanel } from "./components/GraphToolsPanel";
-import type { GraphEdge, GraphNode } from "./types";
 import {
-  buildGraphLayout,
-  getConnectedNodeIds,
+  type GraphLink,
+  type GraphNode,
+  buildGraphData,
+  getNodesWithinDepth,
   removeNoteParentLink,
   updateNoteParentLink,
 } from "../../utils/fileGraphUtils";
+import { GraphToolsPanel, type GraphMode } from "./components/GraphToolsPanel";
 
 const directoryApi = new DirectoryApi();
 const searchNotesApi = new SearchNotesApi();
 const noteApi = new NoteApi();
+
 /**
  * Renders the Obsidian-style file graph page.
  */
@@ -36,81 +37,25 @@ export function FileGraphPage(): React.ReactElement {
   const { theme } = useThemeStore();
   const { setMessage } = useInfoStore();
   const navigate = useNavigate();
-  const [container, setContainer] = useState<HTMLDivElement | null>(null);
-  // Holds the container element so we can observe size changes.
-  const [viewport, setViewport] = useState({ width: 0, height: 0 });
-  // Viewport size drives the radial graph layout.
+
   const [directories, setDirectories] = useState<DirectoryReply[]>([]);
-  // Cached directories for rendering and parent changes.
   const [notes, setNotes] = useState<MinimalNote[]>([]);
-  // Cached notes so the graph can show note nodes and parents.
   const [isLoading, setIsLoading] = useState(true);
-  // Tracks overall loading state for initial graph data.
   const [error, setError] = useState<string | null>(null);
-  // Displays top-level load errors.
+
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  // Selected node drives details panel + connected highlight.
-  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
-  // Selected edge drives delete UI in the details panel.
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
-  // Loaded note content when a note node is selected.
   const [selectedDirectory, setSelectedDirectory] =
-    // Loaded directory info when a directory node is selected.
     useState<DirectoryReply | null>(null);
-  useState<DirectoryReply | null>(null);
-  // Avoids showing stale content while details are loading.
   const [isDetailsLoading, setIsDetailsLoading] = useState(false);
-  // Draw mode enables link creation via drag gesture.
-  const [drawMode, setDrawMode] = useState(false);
-  // Source node id for an in-progress draw action.
-  const [linkingFromId, setLinkingFromId] = useState<string | null>(null);
-  // Pointer position while drawing a link.
-  const [linkPointer, setLinkPointer] = useState<{
-    x: number;
-    y: number;
-  } | null>(null);
-  // UI status for link create/delete operations.
+
+  // Local-vs-global state.
+  const [mode, setMode] = useState<GraphMode>("global");
+  const [depth, setDepth] = useState(2);
+
+  // Status line shown after link mutations.
   const [linkStatus, setLinkStatus] = useState<string | null>(null);
-  // Zoom controls for the SVG viewport.
-  const [zoom, setZoom] = useState(1);
-  // Pan offset for the SVG viewport.
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
-  // SVG ref is used for pointer capture and coordinate transforms.
-  const svgRef = useRef<SVGSVGElement | null>(null);
-  // Drag state is stored in a ref to avoid re-render on each move.
-  const dragStateRef = useRef<{
-    isDragging: boolean;
-    startX: number;
-    startY: number;
-    originX: number;
-    originY: number;
-  }>({
-    isDragging: false,
-    startX: 0,
-    startY: 0,
-    originX: 0,
-    originY: 0,
-  });
-
-  // Keeps the layout in sync with the container size.
-  useEffect(() => {
-    if (!container) {
-      return;
-    }
-
-    const element = container;
-
-    function update(): void {
-      const rect = element.getBoundingClientRect();
-      setViewport({ width: rect.width, height: rect.height });
-    }
-
-    update();
-    const observer = new ResizeObserver(() => update());
-    observer.observe(element);
-
-    return () => observer.disconnect();
-  }, [container]);
+  const [isMutating, setIsMutating] = useState(false);
 
   // Loads directories and notes once when the graph view mounts.
   useEffect(() => {
@@ -152,43 +97,47 @@ export function FileGraphPage(): React.ReactElement {
     };
   }, []);
 
-  // Memoize layout so rendering doesn't rebuild the graph on every state change.
-  const { nodes, edges } = useMemo(() => {
-    return buildGraphLayout(directories, notes, viewport);
-  }, [directories, notes, viewport]);
+  // Graph payload is derived from inputs.
+  const graphData = useMemo(
+    () => buildGraphData(directories, notes),
+    [directories, notes],
+  );
 
-  // Convert the node map to an array for rendering.
-  const nodeList = useMemo(() => {
-    return Array.from(nodes.values());
-  }, [nodes]);
-  const selectedNode = selectedNodeId ? nodes.get(selectedNodeId) : undefined;
-  const selectedEdge = selectedEdgeId
-    ? edges.find((edge) => edge.id === selectedEdgeId)
-    : undefined;
-  const linkingFromNode = linkingFromId ? nodes.get(linkingFromId) : undefined;
+  // Visible-node set: all (global) or BFS-reachable (local).
+  const visibleNodeIds = useMemo(() => {
+    if (mode === "global") {
+      return new Set(graphData.nodes.map((n) => n.id));
+    }
+    if (!selectedNodeId) {
+      return new Set(graphData.nodes.map((n) => n.id));
+    }
+    return getNodesWithinDepth(selectedNodeId, graphData.links, depth);
+  }, [mode, depth, selectedNodeId, graphData]);
 
-  // Memoize connected nodes for grey-out styling.
-  const connectedNodeIds = useMemo(() => {
-    return getConnectedNodeIds(selectedNodeId, edges);
-  }, [edges, selectedNodeId]);
+  // Selected node + outgoing edges (used by the details panel).
+  const selectedNode: GraphNode | undefined = useMemo(
+    () => graphData.nodes.find((n) => n.id === selectedNodeId),
+    [graphData.nodes, selectedNodeId],
+  );
 
-  // Memoize transform string to avoid recalculating in the render tree.
-  const viewportTransform = useMemo(() => {
-    return `translate(${offset.x}, ${offset.y}) scale(${zoom})`;
-  }, [offset.x, offset.y, zoom]);
+  const outgoingLinks: GraphLink[] = useMemo(() => {
+    if (!selectedNodeId) return [];
+    return graphData.links.filter((link) => link.target === selectedNodeId);
+  }, [graphData.links, selectedNodeId]);
 
   /**
-   * Loads node metadata and updates selection state.
+   * Loads the selected node's metadata (note or directory).
    */
-  async function handleNodeClick(node: GraphNode): Promise<void> {
-    setSelectedEdgeId(null);
+  async function handleSelectNode(node: GraphNode): Promise<void> {
     setSelectedNodeId(node.id);
     setSelectedNote(null);
     setSelectedDirectory(null);
+    setLinkStatus(null);
 
     if (node.type === "directory") {
-      const directory = directories.find((item) => item.id === node.id) ?? null;
-      setSelectedDirectory(directory);
+      setSelectedDirectory(
+        directories.find((item) => item.id === node.id) ?? null,
+      );
       return;
     }
 
@@ -205,319 +154,134 @@ export function FileGraphPage(): React.ReactElement {
   }
 
   /**
-   * Converts pointer coordinates into graph space.
+   * Navigates to the directory or note page for the given node.
    */
-  function getSvgPoint(event: React.PointerEvent<SVGSVGElement>): {
-    x: number;
-    y: number;
-  } {
-    const svg = svgRef.current;
-    if (!svg) {
-      return { x: 0, y: 0 };
-    }
-    const rect = svg.getBoundingClientRect();
-    return {
-      x: (event.clientX - rect.left - offset.x) / zoom,
-      y: (event.clientY - rect.top - offset.y) / zoom,
-    };
-  }
-
-  /**
-   * Returns the closest node under a pointer position.
-   */
-  function findHitNode(point: { x: number; y: number }): GraphNode | null {
-    let closest: GraphNode | null = null;
-    let closestDistance = Number.POSITIVE_INFINITY;
-
-    for (const node of nodeList) {
-      const dx = node.x - point.x;
-      const dy = node.y - point.y;
-      const distance = Math.hypot(dx, dy);
-      const hitRadius = node.radius + 8;
-      if (distance <= hitRadius && distance < closestDistance) {
-        closest = node;
-        closestDistance = distance;
-      }
-    }
-
-    return closest;
-  }
-
-  /**
-   * Creates or updates parent relationships based on draw-mode linking.
-   */
-  async function applyLink(parentId: string, target: GraphNode): Promise<void> {
-    setLinkStatus(null);
-
-    if (target.id === parentId) {
-      return;
-    }
-
-    if (target.type === "directory") {
-      const updated = await directoryApi.setParent(target.id, [parentId]);
-      if (!updated) {
-        setLinkStatus("Failed to update directory parent.");
-        return;
-      }
-      setDirectories((prev) =>
-        prev.map((directory) =>
-          directory.id === target.id
-            ? { ...directory, parent_dir_ids: [parentId] }
-            : directory,
-        ),
-      );
-      setLinkStatus("Directory parent updated.");
-      return;
-    }
-
-    try {
-      // Replace the note's parent set with the existing parents
-      // (deduped) plus the new directory id. The backend exposes
-      // parents directly as `directory_ids` on the note, so we no
-      // longer reach for the legacy permissions API.
-      const existingNote = notes.find((note) => note.id === target.id);
-      const previousParents = existingNote?.directory_ids ?? [];
-      const nextParents = Array.from(new Set([...previousParents, parentId]));
-
-      const updated = await noteApi.patchDirectory(target.id, nextParents);
-
-      if (!updated) {
-        setLinkStatus("Failed to add note parent.");
-        setMessage(
-          new SnackbarUpdateImpl(
-            "Note update failed",
-            "error",
-            undefined,
-            "Could not add a new parent directory for this note.",
-          ),
-        );
-        return;
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setLinkStatus("Failed to add note parent.");
-      setMessage(
-        new SnackbarUpdateImpl(
-          "Note update failed",
-          "error",
-          undefined,
-          message,
-        ),
-      );
-      return;
-    }
-
-    setNotes((prev) =>
-      prev.map((note) =>
-        note.id === target.id ? updateNoteParentLink(note, parentId) : note,
-      ),
-    );
-    setLinkStatus("Note parent added.");
-  }
-
-  /**
-   * Removes parent relationships when the user deletes an edge.
-   */
-  async function deleteEdge(edge: GraphEdge): Promise<void> {
-    if (edge.type === "directory") {
-      const updated = await directoryApi.setParent(edge.targetId, null);
-      if (!updated) {
-        setMessage(
-          new SnackbarUpdateImpl(
-            "Delete failed",
-            "error",
-            undefined,
-            "Could not remove the directory parent.",
-          ),
-        );
-        return;
-      }
-      setDirectories((prev) =>
-        prev.map((directory) =>
-          directory.id === edge.targetId
-            ? { ...directory, parent_dir_ids: [] }
-            : directory,
-        ),
-      );
-      setSelectedEdgeId(null);
-      return;
-    }
-
-    try {
-      // Replace the note's parent set with every existing parent
-      // except the edge's source. The backend exposes parents directly
-      // as `directory_ids` on the note, so we no longer reach for the
-      // legacy permissions API.
-      const existingNote = notes.find((note) => note.id === edge.targetId);
-      const previousParents = existingNote?.directory_ids ?? [];
-      const nextParents = previousParents.filter((id) => id !== edge.sourceId);
-
-      const updated = await noteApi.patchDirectory(edge.targetId, nextParents);
-
-      if (!updated) {
-        setMessage(
-          new SnackbarUpdateImpl(
-            "Delete failed",
-            "error",
-            undefined,
-            "Could not remove the note parent directory.",
-          ),
-        );
-        return;
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setMessage(
-        new SnackbarUpdateImpl(
-          "Note update failed",
-          "error",
-          undefined,
-          message,
-        ),
-      );
-      return;
-    }
-
-    setNotes((prev) =>
-      prev.map((note) =>
-        note.id === edge.targetId
-          ? removeNoteParentLink(note, edge.sourceId)
-          : note,
-      ),
-    );
-    setSelectedEdgeId(null);
-  }
-
-  /**
-   * Selects an edge to show delete actions.
-   */
-  function handleEdgeClick(edge: GraphEdge): void {
-    setSelectedEdgeId(edge.id);
-    setSelectedNodeId(null);
-    setSelectedNote(null);
-    setSelectedDirectory(null);
-  }
-
-  /**
-   * Handles mouse-wheel zoom gestures.
-   */
-  function handleWheel(event: React.WheelEvent<SVGSVGElement>): void {
-    event.preventDefault();
-    const direction = event.deltaY > 0 ? -1 : 1;
-    const factor = direction > 0 ? 1.1 : 0.9;
-    setZoom((current) => {
-      const next = Math.min(2.5, Math.max(0.5, current * factor));
-      return Number(next.toFixed(3));
-    });
-  }
-
-  /**
-   * Starts panning when draw mode is disabled.
-   */
-  function handlePointerDown(event: React.PointerEvent<SVGSVGElement>): void {
-    if (drawMode) {
-      return;
-    }
-    if (event.button !== 0) {
-      return;
-    }
-    const state = dragStateRef.current;
-    state.isDragging = true;
-    state.startX = event.clientX;
-    state.startY = event.clientY;
-    state.originX = offset.x;
-    state.originY = offset.y;
-    (event.currentTarget as SVGSVGElement).setPointerCapture(event.pointerId);
-  }
-
-  /**
-   * Updates panning or draw line while the pointer moves.
-   */
-  function handlePointerMove(event: React.PointerEvent<SVGSVGElement>): void {
-    if (drawMode) {
-      if (linkingFromId) {
-        const point = getSvgPoint(event);
-        setLinkPointer(point);
-      }
-      return;
-    }
-    const state = dragStateRef.current;
-    if (!state.isDragging) {
-      return;
-    }
-    const dx = event.clientX - state.startX;
-    const dy = event.clientY - state.startY;
-    setOffset({ x: state.originX + dx, y: state.originY + dy });
-  }
-
-  /**
-   * Completes panning or draw gestures on pointer release.
-   */
-  function handlePointerUp(event: React.PointerEvent<SVGSVGElement>): void {
-    if (drawMode) {
-      if (linkingFromId) {
-        const point = getSvgPoint(event);
-        const target = findHitNode(point);
-        if (target) {
-          void applyLink(linkingFromId, target);
-        }
-      }
-      setLinkingFromId(null);
-      setLinkPointer(null);
-      return;
-    }
-    dragStateRef.current.isDragging = false;
-    (event.currentTarget as SVGSVGElement).releasePointerCapture(
-      event.pointerId,
-    );
-  }
-
-  /**
-   * Starts a draw-mode link from a directory node.
-   */
-  function handleNodePointerDown(
-    event: React.PointerEvent,
-    node: GraphNode,
-  ): void {
-    if (!drawMode) {
-      return;
-    }
-
-    if (node.type !== "directory") {
-      return;
-    }
-
-    event.stopPropagation();
-    setLinkingFromId(node.id);
-    setLinkPointer({ x: node.x, y: node.y });
-
-    if (svgRef.current) {
-      svgRef.current.setPointerCapture(event.pointerId);
-    }
-  }
-
-  /**
-   * Double click navigates to the directory or note page.
-   */
-  function handleNodeDoubleClick(node: GraphNode): void {
+  function handleOpenNode(node: GraphNode): void {
     navigate(node.type === "directory" ? `/d/${node.id}` : `/n/${node.id}`);
   }
 
   /**
-   * Toggles draw mode and clears active draw state.
+   * Adds a parent directory to the currently selected node.
    */
-  function handleToggleDrawMode(): void {
-    setDrawMode((prev) => !prev);
-    setLinkingFromId(null);
-    setLinkPointer(null);
+  async function handleAddParent(directoryId: string): Promise<void> {
+    if (!selectedNode) {
+      return;
+    }
+    setIsMutating(true);
+    setLinkStatus(null);
+    try {
+      if (selectedNode.type === "directory") {
+        const updated = await directoryApi.setParent(selectedNode.id, [
+          directoryId,
+        ]);
+        if (!updated) {
+          setLinkStatus("Failed to update directory parent.");
+          return;
+        }
+        setDirectories((prev) =>
+          prev.map((directory) =>
+            directory.id === selectedNode.id
+              ? { ...directory, parent_dir_ids: [directoryId] }
+              : directory,
+          ),
+        );
+        setLinkStatus("Directory parent updated.");
+        return;
+      }
+
+      const existing = notes.find((n) => n.id === selectedNode.id);
+      const previousParents = existing?.directory_ids ?? [];
+      const nextParents = Array.from(
+        new Set([...previousParents, directoryId]),
+      );
+      const ok = await noteApi.patchDirectory(selectedNode.id, nextParents);
+      if (!ok) {
+        setLinkStatus("Failed to add note parent.");
+        return;
+      }
+      setNotes((prev) =>
+        prev.map((note) =>
+          note.id === selectedNode.id
+            ? updateNoteParentLink(note, directoryId)
+            : note,
+        ),
+      );
+      setLinkStatus("Note parent added.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setLinkStatus(`Failed to add parent: ${message}`);
+      setMessage(
+        new SnackbarUpdateImpl("Update failed", "error", undefined, message),
+      );
+    } finally {
+      setIsMutating(false);
+    }
   }
+
+  /**
+   * Removes a single edge from the graph.
+   */
+  async function handleRemoveLink(link: GraphLink): Promise<void> {
+    setIsMutating(true);
+    setLinkStatus(null);
+    try {
+      // For directory links: edge.target is the directory owning the parent.
+      if (link.type === "directory") {
+        const updated = await directoryApi.setParent(link.target, null);
+        if (!updated) {
+          setLinkStatus("Failed to remove directory parent.");
+          return;
+        }
+        setDirectories((prev) =>
+          prev.map((directory) =>
+            directory.id === link.target
+              ? { ...directory, parent_dir_ids: [] }
+              : directory,
+          ),
+        );
+        setLinkStatus("Directory parent removed.");
+        return;
+      }
+
+      const existing = notes.find((n) => n.id === link.target);
+      const previousParents = existing?.directory_ids ?? [];
+      const nextParents = previousParents.filter((id) => id !== link.source);
+      const ok = await noteApi.patchDirectory(link.target, nextParents);
+      if (!ok) {
+        setLinkStatus("Failed to remove note parent.");
+        return;
+      }
+      setNotes((prev) =>
+        prev.map((note) =>
+          note.id === link.target
+            ? removeNoteParentLink(note, link.source)
+            : note,
+        ),
+      );
+      setLinkStatus("Note parent removed.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setLinkStatus(`Failed to remove link: ${message}`);
+      setMessage(
+        new SnackbarUpdateImpl("Update failed", "error", undefined, message),
+      );
+    } finally {
+      setIsMutating(false);
+    }
+  }
+
+  // Directory nodes (used by the picker in the details panel).
+  const directoryNodes = useMemo(
+    () => graphData.nodes.filter((n) => n.type === "directory"),
+    [graphData.nodes],
+  );
 
   return (
     <Box
       sx={{
         display: "flex",
         flexDirection: "column",
-        height: "100%",
+        height: "100dvh",
         overflow: "hidden",
         paddingTop: M1,
       }}
@@ -530,6 +294,7 @@ export function FileGraphPage(): React.ReactElement {
           gap: M2,
           mt: M2,
           overflow: "hidden",
+          minHeight: 0,
         }}
       >
         {isLoading ? (
@@ -560,7 +325,7 @@ export function FileGraphPage(): React.ReactElement {
               Check your connection and try again.
             </Typography>
           </Stack>
-        ) : nodeList.length === 0 ? (
+        ) : graphData.nodes.length === 0 ? (
           <Stack
             spacing={1}
             sx={{
@@ -574,31 +339,16 @@ export function FileGraphPage(): React.ReactElement {
           </Stack>
         ) : (
           <GraphCanvas
-            containerRef={setContainer}
-            svgRef={svgRef}
             theme={theme}
-            nodes={nodes}
-            nodeList={nodeList}
-            edges={edges}
-            connectedNodeIds={connectedNodeIds}
+            data={graphData}
+            visibleNodeIds={visibleNodeIds}
             selectedNodeId={selectedNodeId}
-            selectedEdgeId={selectedEdgeId}
-            drawMode={drawMode}
-            linkingFromNode={linkingFromNode}
-            linkPointer={linkPointer}
-            isPanning={dragStateRef.current.isDragging}
-            viewportTransform={viewportTransform}
-            onWheel={handleWheel}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onNodePointerDown={handleNodePointerDown}
-            onNodeClick={handleNodeClick}
-            onNodeDoubleClick={handleNodeDoubleClick}
-            onEdgeClick={handleEdgeClick}
+            onSelectNode={(node) => {
+              void handleSelectNode(node);
+            }}
           />
         )}
-        <Stack spacing={2} sx={{ width: 320, flexShrink: 0 }}>
+        <Stack spacing={2} sx={{ width: 320, flexShrink: 0, minHeight: 0 }}>
           <Box
             sx={{
               borderRadius: 4,
@@ -608,8 +358,10 @@ export function FileGraphPage(): React.ReactElement {
             }}
           >
             <GraphToolsPanel
-              drawMode={drawMode}
-              onToggleDrawMode={handleToggleDrawMode}
+              mode={mode}
+              onModeChange={setMode}
+              depth={depth}
+              onDepthChange={setDepth}
               linkStatus={linkStatus}
             />
           </Box>
@@ -618,8 +370,16 @@ export function FileGraphPage(): React.ReactElement {
             selectedNote={selectedNote}
             selectedDirectory={selectedDirectory}
             isDetailsLoading={isDetailsLoading}
-            selectedEdge={selectedEdge}
-            onDeleteEdge={deleteEdge}
+            outgoingLinks={outgoingLinks}
+            directories={directoryNodes}
+            isMutating={isMutating}
+            onAddParent={(id) => {
+              void handleAddParent(id);
+            }}
+            onRemoveLink={(link) => {
+              void handleRemoveLink(link);
+            }}
+            onOpen={handleOpenNode}
           />
         </Stack>
       </Box>
