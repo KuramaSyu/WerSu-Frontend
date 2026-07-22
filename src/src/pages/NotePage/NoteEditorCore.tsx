@@ -595,9 +595,7 @@ export const NoteEditorCore: React.FC<NoteEditorCoreProps> = ({
 
   return (
     <>
-      <Paper
-        elevation={1}
-        color="backgroundDefault"
+      <Box
         sx={{
           height: "auto",
           flex: 1,
@@ -682,7 +680,7 @@ export const NoteEditorCore: React.FC<NoteEditorCoreProps> = ({
         {!editor && (
           <Typography color="textSecondary">Loading editor...</Typography>
         )}
-      </Paper>
+      </Box>
 
       {/* Floating editor actions */}
       <InsertSpeedDial
