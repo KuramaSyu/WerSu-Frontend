@@ -82,6 +82,15 @@ export const FolderCard: React.FC<FolderCardProps> = ({
   const isMissing = !isDirectoryPending && (!directory || isForbidden);
   const isLoading = !!directoryId && isDirectoryPending && !cachedDirectory;
 
+  // Favourite state for this directory. `toggleDirectory` returns the
+  // new status; we keep it as the source of truth instead of flipping
+  // a local boolean so an external `setDirectoryFavourite` (e.g. the
+  // 403 handler above) still wins on the next render.
+  const isFavourite = useFavouritesStore((s) =>
+    directoryId ? Boolean(s.directories[directoryId]) : false,
+  );
+  const toggleDirectory = useFavouritesStore((s) => s.toggleDirectory);
+
   // Latest activity timestamp (single row). Inlined `useQuery` because
   // this is the only consumer right now - if a second consumer appears,
   // lift into `useDirectoryActivityQuery` next to `useDirectory`.
@@ -113,6 +122,13 @@ export const FolderCard: React.FC<FolderCardProps> = ({
       loading={isLoading}
       hidden={isRoot || isMissing}
       size={size}
+      isFavourite={isFavourite}
+      // `stopPropagation` keeps the click from also firing the card's
+      // own `onClick` and navigating into the directory.
+      onToggleFavourite={(event) => {
+        event.stopPropagation();
+        toggleDirectory(directoryId);
+      }}
     />
   );
 };
