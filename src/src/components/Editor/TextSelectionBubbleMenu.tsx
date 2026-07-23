@@ -2,7 +2,13 @@ import type { Editor } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import { useEffect } from "react";
-import { Stack, ToggleButton, ToggleButtonGroup, Tooltip } from "@mui/material";
+import {
+  Paper,
+  Stack,
+  ToggleButton,
+  ToggleButtonGroup,
+  Tooltip,
+} from "@mui/material";
 import FormatBoldIcon from "@mui/icons-material/FormatBold";
 import FormatItalicIcon from "@mui/icons-material/FormatItalic";
 import StrikeThroughIcon from "@mui/icons-material/FormatStrikethrough";
@@ -128,68 +134,74 @@ export const TextSelectionBubbleMenu = ({
       // Read live editor state so menu closes immediately when selection collapses.
       shouldShow={() => isTextSelectionMenuVisibleNow(editor, enabled)}
     >
-      <Stack
-        direction="row"
-        spacing={0.5}
+      <Paper
+        elevation={2}
         sx={{
-          p: 0.5,
-          alignItems: "center",
-          borderRadius: 1,
           border: `1px solid ${theme.palette.divider}`,
-          backgroundColor: theme.palette.background.paper,
+          borderRadius: 50,
+          p: 1,
         }}
       >
-        <ToggleButtonGroup value={formats} size="small" color="secondary">
-          <ToggleButton
-            value="bold"
-            aria-label="bold"
-            onClick={() => editor.chain().focus().toggleBold().run()}
-          >
-            <FormatBoldIcon fontSize="small" />
-          </ToggleButton>
-          <ToggleButton
-            value="italic"
-            aria-label="italic"
-            onClick={() => editor.chain().focus().toggleItalic().run()}
-          >
-            <FormatItalicIcon fontSize="small" />
-          </ToggleButton>
-          <ToggleButton
-            value="strike"
-            aria-label="strike"
-            onClick={() => editor.chain().focus().toggleStrike().run()}
-          >
-            <StrikeThroughIcon fontSize="small" />
-          </ToggleButton>
-          <ToggleButton
-            value="code"
-            aria-label="code"
-            onClick={() => editor.chain().focus().toggleCode().run()}
-          >
-            <CodeIcon fontSize="small" />
-          </ToggleButton>
-          <ToggleButton
-            value="highlight"
-            aria-label="highlight"
-            onClick={() => editor.chain().focus().toggleHighlight().run()}
-          >
-            <BorderColorIcon fontSize="small" />
-          </ToggleButton>
-        </ToggleButtonGroup>
+        <Stack
+          direction="row"
+          spacing={0.5}
+          sx={{
+            alignItems: "center",
+            borderRadius: 1,
+          }}
+        >
+          <ToggleButtonGroup value={formats} size="small" color="secondary">
+            <ToggleButton
+              value="bold"
+              aria-label="bold"
+              onClick={() => editor.chain().focus().toggleBold().run()}
+            >
+              <FormatBoldIcon fontSize="small" />
+            </ToggleButton>
+            <ToggleButton
+              value="italic"
+              aria-label="italic"
+              onClick={() => editor.chain().focus().toggleItalic().run()}
+            >
+              <FormatItalicIcon fontSize="small" />
+            </ToggleButton>
+            <ToggleButton
+              value="strike"
+              aria-label="strike"
+              onClick={() => editor.chain().focus().toggleStrike().run()}
+            >
+              <StrikeThroughIcon fontSize="small" />
+            </ToggleButton>
+            <ToggleButton
+              value="code"
+              aria-label="code"
+              onClick={() => editor.chain().focus().toggleCode().run()}
+            >
+              <CodeIcon fontSize="small" />
+            </ToggleButton>
+            <ToggleButton
+              value="highlight"
+              aria-label="highlight"
+              onClick={() => editor.chain().focus().toggleHighlight().run()}
+            >
+              <BorderColorIcon fontSize="small" />
+            </ToggleButton>
+          </ToggleButtonGroup>
 
-        <Tooltip title="Clear formatting">
-          <ToggleButton
-            value="clear-format"
-            size="small"
-            aria-label="clear formatting"
-            onClick={() =>
-              editor.chain().focus().unsetAllMarks().clearNodes().run()
-            }
-          >
-            <FormatClearIcon fontSize="small" />
-          </ToggleButton>
-        </Tooltip>
-      </Stack>
+          <Tooltip title="Clear formatting">
+            <ToggleButton
+              value="clear-format"
+              size="small"
+              aria-label="clear formatting"
+              onClick={() =>
+                editor.chain().focus().unsetAllMarks().clearNodes().run()
+              }
+            >
+              <FormatClearIcon fontSize="small" />
+            </ToggleButton>
+          </Tooltip>
+        </Stack>
+      </Paper>
     </BubbleMenu>
   );
 };
