@@ -1,12 +1,11 @@
 import type { Editor } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
 import { FloatingMenu } from "@tiptap/react/menus";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   List,
   ListItemButton,
   ListItemText,
-  ListSubheader,
   Paper,
   Typography,
 } from "@mui/material";
@@ -14,13 +13,19 @@ import {
 interface SlashCommandMenuProps {
   editor: Editor;
   enabled?: boolean;
+  /**
+   * Commands injected by the parent component (e.g. commands that need
+   * access to React hooks like `useDialog()`). Concatenated with the
+   * built-in static command set; user-typed `/` queries search both.
+   */
+  extraCommands?: SlashCommand[];
 }
 
-interface SlashCommand {
+export interface SlashCommand {
   id: string;
   label: string;
   keywords: string[];
-  run: (editor: Editor) => void;
+  run: (editor: Editor) => void | Promise<void>;
 }
 
 const getCurrentParagraphRange = (editor: Editor) => {
@@ -31,7 +36,12 @@ const getCurrentParagraphRange = (editor: Editor) => {
   return { from, to };
 };
 
-const clearSlashLine = (editor: Editor) => {
+/**
+ * Removes "/..." from the current paragraph before inserting/toggling the
+ * selected block command. Exported so dynamically-injected commands can
+ * share the same slash-line-clearing behavior as the built-ins.
+ */
+export const clearSlashLine = (editor: Editor) => {
   // Remove "/..." before inserting/toggling the selected block command.
   const range = getCurrentParagraphRange(editor);
   editor.chain().focus().deleteRange(range).run();
@@ -173,13 +183,18 @@ const getSlashCommandScore = (command: SlashCommand, query: string) => {
 
 /**
  * @param editor
+ * @param extraCommands optional dynamic commands injected by the parent
  * @returns slash commands that match the current query, sorted by score.
  */
-function getMatchingSlashCommands(editor: Editor): SlashCommand[] {
+export function getMatchingSlashCommands(
+  editor: Editor,
+  extraCommands: SlashCommand[] = [],
+): SlashCommand[] {
   // Stable sort by score, then by declaration order for deterministic first item.
   const query = getSlashQuery(editor);
 
-  return slashCommands
+  // Built-ins first so their declaration order wins ties with extras.
+  return [...slashCommands, ...extraCommands]
     .map((command, index) => ({
       command,
       score: getSlashCommandScore(command, query),
@@ -254,12 +269,24 @@ export function runBestSlashCommand(editor: Editor): boolean {
 export const SlashCommandMenu = ({
   editor,
   enabled = true,
+  extraCommands = [],
 }: SlashCommandMenuProps) => {
+  // Keep `extraCommands` accessible to the selector closure without making
+  // the selector referentially unstable on every render — the ref is
+  // mutated in an effect, so the selector identity stays stable.
+  const extraCommandsRef = useRef<SlashCommand[]>(extraCommands);
+  useEffect(() => {
+    extraCommandsRef.current = extraCommands;
+  }, [extraCommands]);
+
   const { matchingCommands } = useEditorState({
     editor,
     selector: (ctx) => {
       return {
-        matchingCommands: getMatchingSlashCommands(ctx.editor),
+        matchingCommands: getMatchingSlashCommands(
+          ctx.editor,
+          extraCommandsRef.current,
+        ),
       };
     },
   });

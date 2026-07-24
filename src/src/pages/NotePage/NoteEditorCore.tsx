@@ -44,7 +44,11 @@ import "../../styles/tiptap.css";
 import { TableWithControls } from "../../components/Editor/TableControlls/TableControlls";
 import { ThemedEditorBox } from "../../components/Editor/ThemedEditorBox";
 import { TextSelectionBubbleMenu } from "../../components/Editor/TextSelectionBubbleMenu";
-import { SlashCommandMenu } from "../../components/Editor/SlashCommandMenu";
+import {
+  SlashCommandMenu,
+  clearSlashLine,
+  type SlashCommand,
+} from "../../components/Editor/SlashCommandMenu";
 import { M2, M3 } from "../../statics";
 import type { Note } from "../../api/models/search";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
@@ -62,6 +66,7 @@ import { NoteButtonActionRow } from "./NoteButtonActionRow";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { InsertSpeedDial } from "./SpeedDial";
 import { LatexDialog, type LatexDialogProps } from "./LatexDialog";
+import { DialogProvider, useDialog } from "./InputDialog";
 import { CustomImage } from "../../components/Editor/View/CustomImage";
 import { useUser } from "../../api/queries/useUser";
 import { useLiveUsersStore } from "../../zustand/useLiveUsersStore";
@@ -93,7 +98,12 @@ export interface NoteEditorCoreProps extends NoteEditorProps {
   provider: HocuspocusProvider | null;
 }
 
-export const NoteEditorCore: React.FC<NoteEditorCoreProps> = ({
+/**
+ * Inner component that actually consumes `useDialog()`. Lives behind a
+ * `DialogProvider` so the slash command can open the imperative upload
+ * dialog from inside the editor tree.
+ */
+const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
   note,
   noteId,
   fetchError: _fetchError,
@@ -105,6 +115,7 @@ export const NoteEditorCore: React.FC<NoteEditorCoreProps> = ({
   const { data: user } = useUser();
   const setMessage = useInfoStore((s) => s.setMessage);
   const { mutateAsync: updateNote } = useUpdateNote();
+  const openDialog = useDialog();
 
   const {
     isSaving: _isSaving,
@@ -593,6 +604,50 @@ export const NoteEditorCore: React.FC<NoteEditorCoreProps> = ({
     }
   };
 
+  /**
+   * Slash command that pops the shared `InputDialog` in file-upload mode
+   * to upload images/attachments
+   */
+  const imageUploadCommand: SlashCommand = {
+    id: "image",
+    label: "Image / Attachment",
+    keywords: ["image", "upload", "attachment", "picture", "file", "media"],
+    run: async (slashEditor) => {
+      // remove the "/image..." line so the menu closes immediately
+      clearSlashLine(slashEditor);
+
+      // open the shared prompt dialog in file-upload mode
+      const result = await openDialog({
+        title: "Upload Image / Attachment",
+        mode: "file",
+        accept: "image/*",
+        dropText: "Drag an image here",
+        dropHint: "or click to browse",
+        confirmLabel: "Upload",
+      });
+
+      if (!(result instanceof File)) {
+        return; // user cancelled
+      }
+
+      // route through the existing paste/drop pipeline so we get
+      // the placeholder + permission-wait behavior for free.
+      if (editorMode === "rich" && editor) {
+        editor.chain().focus().uploadAttachment(result).run();
+      } else {
+        // source mode — fall back to the builder so the attachment is
+        // also linked to the note, and the markdown `![image](url)` is
+        // inserted at the caret.
+        const api = new AttachmentApi();
+        await new UploadFileBuilder(api, postMessage)
+          .setFile(result)
+          .linkToNote(noteId!)
+          .insertIntoEditor(insertAtCurrentPosition)
+          .upload();
+      }
+    },
+  };
+
   return (
     <>
       <Box
@@ -642,7 +697,11 @@ export const NoteEditorCore: React.FC<NoteEditorCoreProps> = ({
         {editor && editorMode === "rich" && (
           <>
             <TextSelectionBubbleMenu editor={editor} enabled={editMode} />
-            <SlashCommandMenu editor={editor} enabled={editMode} />
+            <SlashCommandMenu
+              editor={editor}
+              enabled={editMode}
+              extraCommands={[imageUploadCommand]}
+            />
 
             <Box className="editor-drag-region">
               {/* hide handlers when editor is not editable */}
@@ -711,6 +770,20 @@ export const NoteEditorCore: React.FC<NoteEditorCoreProps> = ({
         initialLatexType={latexDialogProps.initialLatexType}
       />
     </>
+  );
+};
+
+/**
+ * Public entry point — wraps `NoteEditorCoreInner` in a `DialogProvider`
+ * so any descendant can call `useDialog()` to pop the shared input/upload
+ * dialog. Keeping the provider local (rather than at the App root) means
+ * the editor surface remains the single owner of the dialog lifecycle.
+ */
+export const NoteEditorCore: React.FC<NoteEditorCoreProps> = (props) => {
+  return (
+    <DialogProvider>
+      <NoteEditorCoreInner {...props} />
+    </DialogProvider>
   );
 };
 
