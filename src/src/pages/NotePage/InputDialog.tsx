@@ -60,9 +60,7 @@ type Resolver = (value: DialogResult) => void;
 
 type OpenDialog = (options: DialogOptions) => Promise<DialogResult>;
 
-const DialogContext = createContext<OpenDialog>(() =>
-  Promise.resolve(null),
-);
+const DialogContext = createContext<OpenDialog>(() => Promise.resolve(null));
 
 const FileDropZone: React.FC<{
   accept?: string;
