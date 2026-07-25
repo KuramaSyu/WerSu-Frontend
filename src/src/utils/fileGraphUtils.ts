@@ -103,7 +103,7 @@ export function getNodesWithinDepth(
   links: GraphLink[],
   depth: number,
 ): Set<string> {
-  if (!rootId || depth <= 0) {
+  if (!rootId) {
     return new Set();
   }
 
