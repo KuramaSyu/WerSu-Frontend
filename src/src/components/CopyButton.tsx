@@ -5,10 +5,7 @@ import {
   MicroInteractionButton,
   type MicroInteractionButtonProps,
 } from "./MicroInteractionButton";
-import useInfoStore, {
-  copyToClipboard,
-  SnackbarUpdateImpl,
-} from "../zustand/InfoStore";
+import { copyToClipboard } from "../zustand/InfoStore";
 
 /**
  * Copy-to-clipboard button used throughout the app.
@@ -22,10 +19,18 @@ export interface CopyButtonProps extends Omit<
   "onTrigger" | "icon" | "microInteraction"
 > {
   text?: string;
+  /**
+   * Custom copy handler — takes precedence over `copyFunction`.
+   * Use this when the caller wants to intercept the copy (e.g. with
+   * additional side-effects).
+   */
   onCopy?: (text: string) => Promise<boolean> | boolean;
-  showToast?: boolean;
-  successMessage?: string;
-  failureMessage?: string;
+  /**
+   * Test seam: inject the actual copy implementation. Defaults to
+   * `copyToClipboard` from the InfoStore. Tests should override this
+   * to avoid touching the real clipboard and to assert call args.
+   */
+  copyFunction?: (text: string) => Promise<boolean> | boolean;
   icon?: React.ReactNode;
   microInteraction?: React.ReactNode;
 }
@@ -33,30 +38,23 @@ export interface CopyButtonProps extends Omit<
 export const CopyButton: React.FC<CopyButtonProps> = ({
   text = "",
   onCopy,
-  showToast = true,
-  successMessage = "Copied to clipboard",
-  failureMessage = "Copy failed",
+  copyFunction = copyToClipboard,
   icon,
   microInteraction,
   microDurationMs = Math.PI * 1000,
   disabled,
   ...buttonProps
 }) => {
-  //   const setMessage = useInfoStore((s) => s.setMessage);
-
   const handleTrigger = useCallback(() => {
     const run = async () => {
-      const ok = onCopy ? await onCopy(text) : await copyToClipboard(text);
-      if (!showToast) return;
-      //   setMessage(
-      //     new SnackbarUpdateImpl(
-      //       ok ? successMessage : failureMessage,
-      //       ok ? "success" : "error",
-      //     ),
-      //   );
+      if (onCopy) {
+        await onCopy(text);
+      } else {
+        await copyFunction(text);
+      }
     };
     void run();
-  }, [onCopy, text, showToast, successMessage, failureMessage]);
+  }, [onCopy, copyFunction, text]);
 
   return (
     <MicroInteractionButton
