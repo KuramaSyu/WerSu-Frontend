@@ -338,7 +338,6 @@ export const ShareCard: React.FC<ShareCardProps> = ({
               size="small"
               aria-label="copy share url"
               text={shareUrl}
-              showToast={false}
               onCopy={async (value) => {
                 if (!value || !navigator.clipboard) return false;
                 await navigator.clipboard.writeText(value);
