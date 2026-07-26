@@ -74,54 +74,48 @@ export const DirectoryView: React.FC = () => {
               </Stack>
 
               <Stack spacing={2}>
-                {childDirectories.length > 0 && (
-                  <Stack spacing={1.5}>
-                    {childDirectories.map((child, index) => (
-                      <ChapterAccordion
-                        key={child.getId()}
-                        index={index}
-                        directory={
-                          child instanceof DirectoryHirarchyItem
-                            ? child.getDirectory()
-                            : {
-                                id: child.getId(),
-                                name: child.getName(),
-                                display_name: child.getName(),
-                                parent_dir_ids: child.getParent()
-                                  ? [child.getParent()!]
-                                  : [],
-                                child_dir_ids: [],
-                                child_note_ids: [],
-                              }
-                        }
-                        // Fetch the full DirectoryReply on mount so the
-                        // row badge has accurate counts even before
-                        // the user expands the chapter.
-                        onNavigate={navigate}
-                      />
-                    ))}
-                  </Stack>
-                )}
+                {childDirectories.map((child) => (
+                  <ChapterAccordion
+                    key={child.getId()}
+                    index={0}
+                    directory={
+                      child instanceof DirectoryHirarchyItem
+                        ? child.getDirectory()
+                        : {
+                            id: child.getId(),
+                            name: child.getName(),
+                            display_name: child.getName(),
+                            parent_dir_ids: child.getParent()
+                              ? [child.getParent()!]
+                              : [],
+                            child_dir_ids: [],
+                            child_note_ids: [],
+                          }
+                    }
+                    // Fetch the full DirectoryReply on mount so the
+                    // row badge has accurate counts even before
+                    // the user expands the chapter.
+                    onNavigate={navigate}
+                  />
+                ))}
 
                 <Divider sx={{ opacity: 0.3 }} />
 
-                <Stack spacing={1.5}>
-                  {notesInDirectory.length === 0 ? (
-                    <Typography variant="body2" color="textSecondary">
-                      No notes yet in this directory.
-                    </Typography>
-                  ) : (
-                    notesInDirectory.map((note, index) => (
-                      <DirectoryItem
-                        key={note.id}
-                        variant="note"
-                        index={index}
-                        note={note}
-                        onClick={() => navigate(`/n/${note.id}`)}
-                      />
-                    ))
-                  )}
-                </Stack>
+                {notesInDirectory.length === 0 ? (
+                  <Typography variant="body2" color="textSecondary">
+                    No notes yet in this directory.
+                  </Typography>
+                ) : (
+                  notesInDirectory.map((note, index) => (
+                    <DirectoryItem
+                      key={note.id}
+                      variant="note"
+                      index={index}
+                      note={note}
+                      onClick={() => navigate(`/n/${note.id}`)}
+                    />
+                  ))
+                )}
               </Stack>
             </Stack>
           </Paper>
