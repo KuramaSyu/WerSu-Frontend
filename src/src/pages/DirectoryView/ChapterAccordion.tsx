@@ -9,6 +9,7 @@ import {
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import type { DirectoryReply } from "../../api/models/directory";
+import { Crossfade } from "../../components/Crossfade";
 import { ChapterAccordionSkeleton } from "./ChapterAccordionSkeleton";
 import { ChapterRowView } from "./ChapterRowView";
 import { useChapterAccordion } from "./ChapterAccordion.hook";
@@ -118,64 +119,70 @@ export const ChapterAccordion: React.FC<ChapterAccordionProps> = ({
         />
       </AccordionSummary>
       <AccordionDetails sx={{ pt: 0, pb: 2, px: 2 }}>
-        {isLoading && (
-          <ChapterAccordionSkeleton
-            childNoteIds={hydratedDirectory.child_note_ids ?? []}
-            subdirectoriesCount={hydratedDirectory.child_dir_ids?.length ?? 0}
-          />
-        )}
-        {!isLoading && showEmptyState && (
-          <Typography variant="body2" color="textSecondary">
-            This chapter is empty.
-          </Typography>
-        )}
-        {!isLoading && !showEmptyState && (
-          <Stack spacing={1}>
-            {subdirectories.map((sub) => (
-              <ChapterAccordion
-                key={sub.id}
-                directory={sub}
-                index={0}
-                onNavigate={onNavigate}
-              />
-            ))}
-            {notes.map((note) => (
-              <ButtonBase
-                key={note.id}
-                onClick={() => onNavigate(`/n/${note.id}`)}
-                sx={{
-                  width: "100%",
-                  textAlign: "left",
-                  borderRadius: 2,
-                  overflow: "hidden",
-                }}
-              >
-                <Box
+        <Crossfade
+          loading={isLoading}
+          loadingChildren={
+            <ChapterAccordionSkeleton
+              childNoteIds={hydratedDirectory.child_note_ids ?? []}
+              subdirectoriesCount={hydratedDirectory.child_dir_ids?.length ?? 0}
+            />
+          }
+        >
+          {showEmptyState && (
+            <Typography variant="body2" color="textSecondary">
+              This chapter is empty.
+            </Typography>
+          )}
+          {!showEmptyState && (
+            <Stack spacing={1}>
+              {subdirectories.map((sub) => (
+                <ChapterAccordion
+                  key={sub.id}
+                  directory={sub}
+                  index={0}
+                  onNavigate={onNavigate}
+                />
+              ))}
+              {notes.map((note) => (
+                <ButtonBase
+                  key={note.id}
+                  onClick={() => onNavigate(`/n/${note.id}`)}
                   sx={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: 2,
-                    px: 2,
-                    py: 1.25,
                     width: "100%",
+                    textAlign: "left",
                     borderRadius: 2,
-                    backgroundColor: "background.paper",
+                    overflow: "hidden",
                   }}
                 >
-                  <NoteRowView
-                    note={note}
-                    accentColor={
-                      // Match the alternating note palette so nested
-                      // rows visually echo the top-level `DirectoryItem`.
-                      notes.indexOf(note) % 2 === 0 ? noteAccent : noteAccentAlt
-                    }
-                    compact
-                  />
-                </Box>
-              </ButtonBase>
-            ))}
-          </Stack>
-        )}
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 2,
+                      px: 2,
+                      py: 1.25,
+                      width: "100%",
+                      borderRadius: 2,
+                      backgroundColor: "background.paper",
+                    }}
+                  >
+                    <NoteRowView
+                      note={note}
+                      accentColor={
+                        // Match the alternating note palette so nested
+                        // rows visually echo the top-level `DirectoryItem`.
+                        notes.indexOf(note) % 2 === 0
+                          ? noteAccent
+                          : noteAccentAlt
+                      }
+                      compact
+                    />
+                  </Box>
+                </ButtonBase>
+              ))}
+            </Stack>
+          )}
+        </Crossfade>
       </AccordionDetails>
     </Accordion>
   );
