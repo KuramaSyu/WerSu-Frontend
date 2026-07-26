@@ -139,7 +139,7 @@ export const ChapterAccordion: React.FC<ChapterAccordionProps> = ({
             // remounts it whenever the data shape changes, resetting
             // the state so the notes Trail waits for the new dirs
             // Trail to settle.
-            <TrailBody
+            <AnimatedTrailBody
               key={`${subdirectories.length}-${notes.length}`}
               subdirectories={subdirectories}
               notes={notes}
@@ -169,7 +169,7 @@ interface TrailBodyProps {
   onNavigate: (path: string) => void;
 }
 
-const TrailBody: React.FC<TrailBodyProps> = ({
+const AnimatedTrailBody: React.FC<TrailBodyProps> = ({
   subdirectories,
   notes,
   noteAccent,
@@ -212,6 +212,12 @@ const TrailBody: React.FC<TrailBodyProps> = ({
                 textAlign: "left",
                 borderRadius: 2,
                 overflow: "hidden",
+                // Without this, the flex item below (the padded
+                // Box wrapping NoteRowView) won't shrink below its
+                // content's intrinsic min-width when the note
+                // title is long, pushing the row's left edge past
+                // the AccordionDetails' padding.
+                minWidth: 0,
               }}
             >
               <Box
@@ -224,6 +230,13 @@ const TrailBody: React.FC<TrailBodyProps> = ({
                   width: "100%",
                   borderRadius: 2,
                   backgroundColor: "background.paper",
+                  // Same reason as the ButtonBase above: a long
+                  // `noWrap` title has a large intrinsic
+                  // min-content width. Without `minWidth: 0` this
+                  // flex item can't shrink and the row's left
+                  // edge (and the bar pinned to it) gets pushed
+                  // past the `px: 2` padding.
+                  minWidth: 0,
                 }}
               >
                 <NoteRowView

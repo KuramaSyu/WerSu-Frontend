@@ -49,7 +49,11 @@ export const DirectoryView: React.FC = () => {
         display: "flex",
         flexDirection: "column",
         height: "100%",
-        overflow: "auto",
+        // The inner Paper below owns the scrollbar. If we let
+        // overflow default to visible, content that exceeds this
+        // view's height would also overflow the AppShell's main
+        // scroll container and produce a second scrollbar.
+        overflow: "hidden",
       }}
     >
       {/*
@@ -61,7 +65,19 @@ export const DirectoryView: React.FC = () => {
         */}
       <DragDropProvider onDragEnd={() => undefined}>
         <Stack direction="row" spacing={M4} sx={{ alignItems: "flex-start" }}>
-          <Paper elevation={2} sx={{ flex: 1, p: M3 }}>
+          <Paper
+            elevation={2}
+            sx={{
+              flex: 1,
+              p: M3,
+              // The directory/note content can grow tall (lots of
+              // children or an expanded accordion). Clip here so the
+              // scrollbar stays scoped to this view instead of
+              // spilling into the AppShell main scroll container.
+              height: "100%",
+              overflow: "auto",
+            }}
+          >
             <Stack spacing={M3}>
               <Stack spacing={0.5}>
                 <DirectoryBreadCrumbs

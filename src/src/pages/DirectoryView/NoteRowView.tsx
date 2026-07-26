@@ -56,7 +56,18 @@ export const NoteRowView: React.FC<NoteRowViewProps> = memo(
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography
             variant={compact ? "body1" : "subtitle1"}
-            sx={{ fontWeight: 600 }}
+            sx={{
+              fontWeight: 600,
+              // `noWrap` + `overflow: hidden` + `textOverflow:
+              // ellipsis` is the standard recipe for truncating
+              // single-line text in a flex child. The previous
+              // `overflowX: "scroll"` kept the full unwrapped
+              // text width as the element's min-content width,
+              // which prevented the flex container from shrinking
+              // and pushed the bar past the row's padding.
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
             noWrap
           >
             {note.title}
@@ -69,6 +80,7 @@ export const NoteRowView: React.FC<NoteRowViewProps> = memo(
               WebkitLineClamp: 2,
               WebkitBoxOrient: "vertical",
               overflow: "hidden",
+              overflowX: "hidden",
             }}
           >
             {previewText}

@@ -53,7 +53,7 @@ export const ChapterRowView: React.FC<ChapterRowViewProps> = memo(
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Typography
           variant={compact ? "body1" : "subtitle1"}
-          sx={{ fontWeight: 600 }}
+          sx={{ fontWeight: 600, overflowX: "scroll" }}
           noWrap
         >
           {name}
