@@ -217,11 +217,13 @@ export function useDirectoryFeatures(
   );
 
   const childDirectories = currentNode.getChildren();
-  // Directory-scoped fetch wins; fall back to the latest-notes grouping while loading or on the root.
-  // Memoized so the cascade-preview derivation below has a stable
-  // identity across renders when the directory-scoped fetch is loading.
+  // load notes of directory. use fetched notes if loaded, otherwise cache.
+  // for fetched notes, fliter out the first element which should be the README.md note.
   const notesInDirectory = useMemo<MinimalNote[]>(
-    () => directoryNotes ?? notesByDirectory[currentNode.getId()] ?? [],
+    () =>
+      directoryNotes
+        ? directoryNotes.slice(1)
+        : (notesByDirectory[currentNode.getId()] ?? []),
     [directoryNotes, notesByDirectory, currentNode],
   );
 

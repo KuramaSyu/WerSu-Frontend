@@ -42,7 +42,7 @@ export const DirectoryItem: React.FC<DirectoryItemProps> = (props) => {
   const { theme } = useThemeStore();
   const NOTE_COLORS = [
     theme.palette.secondary.main,
-    theme.blendWithContrast("secondary", 0.5),
+    theme.blendWithContrast("secondary", 0.3),
   ] as const;
 
   const accentColor =

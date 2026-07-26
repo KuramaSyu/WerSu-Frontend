@@ -1,19 +1,17 @@
-import { useState } from "react";
 import {
   Accordion,
   AccordionDetails,
   AccordionSummary,
   Box,
   ButtonBase,
-  CircularProgress,
   Stack,
   Typography,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import type { DirectoryReply } from "../../api/models/directory";
-import { useDirectoriesQuery } from "../../api/queries/directoryQueries";
-import { useDirectoryNotesQuery } from "../../api/queries/useDirectoryNotesQuery";
+import { ChapterAccordionSkeleton } from "./ChapterAccordionSkeleton";
 import { ChapterRowView } from "./ChapterRowView";
+import { useChapterAccordion } from "./ChapterAccordion.hook";
 import { NoteRowView } from "./NoteRowView";
 
 interface ChapterAccordionProps {
@@ -25,53 +23,49 @@ interface ChapterAccordionProps {
   onNavigate: (path: string) => void;
 }
 
-const DIRECTORY_COLORS = ["#C27C3B", "#3B7CC2"] as const;
-const NESTED_ACCENT_COLOR = "#3B7CC2";
-
 /**
  * Renders a chapter directory as a MUI Accordion.
  * The Accordion can get expanded and it can also be clicked to navigate to the chapter page.
+ *
+ * All non-render logic (hydration, expansion state, body data,
+ * derivations, accent color) lives in `useChapterAccordion`.
  */
 export const ChapterAccordion: React.FC<ChapterAccordionProps> = ({
   directory,
   index,
   onNavigate,
 }) => {
-  const [expanded, setExpanded] = useState(false);
-
-  // Lazy fetch - enabled only after the user expands the accordion for the
-  // first time. React Query still dedupes by queryKey on subsequent opens.
-  const subdirectoriesQuery = useDirectoriesQuery(
-    { parent_id: directory.id, limit: 500, offset: 0 },
+  const {
+    hydratedDirectory,
     expanded,
-  );
-
-  const notesQuery = useDirectoryNotesQuery(
-    expanded ? directory.id : undefined,
-    { limit: 500, offset: 0 },
-  );
-
-  const accentColor = DIRECTORY_COLORS[index % DIRECTORY_COLORS.length];
-
-  const subdirectories = subdirectoriesQuery.data ?? [];
-  const notes = (notesQuery.data?.notes ?? []).filter(
-    (note) => note.title !== "README.md",
-  );
-  const isLoading =
-    expanded && (subdirectoriesQuery.isLoading || notesQuery.isLoading);
-  const isEmpty =
-    !isLoading && subdirectories.length === 0 && notes.length === 0;
+    toggleExpanded,
+    markCloseAnimationCompleted,
+    markOpenAnimationStarted,
+    subdirectories,
+    notes,
+    isLoading,
+    showEmptyState,
+    accentColor,
+    noteAccent,
+    noteAccentAlt,
+  } = useChapterAccordion(directory, index);
 
   const handleOpenChapter = () => onNavigate(`/d/${directory.id}`);
 
   return (
     <Accordion
       expanded={expanded}
-      onChange={(_, isExpanded) => setExpanded(isExpanded)}
       disableGutters
       elevation={0}
       slotProps={{
-        transition: { unmountOnExit: true },
+        transition: {
+          unmountOnExit: true,
+          // Mark the close animation as completed so the empty-state
+          // can render once the body has fully unmounted; clear the
+          // flag on the next open so future closes re-trigger the gate.
+          onExited: () => markCloseAnimationCompleted(),
+          onEnter: () => markOpenAnimationStarted(),
+        },
       }}
       sx={{
         backgroundColor: "background.paper",
@@ -81,68 +75,61 @@ export const ChapterAccordion: React.FC<ChapterAccordionProps> = ({
       }}
     >
       <AccordionSummary
-        expandIcon={<ExpandMoreIcon />}
-        onClick={(e) => {
-          // Click on the expand chevron (or its enlarged hit area): expand/collapse the accordion
-          // Click the body: navigate to the chapter.
-          const target = e.target as HTMLElement;
-          if (target.closest(".MuiAccordionSummary-expandIconWrapper")) {
-            setExpanded(!expanded);
-            return;
-          }
-          // Click anywhere else on the row navigates to the chapter.
-          handleOpenChapter();
-        }}
-        slotProps={{
-          expandIconWrapper: {
-            // Enlarge the click target around the chevron, so
-            // that it's easier to click
-            sx: {
+        expandIcon={
+          <ExpandMoreIcon
+            onClick={toggleExpanded}
+            sx={{
+              // enlarge click area of the chevron, so that it's easier to click
               p: 1.5,
-              ml: 1,
-              mr: -1.5,
-            },
-          },
-        }}
-        sx={{
-          minHeight: 48,
-          "& .MuiAccordionSummary-content": {
-            my: 1.5,
-            alignItems: "center",
-          },
-          "& .MuiAccordionSummary-content.Mui-expanded": {
-            my: 1.5,
-          },
+              borderRadius: 100,
+              "&:hover": { backgroundColor: "action.hover" },
+              transition: (theme) =>
+                theme.transitions.create("background-color", {
+                  duration: theme.transitions.duration.standard,
+                }),
+            }}
+          />
+        }
+        onClick={() => {
+          handleOpenChapter();
         }}
       >
         <ChapterRowView
           name={
-            directory.display_name ??
-            directory.name ??
-            directory.slug ??
-            directory.id
+            hydratedDirectory.display_name ??
+            hydratedDirectory.name ??
+            hydratedDirectory.slug ??
+            hydratedDirectory.id
           }
-          pages={directory.child_note_ids?.length ?? 0}
-          subdirectories={directory.child_dir_ids?.length ?? 0}
+          // Subtract 1 only when the field is actually populated. Some
+          // endpoints strip `child_note_ids` entirely, leaving it as
+          // `[]` - subtracting 1 from 0 produces "-1 pages". Treat the
+          // unknown case as "no notes" rather than a negative count.
+          // The README is the first entry when present, so `>= 1` means
+          // at least the README was returned.
+          pages={
+            hydratedDirectory.child_note_ids &&
+            hydratedDirectory.child_note_ids.length >= 1
+              ? hydratedDirectory.child_note_ids.length - 1
+              : 0
+          }
+          subdirectories={hydratedDirectory.child_dir_ids?.length ?? 0}
           accentColor={accentColor}
         />
       </AccordionSummary>
       <AccordionDetails sx={{ pt: 0, pb: 2, px: 2 }}>
         {isLoading && (
-          <Stack
-            direction="row"
-            sx={{ justifyContent: "center", py: 2 }}
-            aria-label="loading chapter contents"
-          >
-            <CircularProgress size={24} />
-          </Stack>
+          <ChapterAccordionSkeleton
+            childNoteIds={hydratedDirectory.child_note_ids ?? []}
+            subdirectoriesCount={hydratedDirectory.child_dir_ids?.length ?? 0}
+          />
         )}
-        {!isLoading && isEmpty && (
+        {!isLoading && showEmptyState && (
           <Typography variant="body2" color="textSecondary">
             This chapter is empty.
           </Typography>
         )}
-        {!isLoading && !isEmpty && (
+        {!isLoading && !showEmptyState && (
           <Stack spacing={1}>
             {subdirectories.map((sub) => (
               <ChapterAccordion
@@ -177,7 +164,11 @@ export const ChapterAccordion: React.FC<ChapterAccordionProps> = ({
                 >
                   <NoteRowView
                     note={note}
-                    accentColor={NESTED_ACCENT_COLOR}
+                    accentColor={
+                      // Match the alternating note palette so nested
+                      // rows visually echo the top-level `DirectoryItem`.
+                      notes.indexOf(note) % 2 === 0 ? noteAccent : noteAccentAlt
+                    }
                     compact
                   />
                 </Box>

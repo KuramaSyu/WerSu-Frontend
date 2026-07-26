@@ -9,6 +9,9 @@ export function chapterCountsLabel(
   pages: number,
   subdirectories: number,
 ): string {
+  if (pages === 0 && subdirectories === 0) {
+    return "Empty";
+  }
   const pageWord = pages === 1 ? "page" : "pages";
   const subdirWord = subdirectories === 1 ? "subdirectory" : "subdirectories";
   return `${pages} ${pageWord} \u00B7 ${subdirectories} ${subdirWord}`;

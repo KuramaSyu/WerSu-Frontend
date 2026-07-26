@@ -94,6 +94,9 @@ export const DirectoryView: React.FC = () => {
                                 child_note_ids: [],
                               }
                         }
+                        // Fetch the full DirectoryReply on mount so the
+                        // row badge has accurate counts even before
+                        // the user expands the chapter.
                         onNavigate={navigate}
                       />
                     ))}
