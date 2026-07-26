@@ -81,10 +81,8 @@ export function useChapterAccordion(
   const hydratedDirectory: DirectoryReply = {
     ...directory,
     ...(reply ?? {}),
-    child_note_ids:
-      reply?.child_note_ids ?? directory.child_note_ids ?? [],
-    child_dir_ids:
-      reply?.child_dir_ids ?? directory.child_dir_ids ?? [],
+    child_note_ids: reply?.child_note_ids ?? directory.child_note_ids ?? [],
+    child_dir_ids: reply?.child_dir_ids ?? directory.child_dir_ids ?? [],
   };
 
   // Expansion state and close-animation gating.
@@ -99,8 +97,19 @@ export function useChapterAccordion(
   // Lazy fetch - enabled only after the user expands the accordion
   // for the first time. React Query still dedupes by queryKey on
   // subsequent opens.
+  //
+  // `include_child_notes: true` so the nested `ChapterAccordion`s
+  // rendered below receive a prop with populated `child_note_ids`.
+  // Without it, the nested rows would always show "Empty" because
+  // neither the per-parent fetch nor the per-id `GET /api/directories/:id`
+  // populates that field by default.
   const subdirectoriesQuery = useDirectoriesQuery(
-    { parent_id: directory.id, limit: 500, offset: 0 },
+    {
+      parent_id: directory.id,
+      limit: 500,
+      offset: 0,
+      include_child_notes: true,
+    },
     expanded,
   );
 
