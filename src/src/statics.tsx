@@ -24,3 +24,11 @@ export const M8 = "16rem";
  * means a future tweak happens in one place.
  */
 export const TOP_BAR_ELEVATION = 4;
+/**
+ * Default max-width for the note editor body, expressed in `rem` so the
+ * layout scales with the user's font-size preference. A4 portrait at
+ * 96 DPI is ~8.27in; 48rem at the default 16px root font-size renders
+ * to 768px, which sits comfortably within physical A4 on most screens
+ * without forcing horizontal scroll on narrower windows.
+ */
+export const NOTE_EDITOR_A4_WIDTH = "48rem";
