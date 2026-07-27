@@ -72,7 +72,6 @@ export const HomePage: React.FC = () => {
   useLeftPanel(
     <UpperPanel>
       <NavigationSection />
-      <NavigationSection />
       <PanelSection title="Actions" showDivider>
         <PanelButtons>
           <PanelButtons.Secondary

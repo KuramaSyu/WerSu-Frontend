@@ -26,6 +26,7 @@ export const AppShell: React.FC = () => {
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(
     null,
   );
+  const TOP_BAR_PANEL_DISTANCE = M2;
   const oneOrZero = Math.round(exitPercentage / 100) * 100;
 
   useEffect(() => {
@@ -80,9 +81,11 @@ export const AppShell: React.FC = () => {
         sx={{
           display: "grid",
           gridTemplateColumns: `${leftPanelOpen ? leftPanelSize : "0px"} minmax(0, 1fr) ${rightPanelOpen ? rightPanelSize : "0px"}`,
-          transition: `grid-template-columns ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}, padding-top ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
-          pt: showTopBar ? `calc(${M5})` : "0px",
-          height: "100vh",
+          transition: `grid-template-columns ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}, padding-top ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}, height ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
+          pt: showTopBar ? `calc(${M5} + ${TOP_BAR_PANEL_DISTANCE})` : "0px",
+          height: showTopBar
+            ? `calc(100vh - ${M5} - ${TOP_BAR_PANEL_DISTANCE})`
+            : "100vh",
           // mx: M3,
           // gap is handled by its inner boxes, so that it can be collapsed without leaving a gap
         }}
@@ -90,7 +93,7 @@ export const AppShell: React.FC = () => {
         <Box
           sx={{
             overflowY: "auto",
-            mr: M3,
+            mb: TOP_BAR_PANEL_DISTANCE,
           }}
         >
           {leftPanel}
@@ -103,6 +106,8 @@ export const AppShell: React.FC = () => {
             overflowY: "auto", // make it scrollable
             display: "block",
             scrollbarWidth: "none",
+            mx: M2,
+            mb: M2,
           }}
         >
           <Stack direction={"column"} sx={{ position: "relative" }}>
@@ -119,7 +124,7 @@ export const AppShell: React.FC = () => {
         <Box
           sx={{
             overflowY: "auto",
-
+            mb: TOP_BAR_PANEL_DISTANCE,
             ml: M3,
           }}
         >

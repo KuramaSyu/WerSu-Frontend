@@ -7,9 +7,10 @@ export interface UpperPanelProps {
   /** Sections stacked vertically inside the panel body. */
   children: React.ReactNode;
   /**
-   * Spacing multiplier between sections. Defaults to 4 (16px), matching
-   * the previous side-rail rhythm. Callers with denser content (e.g. the
-   * note route) can pass a smaller value.
+   * Gap between sections in MUI `Stack` units (8px each). Defaults to
+   * 2 (16px). The previous default of 4 produced a 64px gap via the
+   * `theme.spacing()` helper, which read as dead space next to short
+   * sections like the nav row.
    */
   spacing?: number;
   /**
@@ -32,7 +33,7 @@ export interface UpperPanelProps {
  */
 export const UpperPanel: React.FC<UpperPanelProps> = ({
   children,
-  spacing = 4,
+  spacing = 2,
   header,
 }) => {
   const { theme } = useThemeStore();
@@ -52,7 +53,7 @@ export const UpperPanel: React.FC<UpperPanelProps> = ({
       <Box sx={{ overflowY: "auto", flex: 1, minHeight: 0 }}>
         {header}
         <Box sx={{ p: 2 }}>
-          <Stack spacing={theme.spacing(spacing)}>{children}</Stack>
+          <Stack spacing={spacing}>{children}</Stack>
         </Box>
       </Box>
     </Paper>
