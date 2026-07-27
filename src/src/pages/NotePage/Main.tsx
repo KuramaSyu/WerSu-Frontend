@@ -17,6 +17,7 @@ import {
 } from "../../api/queries/useNoteQueries";
 import { useUser } from "../../api/queries/useUser";
 import { useLayout } from "../../LayoutProvider";
+import { useRightPanel } from "../../LayoutProvider";
 import { NoteEditorSkeleton } from "./NoteEditorSkeleton";
 import { useThemeStore } from "../../zustand/useThemeStore";
 
@@ -80,6 +81,14 @@ export const NotePage: React.FC = () => {
       <NoteSidePanel note={note} noteId={id} onNoteUpdated={updateNote} />,
     );
   }, [id]);
+
+  // The note editor owns the full canvas - no right rail. Pin
+  // `rightPanel` to null on this route so a previous page's
+  // content (e.g. a directory's actions) doesn't bleed into the
+  // layout context. The TopBar's `RightPanelToggle` only renders
+  // when a panel is mounted, so this also keeps the right-side
+  // collapse icon out of the way.
+  useRightPanel(null);
 
   if (user === null) {
     return <LoginPage />;
