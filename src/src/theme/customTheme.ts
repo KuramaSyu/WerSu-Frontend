@@ -439,6 +439,35 @@ export class CustomThemeImpl implements CustomTheme {
           ...RootColorAndRadius,
         },
       },
+      // `MuiSpeedDial` and `MuiSpeedDialAction` both extend
+      // `ButtonBase`, so they inherit `RootColorAndRadius` -
+      // specifically the `borderRadius: 64` default and the
+      // `&:hover { borderRadius: 8 }` override. That makes the
+      // FABs visibly morph from round to square on hover, which
+      // is the opposite of what a speed dial should look like.
+      // Override the relevant slots here so the FABs (and the
+      // action items when expanded) keep a steady round shape and
+      // don't pick up the `border-color` color-transition either.
+      MuiSpeedDial: {
+        styleOverrides: {
+          fab: {
+            borderRadius: "50%",
+            "&:hover": {
+              borderRadius: "50%",
+            },
+          },
+        },
+      },
+      MuiSpeedDialAction: {
+        styleOverrides: {
+          fab: {
+            borderRadius: "50%",
+            "&:hover": {
+              borderRadius: "50%",
+            },
+          },
+        },
+      },
     };
   }
 

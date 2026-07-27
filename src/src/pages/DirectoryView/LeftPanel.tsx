@@ -7,9 +7,16 @@ import { PanelSection } from "../../components/Panels/PanelSection";
 import { NavigationSection } from "../../components/Panels/NavigationSection";
 import { UpperPanel } from "../../components/Panels/UpperPanel";
 import { useDirectory } from "../../api/queries/useDirectoryQuery";
+import { DirectoryActions } from "./DirectoryActions";
+import type { CascadePreview } from "./DirectoryFeatures.hook";
 
 interface DirectoryActionsProps {
   currentNode: HirarchyItem;
+  cascadePreview: CascadePreview;
+  handleCreateNote: () => void;
+  handleCreateSubdirectory: () => void;
+  handleRenameDirectory: () => void;
+  handleDeleteDirectory: () => Promise<boolean>;
 }
 
 /**
@@ -17,6 +24,11 @@ interface DirectoryActionsProps {
  */
 export const DirectoryLeftPanel: React.FC<DirectoryActionsProps> = ({
   currentNode,
+  cascadePreview,
+  handleCreateNote,
+  handleCreateSubdirectory,
+  handleRenameDirectory,
+  handleDeleteDirectory,
 }) => {
   const { data: dir } = useDirectory(
     currentNode.getId() === "root" ? undefined : currentNode.getId(),
@@ -24,6 +36,14 @@ export const DirectoryLeftPanel: React.FC<DirectoryActionsProps> = ({
   return (
     <UpperPanel>
       <NavigationSection />
+      <DirectoryActions
+        currentNode={currentNode}
+        cascadePreview={cascadePreview}
+        handleCreateNote={handleCreateNote}
+        handleCreateSubdirectory={handleCreateSubdirectory}
+        handleRenameDirectory={handleRenameDirectory}
+        handleDeleteDirectory={handleDeleteDirectory}
+      />
       <DirectorySideView />
       <PanelSection
         title="Recent activity"

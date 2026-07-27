@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useState } from "react";
 import { useDroppable } from "@dnd-kit/react";
 import { SimpleTreeView, TreeItem } from "@mui/x-tree-view";
 import {
@@ -9,8 +10,11 @@ import {
   Box,
   IconButton,
   Tooltip,
+  Collapse,
 } from "@mui/material";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useDirectoryStore } from "../../zustand/useDirectoryStore";
 import {
@@ -72,6 +76,7 @@ const DirectoryTreeNode: React.FC<DirectoryTreeNodeProps> = ({ item }) => {
     },
   });
   const bg = null;
+  const [hovered, setHovered] = useState(false);
 
   return (
     <TreeItem
@@ -82,19 +87,21 @@ const DirectoryTreeNode: React.FC<DirectoryTreeNodeProps> = ({ item }) => {
         <Stack
           direction="row"
           spacing={1}
-          sx={{ pr: 0.5, alignItems: "center" }}
+          sx={{ pr: 0.5, alignItems: "center", position: "relative" }}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
         >
           <ButtonBase
-            onClick={(event) => {
-              event.stopPropagation();
-              navigate(`/d/${itemId}`);
-            }}
             sx={{
               flex: 1,
               justifyContent: "flex-start",
               textAlign: "left",
               py: 0.5,
               px: 1,
+              // Reserve room on the right so the absolute-positioned
+              // action stack never sits on top of the directory name
+              // when it's expanded.
+              pr: 7,
               borderRadius: 1,
               color: "inherit",
             }}
@@ -110,17 +117,62 @@ const DirectoryTreeNode: React.FC<DirectoryTreeNodeProps> = ({ item }) => {
             </Stack>
           </ButtonBase>
           {itemId !== "root" && (
-            <Tooltip title="Edit directory">
-              <IconButton
-                size="small"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  navigate(`/d/${itemId}/edit`);
+            // The action stack is the open + edit buttons. It's
+            // always mounted (no `unmountOnExit`) so the icon
+            // buttons stay in the DOM and respond to hover/focus
+            // even while the collapse animation is running. The
+            // background color + rounded corners lift it visually
+            // above the row so the icon buttons aren't lost in
+            // the row's content when they overlap it.
+            <Collapse
+              orientation="horizontal"
+              in={hovered}
+              timeout={120}
+              style={{ position: "absolute", right: 4, top: "50%" }}
+              sx={{
+                transform: "translateY(-50%)",
+                // Don't let pointer events on the overlay swallow
+                // the row's own hover region - the row's
+                // `onMouseLeave` only fires when the cursor
+                // actually leaves the row.
+                pointerEvents: "none",
+              }}
+            >
+              <Stack
+                direction="row"
+                spacing={0.5}
+                sx={{
+                  alignItems: "center",
+                  backgroundColor: "background.paper",
+                  borderRadius: 1,
+                  px: 0.5,
+                  pointerEvents: "auto",
                 }}
               >
-                <EditOutlinedIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
+                <Tooltip title="Open directory">
+                  <IconButton
+                    size="small"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      navigate(`/d/${itemId}`);
+                    }}
+                  >
+                    <OpenInNewIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Edit directory">
+                  <IconButton
+                    size="small"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      navigate(`/d/${itemId}/edit`);
+                    }}
+                  >
+                    <EditOutlinedIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </Stack>
+            </Collapse>
           )}
         </Stack>
       }
@@ -142,6 +194,23 @@ const DirectoryTreeNode: React.FC<DirectoryTreeNodeProps> = ({ item }) => {
         "& > .MuiTreeItem-content.Mui-selected": {
           backgroundColor: "rgba(255,255,255,0.18)",
         },
+        // Rotate the chevron -90° when collapsed; back to 0° when
+        // expanded. The content element receives a `data-expanded`
+        // attribute from the tree, so we key the rotation off that.
+        // `transform` is animated via the same
+        // `theme.transitions.duration.standard` the accordion uses
+        // for its expand icon.
+        "& > .MuiTreeItem-content .MuiTreeItem-iconContainer svg": {
+          transition: (theme) =>
+            theme.transitions.create("transform", {
+              duration: theme.transitions.duration.standard,
+            }),
+          transform: "rotate(-90deg)",
+        },
+        "& > .MuiTreeItem-content[data-expanded] .MuiTreeItem-iconContainer svg":
+          {
+            transform: "rotate(0deg)",
+          },
       }}
     >
       {item.getChildren().map((child) => (
@@ -170,8 +239,10 @@ export const DirectorySideView: React.FC<{ isLoading?: boolean }> = ({
   );
 
   // Auto-expand the path to the selected directory so the highlighted row
-  // is visible even when nested deep. The set is re-applied on every
-  // navigation by keying the tree on the active directory id below.
+  // is visible even when nested deep. Applied once on mount via the
+  // uncontrolled `defaultExpandedItems` prop below - we deliberately do
+  // NOT rekey the tree on navigation, so any manual expand/collapse the
+  // user does is preserved across `/d/:id` -> `/d/:id` navigations.
   const defaultExpandedItems = React.useMemo(() => {
     const ids = new Set<string>([directoryHirarchy.getId()]);
     if (currentDirectoryId) {
@@ -236,11 +307,18 @@ export const DirectorySideView: React.FC<{ isLoading?: boolean }> = ({
 
   return (
     <SimpleTreeView
-      // Keying on the active directory remounts the tree on navigation so
-      // the auto-expanded path is reapplied to the freshly-mounted tree.
-      key={currentDirectoryId ?? "none"}
+      // No `key` here on purpose: rekeying forced a full remount on every
+      // `/d/:id` -> `/d/:id` navigation, which made the tree (and the
+      // surrounding left panel) visibly re-render. The tree is the same
+      // regardless of which directory route is active, so it can stay
+      // mounted. `defaultExpandedItems` is still applied on first mount
+      // to auto-expand the path to the initial directory.
       defaultExpandedItems={defaultExpandedItems}
       selectedItems={currentDirectoryId}
+      // Use the same chevron for both expand and collapse. The CSS in
+      // `DirectoryTreeNode`'s `sx` rotates it 180° when the row is
+      // expanded, so the icon animates instead of swapping.
+      slots={{ expandIcon: ExpandMoreIcon, collapseIcon: ExpandMoreIcon }}
     >
       <DirectoryTreeNode item={directoryHirarchy} />
     </SimpleTreeView>

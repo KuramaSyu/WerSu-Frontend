@@ -2,7 +2,7 @@ import { Divider, Paper, Stack, Typography } from "@mui/material";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useState } from "react";
 import { DirectoryLeftPanel } from "./LeftPanel";
-import { useLeftPanel } from "../../LayoutProvider";
+import { useLeftPanel, usePanelSize } from "../../LayoutProvider";
 import { DirectoryBreadCrumbs } from "./DirectoryBreadCrumbs";
 import { DirectoryItem } from "./DirectoryItem";
 import { useDirectoryFeatures } from "./DirectoryFeatures.hook";
@@ -32,14 +32,35 @@ export const DirectoryView: React.FC = () => {
     notesInDirectory,
     title,
     navigate,
+    cascadePreview,
+    handleCreateNote,
+    handleCreateSubdirectory,
+    handleRenameDirectory,
+    handleDeleteDirectory,
   } = useDirectoryFeatures({ onOpenCreateNote: () => setCreateNoteOpen(true) });
+
+  // Match the home screen's left-panel sizing so the directory tree
+  // has the same breathing room as the main page's recent activity
+  // panel. `usePanelSize` writes to the layout context; the AppShell
+  // reads it to size the grid column.
+  usePanelSize({ left: "clamp(20rem, 25vw, 30rem)" });
 
   console.log("DirectoryView: childDirectories", childDirectories);
   // Same dep-array rationale as `useRightPanel` in the features hook:
   // the left panel reads `currentNode` for the recent-activity target
   // and the description fetch, so re-push on node changes once the
   // store hydrates from the loading fallback.
-  useLeftPanel(<DirectoryLeftPanel currentNode={currentNode} />, [currentNode]);
+  useLeftPanel(
+    <DirectoryLeftPanel
+      currentNode={currentNode}
+      cascadePreview={cascadePreview}
+      handleCreateNote={handleCreateNote}
+      handleCreateSubdirectory={handleCreateSubdirectory}
+      handleRenameDirectory={handleRenameDirectory}
+      handleDeleteDirectory={handleDeleteDirectory}
+    />,
+    [currentNode],
+  );
 
   return (
     <Paper

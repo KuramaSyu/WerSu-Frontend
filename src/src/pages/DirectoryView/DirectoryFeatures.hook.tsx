@@ -18,8 +18,6 @@ import type { MinimalNote } from "../../api/models/search";
 import { getNoteParentDirectoryIds } from "../../utils/fileGraphUtils";
 import { useLatestNotes } from "../../api/queries/useNoteQueries";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
-import { useRightPanel } from "../../LayoutProvider";
-import { DirectoryRightPanel } from "./DirectoryRightPanel";
 
 export interface UseDirectoryFeaturesOptions {
   /**
@@ -333,26 +331,6 @@ export function useDirectoryFeatures(
     setMessage(new SnackbarUpdateImpl("Directory deleted", "success"));
     return true;
   };
-
-  // Mount the title-level directory actions in the right panel while this
-  // view is active. We pass `[currentNode]` as the dep array so the
-  // panel re-pushes into the context once the directory store hydrates
-  // and the resolved node transitions from the synthetic root
-  // fallback to the real directory. Without the dep, the panel
-  // would mount once on the first render (with the loading-time
-  // fallback) and never refresh — leaving every `disabled={isRoot}`
-  // button grayed out on a hard reload of `/d/:id`.
-  useRightPanel(
-    <DirectoryRightPanel
-      currentNode={currentNode}
-      cascadePreview={cascadePreview}
-      handleCreateNote={handleCreateNote}
-      handleCreateSubdirectory={handleCreateSubdirectory}
-      handleRenameDirectory={handleRenameDirectory}
-      handleDeleteDirectory={handleDeleteDirectory}
-    />,
-    [currentNode],
-  );
 
   return {
     currentNode,
