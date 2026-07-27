@@ -21,9 +21,11 @@ import { useSearchNotesStore } from "../../zustand/useSearchNotesStore";
 import {
   useSearchFilterStore,
   passesFilter,
+  expandToSubtree,
   SEARCH_DEBOUNCE_DELAY_MS,
   type SearchFilter,
 } from "../../zustand/useSearchFilterStore";
+import { useDirectoryStore } from "../../zustand/useDirectoryStore";
 import {
   RestNotesSearchType,
   type MinimalNote,
@@ -383,9 +385,24 @@ const ResultContent = ({
    * boolean check, no React trees created — runs on every render but
    * is far cheaper than mounting 500 `<Paper>` elements.
    */
+  const { directoriesById } = useDirectoryStore();
+
+  /**
+   * Expand `filter.selectedDirs` to the full transitive subtree when
+   * `filter.scope === "subtree"`. Memoised on the bits that actually
+   * change the result so we don't rebuild the set on every render.
+   */
+  const effectiveDirs = useMemo(
+    () => expandToSubtree(filter.selectedDirs, filter.scope, directoriesById),
+    [filter.selectedDirs, filter.scope, directoriesById],
+  );
+
   const filteredNotes = useMemo(
-    () => rawNotes.filter((note) => passesFilter(note.directory_ids, filter)),
-    [rawNotes, filter],
+    () =>
+      rawNotes.filter((note) =>
+        passesFilter(note.directory_ids, filter, effectiveDirs),
+      ),
+    [rawNotes, filter, effectiveDirs],
   );
 
   /**
@@ -401,10 +418,7 @@ const ResultContent = ({
    * search session never sees the cut.
    */
   const visibleNotes = useMemo(() => {
-    const end = Math.min(
-      filteredNotes.length,
-      selectedIndex + 1 + RENDER_TAIL,
-    );
+    const end = Math.min(filteredNotes.length, selectedIndex + 1 + RENDER_TAIL);
     const start =
       end <= STRIP_THRESHOLD
         ? 0

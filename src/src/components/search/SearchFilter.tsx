@@ -13,6 +13,7 @@ import {
 import {
   useSearchFilterStore,
   type SearchFilterMode,
+  type SearchFilterScope,
   ROOT_SENTINEL_ID,
 } from "../../zustand/useSearchFilterStore";
 import { useDirectoryStore } from "../../zustand/useDirectoryStore";
@@ -56,9 +57,11 @@ export const SearchFilter: React.FC = () => {
   }, [directoriesData]);
 
   const mode = useSearchFilterStore((s) => s.filter.mode);
+  const scope = useSearchFilterStore((s) => s.filter.scope);
   const selectedDirs = useSearchFilterStore((s) => s.filter.selectedDirs);
   const setFilterMode = useSearchFilterStore((s) => s.setFilterMode);
   const setSelectedDirs = useSearchFilterStore((s) => s.setSelectedDirs);
+  const setFilterScope = useSearchFilterStore((s) => s.setFilterScope);
 
   return (
     <Stack
@@ -82,60 +85,77 @@ export const SearchFilter: React.FC = () => {
       </FormControl>
 
       {mode !== "all" && (
-        <FormControl size="small" sx={{ width: 8 / 13 }}>
-          <InputLabel id="search-dir-list-label">Directories</InputLabel>
-          <Select
-            labelId="search-dir-list-label"
-            label="Directories"
-            multiple
-            value={selectedDirs}
-            onChange={(e) => {
-              const v = e.target.value;
-              setSelectedDirs(typeof v === "string" ? v.split(",") : v);
-            }}
-            renderValue={(selected) => (
-              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                {selected.map((dirId) => {
-                  const dir = directoriesById[dirId];
-                  const label =
-                    dirId === ROOT_SENTINEL_ID
-                      ? "root"
-                      : dir?.display_name || dir?.name || dirId;
-                  const accent = colorFromString(dirId, theme);
-                  return (
-                    <Chip
-                      key={dirId}
-                      label={label}
-                      size="small"
-                      sx={{
-                        borderRadius: "1rem",
-                        color: accent,
-                        border: `1px solid ${accent}`,
-                        bgcolor: "transparent",
-                      }}
-                    />
-                  );
-                })}
-              </Box>
-            )}
-          >
-            <MenuItem value={ROOT_SENTINEL_ID}>
-              <Checkbox
-                checked={selectedDirs.indexOf(ROOT_SENTINEL_ID) !== -1}
-              />
-              <ListItemText primary="root" />
-            </MenuItem>
-            {sortedDirectories.map((dir) => {
-              const label = dir.display_name || dir.name || dir.id;
-              return (
-                <MenuItem key={dir.id} value={dir.id}>
-                  <Checkbox checked={selectedDirs.indexOf(dir.id) !== -1} />
-                  <ListItemText primary={label} />
-                </MenuItem>
-              );
-            })}
-          </Select>
-        </FormControl>
+        <>
+          <FormControl size="small" sx={{ width: 5 / 13 }}>
+            <InputLabel id="search-dir-list-label">Directories</InputLabel>
+            <Select
+              labelId="search-dir-list-label"
+              label="Directories"
+              multiple
+              value={selectedDirs}
+              onChange={(e) => {
+                const v = e.target.value;
+                setSelectedDirs(typeof v === "string" ? v.split(",") : v);
+              }}
+              renderValue={(selected) => (
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                  {selected.map((dirId) => {
+                    const dir = directoriesById[dirId];
+                    const label =
+                      dirId === ROOT_SENTINEL_ID
+                        ? "root"
+                        : dir?.display_name || dir?.name || dirId;
+                    const accent = colorFromString(dirId, theme);
+                    return (
+                      <Chip
+                        key={dirId}
+                        label={label}
+                        size="small"
+                        sx={{
+                          borderRadius: "1rem",
+                          color: accent,
+                          border: `1px solid ${accent}`,
+                          bgcolor: "transparent",
+                        }}
+                      />
+                    );
+                  })}
+                </Box>
+              )}
+            >
+              <MenuItem value={ROOT_SENTINEL_ID}>
+                <Checkbox
+                  checked={selectedDirs.indexOf(ROOT_SENTINEL_ID) !== -1}
+                />
+                <ListItemText primary="root" />
+              </MenuItem>
+              {sortedDirectories.map((dir) => {
+                const label = dir.display_name || dir.name || dir.id;
+                return (
+                  <MenuItem key={dir.id} value={dir.id}>
+                    <Checkbox checked={selectedDirs.indexOf(dir.id) !== -1} />
+                    <ListItemText primary={label} />
+                  </MenuItem>
+                );
+              })}
+            </Select>
+          </FormControl>
+
+          <FormControl size="small" sx={{ width: 3 / 13 }}>
+            <InputLabel id="search-dir-scope-label">Scope</InputLabel>
+            <Select
+              labelId="search-dir-scope-label"
+              label="Scope"
+              value={scope}
+              onChange={(e) =>
+                setFilterScope(e.target.value as SearchFilterScope)
+              }
+            >
+              <MenuItem value="direct">Direct</MenuItem>
+              <MenuItem value="subtree">Subtree</MenuItem>
+            </Select>
+          </FormControl>
+        </>
       )}
     </Stack>
   );
