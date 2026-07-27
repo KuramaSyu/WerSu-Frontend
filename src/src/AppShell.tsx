@@ -81,9 +81,9 @@ export const AppShell: React.FC = () => {
           display: "grid",
           gridTemplateColumns: `${leftPanelOpen ? leftPanelSize : "0px"} minmax(0, 1fr) ${rightPanelOpen ? rightPanelSize : "0px"}`,
           transition: `grid-template-columns ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}, padding-top ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
-          pt: showTopBar ? `calc(${M3} + ${M5} + ${M3})` : "0px",
+          pt: showTopBar ? `calc(${M5})` : "0px",
           height: "100vh",
-          mx: M3,
+          // mx: M3,
           // gap is handled by its inner boxes, so that it can be collapsed without leaving a gap
         }}
       >
