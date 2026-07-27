@@ -4,7 +4,6 @@ import {
   Typography,
   Stack,
   Paper,
-  CircularProgress,
   Chip,
   alpha,
   Portal,
@@ -35,6 +34,7 @@ import { M2, M3, M4 } from "../../statics";
 import { useInfiniteNoteSearch } from "../../api/queries/useNoteQueries";
 import SearchStrategySelect from "../SearchStrategySelect";
 import SearchFilterComponent from "./SearchFilter";
+import SearchLoadingBar from "./SearchLoadingBar";
 import SearchIcon from "@mui/icons-material/Search";
 import { highlightSearchMatch } from "./SearchResultHighlights";
 import { KeyboardShortcut } from "../../utils/renderShortcut";
@@ -92,13 +92,40 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
   } = useSearchFilterStore();
 
   // results
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useInfiniteNoteSearch(searchType, debouncedSearch, 30);
+  // `include` with an empty directory selection matches nothing —
+  // skip the request entirely so we don't burn a backend round-trip
+  // and don't flash an empty page while the query settles.
+  const searchEnabled = !(
+    filter.mode === "include" && filter.selectedDirs.length === 0
+  );
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading: isQueryLoading,
+    isPending: isQueryPending,
+  } = useInfiniteNoteSearch(searchType, debouncedSearch, 30, searchEnabled);
+
+  /**
+   * True while the first page of results for the current query /
+   * type / filter combo is in flight. We intentionally do NOT include
+   * `isFetchingNextPage` here — that flag stays true while the user
+   * scrolls and the next page is being loaded, which is a different
+   * state ("showing old results + a spinner at the bottom") and
+   * should not blank the existing results.
+   */
+  const isInitialLoading = isQueryLoading || isQueryPending;
 
   // extracted notes, but only if data is not loading -> otherwise short flickering
   // when changed the search query with text, that nothing was found, since data is undefined for a short time
   const notes = useRef<Note[]>([]);
-  if (data !== undefined) {
+  if (!searchEnabled) {
+    // Gate is closed (include + no dirs) — clear stale notes so the
+    // empty-state copy shows up immediately instead of flashing the
+    // previous query's results.
+    notes.current = [];
+  } else if (data !== undefined) {
     notes.current =
       data?.map((note) => new Note({ content: "", ...note })) ?? [];
   }
@@ -131,12 +158,7 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
   return (
     <>
       {/* Backdrop - click to close */}
-      <Fade
-        in={open}
-        timeout={theme.transitions.duration.complex}
-        mountOnEnter
-        unmountOnExit
-      >
+      <Fade in={open} timeout={theme.transitions.duration.complex} mountOnEnter>
         <Box
           onClick={onClose}
           sx={{
@@ -269,6 +291,17 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
             {/* directory + mode filter */}
             <SearchFilterComponent />
 
+            {/*
+             * Indeterminate progress bar pinned just under the filter.
+             * Owns its own visibility timer (min 1s, restarts on every
+             * fetch signal) so it never flickers between consecutive
+             * fetches.
+             */}
+            <SearchLoadingBar
+              isLoading={isInitialLoading}
+              isFetchingNextPage={isFetchingNextPage}
+            />
+
             <Box
               sx={{
                 zIndex: 1301,
@@ -288,6 +321,7 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
                   users={users}
                   rawNotes={notes.current}
                   filter={filter}
+                  isInitialLoading={isInitialLoading}
                   setSeacrhQuery={setSearch}
                 />
                 {/* Load next page when the sentinel scrolls into view */}
@@ -338,6 +372,14 @@ interface ResultContentProps {
   users: ReturnType<typeof useUsersStore.getState>["users"];
   rawNotes: Note[];
   filter: SearchFilter;
+  /**
+   * True while the first page of results for the current query is
+   * still loading. Used to gate the "no results" copy: we want to
+   * show the loader instead of "I took a deep dive..." while the
+   * user is waiting, and only fall through to the empty state once
+   * we know for sure there are zero results.
+   */
+  isInitialLoading: boolean;
   setSeacrhQuery: (query: string) => void;
 }
 
@@ -363,6 +405,7 @@ const ResultContent = ({
   users,
   rawNotes,
   filter,
+  isInitialLoading,
   setSeacrhQuery,
 }: ResultContentProps) => {
   const navigate = useNavigate();
@@ -573,7 +616,7 @@ const ResultContent = ({
         })}
       </Stack>
       <Fade
-        in={filteredNotes.length === 0}
+        in={!isInitialLoading && filteredNotes.length === 0}
         timeout={{ enter: theme.transitions.duration.short, exit: 0 }}
         unmountOnExit
       >
@@ -662,8 +705,6 @@ const InfiniteScrollSentinel: React.FC<InfiniteScrollSentinelProps> = ({
 
   if (!hasNextPage && !isFetchingNextPage) return null;
   return (
-    <Box ref={ref} sx={{ display: "flex", justifyContent: "center", py: M3 }}>
-      {isFetchingNextPage && <CircularProgress size={20} />}
-    </Box>
+    <Box ref={ref} sx={{ display: "flex", justifyContent: "center", py: M3 }} />
   );
 };

@@ -143,6 +143,7 @@ export function useInfiniteNoteSearch(
   searchType: RestNotesSearchType,
   query: string,
   limit = 20,
+  enabled = true,
 ) {
   return useInfiniteQuery({
     queryKey: ["notes", "search", searchType, query],
@@ -177,6 +178,7 @@ export function useInfiniteNoteSearch(
     select: (data) => data?.pages.flatMap((reply) => reply.notes) ?? [],
 
     initialPageParam: 0,
+    enabled,
   });
 }
 
