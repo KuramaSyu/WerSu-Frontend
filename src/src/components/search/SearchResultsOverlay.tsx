@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,
   Typography,
@@ -22,6 +22,7 @@ import {
   useSearchFilterStore,
   passesFilter,
   SEARCH_DEBOUNCE_DELAY_MS,
+  type SearchFilter,
 } from "../../zustand/useSearchFilterStore";
 import {
   RestNotesSearchType,
@@ -31,7 +32,7 @@ import {
 import { M2, M3, M4 } from "../../statics";
 import { useInfiniteNoteSearch } from "../../api/queries/useNoteQueries";
 import SearchStrategySelect from "../SearchStrategySelect";
-import SearchFilter from "./SearchFilter";
+import SearchFilterComponent from "./SearchFilter";
 import SearchIcon from "@mui/icons-material/Search";
 import { highlightSearchMatch } from "./SearchResultHighlights";
 import { KeyboardShortcut } from "../../utils/renderShortcut";
@@ -264,7 +265,7 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
             </Stack>
 
             {/* directory + mode filter */}
-            <SearchFilter />
+            <SearchFilterComponent />
 
             <Box
               sx={{
@@ -283,9 +284,8 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
                   searchType={searchType}
                   theme={theme}
                   users={users}
-                  filteredNotes={notes.current.filter((note) =>
-                    passesFilter(note.directory_ids, filter),
-                  )}
+                  rawNotes={notes.current}
+                  filter={filter}
                   setSeacrhQuery={setSearch}
                 />
                 {/* Load next page when the sentinel scrolls into view */}
@@ -334,16 +334,33 @@ interface ResultContentProps {
   searchType: RestNotesSearchType;
   theme: ReturnType<typeof useThemeStore.getState>["theme"];
   users: ReturnType<typeof useUsersStore.getState>["users"];
-  filteredNotes: Note[];
+  rawNotes: Note[];
+  filter: SearchFilter;
   setSeacrhQuery: (query: string) => void;
 }
+
+/**
+ * How many trailing rows we keep mounted around the selection so
+ * arrow-key navigation feels smooth.
+ */
+const RENDER_TAIL = 15;
+
+/**
+ * Once `selectedIndex` exceeds this, we start stripping rows from the
+ * beginning of the filtered list in chunks of this size. That keeps
+ * the rendered DOM bounded even when the filtered list is huge,
+ * without yanking rows out from under the user as they scroll.
+ */
+const STRIP_THRESHOLD = 100;
+const STRIP_CHUNK = 100;
 
 const ResultContent = ({
   searchQuery,
   searchType,
   theme,
   users,
-  filteredNotes,
+  rawNotes,
+  filter,
   setSeacrhQuery,
 }: ResultContentProps) => {
   const navigate = useNavigate();
@@ -351,7 +368,7 @@ const ResultContent = ({
   // to scroll when navigating with keyboard
   const selectedRef = useRef<HTMLDivElement>(null);
 
-  // index for current selected note
+  // index for current selected note (into the *filtered* list)
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   // to disable navigation when mouse is used
@@ -360,6 +377,45 @@ const ResultContent = ({
   );
 
   const [hoverEnabled, setHoverEnabled] = useState(true);
+
+  /**
+   * Filter the raw notes against the directory filter. Cheap O(n)
+   * boolean check, no React trees created — runs on every render but
+   * is far cheaper than mounting 500 `<Paper>` elements.
+   */
+  const filteredNotes = useMemo(
+    () => rawNotes.filter((note) => passesFilter(note.directory_ids, filter)),
+    [rawNotes, filter],
+  );
+
+  /**
+   * Slice of `filteredNotes` we actually mount.
+   *
+   * Always renders `0 .. selectedIndex + RENDER_TAIL` so the selected
+   * row and its trailing neighbours stay mounted (smooth arrow-key
+   * navigation). To keep the rendered DOM bounded once
+   * `selectedIndex > STRIP_THRESHOLD`, we strip whole `STRIP_CHUNK`
+   * blocks from the beginning — so when the user is on row 115 we
+   * render rows 100..130, on row 216 we render 200..231, and so on.
+   * The first `STRIP_THRESHOLD` rows are never stripped, so a normal
+   * search session never sees the cut.
+   */
+  const visibleNotes = useMemo(() => {
+    const end = Math.min(
+      filteredNotes.length,
+      selectedIndex + 1 + RENDER_TAIL,
+    );
+    const start =
+      end <= STRIP_THRESHOLD
+        ? 0
+        : Math.floor((selectedIndex - STRIP_THRESHOLD) / STRIP_CHUNK) *
+            STRIP_CHUNK +
+          STRIP_THRESHOLD;
+    return filteredNotes.slice(start, end);
+  }, [filteredNotes, selectedIndex]);
+
+  const visibleStartIndex =
+    visibleNotes.length > 0 ? filteredNotes.indexOf(visibleNotes[0]) : 0;
 
   // UX: when navigating out of dialog with keyboard, scroll to selected note
   useEffect(() => {
@@ -391,7 +447,7 @@ const ResultContent = ({
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [filteredNotes, setSeacrhQuery]);
+  }, [filteredNotes.length, setSeacrhQuery]);
 
   // UX: disable mouse when user types, to prevent accidental mouse hovers
   useEffect(() => {
@@ -421,7 +477,8 @@ const ResultContent = ({
   return (
     <>
       <Stack spacing={M3}>
-        {filteredNotes.map((note: Note, index: number) => {
+        {visibleNotes.map((note: Note, offset) => {
+          const index = visibleStartIndex + offset;
           const isSelected = index === selectedIndex;
           return (
             <Paper
