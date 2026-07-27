@@ -4,13 +4,10 @@ import {
   AccordionSummary,
   Box,
   Chip,
-  CircularProgress,
   Dialog,
   LinearProgress,
   Stack,
-  Tooltip,
   Typography,
-  useTheme,
 } from "@mui/material";
 import type { AttachmentMetadata } from "../../api/models/attachment";
 import { useThemeStore } from "../../zustand/useThemeStore";
@@ -18,10 +15,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useEffect, useState } from "react";
 import { AttachmentView } from "./AttachmentView";
 import type { Note } from "../../api/models/search";
-import { AttachmentApi } from "../../api/AttachmentApi";
-import { useQuery } from "@tanstack/react-query";
 import { useAttachments } from "../../api/queries/useAttachmentQueries";
-import { set } from "zod";
 
 export interface AttachmentPanelSectionProps {
   note: Note;
@@ -48,13 +42,12 @@ export const AttachmentPanelSection: React.FC<AttachmentPanelSectionProps> = ({
 
   const { data: attachments } = useAttachments(
     note.id,
-    note.get_attachment_ids(),
+    note.attachment_ids,
     requestOpen,
   );
 
   // expand the accordion, as soon as data is loaded after user requested it by clicking
   useEffect(() => {
-    console.log("attachments", attachments);
     if (requestOpen && attachments !== undefined) {
       setExpanded(true);
     }
@@ -156,6 +149,7 @@ export const AttachmentPanelSection: React.FC<AttachmentPanelSectionProps> = ({
           <AttachmentView
             attachment={selectedAttachment}
             onClose={() => setDialogOpen(false)}
+            noteId={note.id}
           />
         )}
       </Dialog>

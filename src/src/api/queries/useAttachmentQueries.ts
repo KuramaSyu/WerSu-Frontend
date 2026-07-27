@@ -34,7 +34,7 @@ export const attachmentQueries = {
 /**
  * Custom hook to fetch attachments for a given note
  * @usage ```
- * const {data: attachments} = useAttachments(note.id, note.get_attachment_ids());
+ * const {data: attachments} = useAttachments(note.id, note.attachment_ids);
  * ```
  * @param noteId
  * @param attachmentKeys
@@ -75,15 +75,20 @@ export function usePatchAttachment(noteId: string) {
       attachmentApi.updateAttachment(patch),
 
     onSuccess: (updatedAttachment) => {
-      // insert the updated attachment into cache
+      if (!updatedAttachment) return;
+      // Refresh both the per-note array and the per-key entry used by `useAttachmentMetadata`.
       queryClient.setQueryData(
         ["attachments", noteId],
         (old: AttachmentMetadata[] = []) =>
           old.map((attachment) =>
-            attachment.key === updatedAttachment?.key
+            attachment.key === updatedAttachment.key
               ? updatedAttachment
               : attachment,
           ),
+      );
+      queryClient.setQueryData(
+        ["attachments", noteId, updatedAttachment.key],
+        updatedAttachment,
       );
     },
   });
@@ -126,6 +131,51 @@ export function useCreateAttachment() {
         ["attachments", noteId],
         (old: MinimalNote[] = []) => [createdAttachment, ...old],
       );
+    },
+  });
+}
+
+/**
+ * Look up a single attachment by key. Reads the per-note cache from
+ * `useAttachments` first, falls back to a direct `getAttachmentMetadata`
+ * fetch. Used by the editor's "click to preview" handlers — the
+ * cache is already warm in the common case.
+ *
+ * @usage ```ts
+ * const { data, isLoading, error } = useAttachmentMetadata(noteId, key);
+ * ```
+ */
+export function useAttachmentMetadata(noteId: string | undefined, key: string) {
+  const queryClient = useQueryClient();
+  return useQuery({
+    queryKey: ["attachments", noteId, key],
+    enabled: Boolean(noteId && key),
+    staleTime: 60_000,
+    initialData: () => {
+      if (!noteId) return undefined;
+      const cached = queryClient.getQueryData<AttachmentMetadata[]>([
+        "attachments",
+        noteId,
+      ]);
+      return cached?.find((a) => a.key === key);
+    },
+    queryFn: async () => {
+      const metadata = await attachmentApi.getAttachmentMetadata(key);
+      if (!metadata) {
+        throw new Error(`Attachment ${key} not found`);
+      }
+      // Seed the per-note cache so lookups stay consistent.
+      if (noteId) {
+        queryClient.setQueryData<AttachmentMetadata[]>(
+          ["attachments", noteId],
+          (old) => {
+            const existing = old ?? [];
+            if (existing.some((a) => a.key === key)) return existing;
+            return [...existing, metadata];
+          },
+        );
+      }
+      return metadata;
     },
   });
 }

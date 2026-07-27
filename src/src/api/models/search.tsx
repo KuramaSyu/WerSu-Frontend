@@ -31,9 +31,12 @@ export interface MinimalNote {
 export interface NoteData extends MinimalNote {
   content: string;
   /**
+   * Attachment ids linked to this note. Returned by `GET /api/notes/:id`.
+   */
+  attachment_ids?: string[];
+  /**
    * Optional permission relationships. Kept on the model for legacy
-   * callers (attachment lookups via `get_attachment_ids`). Parents
-   * are no longer derived from here — use `directory_ids`.
+   * callers; parents are no longer derived from here (use `directory_ids`).
    */
   permissions?: PermissionRelationshipReply[];
   // Optional attachment ID to JWT mapping, that public users can access images
@@ -50,9 +53,11 @@ export class Note implements NoteData {
   directory_ids: string[];
   tag_ids: string[];
   /**
-   * Attachments still come over the legacy permission API as
-   * `parent_note` relations; this is the only consumer of
-   * `permissions` we keep.
+   * Attachment ids linked to this note, as returned by the backend.
+   */
+  attachment_ids: string[];
+  /**
+   * Optional permission relationships for callers that still need them.
    */
   permissions: PermissionRelationshipReply[];
   tokens?: Record<string, string> | undefined;
@@ -66,6 +71,7 @@ export class Note implements NoteData {
     this.updated_at = data.updated_at;
     this.directory_ids = data.directory_ids ?? [];
     this.tag_ids = data.tag_ids ?? [];
+    this.attachment_ids = data.attachment_ids ?? [];
     this.permissions = data.permissions ?? [];
     this.tokens = data.tokens;
   }
@@ -84,19 +90,12 @@ export class Note implements NoteData {
   }
 
   /**
-   * Returns the attachment ids attached to this note via the legacy
-   * `parent_note` permission relationship. Kept for callers that
-   * still rely on the permission-based attachment lookup.
+   * Returns the attachment ids linked to this note. Prefer
+   * `note.attachment_ids` directly at the call site — this getter
+   * stays for backward compatibility.
    */
   get_attachment_ids(): string[] {
-    const attachmentRelations = this.permissions.filter(
-      (permission) =>
-        permission.relation === "parent_note" &&
-        permission.resource.object_type === "PERMISSION_OBJECT_TYPE_ATTACHMENT",
-    );
-    return attachmentRelations.map(
-      (permission) => permission.resource.object_id,
-    );
+    return this.attachment_ids;
   }
 }
 

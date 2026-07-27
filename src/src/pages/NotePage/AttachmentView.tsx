@@ -8,10 +8,8 @@ import {
   IconButton,
   InputAdornment,
   TextField,
-  Tooltip,
 } from "@mui/material";
 import type { AttachmentMetadata } from "../../api/models/attachment";
-import { AttachmentApi } from "../../api/AttachmentApi";
 import { useState } from "react";
 import FullscreenIcon from "@mui/icons-material/Fullscreen";
 import FullscreenExitIcon from "@mui/icons-material/FullscreenExit";
@@ -20,10 +18,10 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import CloseIcon from "@mui/icons-material/Close";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
-import BackupIcon from "@mui/icons-material/Backup";
 import CloudDoneIcon from "@mui/icons-material/CloudDone";
-import { Cloud } from "@mui/icons-material";
+import { AttachmentApi } from "../../api/AttachmentApi";
 import { AttachmentLinkBuilder } from "../../api/utils/AttachmentLInkBuilder";
+import { usePatchAttachment } from "../../api/queries/useAttachmentQueries";
 
 enum SavingState {
   Idle,
@@ -35,16 +33,21 @@ enum SavingState {
 export interface AttachmentViewProps {
   attachment: AttachmentMetadata;
   onClose?: () => void;
+  // Required to keep the per-key cache fresh on rename.
+  noteId?: string;
 }
 
 export const AttachmentView: React.FC<AttachmentViewProps> = ({
   attachment,
   onClose,
+  noteId,
 }) => {
   const [bigView, setBigView] = useState(false);
   const { setMessage } = useInfoStore();
   const [filename, setFilename] = useState(attachment.filename);
   const [savingState, setSavingState] = useState<SavingState>(SavingState.Idle);
+  const patchAttachment = usePatchAttachment(noteId ?? "");
+
   const handleDelete = () => {
     const api = new AttachmentApi();
     api
@@ -63,20 +66,20 @@ export const AttachmentView: React.FC<AttachmentViewProps> = ({
     .setWidth(1080)
     .getLink(attachment.key);
 
+  // Skip when nothing changed — the saved/saving icon only shows when we actually mutated.
   async function handleFilenameUpdate() {
+    if (filename === attachment.filename) return;
     setSavingState(SavingState.Saving);
-    const api = new AttachmentApi();
     try {
-      await api.updateAttachment({
-        key: attachment.key,
-        filename,
+      await patchAttachment.mutateAsync({
+        patch: { key: attachment.key, filename },
       });
+      setSavingState(SavingState.Saved);
+      setTimeout(() => setSavingState(SavingState.Idle), 2000);
     } catch (error) {
       setMessage(new SnackbarUpdateImpl("Failed to update filename", "error"));
-      return;
+      setSavingState(SavingState.Idle);
     }
-    setSavingState(SavingState.Saved);
-    setTimeout(() => setSavingState(SavingState.Idle), 2000);
   }
 
   // Implementation for rendering the attachment view
@@ -94,6 +97,8 @@ export const AttachmentView: React.FC<AttachmentViewProps> = ({
             value={filename}
             onChange={(e) => setFilename(e.target.value)}
             variant="standard"
+            size="small"
+            sx={{ width: `50%` }}
             slotProps={{
               input: {
                 startAdornment: (
@@ -120,7 +125,7 @@ export const AttachmentView: React.FC<AttachmentViewProps> = ({
             <IconButton onClick={() => setBigView((prev) => !prev)}>
               {bigView ? <FullscreenExitIcon /> : <FullscreenIcon />}
             </IconButton>
-            <IconButton onClick={onClose} sx={{ marginLeft: "auto" }}>
+            <IconButton onClick={onClose}>
               <CloseIcon />
             </IconButton>
           </>

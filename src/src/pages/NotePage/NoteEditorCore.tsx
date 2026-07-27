@@ -60,6 +60,7 @@ import {
   getPasteUploadExtension,
   UploadAttachmentNode,
 } from "../../components/Editor/ImagePasteExtension";
+import { AttachmentPreviewModal } from "../../components/Editor/controllers/AttachmentPreviewModal";
 import type { ApplicationAttachmentBody } from "./AttachmentPanelSection";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { NoteButtonActionRow } from "./NoteButtonActionRow";
@@ -69,6 +70,8 @@ import { InsertSpeedDial } from "./SpeedDial";
 import { LatexDialog, type LatexDialogProps } from "./LatexDialog";
 import { DialogProvider, useDialog } from "./InputDialog";
 import { CustomImage } from "../../components/Editor/View/CustomImage";
+import { CustomLink } from "../../components/Editor/View/CustomLink";
+import { CustomSvgLink } from "../../components/Editor/View/CustomSvgLink";
 import { useUser } from "../../api/queries/useUser";
 import { useLiveUsersStore } from "../../zustand/useLiveUsersStore";
 import {
@@ -221,6 +224,11 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
           codeBlock: false,
           dropcursor: {},
           undoRedo: false,
+          // Replaced by `CustomLink` so `/api/...` hrefs render with the backend origin prepended.
+          link: false,
+        }),
+        CustomLink.configure({
+          openOnClick: true,
         }),
         Collaboration.configure({
           document: stableYdoc,
@@ -246,6 +254,7 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
         }),
         UploadAttachmentNode,
         CustomImage,
+        CustomSvgLink,
         TableCell,
         TableRow,
         TableHeader,
@@ -822,6 +831,7 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
         setOpen={(open) => setLatexDialogProps({ ...latexDialogProps, open })}
         initialLatexType={latexDialogProps.initialLatexType}
       />
+      <AttachmentPreviewModal />
     </>
   );
 };

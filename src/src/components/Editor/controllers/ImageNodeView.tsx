@@ -1,37 +1,25 @@
 import { Box } from "@mui/material";
-import {
-  NodeViewWrapper,
-  useCurrentEditor,
-  type NodeViewProps,
-} from "@tiptap/react";
+import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
 import { useThemeStore } from "../../../zustand/useThemeStore";
-import { useMemo, useRef } from "react";
 import { M2 } from "../../../statics";
 import { useEditorSettings } from "../../../zustand/useEditorSettings";
 import { useAuthStore } from "../../../zustand/useAuthStore";
+import { useAttachmentPreviewStore } from "../../../zustand/useAttachmentPreviewStore";
 import { AttachmentApi } from "../../../api/AttachmentApi";
 import { AttachmentLinkBuilder } from "../../../api/utils/AttachmentLInkBuilder";
 import { extractAttachmentKeyFromUrl } from "../../../api/utils/request_helpers";
-import { useUser } from "../../../api/queries/useUser";
 import { prepareBackendLink } from "../../../utils/prepareBackendLink";
 
 export function ImageNodeView({ node, selected, getPos }: NodeViewProps) {
   const { theme } = useThemeStore();
   const { editMode } = useEditorSettings();
-
-  // use attachment tokens, so that public users can access images
+  const openPreview = useAttachmentPreviewStore((s) => s.open);
   const { shareAttachmentTokens } = useAuthStore();
 
-  // To grant image access to public users,
-  // we need to patch the URL by appending an JWT
-  // just generated for public users for this one attachment 15 minutes.
+  // Append the share JWT so public users can load backend images; warn when the token is missing.
   const resolvedSrc = (src: string) => {
-    // Normalise backend-relative URLs (e.g. `/api/attachments/...`)
-    // to absolute URLs so the JWT-append step below can extract the
-    // attachment key consistently.
     src = prepareBackendLink(src);
     const attachmentKey = extractAttachmentKeyFromUrl(src);
-
     if (!attachmentKey) return src;
     const jwt = shareAttachmentTokens[attachmentKey];
     if (!jwt) {
@@ -47,25 +35,27 @@ export function ImageNodeView({ node, selected, getPos }: NodeViewProps) {
 
   const src: string = resolvedSrc(node.attrs.src ?? "");
 
-  console.log(
-    "ImageNodeView - rerender; authstore has token?",
-    Object.keys(shareAttachmentTokens).length > 0,
-    "has exact token: ",
-    !!shareAttachmentTokens[extractAttachmentKeyFromUrl(src)],
-  );
+  // Click opens the preview modal for our own attachments; external URLs keep browser default.
+  const handleClick = () => {
+    const key = extractAttachmentKeyFromUrl(src);
+    if (key) {
+      openPreview(key);
+    }
+  };
 
   return (
     <NodeViewWrapper
       data-drag-handle
       contentEditable={false}
       className={selected ? "selected-image" : ""}
-      //style={}
     >
       <Box
         sx={{
           paddingY: M2,
           width: "fit-content",
+          cursor: extractAttachmentKeyFromUrl(src) ? "zoom-in" : "default",
         }}
+        onClick={handleClick}
       >
         <Box
           component={"img"}
@@ -73,7 +63,6 @@ export function ImageNodeView({ node, selected, getPos }: NodeViewProps) {
           alt={src}
           sx={{
             display: "block",
-
             outline:
               selected && editMode
                 ? `2px solid ${theme.palette.primary.main}`

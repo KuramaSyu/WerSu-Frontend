@@ -191,6 +191,7 @@ const makeNote = (overrides: Partial<Note> = {}): Note =>
     updated_at: "2026-06-30T00:00:00Z",
     directory_ids: [],
     tag_ids: [],
+    attachment_ids: [],
     get_attachment_ids: () => [],
     get_dir: () => undefined,
     ...overrides,
