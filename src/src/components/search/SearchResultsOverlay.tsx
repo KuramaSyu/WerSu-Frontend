@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useState, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Box,
   Typography,
@@ -8,49 +8,39 @@ import {
   Chip,
   alpha,
   Portal,
-  IconButton,
   Divider,
   Fade,
   Grow,
-  Collapse,
-  Input,
   TextField,
   InputAdornment,
   Button,
-  ToggleButton,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useSearchNotesStore } from "../../zustand/useSearchNotesStore";
 import {
+  useSearchFilterStore,
+  passesFilter,
+  SEARCH_DEBOUNCE_DELAY_MS,
+} from "../../zustand/useSearchFilterStore";
+import {
   RestNotesSearchType,
   type MinimalNote,
   Note,
 } from "../../api/models/search";
-import { M1, M2, M3, M4, M5, M6 } from "../../statics";
+import { M2, M3, M4 } from "../../statics";
 import { useInfiniteNoteSearch } from "../../api/queries/useNoteQueries";
-import { SearchNotesApi } from "../../api/SearchNotesApi";
 import SearchStrategySelect from "../SearchStrategySelect";
+import SearchFilter from "./SearchFilter";
 import SearchIcon from "@mui/icons-material/Search";
 import { highlightSearchMatch } from "./SearchResultHighlights";
 import { KeyboardShortcut } from "../../utils/renderShortcut";
 import { useUsersStore } from "../../zustand/userStore";
 import { formatDistanceToNowStrict } from "date-fns";
-import { getDirectoryPath } from "../../utils/getDirectoryPath";
 import { colorFromString } from "../../utils/blendWithContrast";
-import { color } from "framer-motion";
-import { useDirectoryStore } from "../../zustand/useDirectoryStore";
-import {
-  ColoredToggleButton,
-  OutlinedToggleButton,
-} from "../ColoredToggleButton";
 import { LogoSvgComponent } from "../../pages/LoadingPage/Main";
 import { animated, useTrail } from "@react-spring/web";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { set } from "zod";
-
-const INITIAL_DEBOUCE_DELAY = 500; // to prevent lag in mode selection
-const DEBOUNCE_DELAY = 125;
+import { useNavigate } from "react-router-dom";
 
 export interface SearchResultsOverlayProps {
   open: boolean;
@@ -68,6 +58,10 @@ export interface SearchResultsOverlayProps {
  * current `notes` collection. The overlay also shows metadata such as search
  * type and query, and highlights matches when appropriate.
  *
+ * All search state (raw + debounced query, search type, directory filter)
+ * lives in `useSearchFilterStore` so the search bar, the filter component,
+ * and the result list stay in sync without prop-drilling.
+ *
  * @param open - Whether the overlay is visible.
  * @param onClose - Callback invoked to close the overlay.
  * @param isLoading - Indicates if search results are currently loading.
@@ -83,19 +77,20 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
 }) => {
   const { theme } = useThemeStore();
   const { users } = useUsersStore();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedSearchText, setDebouncedSearchText] = useState("");
-  const [searchActive, setSearchActive] = useState(false);
-  const [searchType, setSearchType] = useState<RestNotesSearchType>(
-    RestNotesSearchType.CONTEXT,
-  );
+  const {
+    search,
+    debouncedSearch,
+    searchType,
+    filter,
+    setSearch,
+    setDebouncedSearch,
+    setSearchType,
+    resetAll,
+  } = useSearchFilterStore();
 
-  // to get directory names
-  const { directoriesById } = useDirectoryStore();
-
-  // get results
+  // results
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useInfiniteNoteSearch(searchType, debouncedSearchText, 30);
+    useInfiniteNoteSearch(searchType, debouncedSearch, 30);
 
   // extracted notes, but only if data is not loading -> otherwise short flickering
   // when changed the search query with text, that nothing was found, since data is undefined for a short time
@@ -105,43 +100,30 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
       data?.map((note) => new Note({ content: "", ...note })) ?? [];
   }
 
-  // list of all dirs which appear in the current note results
-  const uniqueDirs = useMemo(() => {
-    const dirs = new Set<string>();
-    for (const note of notes.current) {
-      const dir = note.get_dir() || "root";
-      dirs.add(dir);
+  // debounce raw search input into the debounced value used by the query
+  useEffect(() => {
+    if (search === "") {
+      setDebouncedSearch(search);
+      return;
     }
-    return Array.from(dirs).sort();
-  }, [notes.current]);
-
-  const [excludeDirs, setExcludeDirs] = useState<Set<string>>(new Set());
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearch(search);
+    }, SEARCH_DEBOUNCE_DELAY_MS);
+    return () => window.clearTimeout(timeoutId);
+  }, [search, setDebouncedSearch]);
 
   // keybinds of overlay itself: ESC = close & clear search, Enter = clear search
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         onClose();
-        setSearchQuery("");
+        resetAll();
       }
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open, onClose, searchQuery]);
-  // debouce search input to prevent lags while typings
-  useEffect(() => {
-    if (searchQuery === "") {
-      setDebouncedSearchText(searchQuery);
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setDebouncedSearchText(searchQuery);
-    }, DEBOUNCE_DELAY);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [searchQuery, searchActive]);
+  }, [onClose, resetAll]);
 
   return (
     <>
@@ -229,11 +211,8 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
                   autoFocus
                   placeholder="Search"
                   variant="outlined"
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                  }}
-                  onBlur={() => setSearchActive(false)}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
                   color="primary"
                   sx={{
                     width: "fit-content",
@@ -284,100 +263,9 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
               </Box>
             </Stack>
 
-            {/* selected and unselected directories */}
-            <Stack direction={"row"}>
-              {/* selected dirs */}
-              <Stack
-                direction="row"
-                useFlexGap
-                sx={{
-                  display: "flex",
-                  width: "50%",
-                  justifyContent: "flex-start",
-                  flexWrap: "wrap",
-                  maxHeight: 72,
-                  overflowY: "auto",
-                }}
-                spacing={1}
-              >
-                {uniqueDirs.map((dir) => {
-                  const isSelected = !excludeDirs.has(dir);
+            {/* directory + mode filter */}
+            <SearchFilter />
 
-                  return (
-                    <Grow in={isSelected} unmountOnExit>
-                      {
-                        <OutlinedToggleButton
-                          size={"small"}
-                          value="check"
-                          selected={isSelected}
-                          onChange={() => {
-                            setExcludeDirs((prev) => {
-                              const newSet = new Set(prev);
-                              if (prev.has(dir)) {
-                                newSet.delete(dir);
-                              } else {
-                                newSet.add(dir);
-                              }
-                              return newSet;
-                            });
-                          }}
-                          accentColor={colorFromString(dir, theme)}
-                        >
-                          <CloseIcon sx={{ fontSize: "1rem", mr: 0.5 }} />
-                          {directoriesById[dir]?.display_name ||
-                            directoriesById[dir]?.name ||
-                            "root"}
-                        </OutlinedToggleButton>
-                      }
-                    </Grow>
-                  );
-                })}
-              </Stack>
-              {/* unselected dirs */}
-              <Stack
-                direction="row"
-                useFlexGap
-                sx={{
-                  display: "flex",
-                  width: "50%",
-                  justifyContent: "flex-end",
-                  flexWrap: "wrap",
-                  maxHeight: 72,
-                  overflowY: "auto",
-                }}
-                spacing={1}
-              >
-                {uniqueDirs.map((dir) => {
-                  const isSelected = !excludeDirs.has(dir);
-                  return (
-                    <Grow in={!isSelected} unmountOnExit>
-                      <OutlinedToggleButton
-                        size={"small"}
-                        value="check"
-                        selected={isSelected}
-                        onChange={() => {
-                          setExcludeDirs((prev) => {
-                            const newSet = new Set(prev);
-                            if (prev.has(dir)) {
-                              newSet.delete(dir);
-                            } else {
-                              newSet.add(dir);
-                            }
-                            return newSet;
-                          });
-                        }}
-                        accentColor={colorFromString(dir, theme)}
-                      >
-                        <CloseIcon sx={{ fontSize: "1rem", mr: 0.5 }} />
-                        {directoriesById[dir]?.display_name ||
-                          directoriesById[dir]?.name ||
-                          "root"}
-                      </OutlinedToggleButton>
-                    </Grow>
-                  );
-                })}
-              </Stack>
-            </Stack>
             <Box
               sx={{
                 zIndex: 1301,
@@ -391,15 +279,14 @@ export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = ({
               <Box sx={{ width: "98%" }}>
                 {/* Results or Loading */}
                 <ResultContent
-                  searchQuery={debouncedSearchText}
+                  searchQuery={debouncedSearch}
                   searchType={searchType}
                   theme={theme}
                   users={users}
-                  filteredNotes={notes.current.filter((note) => {
-                    const dir = note.get_dir() || "root";
-                    return !excludeDirs.has(dir);
-                  })}
-                  setSeacrhQuery={setSearchQuery}
+                  filteredNotes={notes.current.filter((note) =>
+                    passesFilter(note.directory_ids, filter),
+                  )}
+                  setSeacrhQuery={setSearch}
                 />
                 {/* Load next page when the sentinel scrolls into view */}
                 <InfiniteScrollSentinel
@@ -485,8 +372,6 @@ const ResultContent = ({
 
   // UX: keybindings for navigating results
   useEffect(() => {
-    if (!open) return;
-
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "ArrowDown") {
         setSelectedWith("keyboard");
@@ -506,7 +391,7 @@ const ResultContent = ({
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open, filteredNotes, setSelectedIndex, setSelectedWith]);
+  }, [filteredNotes, setSeacrhQuery]);
 
   // UX: disable mouse when user types, to prevent accidental mouse hovers
   useEffect(() => {
@@ -556,7 +441,6 @@ const ResultContent = ({
               sx={{
                 p: M2,
                 pl: M3,
-                //   backgroundColor: theme.palette.background.paper,
                 borderLeft: `5px solid ${colorFromString(note.get_dir() || "root", theme)}`,
                 cursor: "pointer",
                 transition: "all 0.2s ease",
@@ -567,7 +451,7 @@ const ResultContent = ({
                 gap: M2,
               }}
             >
-              <Box className="note header" sx={{ minWidth: 3 / 8 }}>
+              <Box className="note.header" sx={{ minWidth: 3 / 8 }}>
                 <Typography
                   variant="h6"
                   sx={{
