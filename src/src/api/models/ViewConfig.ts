@@ -13,6 +13,13 @@ export interface ViewConfig {
    * read-only public shares where the viewer cannot mutate the note.
    */
   readOnly: boolean;
+  /**
+   * When `true` (the default), the note editor body is capped at
+   * `NOTE_EDITOR_A4_WIDTH` so it reads like a sheet of A4 paper. The
+   * 3-dot menu in the action row lets the viewer flip this off to
+   * expand the editor to the full canvas width.
+   */
+  a4Width: boolean;
   // Future flags (not implemented yet):
   // - showLineNumbers
   // - allowedActions: ("share" | "rename" | "move")[]

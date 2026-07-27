@@ -49,7 +49,7 @@ import {
   clearSlashLine,
   type SlashCommand,
 } from "../../components/Editor/SlashCommandMenu";
-import { M2, M3 } from "../../statics";
+import { M2, M3, NOTE_EDITOR_A4_WIDTH } from "../../statics";
 import type { Note } from "../../api/models/search";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import UploadFileDialog from "./UploadSpeedDialAction";
@@ -64,6 +64,7 @@ import type { ApplicationAttachmentBody } from "./AttachmentPanelSection";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { NoteButtonActionRow } from "./NoteButtonActionRow";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
+import { useViewConfig } from "../../zustand/useViewConfig";
 import { InsertSpeedDial } from "./SpeedDial";
 import { LatexDialog, type LatexDialogProps } from "./LatexDialog";
 import { DialogProvider, useDialog } from "./InputDialog";
@@ -132,6 +133,9 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
 
   // Tracks which editor surface is active and if write/read is used
   const { viewMode: editorMode, editMode } = useEditorSettings();
+  // Cap the editor body to an A4-paper width by default; the action
+  // row's 3-dot menu lets the viewer flip this off via `useViewConfig`.
+  const a4Width = useViewConfig((s) => s.config.a4Width);
 
   // Read-mode fallback: the Collaboration extension needs *some* Y.Doc
   // to attach to, even when there's no live collab session. The note's
@@ -650,96 +654,145 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
 
   return (
     <>
-      <Box
+      <Paper
         sx={{
-          height: "auto",
-          flex: 1,
-          px: M3,
-          borderRadius: M2,
+          // Border around the note body. `theme.palette.divider` carries
+          // the right contrast in both light and dark themes.
+          border: `1px solid ${theme.palette.divider}`,
+          backgroundColor: theme.palette.background.paper,
+          borderRadius: 2,
+          p: M2,
+
+          mx: "auto",
+          transition: (t) =>
+            t.transitions.create("width", {
+              duration: t.transitions.duration.complex,
+            }),
+          width: a4Width ? `calc(${NOTE_EDITOR_A4_WIDTH} + 1rem)` : "100%",
           display: "flex",
           flexDirection: "column",
-          gap: M3,
-        }}
-        onClick={(event) => {
-          // only focus editor, if the paper itself was clicked. not a child within it
-          if (event.target !== event.currentTarget) {
-            return;
-          }
-          editor.commands.focus("end");
         }}
       >
-        {/* Main content heading  with title and save button*/}
-        <Stack
-          direction="row"
+        <Box
           sx={{
-            justifyContent: "space-between",
-            alignItems: "center",
-            alignContent: "flex-start",
-            width: "100%",
+            height: "auto",
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            gap: M3,
           }}
-          spacing={M3}
+          onClick={(event) => {
+            // only focus editor, if the paper itself was clicked. not a child within it
+            if (event.target !== event.currentTarget) {
+              return;
+            }
+            editor.commands.focus("end");
+          }}
         >
-          <Input
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder="Note title"
-            disableUnderline
+          {/* Main content heading  with title and save button*/}
+          <Stack
+            direction="row"
             sx={{
-              width: `clamp(200px,${Math.max(title.length, 4)}ch, 80%)`,
-              fontSize: theme.typography.h2,
-              pr: M2,
+              alignItems: "center",
+              alignContent: "flex-start",
+              width: "100%",
             }}
-          />
-          <NoteButtonActionRow />
-        </Stack>
-
-        {/* Rich Editor */}
-        {editor && editorMode === "rich" && (
-          <>
-            <TextSelectionBubbleMenu editor={editor} enabled={editMode} />
-            <SlashCommandMenu
-              editor={editor}
-              enabled={editMode}
-              extraCommands={[imageUploadCommand]}
-            />
-
-            <Box className="editor-drag-region">
-              {/* hide handlers when editor is not editable */}
-              <DragHandle
-                editor={editor}
-                className={`note-block-drag-handle ${editMode ? "" : "note-block-drag-handle--hidden"} `}
-                nested={false}
-              >
-                <DragIndicatorIcon fontSize="small" />
-              </DragHandle>
-              <ThemedEditorBox editor={editor}>
-                <EditorContent editor={editor} className="tiptap" />
-              </ThemedEditorBox>
+            spacing={M3}
+          >
+            <Box
+              sx={{
+                // The wrapper constrains the Input to the available
+                // space in the title row. Without `minWidth: 0`, a
+                // flex child defaults to its content's intrinsic
+                // size, which means a long title would grow the row
+                // and push the outer Paper wider. `overflow: hidden`
+                // clips the native input's caret so the input itself
+                // scrolls horizontally instead of expanding.
+                flex: 1,
+                minWidth: 0,
+                overflow: "hidden",
+              }}
+            >
+              <Input
+                fullWidth
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                placeholder="Note title"
+                disableUnderline
+                sx={{
+                  fontSize: theme.typography.h3,
+                  pr: M2,
+                }}
+              />
             </Box>
-          </>
-        )}
+            <NoteButtonActionRow />
+          </Stack>
 
-        {/* Source Editor */}
-        {editorMode === "source" && (
-          <TextField
-            value={sourceMarkdown}
-            ref={sourceEditorRef}
-            onChange={(event) => setSourceMarkdown(event.target.value)}
-            multiline
-            minRows={16}
-            placeholder="Markdown source"
-            fullWidth
-            sx={{
-              fontFamily: "monospace",
-              "& .MuiInputBase-input": { fontFamily: "monospace" },
-            }}
-          />
-        )}
+          {/* Rich Editor */}
+          {editor && editorMode === "rich" && (
+            <Box
+              sx={{
+                ...(a4Width && {
+                  width: NOTE_EDITOR_A4_WIDTH,
+                  mx: "auto",
+                }),
+              }}
+            >
+              <TextSelectionBubbleMenu editor={editor} enabled={editMode} />
+              <SlashCommandMenu
+                editor={editor}
+                enabled={editMode}
+                extraCommands={[imageUploadCommand]}
+              />
 
-        {!editor && (
-          <Typography color="textSecondary">Loading editor...</Typography>
-        )}
-      </Box>
+              <Box className="editor-drag-region">
+                {/* hide handlers when editor is not editable */}
+                <DragHandle
+                  editor={editor}
+                  className={`note-block-drag-handle ${editMode ? "" : "note-block-drag-handle--hidden"} `}
+                  nested={false}
+                >
+                  <DragIndicatorIcon fontSize="small" />
+                </DragHandle>
+                <ThemedEditorBox editor={editor}>
+                  <EditorContent editor={editor} className="tiptap" />
+                </ThemedEditorBox>
+              </Box>
+            </Box>
+          )}
+
+          {/* Source Editor — same A4 wrapper as the rich surface so the
+            source pane lines up with the rendered preview width. */}
+          {editorMode === "source" && (
+            <Box
+              sx={{
+                ...(a4Width && {
+                  maxWidth: NOTE_EDITOR_A4_WIDTH,
+                  mx: "auto",
+                }),
+              }}
+            >
+              <TextField
+                value={sourceMarkdown}
+                ref={sourceEditorRef}
+                onChange={(event) => setSourceMarkdown(event.target.value)}
+                multiline
+                minRows={16}
+                placeholder="Markdown source"
+                fullWidth
+                sx={{
+                  fontFamily: "monospace",
+                  "& .MuiInputBase-input": { fontFamily: "monospace" },
+                }}
+              />
+            </Box>
+          )}
+
+          {!editor && (
+            <Typography color="textSecondary">Loading editor...</Typography>
+          )}
+        </Box>
+      </Paper>
 
       {/* Floating editor actions */}
       <InsertSpeedDial
