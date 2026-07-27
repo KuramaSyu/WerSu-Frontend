@@ -353,7 +353,7 @@ export function FileGraphPage(): React.ReactElement {
         sx={{
           borderRadius: 4,
           border: `1px solid ${theme.palette.divider}`,
-          backgroundColor: theme.palette.background.paper,
+          backgroundColor: theme.palette.surfaces.panel,
           p: 2,
         }}
       >

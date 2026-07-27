@@ -8,15 +8,14 @@ import {
   useTheme,
 } from "@mui/material";
 import { noteColors } from "./directoryAccent";
-import { visibleNoteCount } from "./directoryReadme";
 import { useThemeStore } from "../../zustand/useThemeStore";
 
 interface ChapterAccordionSkeletonProps {
   /**
-   * `DirectoryReply.child_note_ids` for the chapter being skeletonized.
-   * The README lives at index 0 and is excluded automatically.
+   * Number of note rows to render as skeletons.
+   * This is `child_note_ids.length` from the directory reply (minus the README).
    */
-  childNoteIds: readonly string[];
+  notesCount: number;
   /**
    * Number of subdirectory rows to render as skeletons.
    * Each renders a collapsed `ChapterAccordionSkeleton` so the tree depth is preserved.
@@ -29,22 +28,22 @@ interface ChapterAccordionSkeletonProps {
  *
  * Renders the same accordion chrome (header + chevron + inner padding) as
  * the real component so layout does not shift when data arrives, then
- * fills the body with one note skeleton per entry in `childNoteIds`
- * (minus the README) and `subdirectoriesCount` collapsed sub-accordion
- * skeletons.
+ * fills the body with `notesCount` note-shaped skeletons and
+ * `subdirectoriesCount` collapsed sub-accordion skeletons.
  *
- * The ids come from `DirectoryReply.child_note_ids` - known before the
- * detail fetch resolves - so the skeleton matches the eventual content
- * 1:1.
+ * The counts come from `DirectoryReply.child_note_ids` /
+ * `child_dir_ids` - known before the detail fetch resolves - so the
+ * skeleton matches the eventual content 1:1.
  */
 export const ChapterAccordionSkeleton: React.FC<
   ChapterAccordionSkeletonProps
-> = ({ childNoteIds, subdirectoriesCount }) => {
+> = ({ notesCount, subdirectoriesCount }) => {
   const { theme } = useThemeStore();
   const [noteAccent, noteAccentAlt] = noteColors(theme);
 
-  // Mirror the real component: drop the README from the visible count.
-  const visibleNotes = visibleNoteCount(childNoteIds);
+  // Drop the README from the visible count - the real component filters
+  // it out, so the skeleton should too.
+  const visibleNotes = Math.max(0, notesCount - 1);
 
   return (
     <Accordion
@@ -92,12 +91,10 @@ export const ChapterAccordionSkeleton: React.FC<
         <Stack spacing={1}>
           {Array.from({ length: subdirectoriesCount }).map((_, i) => (
             <ChapterAccordionSkeleton
-              // Subdirectory contents are not yet known - pass a
-              // single-item array so the helper counts it as the
-              // README (visible count = 0). The depth cue comes from
-              // the collapsed accordion chrome around it.
+              // Subdirectory contents are not yet known - render a
+              // single placeholder row each so depth is visible.
               key={`sub-${i}`}
-              childNoteIds={["__placeholder__"]}
+              notesCount={1}
               subdirectoriesCount={0}
             />
           ))}

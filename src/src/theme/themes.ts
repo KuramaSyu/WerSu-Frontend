@@ -18,6 +18,7 @@ export const defaultTheme = createTheme({
       default: "#2E3440", // Nord0
       paper: "#3B4252", // Nord1
     },
+
     warning: { main: "#d08770", light: "#ebcb8b", dark: "#bf616a" }, // Nord14, Nord7, Nord13
     error: { main: "#bf616a", light: "#d08770", dark: "#a54242" }, // Nord13, Nord14, custom dark
     success: { main: "#5e81ac", light: "#8fbcbb", dark: "#4c688a" }, // Nord10, Nord7, Nord9
@@ -40,6 +41,7 @@ export const docsTheme = createTheme({
       default: "#eceff4", // Nord0
       paper: "#3B4252", // Nord1
     },
+
     warning: { main: "#d08770", light: "#ebcb8b", dark: "#bf616a" }, // Nord14, Nord7, Nord13
     error: { main: "#bf616a", light: "#d08770", dark: "#a54242" }, // Nord13, Nord14, custom dark
     success: { main: "#5e81ac", light: "#8fbcbb", dark: "#4c688a" }, // Nord10, Nord7, Nord9
@@ -63,6 +65,7 @@ export const githubTheme = createTheme({
       default: "#ffffff",
       paper: "#f6f8fa",
     },
+
     warning: { main: "#bf8700", light: "#ffcf4d", dark: "#7a5b00" },
     error: { main: "#cf222e", light: "#ff8182", dark: "#a40e26" },
     success: { main: "#1f883d", light: "#3fb950", dark: "#116329" },
@@ -84,8 +87,9 @@ export const githubDarkTheme = createTheme({
     text: { primary: "#e6edf3", secondary: "#8b949e" },
     background: {
       default: "#0d1117",
-      paper: "#161b22",
+      paper: "#0d1117",
     },
+
     warning: { main: "#d29922", light: "#e3b341", dark: "#bb8009" },
     error: { main: "#f85149", light: "#ff7b72", dark: "#da3633" },
     success: { main: "#2ea043", light: "#3fb950", dark: "#238636" },
@@ -109,6 +113,7 @@ export const brightTheme = createTheme({
       default: "#fffdf7",
       paper: "#fff3e0",
     },
+
     warning: { main: "#f57c00", light: "#ffad42", dark: "#bb4d00" },
     error: { main: "#d32f2f", light: "#ff6659", dark: "#9a0007" },
     success: { main: "#2e7d32", light: "#60ad5e", dark: "#005005" },
@@ -131,6 +136,10 @@ export const midnightTheme = createTheme({
     background: {
       default: "#0b1526",
       paper: "#111c33",
+    },
+    surfaces: {
+      // Midway between canvas and cards.
+      panel: "#0E1829",
     },
     warning: { main: "#f59e0b", light: "#fbbf24", dark: "#b45309" },
     error: { main: "#f87171", light: "#fca5a5", dark: "#ef4444" },

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Divider, Stack } from "@mui/material";
+import { Divider } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { Note, type NoteData } from "../../../api/models/search";
 import { useDirectoriesQuery } from "../../../api/queries/directoryQueries";
@@ -9,7 +9,7 @@ import {
   DirectoryHierarchyBuilder,
   type HirarchyItem,
 } from "../../../models/HirarchyItem";
-import { LeftPanel } from "../../MainPage/LeftPanel";
+import { UpperPanel } from "../../../components/Panels/UpperPanel";
 import { AttachmentPanelSection } from "../AttachmentPanelSection";
 import { VersionInfo } from "../VersionInfo";
 import { useNote } from "../../../api/queries/useNoteQueries";
@@ -258,31 +258,27 @@ export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
 
   return (
     <>
-      <LeftPanel open={true} setOpen={() => {}}>
-        <Stack spacing={2} sx={{ p: 2 }}>
-          <NoteActionPanel
-            isLoading={!note}
-            lastEditedLabel={formatTimestamp(note?.updated_at)}
-            parentDirectories={parentDirectoryPaths}
-            permissionSections={EMPTY_PERMISSION_SECTIONS}
-            onNavigateToDirectory={(directoryId) =>
-              navigate(`/d/${directoryId}`)
-            }
-            onChangeParentClick={() => setMoveDialogOpen(true)}
-            canChangeParent={Boolean(note && noteId)}
-            onRemoveParent={handleRemoveParentDirectory}
-            canRemoveParent={Boolean(note && noteId)}
-          />
-          <Divider sx={{ opacity: 0.3 }} />
-          {note && <AttachmentPanelSection note={note} />}
-          <Divider sx={{ opacity: 0.3 }} />
-          <VersionInfo noteId={noteId} />
-          {/* RecentActivityPanel intentionally omitted: the per-note
-              `/api/history?note_id=...` query currently 500s on the
-              backend, and the `VersionInfo` timeline already serves
-              as the per-note activity listing. */}
-        </Stack>
-      </LeftPanel>
+      <UpperPanel spacing={2}>
+        <NoteActionPanel
+          isLoading={!note}
+          lastEditedLabel={formatTimestamp(note?.updated_at)}
+          parentDirectories={parentDirectoryPaths}
+          permissionSections={EMPTY_PERMISSION_SECTIONS}
+          onNavigateToDirectory={(directoryId) => navigate(`/d/${directoryId}`)}
+          onChangeParentClick={() => setMoveDialogOpen(true)}
+          canChangeParent={Boolean(note && noteId)}
+          onRemoveParent={handleRemoveParentDirectory}
+          canRemoveParent={Boolean(note && noteId)}
+        />
+        <Divider sx={{ opacity: 0.3 }} />
+        {note && <AttachmentPanelSection note={note} />}
+        <Divider sx={{ opacity: 0.3 }} />
+        <VersionInfo noteId={noteId} />
+        {/* RecentActivityPanel intentionally omitted: the per-note
+            `/api/history?note_id=...` query currently 500s on the
+            backend, and the `VersionInfo` timeline already serves
+            as the per-note activity listing. */}
+      </UpperPanel>
 
       <ManageParentsDialog
         open={moveDialogOpen}

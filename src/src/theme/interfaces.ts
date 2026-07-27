@@ -1,6 +1,6 @@
-import '@mui/material/styles';
+import "@mui/material/styles";
 
-declare module '@mui/material/styles' {
+declare module "@mui/material/styles" {
   interface Palette {
     vibrant: {
       main: string;
@@ -11,6 +11,14 @@ declare module '@mui/material/styles' {
       main: string;
       light: string;
       dark: string;
+    };
+    surfaces: {
+      /**
+       * Background of the side rails (left + right). Tuned to sit between
+       * `background.default` (canvas) and `background.paper` (cards,
+       * dialogs, menus) so rails recede behind foreground content.
+       */
+      panel: string;
     };
   }
 
@@ -24,6 +32,9 @@ declare module '@mui/material/styles' {
       main: string;
       light: string;
       dark: string;
+    };
+    surfaces?: {
+      panel?: string;
     };
   }
 

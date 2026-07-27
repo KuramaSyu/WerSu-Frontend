@@ -15,6 +15,7 @@ import React from "react";
 import type { DirectoryReply } from "../../../api/models/directory";
 import type { Note } from "../../../api/models/search";
 import type { GraphLink, GraphNode } from "../../../utils/fileGraphUtils";
+import { useThemeStore } from "../../../zustand/useThemeStore";
 
 /**
  * Props for `GraphDetailsPanel`.
@@ -68,13 +69,14 @@ export function GraphDetailsPanel(
     setPickerValue(null);
   }, [selectedNode?.id]);
 
+  const { theme } = useThemeStore();
   return (
     <Box
       sx={{
         borderRadius: 4,
         border: "1px solid",
         borderColor: "divider",
-        backgroundColor: "background.paper",
+        backgroundColor: theme.palette.surfaces.panel,
         p: 2,
         overflow: "auto",
       }}

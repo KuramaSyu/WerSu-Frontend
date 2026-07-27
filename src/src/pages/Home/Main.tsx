@@ -27,7 +27,6 @@ import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { FavouriteDirectories } from "./FavouriteDirectories";
 import { AllDirectories } from "./AllDirectories";
 import { M3, M4 } from "../../statics";
-import { useThemeStore } from "../../zustand/useThemeStore";
 import { useRequireAuth } from "../../hooks/useRequireAuth";
 
 /**
@@ -44,7 +43,6 @@ export const HomePage: React.FC = () => {
   const setMessage = useInfoStore((s) => s.setMessage);
   const [createNoteOpen, setCreateNoteOpen] = useState(false);
   const { rightPanelOpen } = useLayout();
-  const { theme } = useThemeStore();
   useRequireAuth();
 
   const handleCreateDirectory = async (): Promise<void> => {
@@ -72,7 +70,8 @@ export const HomePage: React.FC = () => {
   useRightPanel(null);
   usePanelSize({ left: "clamp(20rem, 25vw, 30rem)" });
   useLeftPanel(
-    <UpperPanel sx={{ backgroundColor: theme.palette.background.paper }}>
+    <UpperPanel>
+      <NavigationSection />
       <NavigationSection />
       <PanelSection title="Actions" showDivider>
         <PanelButtons>
@@ -104,7 +103,6 @@ export const HomePage: React.FC = () => {
       </PanelSection>
       <DirectorySideView />
     </UpperPanel>,
-    [theme],
   );
 
   return (

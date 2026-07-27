@@ -45,6 +45,9 @@ export interface CustomTheme extends Theme {
       light: string;
       dark: string;
     };
+    surfaces: {
+      panel: string;
+    };
   };
   colorTransition: {
     root: { transition: string; "&:hover"?: { transition: string } };
@@ -197,6 +200,22 @@ export class CustomThemeImpl implements CustomTheme {
       hslToHex((h + 200) % 360, s, l),
       hslToHex((h + 240) % 360, s, l),
     ];
+    // Side-rail surface. If the source theme didn't define one
+    // (e.g. the empty `material-mark` theme passes only
+    // `palette: { mode: "dark" }`), nudge `background.default`
+    // slightly: lighter in dark mode, darker in light mode, so
+    // the rail lifts off the canvas without competing with cards.
+    // Uses the directly-imported MUI helpers because `this.lighten`
+    // and `this.darken` aren't bound until further down in the
+    // constructor.
+    const basePanel = this.palette.background.default;
+    const computedPanel =
+      this.palette.mode === "dark"
+        ? lighten(basePanel, 0.1)
+        : darken(basePanel, 0.1);
+    this.palette.surfaces = {
+      panel: this.palette.surfaces?.panel ?? computedPanel,
+    };
     this.typography.fontFamily = '"Fira Sans", sans-serif';
 
     // Wrap methods to handle string | number parameters

@@ -1,5 +1,4 @@
-import { Box, IconButton, Paper, Stack, Tooltip } from "@mui/material";
-import { DirectorySideView } from "./DirectorySideView";
+import { Box, IconButton, Stack, Tooltip } from "@mui/material";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
@@ -7,6 +6,8 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { navigationMemento } from "../../utils/navigationMemento";
+import { DirectorySideView } from "./DirectorySideView";
+import { UpperPanel } from "../../components/Panels/UpperPanel";
 
 const LEFT_OPEN = 280;
 const LEFT_CLOSED = 0; // fully hidden pane
@@ -17,6 +18,15 @@ export interface LeftSideViewProps {
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
   children?: React.ReactNode;
 }
+
+/**
+ * Left-side rail for the home content view. Renders the back / forward
+ * / collapse header and delegates the panel shell to `UpperPanel` so
+ * the styling stays in one place.
+ *
+ * `open` / `setOpen` drive the rail's slide animation; the panel body
+ * is always mounted so the header chrome stays in sync.
+ */
 export const LeftPanel: React.FC<LeftSideViewProps> = ({
   open,
   setOpen,
@@ -60,70 +70,65 @@ export const LeftPanel: React.FC<LeftSideViewProps> = ({
 
   return (
     <>
-      <Paper
-        elevation={1}
+      <Box
         sx={{
-          width: `100%`,
+          width: "100%",
           flex: `0 0 ${leftWidth}px`,
-          overflow: "hidden",
-          transition: "width 220ms ease, flex-basis 220ms ease",
-          // position: "sticky",
+          transition: "flex-basis 220ms ease",
           alignSelf: "flex-start",
+          height: "100%",
         }}
       >
-        <Box
-          sx={{
-            height: "100%",
-            width: "100%",
-            overflowY: "auto",
-          }}
-        >
-          <Stack
-            direction="row"
-            sx={{
-              p: 1,
-              borderBottom: "1px solid",
-              borderColor: "divider",
-              justifyContent: "space-between",
-            }}
-          >
-            <Stack direction={"row"}>
-              <Tooltip title="Back">
-                <span>
-                  <IconButton
-                    onClick={handleUndo}
-                    size="small"
-                    disabled={!canUndo}
-                  >
-                    <ArrowBackIcon fontSize="small" />
-                  </IconButton>
-                </span>
-              </Tooltip>
-              <Tooltip title="Forward">
-                <span>
-                  <IconButton
-                    onClick={handleRedo}
-                    size="small"
-                    disabled={!canRedo}
-                  >
-                    <ArrowForwardIcon fontSize="small" />
-                  </IconButton>
-                </span>
+        <UpperPanel
+          header={
+            <Stack
+              direction="row"
+              sx={{
+                p: 1,
+                borderBottom: "1px solid",
+                borderColor: "divider",
+                justifyContent: "space-between",
+              }}
+            >
+              <Stack direction={"row"}>
+                <Tooltip title="Back">
+                  <span>
+                    <IconButton
+                      onClick={handleUndo}
+                      size="small"
+                      disabled={!canUndo}
+                    >
+                      <ArrowBackIcon fontSize="small" />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+                <Tooltip title="Forward">
+                  <span>
+                    <IconButton
+                      onClick={handleRedo}
+                      size="small"
+                      disabled={!canRedo}
+                    >
+                      <ArrowForwardIcon fontSize="small" />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+              </Stack>
+              <Tooltip title={open ? "Collapse" : "Expand"}>
+                <IconButton onClick={() => setOpen((v) => !v)} size="small">
+                  {open ? (
+                    <ChevronLeftIcon fontSize="small" />
+                  ) : (
+                    <ChevronRightIcon fontSize="small" />
+                  )}
+                </IconButton>
               </Tooltip>
             </Stack>
-            <Tooltip title={open ? "Collapse" : "Expand"}>
-              <IconButton onClick={() => setOpen((v) => !v)} size="small">
-                {open ? (
-                  <ChevronLeftIcon fontSize="small" />
-                ) : (
-                  <ChevronRightIcon fontSize="small" />
-                )}
-              </IconButton>
-            </Tooltip>
-          </Stack>
+          }
+        >
           {children ?? <DirectorySideView />}
-        </Box>
-      </Paper>
+        </UpperPanel>
+      </Box>
 
       {!open && (
         <IconButton
@@ -138,7 +143,7 @@ export const LeftPanel: React.FC<LeftSideViewProps> = ({
             height: TOGGLE_SIZE,
             border: "1px solid",
             borderColor: "divider",
-            bgcolor: "background.paper",
+            bgcolor: (theme) => theme.palette.surfaces.panel,
             boxShadow: 2,
             zIndex: (theme) => theme.zIndex.appBar + 1,
             transition: "left 220ms ease, background-color 120ms ease",

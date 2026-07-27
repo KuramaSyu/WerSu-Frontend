@@ -18,3 +18,9 @@ export const M5 = "4rem";
 export const M6 = "8rem";
 export const M7 = "12rem";
 export const M8 = "16rem";
+/**
+ * MUI `elevation` value used by the top `AppBar` and (in dark mode) by
+ * the side-rail `Paper` shells. Keeping them in sync via this constant
+ * means a future tweak happens in one place.
+ */
+export const TOP_BAR_ELEVATION = 4;

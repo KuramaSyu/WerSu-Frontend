@@ -19,7 +19,7 @@ import { useThemeStore } from "../../zustand/useThemeStore";
 import { useUser } from "../../api/queries/useUser";
 import { LeftPanelToggle, RightPanelToggle } from "../Panels/LeftPanelToggle";
 import SearchBar from "../search/SearchBar";
-import { M1, M2, M3, M4 } from "../../statics";
+import { M1, M2, M3, M4, TOP_BAR_ELEVATION } from "../../statics";
 import { useContainedIfSelected, Pages } from "./Pages";
 import { useLayout } from "../../LayoutProvider";
 
@@ -70,14 +70,16 @@ export const TopBarAppBar: React.FC<TopBarAppBarProps> = ({
     >
       <AppBar
         position="fixed"
-        elevation={4}
-        sx={{
-          mt: M3,
-          borderRadius: "2rem",
-          left: "1rem",
-          right: "1rem",
-          width: "auto",
-        }}
+        elevation={TOP_BAR_ELEVATION}
+        sx={
+          {
+            // mt: M3,
+            // borderRadius: 2,
+            // left: 0,
+            // right: 0,
+            // width: "auto",
+          }
+        }
       >
         <Toolbar>
           <Stack

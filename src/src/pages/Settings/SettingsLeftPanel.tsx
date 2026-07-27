@@ -1,5 +1,4 @@
 import {
-  Box,
   Divider,
   List,
   ListItemButton,
@@ -9,6 +8,7 @@ import {
 } from "@mui/material";
 import { useSettingsNavStore } from "./SettingsStore";
 import { settingsCategories } from "./categories";
+import { UpperPanel } from "../../components/Panels/UpperPanel";
 
 /**
  * Content for the left side panel on the Settings page.
@@ -35,7 +35,7 @@ export const SettingsLeftPanel: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 2 }}>
+    <UpperPanel spacing={1}>
       <Typography variant="h5" sx={{ mb: 1 }}>
         Settings
       </Typography>
@@ -57,6 +57,6 @@ export const SettingsLeftPanel: React.FC = () => {
           );
         })}
       </List>
-    </Box>
+    </UpperPanel>
   );
 };
