@@ -175,7 +175,9 @@ export function useInfiniteNoteSearch(
       return allPages.length * limit;
     },
 
-    select: (data) => data?.pages.flatMap((reply) => reply.notes) ?? [],
+    // No `select` here on purpose: callers flatten `data.pages` inside a
+    // useMemo so the resulting array only changes when a new page
+    // actually arrives, not on every TanStack status tick.
 
     initialPageParam: 0,
     enabled,

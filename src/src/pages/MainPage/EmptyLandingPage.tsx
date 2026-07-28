@@ -1,5 +1,5 @@
 import { Box, Stack, Typography, useTheme } from "@mui/material";
-import { TextTrail } from "../../components/search/SearchResultsOverlay";
+import { TextTrail } from "../../components/search/results/SearchResultsEmptyState";
 import { M4, M5 } from "../../statics";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { LogoSvgComponent } from "../LoadingPage/Main";

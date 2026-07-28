@@ -15,36 +15,27 @@ import {
   type SearchFilterMode,
   type SearchFilterScope,
   ROOT_SENTINEL_ID,
-} from "../../zustand/useSearchFilterStore";
-import { useDirectoryStore } from "../../zustand/useDirectoryStore";
-import { useDirectoriesQuery } from "../../api/queries/directoryQueries";
-import { useThemeStore } from "../../zustand/useThemeStore";
-import { colorFromString } from "../../utils/blendWithContrast";
-import { M3 } from "../../statics";
+} from "../../../zustand/useSearchFilterStore";
+import { useDirectoryStore } from "../../../zustand/useDirectoryStore";
+import { useDirectoriesQuery } from "../../../api/queries/directoryQueries";
+import { useThemeStore } from "../../../zustand/useThemeStore";
+import { colorFromString } from "../../../utils/blendWithContrast";
+import { M3 } from "../../../statics";
 
-/**
- * Combined filter surface for the search overlay.
- *
- * Renders the mode selector (`All / Include / Exclude`) and, when
- * the mode isn't `all`, the directory multi-select next to it. State
- * lives in `useSearchFilterStore` so the search overlay and any
- * future callers can read/write the same filter without prop-drilling.
- */
+// directory mode/scope filter for the search overlay
 export const SearchFilter: React.FC = () => {
-  const { theme } = useThemeStore();
+  const theme = useThemeStore((s) => s.theme);
   const { directoriesById, setDirectories } = useDirectoryStore();
 
-  // All directories come from the dedicated directory query so the user
-  // can pick a filter scope even before search results resolve.
-  // Mirrored into the store so chip labels resolve via `directoriesById`.
+  // fetch every directory up front so the user can pick a filter
+  // scope before results resolve; mirrors into the store so chip
+  // labels resolve via `directoriesById`
   const { data: directoriesData } = useDirectoriesQuery(
     { limit: 500, offset: 0 },
     true,
   );
   useEffect(() => {
-    if (directoriesData) {
-      setDirectories(directoriesData);
-    }
+    if (directoriesData) setDirectories(directoriesData);
   }, [directoriesData, setDirectories]);
 
   const sortedDirectories = useMemo(() => {

@@ -47,14 +47,24 @@ export const useDirectoryStore = create<DirectoryState>((set) => ({
       const existing = state.directoriesById[directory.id];
       if (existing) {
         // Preserve parent/children metadata we may already know about.
+        const merged = {
+          ...existing,
+          display_name: directory.display_name ?? existing.display_name,
+          name: directory.slug ?? existing.name,
+        };
+        // skip the store update entirely when nothing changed so the
+        // search overlay's `directoriesById` selector doesn't rerender
+        // on every page of a search reply
+        if (
+          merged.display_name === existing.display_name &&
+          merged.name === existing.name
+        ) {
+          return state;
+        }
         return {
           directoriesById: {
             ...state.directoriesById,
-            [directory.id]: {
-              ...existing,
-              display_name: directory.display_name ?? existing.display_name,
-              name: directory.slug ?? existing.name,
-            },
+            [directory.id]: merged,
           },
         };
       }
