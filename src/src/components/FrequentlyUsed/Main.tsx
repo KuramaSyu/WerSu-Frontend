@@ -11,7 +11,7 @@ import { HistoryRowView } from "../RecentActivity/HistoryRowView";
  */
 export interface FrequentlyUsedPanelProps {
   /** Optional title override. */
-  title?: string;
+  title?: string | null;
   /** Max number of items to fetch and render. */
   limit?: number;
 }

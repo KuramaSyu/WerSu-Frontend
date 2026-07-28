@@ -42,7 +42,8 @@ import {
  */
 const renderRowIcon = (entry: HistoryRowEntry): React.ReactNode => {
   if (entry.score !== undefined) {
-    return <LocalFireDepartmentIcon fontSize="small" />;
+    return null;
+    // return <LocalFireDepartmentIcon fontSize="small" />;
   }
   if (entry.action === undefined) {
     return <EditIcon fontSize="small" />;

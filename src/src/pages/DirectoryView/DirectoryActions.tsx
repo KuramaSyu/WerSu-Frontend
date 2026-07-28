@@ -1,11 +1,8 @@
 import React, { useState } from "react";
-import CreateNewFolderIcon from "@mui/icons-material/CreateNewFolder";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
 import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
 import DeleteIcon from "@mui/icons-material/Delete";
-import AddIcon from "@mui/icons-material/Add";
-import NoteAddIcon from "@mui/icons-material/NoteAdd";
 import SettingsIcon from "@mui/icons-material/Settings";
 import {
   Box,
@@ -21,6 +18,7 @@ import type { HirarchyItem } from "../../models/HirarchyItem";
 import type { CascadePreview } from "./DirectoryFeatures.hook";
 import { ColoredCollapseButton } from "../../components/ColoredCollapseButton";
 import { useThemeStore } from "../../zustand/useThemeStore";
+import CreateFab from "../../components/CreateFab";
 
 export interface DirectoryActionsProps {
   currentNode: HirarchyItem;
@@ -118,7 +116,6 @@ export const DirectoryActions: React.FC<DirectoryActionsProps> = ({
   // from the pure `primary.main` used for the FABs.
   const actionColor = theme.blendWithContrast("primary", 0.3);
   const isRoot = currentNode.getId() === "root";
-  const [plusOpen, setPlusOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -157,16 +154,13 @@ export const DirectoryActions: React.FC<DirectoryActionsProps> = ({
   return (
     <>
       <Stack
-        // Fixed to the bottom-right of the screen. The dials open
-        // upward so they don't overflow the viewport. Two slots
-        // (plus + settings) sit side-by-side with a small gap.
-        // `alignItems: "flex-end"` aligns both dials to the bottom
-        // of the row, so the FABs sit on the same baseline even
-        // when the SpeedDial roots have slightly different
-        // intrinsic heights (their `direction: 'up'` styles
-        // apply a negative `marginBottom` to the actions
-        // container, which can shift one root visually lower
-        // than the other).
+        // Fixed to the bottom-right of the screen. The settings
+        // SpeedDial opens upward so its actions don't overflow the
+        // viewport. The settings dial sits on the left and the
+        // `CreateFab` stack sits on the right - the FAB stack is
+        // the rightmost corner element. `alignItems: "flex-end"`
+        // keeps both aligned to the same bottom baseline even
+        // though their roots have different intrinsic heights.
         sx={{
           position: "fixed",
           right: 24,
@@ -177,44 +171,6 @@ export const DirectoryActions: React.FC<DirectoryActionsProps> = ({
           zIndex: (theme) => theme.zIndex.appBar + 2,
         }}
       >
-        <SpeedDial
-          ariaLabel="Create new"
-          icon={<SpeedDialIcon open={plusOpen} icon={<AddIcon />} />}
-          direction="up"
-          open={plusOpen}
-          onOpen={() => setPlusOpen(true)}
-          onClose={() => setPlusOpen(false)}
-        >
-          <SpeedDialAction
-            icon={
-              <ColoredCollapseButton
-                color={actionColor}
-                whenSelected="New note"
-                onClick={() => {
-                  handleCreateNote();
-                  setPlusOpen(false);
-                }}
-              >
-                <NoteAddIcon fontSize="small" />
-              </ColoredCollapseButton>
-            }
-          />
-          <SpeedDialAction
-            icon={
-              <ColoredCollapseButton
-                color={actionColor}
-                whenSelected="New subdirectory"
-                onClick={() => {
-                  handleCreateSubdirectory();
-                  setPlusOpen(false);
-                }}
-              >
-                <CreateNewFolderIcon fontSize="small" />
-              </ColoredCollapseButton>
-            }
-          />
-        </SpeedDial>
-
         <SpeedDial
           ariaLabel="Directory settings"
           icon={<SpeedDialIcon open={settingsOpen} icon={<SettingsIcon />} />}
@@ -273,6 +229,10 @@ export const DirectoryActions: React.FC<DirectoryActionsProps> = ({
             }
           />
         </SpeedDial>
+        <CreateFab
+          onCreateNote={handleCreateNote}
+          onCreateDirectory={handleCreateSubdirectory}
+        />
       </Stack>
 
       <ConfirmationModal
