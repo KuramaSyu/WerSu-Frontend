@@ -16,7 +16,7 @@ import {
   type UpdateNoteVariables,
 } from "../../api/queries/useNoteQueries";
 import { useUser } from "../../api/queries/useUser";
-import { useLayout } from "../../LayoutProvider";
+import { useLayout, useLeftPanel, usePanelSize } from "../../LayoutProvider";
 import { useRightPanel } from "../../LayoutProvider";
 import { NoteEditorSkeleton } from "./NoteEditorSkeleton";
 import { useThemeStore } from "../../zustand/useThemeStore";
@@ -24,8 +24,6 @@ import { useThemeStore } from "../../zustand/useThemeStore";
 export const NotePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { data: user } = useUser();
-  const { isLoading } = useLoadingStore();
-  const { isMobile } = useBreakpoint();
   const { theme } = useThemeStore();
 
   const { data: note } = useNote(id);
@@ -74,13 +72,12 @@ export const NotePage: React.FC = () => {
     },
     [id, mutateNote],
   );
-  const { setLeftPanel, leftPanelOpen } = useLayout();
 
-  useEffect(() => {
-    setLeftPanel(
-      <NoteSidePanel note={note} noteId={id} onNoteUpdated={updateNote} />,
-    );
-  }, [id]);
+  useLeftPanel(
+    <NoteSidePanel note={note} noteId={id} onNoteUpdated={updateNote} />,
+    [id],
+  );
+  usePanelSize({ left: `clamp(15rem, 25vw, 30rem)` });
 
   // The note editor owns the full canvas - no right rail. Pin
   // `rightPanel` to null on this route so a previous page's

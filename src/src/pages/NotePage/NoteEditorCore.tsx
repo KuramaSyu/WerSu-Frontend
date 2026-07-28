@@ -749,10 +749,12 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
           {editor && editorMode === "rich" && (
             <Box
               sx={{
-                ...(a4Width && {
-                  width: NOTE_EDITOR_A4_WIDTH,
-                  mx: "auto",
-                }),
+                width: a4Width ? NOTE_EDITOR_A4_WIDTH : "100%",
+                mx: "auto",
+                transition: (t) =>
+                  t.transitions.create("width", {
+                    duration: t.transitions.duration.complex,
+                  }),
               }}
             >
               <TextSelectionBubbleMenu editor={editor} enabled={editMode} />
@@ -783,10 +785,12 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
           {editorMode === "source" && (
             <Box
               sx={{
-                ...(a4Width && {
-                  maxWidth: NOTE_EDITOR_A4_WIDTH,
-                  mx: "auto",
-                }),
+                width: a4Width ? NOTE_EDITOR_A4_WIDTH : "100%",
+                mx: "auto",
+                transition: (t) =>
+                  t.transitions.create("width", {
+                    duration: t.transitions.duration.complex,
+                  }),
               }}
             >
               <TextField
