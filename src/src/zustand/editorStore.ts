@@ -70,16 +70,11 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => ({
   },
 
   setContent: (markdown) => {
-    const { viewMode } = useEditorSettings.getState();
-
-    // if we are in markdown source mode, just set the content into the sourceMarkdown state
-    if (viewMode === "source") {
-      set({ sourceMarkdown: markdown });
-      return;
-    }
-
-    // we are in the rich text editor
+    // Update the rich editor AND the source buffer regardless of
+    // the current view mode. Otherwise changeing back the ydoc would
+    // just wipe out the markdown changes.
     const editor = get().editor;
+    set({ sourceMarkdown: markdown });
     if (!editor) return;
     // normalize doc to prevent table errors
     const normalizedDoc = markdownToProsemirror(editor, markdown);

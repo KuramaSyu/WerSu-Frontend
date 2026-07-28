@@ -9,6 +9,7 @@ import type { Editor } from "@tiptap/react";
 import { M4 } from "../../statics";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { LatexDialog } from "./LatexDialog";
+import { useActiveNoteStore } from "../../zustand/editorStore";
 import FunctionsIcon from "@mui/icons-material/Functions";
 
 export interface InsertSpeedDialProps {
@@ -28,6 +29,7 @@ export const InsertSpeedDial: React.FC<InsertSpeedDialProps> = ({
   setFileUploadDialogOpen,
 }) => {
   const { viewMode, setViewMode } = useEditorSettings();
+  const setContent = useActiveNoteStore((s) => s.setContent);
   const [latexDialogOpen, setLatexDialogOpen] = useState(false);
 
   // callbacks for the Mathematics extension
@@ -110,11 +112,7 @@ export const InsertSpeedDial: React.FC<InsertSpeedDialProps> = ({
               tooltip: { title: "Rich editor" },
             }}
             onClick={() => {
-              if (editor) {
-                editor.commands.setContent(sourceMarkdown, {
-                  contentType: "markdown",
-                });
-              }
+              setContent(sourceMarkdown);
               setViewMode("rich");
             }}
           />
