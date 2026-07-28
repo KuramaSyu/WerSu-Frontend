@@ -56,6 +56,18 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
     setContent("");
   };
 
+  // True when the user hasn't typed anything into the body. Used to
+  // route the close path into a "cancel" instead of a "save empty note"
+  // - an empty body is almost always a mistake, and the fullscreen
+  // editor can't render an empty document anyway.
+  const isContentEmpty = content.trim() === "";
+
+  // Fullscreen editor needs *some* content to mount. When the user
+  // clicks "open fullscreen" with an empty body, send a single
+  // space so the API + editor see a non-empty document; the space
+  // renders as a blank line and is easy to overwrite.
+  const bodyForSave = isContentEmpty ? " " : content;
+
   const saveNote = async () => {
     if (isSaving) {
       return undefined;
@@ -63,7 +75,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
 
     setIsSaving(true);
     try {
-      const note = await new NoteApi().post(title, content);
+      const note = await new NoteApi().post(title, bodyForSave);
       if (!note) {
         return undefined;
       }
@@ -115,6 +127,16 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
   };
 
   const closeDialog = async () => {
+    // Empty body means the user dismissed the dialog without
+    // intending to publish - skip the POST entirely and just close.
+    // Dialogs `<Dialog onClose>` (backdrop click + Esc) also routes
+    // through here, so "clicking next to the modal" cancels too.
+    if (isContentEmpty) {
+      onOpenChange(false);
+      resetDraft();
+      return;
+    }
+
     const note = await saveNote();
     onOpenChange(false);
     resetDraft();

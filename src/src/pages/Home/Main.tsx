@@ -28,6 +28,7 @@ import { FavouriteDirectories } from "./FavouriteDirectories";
 import { AllDirectories } from "./AllDirectories";
 import { M3, M4 } from "../../statics";
 import { useRequireAuth } from "../../hooks/useRequireAuth";
+import CreateFab from "../../components/CreateFab";
 
 /**
  * Home page.
@@ -92,7 +93,7 @@ export const HomePage: React.FC = () => {
         title="Frequently used"
         titleIcon={<LocalFireDepartmentIcon fontSize="small" />}
       >
-        <FrequentlyUsedPanel />
+        <FrequentlyUsedPanel title={null} />
       </PanelSection>
       <PanelSection
         title="Recent activity"
@@ -130,6 +131,19 @@ export const HomePage: React.FC = () => {
           <AllDirectories />
         </Stack>
       </Stack>
+      <Box
+        sx={{
+          position: "fixed",
+          right: 24,
+          bottom: 24,
+          zIndex: (theme) => theme.zIndex.appBar + 2,
+        }}
+      >
+        <CreateFab
+          onCreateNote={() => setCreateNoteOpen(true)}
+          onCreateDirectory={() => void handleCreateDirectory()}
+        />
+      </Box>
       <CreateNote open={createNoteOpen} onOpenChange={setCreateNoteOpen} />
     </Box>
   );
