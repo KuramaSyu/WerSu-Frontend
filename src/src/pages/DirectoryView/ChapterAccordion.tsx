@@ -124,7 +124,7 @@ export const ChapterAccordion: React.FC<ChapterAccordionProps> = ({
           loading={isLoading}
           loadingChildren={
             <ChapterAccordionSkeleton
-              childNoteIds={hydratedDirectory.child_note_ids ?? []}
+              notesCount={hydratedDirectory.child_note_ids?.length ?? 0}
               subdirectoriesCount={hydratedDirectory.child_dir_ids?.length ?? 0}
             />
           }

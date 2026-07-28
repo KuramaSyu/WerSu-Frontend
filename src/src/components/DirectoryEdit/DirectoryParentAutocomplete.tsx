@@ -1,4 +1,9 @@
-import { Autocomplete, TextField, createFilterOptions } from "@mui/material";
+import {
+  Autocomplete,
+  TextField,
+  createFilterOptions,
+  type FilterOptionsState,
+} from "@mui/material";
 import type { SyntheticEvent } from "react";
 import type { DirectoryReply } from "../../api/models/directory";
 import {
@@ -41,7 +46,7 @@ const defaultFilter = createFilterOptions<string>();
  */
 const filterOptions = (
   options: string[],
-  state: { inputValue: string },
+  state: FilterOptionsState<string>,
 ): string[] => {
   const filtered = defaultFilter(options, state);
   const typed = state.inputValue.trim();

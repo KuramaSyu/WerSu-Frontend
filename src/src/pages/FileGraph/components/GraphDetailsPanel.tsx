@@ -81,7 +81,10 @@ export function GraphDetailsPanel(
         overflow: "auto",
       }}
     >
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
+      <Stack
+        direction="row"
+        sx={{ justifyContent: "space-between", alignItems: "center" }}
+      >
         <Typography variant="h6">Details</Typography>
         {selectedNode && (
           <Button

@@ -226,7 +226,7 @@ beforeEach(() => {
   mockedNote.mockReturnValue({ data: undefined, isError: false });
 
   useEditorSettings.setState({ editMode: false, viewMode: "rich" });
-  useViewConfig.setState({ config: { readOnly: false } });
+  useViewConfig.getState().resetViewConfig();
   useAuthStore.setState({ accessToken: null, shareAccessToken: null });
 });
 
@@ -235,7 +235,7 @@ afterEach(() => {
   // reset below is just a belt-and-braces guard for state that
   // escape the component's lifecycle (StrictMode double-mount, etc.).
   useEditorSettings.setState({ editMode: false, viewMode: "rich" });
-  useViewConfig.setState({ config: { readOnly: false } });
+  useViewConfig.getState().resetViewConfig();
 });
 
 describe("PublicNotePage - default state", () => {

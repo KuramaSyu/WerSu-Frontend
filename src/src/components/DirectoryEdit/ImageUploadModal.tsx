@@ -24,8 +24,12 @@ export interface ImageUploadModalProps {
    * Called with the markdown image URL once the user uploads an image
    * successfully. The caller (DirectoryEdit) drops this into the directory
    * `image_url` field.
+   *
+   * Optional because `deferUpload` mode hands the picked file to the
+   * caller via `onFilePicked` and the caller runs the upload itself, so
+   * the modal never produces a markdown URL.
    */
-  onUploaded: (markdownUrl: string) => void;
+  onUploaded?: (markdownUrl: string) => void;
   /**
    * Current body of the README note. Rendered as a small preview so the
    * user has context for what they're attaching the image to.
@@ -216,7 +220,7 @@ export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
         .asMarkdown()
         .setWidth(720)
         .getLink(metadata.key);
-      onUploaded(markdownUrl);
+      onUploaded?.(markdownUrl);
       onClose();
     } finally {
       setUploading(false);
