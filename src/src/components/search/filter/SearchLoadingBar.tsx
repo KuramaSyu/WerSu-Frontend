@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Box, Fade, LinearProgress } from "@mui/material";
 
-const MIN_VISIBLE_MS = 1000;
+const MIN_VISIBLE_MS = 500;
 
 interface Props {
   isLoading: boolean;
@@ -44,7 +44,7 @@ export const SearchLoadingBar: React.FC<Props> = ({
         pointerEvents: "none",
       }}
     >
-      <Fade in={visible} timeout={{ enter: 150, exit: 200 }} unmountOnExit>
+      <Fade in={visible} timeout={{ enter: 500, exit: 500 }} unmountOnExit>
         <LinearProgress
           aria-label="Loading search results"
           sx={{ width: "100%", position: "absolute", top: 0, left: 0 }}
