@@ -439,18 +439,12 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
     return () => useActiveNoteStore.getState().setEditor(null);
   }, [editor]);
 
-  // in view mode, load the note's markdown into the editor. This needs
-  // its own effect keyed on `note?.id` (not just `editor`) because
-  // `useNote(id)` often resolves *after* the editor instance is created
-  // on a fresh navigation from the search overlay — without `note?.id`
-  // in the deps, the effect would fire once with `note === undefined`,
-  // skip the `setContent` call, and leave the editor empty until a
-  // remount.
+  // set content when node id or editor changes. dont set on mode change
   useEffect(() => {
-    if (!editMode && note && editor) {
+    if (!editMode && note && editor && !editor.isDestroyed) {
       setContent(note.content);
     }
-  }, [editor, note?.id, editMode]);
+  }, [editor, note?.id]);
 
   // read <--> write
   useEffect(() => {
