@@ -30,6 +30,7 @@ import { IconArrowNarrowRight } from "@tabler/icons-react";
 import { queryClient } from "../../api/queryClient";
 import { useNoteVersion } from "../../api/queries/useNoteQueries";
 import { useActiveNoteStore } from "../../zustand/editorStore";
+import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { color } from "@uiw/react-codemirror/esm/getDefaultExtensions.js";
 import { blendColors, hexToRgb, rgbToHex } from "../../utils/blendWithContrast";
 
@@ -41,6 +42,7 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
   const { theme } = useThemeStore();
   const { setMessage } = useInfoStore();
   const { setTitle, setContent, save } = useActiveNoteStore();
+  const { setWrite } = useEditorSettings();
 
   const { data: user } = useUser();
 
@@ -157,6 +159,16 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
     }
   };
 
+  // Clicking "Live" re-enters edit mode and drops any selected version
+  // so the preview pane reflects what the live collab session is doing,
+  // not a historical snapshot. `setSelectedVersion(null)` triggers the
+  // "user is editing -> clear selected version" branch in the effect
+  // above, which keeps the rest of the panel consistent.
+  const handleLiveClick = () => {
+    setSelectedVersion(null);
+    setWrite(true);
+  };
+
   const showLiveVersion = true;
   return (
     <>
@@ -167,7 +179,10 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
         }}
       >
         {showLiveVersion && (
-          <LiveVersionItem users={Object.values(usersById ?? {})} />
+          <LiveVersionItem
+            users={Object.values(usersById ?? {})}
+            onClick={handleLiveClick}
+          />
         )}
         {versions?.map((version, index) => {
           const len = versions?.length ?? 0;
@@ -261,7 +276,13 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
   );
 };
 
-const LiveVersionItem = ({ users }: { users: DiscordUser[] }) => {
+const LiveVersionItem = ({
+  users,
+  onClick,
+}: {
+  users: DiscordUser[];
+  onClick: () => void;
+}) => {
   const { theme } = useThemeStore();
 
   return (
@@ -282,7 +303,17 @@ const LiveVersionItem = ({ users }: { users: DiscordUser[] }) => {
       </TimelineSeparator>
       <TimelineContent>
         <Box
+          role="button"
+          tabIndex={0}
+          onClick={onClick}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              onClick();
+            }
+          }}
           sx={{
+            cursor: "pointer",
             backgroundColor: "transparent",
             border: `2px dashed ${theme.palette.secondary.main}`,
             width: "fit-content",
