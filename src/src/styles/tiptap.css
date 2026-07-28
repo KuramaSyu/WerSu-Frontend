@@ -49,6 +49,8 @@
   width: auto !important;
   min-width: 0 !important;
   word-break: break-word;
+  /* cell contents start at the top */
+  vertical-align: top;
 }
 
 .table-nodeview {
