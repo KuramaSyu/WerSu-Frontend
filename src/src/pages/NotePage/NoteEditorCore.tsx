@@ -436,13 +436,21 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
       return updateNote({ noteId: noteId!, title, content });
     });
 
-    // in view mode, initialize content
-    if (!editMode && note) {
-      setContent(note.content);
-    }
-
     return () => useActiveNoteStore.getState().setEditor(null);
   }, [editor]);
+
+  // in view mode, load the note's markdown into the editor. This needs
+  // its own effect keyed on `note?.id` (not just `editor`) because
+  // `useNote(id)` often resolves *after* the editor instance is created
+  // on a fresh navigation from the search overlay — without `note?.id`
+  // in the deps, the effect would fire once with `note === undefined`,
+  // skip the `setContent` call, and leave the editor empty until a
+  // remount.
+  useEffect(() => {
+    if (!editMode && note && editor) {
+      setContent(note.content);
+    }
+  }, [editor, note?.id, editMode]);
 
   // read <--> write
   useEffect(() => {

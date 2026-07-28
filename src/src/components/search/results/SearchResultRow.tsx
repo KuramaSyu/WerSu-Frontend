@@ -42,8 +42,7 @@ const buildPath = (
   while (id && !seen.has(id)) {
     seen.add(id);
     chain.unshift(id);
-    const dir: { parent_dir_ids?: string[] } | undefined =
-      directoriesById[id];
+    const dir: { parent_dir_ids?: string[] } | undefined = directoriesById[id];
     if (!dir) break;
     const parent: string | undefined = dir.parent_dir_ids?.[0];
     id = parent;
@@ -55,10 +54,7 @@ const buildPath = (
 // label for a directory id: display_name preferred, else name, else id
 const directoryLabel = (
   id: string,
-  directoriesById: Record<
-    string,
-    { display_name?: string; name?: string }
-  >,
+  directoriesById: Record<string, { display_name?: string; name?: string }>,
 ): string => {
   const dir = directoriesById[id];
   if (!dir) return id;
