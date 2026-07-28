@@ -7,6 +7,7 @@ import { DirectoryBreadCrumbs } from "./DirectoryBreadCrumbs";
 import { DirectoryItem } from "./DirectoryItem";
 import { useDirectoryFeatures } from "./DirectoryFeatures.hook";
 import { CreateNote } from "../MainPage/CreateNote";
+import { CreateDirectoryModal } from "../MainPage/CreateDirectory";
 import { M3, M4 } from "../../statics";
 import { DirectoryHirarchyItem } from "../../models/HirarchyItem";
 import { ChapterAccordion } from "./ChapterAccordion";
@@ -24,6 +25,13 @@ export const DirectoryView: React.FC = () => {
     null,
   );
   const [createNoteOpen, setCreateNoteOpen] = useState(false);
+  const [createDirectoryOpen, setCreateDirectoryOpen] = useState(false);
+  const [createDirectoryParentId, setCreateDirectoryParentId] = useState<
+    string | undefined
+  >(undefined);
+  const [editDirectoryId, setEditDirectoryId] = useState<string | undefined>(
+    undefined,
+  );
 
   const {
     currentNode,
@@ -37,7 +45,17 @@ export const DirectoryView: React.FC = () => {
     handleCreateSubdirectory,
     handleRenameDirectory,
     handleDeleteDirectory,
-  } = useDirectoryFeatures({ onOpenCreateNote: () => setCreateNoteOpen(true) });
+  } = useDirectoryFeatures({
+    onOpenCreateNote: () => setCreateNoteOpen(true),
+    onOpenCreateDirectory: (parentId) => {
+      setCreateDirectoryParentId(parentId);
+      setCreateDirectoryOpen(true);
+    },
+    onOpenEditDirectory: (directoryId) => {
+      setEditDirectoryId(directoryId);
+      setCreateDirectoryOpen(true);
+    },
+  });
 
   // Match the home screen's left-panel sizing so the directory tree
   // has the same breathing room as the main page's recent activity
@@ -162,6 +180,22 @@ export const DirectoryView: React.FC = () => {
         open={createNoteOpen}
         onOpenChange={setCreateNoteOpen}
         currentDirectoryId={currentNode.getId()}
+      />
+      <CreateDirectoryModal
+        open={createDirectoryOpen}
+        onOpenChange={(open) => {
+          setCreateDirectoryOpen(open);
+          if (!open) {
+            // Clear the id we were operating on once the modal closes
+            // so a re-open starts from the live current directory
+            // instead of the stale snapshot.
+            setEditDirectoryId(undefined);
+            setCreateDirectoryParentId(undefined);
+          }
+        }}
+        mode={editDirectoryId ? "edit" : "create"}
+        directoryId={editDirectoryId}
+        parentId={createDirectoryParentId}
       />
     </Paper>
   );

@@ -14,6 +14,23 @@ import {
   resolveParentIds,
 } from "../DirectoryEdit/directoryFormShared";
 
+export interface UseCreateSubdirectoryFormOptions {
+  /**
+   * Optional override for the parent the new directory should be
+   * created under. When omitted, the hook falls back to the route
+   * `:id` param (the existing route-driven behaviour). The
+   * `CreateDirectoryModal` passes this in directly so it can mount
+   * the create flow from any page.
+   */
+  parentId?: string;
+  /**
+   * Optional cancel handler. When provided, it runs instead of the
+   * default `navigate(-1)`. The modal uses this to close the dialog
+   * without leaving the host page.
+   */
+  onCancel?: () => void;
+}
+
 export interface UseCreateSubdirectoryForm {
   // Form fields (from the shared shell)
   name: string;
@@ -55,8 +72,10 @@ export interface UseCreateSubdirectoryForm {
  *
  * The view is presentational; all state and side effects live here.
  */
-export function useCreateSubdirectoryForm(): UseCreateSubdirectoryForm {
-  const { id } = useParams();
+export function useCreateSubdirectoryForm(
+  options: UseCreateSubdirectoryFormOptions = {},
+): UseCreateSubdirectoryForm {
+  const { id: routeId } = useParams();
   const navigate = useNavigate();
   const { upsertDirectory } = useDirectoryStore();
   const { setMessage } = useInfoStore();
@@ -64,12 +83,13 @@ export function useCreateSubdirectoryForm(): UseCreateSubdirectoryForm {
 
   // The Create form has no `initial` directory, but the parent
   // selector should autoselect the route's `:id` so the user starts
-  // out on the directory they came from. The form's `Main.tsx` keys
-  // the form body on the route `:id`, so navigating between Create
-  // pages unmounts and remounts the whole tree — this hook
-  // re-initialises with the new id and a fresh form.
+  // out on the directory they came from. An explicit `parentId`
+  // option overrides the route param — the modal uses this when it
+  // mounts the create flow outside a `/d/:id/new` route.
+  const seedParentId = options.parentId ?? routeId;
+
   const shell = useDirectoryFormShell({
-    initialParentId: id,
+    initialParentId: seedParentId,
   });
 
   const [isSaving, setIsSaving] = useState(false);
@@ -228,6 +248,10 @@ export function useCreateSubdirectoryForm(): UseCreateSubdirectoryForm {
   };
 
   const handleCancel = () => {
+    if (options.onCancel) {
+      options.onCancel();
+      return;
+    }
     navigate(-1);
   };
 

@@ -1,4 +1,4 @@
-import { Box, Fab } from "@mui/material";
+import { Box, Fab, Tooltip } from "@mui/material";
 import CreateNewFolderIcon from "@mui/icons-material/CreateNewFolder";
 import NoteAddIcon from "@mui/icons-material/NoteAdd";
 
@@ -20,13 +20,21 @@ const CreateFab: React.FC<CreateFabProps> = ({
   onCreateNote,
   onCreateDirectory,
 }) => (
-  <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-    <Fab color="primary" aria-label="New note" onClick={onCreateNote}>
-      <NoteAddIcon />
-    </Fab>
-    <Fab color="default" aria-label="New directory" onClick={onCreateDirectory}>
-      <CreateNewFolderIcon />
-    </Fab>
+  <Box sx={{ display: "flex", flexDirection: "row", gap: 1.5 }}>
+    <Tooltip title="Create new note" placement="top" arrow>
+      <Fab color="primary" aria-label="New note" onClick={onCreateNote}>
+        <NoteAddIcon />
+      </Fab>
+    </Tooltip>
+    <Tooltip title="Create new directory" placement="top" arrow>
+      <Fab
+        color="default"
+        aria-label="New directory"
+        onClick={onCreateDirectory}
+      >
+        <CreateNewFolderIcon />
+      </Fab>
+    </Tooltip>
   </Box>
 );
 

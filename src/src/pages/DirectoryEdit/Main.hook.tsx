@@ -39,6 +39,23 @@ const findReadme = (notes: MinimalNote[] | undefined): MinimalNote | null => {
   return notes.find((note) => note.title === README_NOTE_TITLE) ?? null;
 };
 
+export interface UseDirectoryEditFormOptions {
+  /**
+   * Optional override for the directory id being edited. When omitted,
+   * the hook falls back to the route `:id` param (the existing
+   * route-driven behaviour). The `CreateDirectoryModal` passes this in
+   * directly so it can mount the edit flow from the directory view
+   * without a dedicated `/d/:id/edit` route hop.
+   */
+  directoryId?: string;
+  /**
+   * Optional cancel handler. When provided, it runs instead of the
+   * default `navigate(-1)`. The modal uses this to close the dialog
+   * without leaving the host page.
+   */
+  onCancel?: () => void;
+}
+
 export interface UseDirectoryEditFormResult {
   // Hydration
   directory: DirectoryReply | null;
@@ -94,14 +111,21 @@ export interface UseDirectoryEditFormResult {
  *
  * The view is presentational; all state and side effects live here.
  */
-export function useDirectoryEditForm(): UseDirectoryEditFormResult {
-  const { id } = useParams();
+export function useDirectoryEditForm(
+  options: UseDirectoryEditFormOptions = {},
+): UseDirectoryEditFormResult {
+  const { id: routeId } = useParams();
   const navigate = useNavigate();
   const { directoriesById, upsertDirectory, removeDirectory } =
     useDirectoryStore();
   const { setMessage } = useInfoStore();
   const queryClient = useQueryClient();
   const noteApi: INoteApi = getNoteApi();
+
+  // Prefer the explicit `directoryId` option; fall back to the route
+  // `:id` so the existing `/d/:id/edit` page keeps working. The modal
+  // passes the option directly when mounted outside the edit route.
+  const id = options.directoryId ?? routeId;
 
   const [readmeNoteId, setReadmeNoteId] = useState<string | null>(null);
   const [readmeBody, setReadmeBody] = useState<string>("");
@@ -385,6 +409,10 @@ export function useDirectoryEditForm(): UseDirectoryEditFormResult {
   };
 
   const handleCancel = () => {
+    if (options.onCancel) {
+      options.onCancel();
+      return;
+    }
     navigate(-1);
   };
 

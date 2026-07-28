@@ -26,6 +26,19 @@ export interface UseDirectoryFeaturesOptions {
    * responsible for mounting the shared `CreateNote` dialog.
    */
   onOpenCreateNote?: () => void;
+  /**
+   * Invoked when the user picks "New subdirectory" from the right-panel
+   * FAB. The host component owns the modal state and mounts the shared
+   * `CreateDirectoryModal` in `create` mode.
+   */
+  onOpenCreateDirectory?: (parentId: string) => void;
+  /**
+   * Invoked when the user picks "Edit directory" from the right-panel
+   * actions. The host component owns the modal state and mounts the
+   * shared `CreateDirectoryModal` in `edit` mode, targeting the
+   * current directory.
+   */
+  onOpenEditDirectory?: (directoryId: string) => void;
 }
 
 const findNodeById = (root: HirarchyItem, id: string): HirarchyItem | null => {
@@ -281,16 +294,25 @@ export function useDirectoryFeatures(
   };
 
   /**
-   * Opens the dedicated `CreateSubdirectory` page, pre-scoped to the
-   * current directory via the `:id` route param. The page handles the
-   * form, validation, and the actual `POST /api/directories` call.
+   * Asks the host to open the shared `CreateDirectoryModal` in
+   * create mode, pre-scoped to the current directory as the
+   * parent. The modal owns the form, validation, and the actual
+   * `POST /api/directories` call.
    */
   const handleCreateSubdirectory = (): void => {
-    navigate(`/d/${currentNode.getId()}/new`);
+    if (options.onOpenCreateDirectory) {
+      options.onOpenCreateDirectory(currentNode.getId());
+    } else {
+      // Fallback to the route-driven flow for callers that haven't
+      // mounted the modal yet.
+      navigate(`/d/${currentNode.getId()}/new`);
+    }
   };
 
   /**
-   * Sends the user to the full directory edit page.
+   * Asks the host to open the shared `CreateDirectoryModal` in
+   * edit mode, targeting the current directory. The modal owns the
+   * form, validation, and the actual `PATCH /api/directories` call.
    */
   const handleRenameDirectory = () => {
     if (currentNode.getId() === "root") {
@@ -300,7 +322,11 @@ export function useDirectoryFeatures(
       return;
     }
 
-    navigate(`/d/${currentNode.getId()}/edit`);
+    if (options.onOpenEditDirectory) {
+      options.onOpenEditDirectory(currentNode.getId());
+    } else {
+      navigate(`/d/${currentNode.getId()}/edit`);
+    }
   };
 
   /**

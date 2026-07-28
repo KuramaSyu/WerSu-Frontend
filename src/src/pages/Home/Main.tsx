@@ -6,7 +6,6 @@ import FolderIcon from "@mui/icons-material/Folder";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import ScheduleIcon from "@mui/icons-material/Schedule";
 import StarIcon from "@mui/icons-material/Star";
-import { useNavigate } from "react-router-dom";
 import {
   usePanelSize,
   useLeftPanel,
@@ -21,9 +20,7 @@ import { DirectorySideView } from "../MainPage/DirectorySideView";
 import { RecentActivityPanel } from "../../components/RecentActivity/Main";
 import { FrequentlyUsedPanel } from "../../components/FrequentlyUsed/Main";
 import { CreateNote } from "../MainPage/CreateNote";
-import { DirectoryApi } from "../../api/DirectoryApi";
-import { useDirectoryStore } from "../../zustand/useDirectoryStore";
-import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
+import { CreateDirectoryModal } from "../MainPage/CreateDirectory";
 import { FavouriteDirectories } from "./FavouriteDirectories";
 import { AllDirectories } from "./AllDirectories";
 import { M3, M4 } from "../../statics";
@@ -39,34 +36,10 @@ import CreateFab from "../../components/CreateFab";
  *   - body: favourite directories section
  */
 export const HomePage: React.FC = () => {
-  const navigate = useNavigate();
-  const upsertDirectory = useDirectoryStore((s) => s.upsertDirectory);
-  const setMessage = useInfoStore((s) => s.setMessage);
   const [createNoteOpen, setCreateNoteOpen] = useState(false);
+  const [createDirectoryOpen, setCreateDirectoryOpen] = useState(false);
   const { rightPanelOpen } = useLayout();
   useRequireAuth();
-
-  const handleCreateDirectory = async (): Promise<void> => {
-    const nextName = window.prompt("New directory name");
-    if (!nextName || nextName.trim() === "") {
-      return;
-    }
-
-    const trimmedName = nextName.trim();
-    const created = await new DirectoryApi().create({
-      name: trimmedName,
-      display_name: trimmedName,
-    });
-
-    if (!created) {
-      setMessage(new SnackbarUpdateImpl("Failed to create directory", "error"));
-      return;
-    }
-
-    upsertDirectory(created);
-    setMessage(new SnackbarUpdateImpl("Directory created", "success"));
-    navigate(`/d/${created.id}`);
-  };
 
   useRightPanel(null);
   usePanelSize({ left: "clamp(20rem, 25vw, 30rem)" });
@@ -77,7 +50,7 @@ export const HomePage: React.FC = () => {
         <PanelButtons>
           <PanelButtons.Secondary
             startIcon={<AddIcon />}
-            onClick={() => void handleCreateDirectory()}
+            onClick={() => setCreateDirectoryOpen(true)}
           >
             New directory
           </PanelButtons.Secondary>
@@ -141,10 +114,15 @@ export const HomePage: React.FC = () => {
       >
         <CreateFab
           onCreateNote={() => setCreateNoteOpen(true)}
-          onCreateDirectory={() => void handleCreateDirectory()}
+          onCreateDirectory={() => setCreateDirectoryOpen(true)}
         />
       </Box>
       <CreateNote open={createNoteOpen} onOpenChange={setCreateNoteOpen} />
+      <CreateDirectoryModal
+        open={createDirectoryOpen}
+        onOpenChange={setCreateDirectoryOpen}
+        mode="create"
+      />
     </Box>
   );
 };
