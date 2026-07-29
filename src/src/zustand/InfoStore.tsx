@@ -1,17 +1,18 @@
 import { create } from "zustand";
+import type { ReactNode } from "react";
 
 export interface SnackbarUpdate {
   message: string;
   severity: "success" | "info" | "warning" | "error";
   duration?: number;
-  description?: string;
+  description?: ReactNode;
 }
 
 export class SnackbarUpdateImpl implements SnackbarUpdate {
   message: string;
   severity: "success" | "info" | "warning" | "error";
   duration?: number;
-  description?: string;
+  description?: ReactNode;
 
   /**
    * @param message Short, primary text shown in the snackbar header.
@@ -23,7 +24,7 @@ export class SnackbarUpdateImpl implements SnackbarUpdate {
     message: string,
     severity?: "success" | "info" | "warning" | "error",
     duration?: number,
-    description?: string,
+    description?: ReactNode,
   ) {
     this.message = message;
     this.severity = severity ?? "info";
@@ -59,7 +60,8 @@ export interface LogEntry {
   timestamp: number;
   message: string;
   severity: SnackbarUpdate["severity"];
-  description?: string;
+  /** Snapshot of `SnackbarUpdate.description`; string or React node. */
+  description?: ReactNode;
   /**
    * Epoch milliseconds marking the first time the user acknowledged
    * this entry (clicked it, copied it, or dismissed it). `undefined`
