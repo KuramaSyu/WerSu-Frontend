@@ -90,11 +90,13 @@ export const DirectoryView: React.FC = () => {
         height: "100%",
         // The inner Paper below owns the scrollbar
         overflow: "hidden",
+        width: `clamp(20rem, 100%, 90rem)`,
+        alignSelf: "center",
       }}
     >
       {/* dnd probably not needed anymore */}
       <DragDropProvider onDragEnd={() => undefined}>
-        <Stack direction="row" spacing={M4} sx={{ alignItems: "flex-start" }}>
+        <Stack direction="row" spacing={M4} sx={{}}>
           <Paper
             elevation={2}
             sx={{
