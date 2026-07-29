@@ -10,6 +10,24 @@ import { AttachmentLinkBuilder } from "../../../api/utils/AttachmentLInkBuilder"
 import { extractAttachmentKeyFromUrl } from "../../../api/utils/request_helpers";
 import { prepareBackendLink } from "../../../utils/prepareBackendLink";
 
+// Parse a CSS declaration string like "width: 200px; height: 100px" into
+// an object MUI's `sx` understands. Splits on `;` and `:` and trims.
+function parseInlineStyle(style: string): Record<string, string | number> {
+  const out: Record<string, string | number> = {};
+  for (const decl of style.split(";")) {
+    const colon = decl.indexOf(":");
+    if (colon === -1) continue;
+    const key = decl.slice(0, colon).trim();
+    const value = decl.slice(colon + 1).trim();
+    if (key && value) {
+      // MUI sx requires camelCase for hyphenated CSS props
+      const camel = key.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+      out[camel] = value;
+    }
+  }
+  return out;
+}
+
 export function ImageNodeView({ node, selected, getPos }: NodeViewProps) {
   const { theme } = useThemeStore();
   const { editMode } = useEditorSettings();
@@ -70,6 +88,7 @@ export function ImageNodeView({ node, selected, getPos }: NodeViewProps) {
             outlineOffset: "2px",
             transition: "outline 0.2s ease",
             borderRadius: 1,
+            ...(node.attrs.style ? parseInlineStyle(node.attrs.style) : {}),
           }}
         ></Box>
       </Box>
