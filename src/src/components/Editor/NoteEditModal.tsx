@@ -47,6 +47,10 @@ import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { EditorBubbleMenu } from "./EditorBubbleMenu";
 import { EditorStaticMenu } from "./EditorStaticMenu";
 import { ThemedEditorBox } from "./ThemedEditorBox";
+import { CustomHtml } from "./CustomHtml";
+import { CustomHardBreak } from "./CustomHardBreak";
+import { CustomDetails } from "./CustomDetails";
+import { DetailsContent, DetailsSummary } from "@tiptap/extension-details";
 import { CellSelection } from "@tiptap/pm/tables";
 import "../../styles/tiptap.css";
 import { TableWithControls } from "./TableControlls/TableControlls";
@@ -150,7 +154,12 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
   }, [content]);
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ codeBlock: false, dropcursor: {} }),
+      StarterKit.configure({
+        codeBlock: false,
+        dropcursor: {},
+        hardBreak: false,
+      }),
+      CustomHardBreak,
       CustomCodeBlock.configure({ lowlight }),
       // Details,
       // DetailsSummary,
@@ -172,6 +181,10 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
       }),
       Image,
       //Table,
+      CustomDetails,
+      DetailsSummary,
+      DetailsContent,
+      ...CustomHtml,
       TableRow,
       TableCell,
       TableHeader,

@@ -72,6 +72,10 @@ import { DialogProvider, useDialog } from "./InputDialog";
 import { CustomImage } from "../../components/Editor/View/CustomImage";
 import { CustomLink } from "../../components/Editor/View/CustomLink";
 import { CustomSvgLink } from "../../components/Editor/View/CustomSvgLink";
+import { CustomHtml } from "../../components/Editor/CustomHtml";
+import { CustomHardBreak } from "../../components/Editor/CustomHardBreak";
+import { CustomDetails } from "../../components/Editor/CustomDetails";
+import { DetailsContent, DetailsSummary } from "@tiptap/extension-details";
 import { useUser } from "../../api/queries/useUser";
 import { useLiveUsersStore } from "../../zustand/useLiveUsersStore";
 import {
@@ -226,7 +230,9 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
           undoRedo: false,
           // Replaced by `CustomLink` so `/api/...` hrefs render with the backend origin prepended.
           link: false,
+          hardBreak: false,
         }),
+        CustomHardBreak,
         CustomLink.configure({
           openOnClick: true,
         }),
@@ -255,6 +261,10 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
         UploadAttachmentNode,
         CustomImage,
         CustomSvgLink,
+        CustomDetails,
+        DetailsSummary,
+        DetailsContent,
+        ...CustomHtml,
         TableCell,
         TableRow,
         TableHeader,
@@ -331,10 +341,14 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
           setMessage(new SnackbarUpdateImpl(message, severity));
         }),
         Placeholder.configure({
-          // Show hint only for the currently focused empty paragraph.
           showOnlyCurrent: true,
-          includeChildren: false,
+          includeChildren: true,
           placeholder: ({ node, editor: placeholderEditor }) => {
+            // for <details> summary
+            if (node.type.name === "detailsSummary") {
+              return "Summary";
+            }
+
             // Restrict placeholder to standard paragraph lines.
             if (node.type.name !== "paragraph") {
               return "";

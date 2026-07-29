@@ -128,6 +128,85 @@ export const ThemedEditorBox = ({
               },
             }),
           },
+
+          // <details> collapsible block; themed animations use theme transition tokens.
+          '& [data-type="details"]': {
+            display: "flex",
+            flexDirection: "row",
+            flexWrap: "wrap",
+            alignItems: "baseline",
+            px: 1,
+            py: 0.5,
+            mr: 1,
+            mb: 1,
+            border: `1px solid ${theme.palette.divider}`,
+            borderRadius: theme.shape.borderRadius,
+          },
+
+          // <details>  Node view inserts a wrapper div around the summary; hide it.
+          '& [data-type="details"] > div': {
+            display: "contents",
+          },
+
+          // <details> Chevron toggle button.
+          "& .details-toggle": {
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "1.5rem",
+            height: "1.5rem",
+            marginRight: 0.5,
+            padding: 0,
+            border: 0,
+            background: "transparent",
+            color: "inherit",
+
+            userSelect: "none",
+            flexShrink: 0,
+            transform: "rotate(0deg)",
+            transformOrigin: "center",
+            willChange: "transform",
+            transition: theme.transitions.create(["transform"]),
+          },
+
+          // rotate <details> chevron when open
+          '& [data-type="details"][class~="is-open"] .details-toggle': {
+            transform: "rotate(180deg)",
+          },
+
+          // <details> Summary header — bold + flex so chevron and text align.
+          "& summary": {
+            fontWeight: 600,
+            display: "flex",
+            alignItems: "center",
+          },
+
+          // <details> Body: animate max-height; override [hidden] so element stays in layout.
+          '& [data-type="detailsContent"]': {
+            display: "block",
+            maxHeight: 0,
+            overflow: "hidden",
+            flexBasis: "100%",
+            paddingLeft: `calc(1.5rem + ${theme.spacing(0.25)})`, // padding for chevron
+            transition: theme.transitions.create(["all"], {
+              duration: theme.transitions.duration.shortest,
+            }),
+          },
+
+          // <details> Open: expand to a generous fixed max-height.
+          '& [data-type="details"][class~="is-open"] [data-type="detailsContent"]':
+            {
+              mt: 1,
+              maxHeight: "5000px", // without it it wouldnt open at all
+            },
+
+          // <details> SVG icon inside the chevron button.
+          "& .details-toggle-icon": {
+            cursor: "pointer",
+            width: "100%",
+            height: "100%",
+            fill: "currentColor",
+          },
         },
       }}
     >
