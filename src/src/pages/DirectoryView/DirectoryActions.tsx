@@ -4,7 +4,13 @@ import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SettingsIcon from "@mui/icons-material/Settings";
-import { Box, SpeedDial, SpeedDialAction, SpeedDialIcon } from "@mui/material";
+import {
+  Box,
+  SpeedDial,
+  SpeedDialAction,
+  SpeedDialIcon,
+  Stack,
+} from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
 import { useFavouritesStore } from "../../zustand/useFavouritesStore";
 import { ConfirmationModal } from "../Settings/ConfirmationModal";
