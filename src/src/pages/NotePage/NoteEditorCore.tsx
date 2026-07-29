@@ -458,16 +458,16 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
     if (!editMode && note && editor && !editor.isDestroyed) {
       setContent(note.content);
     }
-  }, [editor, note?.id]);
+  }, [editor, note]);
 
-  // read <--> write
+  // sync read <--> write: editMode is a zustand value. here we sync it with the editor's own state.
   useEffect(() => {
     editor?.setEditable(editMode);
   }, [editMode, editor]);
 
-  // update live users from provider to zustand store
+  // if editmode: update live users from provider to zustand store
   useEffect(() => {
-    if (!provider?.awareness || !noteId) {
+    if (!provider?.awareness || !noteId || !editMode) {
       return;
     }
     const awareness = provider.awareness;
@@ -494,7 +494,7 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
       awareness!.off("change", updateUsers);
       useLiveUsersStore.getState().clearUsers(noteId);
     };
-  }, [noteId, provider]);
+  }, [noteId, provider, editMode]);
 
   // Mirror the provider's connection state into a zustand store so the
   // toolbar badge can render without prop-drilling the provider instance.
@@ -554,7 +554,7 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
     };
   }, [noteId, editMode, provider]);
 
-  // load ydoc and collaboration content into editor
+  // load ydoc and collaboration content into editor if edit mode
   useEffect(() => {
     if (!editor || !ydoc || !provider) {
       return;
