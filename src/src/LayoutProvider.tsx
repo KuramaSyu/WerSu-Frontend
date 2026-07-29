@@ -4,6 +4,7 @@ import {
   type ReactNode,
   useContext,
   useEffect,
+  useLayoutEffect,
   useState,
 } from "react";
 
@@ -26,8 +27,9 @@ type LayoutContextType = {
 };
 
 // Default open width of the left/right side panels when nothing else
-// has been configured. Used as the fall-through value for
-// `usePanelSize` cleanups and as the initial LayoutProvider state.
+// has been configured. Used as the initial LayoutProvider state —
+// `usePanelSize` does not reset to this on unmount on purpose, see
+// that hook for the reason.
 export const DEFAULT_PANEL_SIZE = "280px";
 
 const LayoutContext = createContext<LayoutContextType | null>(null);
@@ -156,31 +158,25 @@ export interface PanelSizeOptions {
   right?: string;
 }
 
-// Set the open width of one or both side panels for the lifetime of the
-// calling component. Accepts any CSS length value, so callers can pin
-// the width (e.g. "320px"), make it responsive (e.g. "10vw"), or bound
-// it with `clamp(...)`. On unmount, the sides this hook touched fall
-// back to the LayoutProvider defaults.
+// Sets the open width of one or both side panels. Accepts any CSS
+// length value (e.g. `"320px"`, `"10vw"`, `clamp(...)`). Runs in a
+// layout effect so the first paint after navigation already reflects
+// the new size; leaves the size alone on unmount so the AppShell's
+// `grid-template-columns` transition animates straight from the old
+// page's size to the new page's size instead of through
+// `DEFAULT_PANEL_SIZE`.
 export function usePanelSize(sizes: PanelSizeOptions): void {
   const { leftPanelSize, rightPanelSize, setLeftPanelSize, setRightPanelSize } =
     useLayout();
 
   const { left, right } = sizes;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (left !== undefined && left !== leftPanelSize) {
       setLeftPanelSize(left);
     }
     if (right !== undefined && right !== rightPanelSize) {
       setRightPanelSize(right);
     }
-    return () => {
-      if (left !== undefined) {
-        setLeftPanelSize(DEFAULT_PANEL_SIZE);
-      }
-      if (right !== undefined) {
-        setRightPanelSize(DEFAULT_PANEL_SIZE);
-      }
-    };
   }, [left, right]);
 }
