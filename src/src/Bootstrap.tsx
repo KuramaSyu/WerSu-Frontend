@@ -9,6 +9,7 @@ import { getUserApi } from "./api/UserApi";
 import { useShareAccessToken } from "./api/queries/useShareAccessToken";
 import { apiRegistry } from "./api/apiRegistry";
 import { queryClient } from "./api/queryClient";
+import { useUser } from "./api/queries/useUser";
 
 /**
  * Routes under `/public/*` are served by the share JWT only — never by
@@ -152,26 +153,30 @@ export const Bootstrap: React.FC = () => {
   // Hook no-ops on null `shareId`, so the conditional is in the arg.
   useShareAccessToken({ shareId: onPublicRoute ? shareId : null });
 
-  const { user } = useUserStore();
+  const {
+    data: user,
+    isLoading: isUserLoading,
+    isSuccess: isUserSuccess,
+  } = useUser();
 
-  const searchNotesApi = getSearchNotesApi();
+  // const searchNotesApi = getSearchNotesApi();
   const userApi = getUserApi();
 
-  useQuery({
-    queryKey: ["search-notes-latest", user?.id],
-    queryFn: async () =>
-      searchNotesApi.search(RestNotesSearchType.LATEST, "", 100, 0),
-    enabled: !!user?.id, // don't run when user is not loaded yet
-    staleTime: Infinity, // cache forever
-  });
+  // useQuery({
+  //   queryKey: ["search-notes-latest", user?.id],
+  //   queryFn: async () =>
+  //     searchNotesApi.search(RestNotesSearchType.LATEST, "", 100, 0),
+  //   enabled: !!user?.id, // don't run when user is not loaded yet
+  //   staleTime: Infinity, // cache forever
+  // });
 
   // prevent 401 responses by caching the user
-  const userQuery = useQuery({
-    queryKey: ["user-load"],
-    queryFn: async () => await userApi.fetchUser(),
-    enabled: !onPublicRoute,
-    staleTime: Infinity,
-  });
+  // const userQuery = useQuery({
+  //   queryKey: ["user-load"],
+  //   queryFn: async () => await userApi.fetchUser(),
+  //   enabled: !onPublicRoute,
+  //   staleTime: Infinity,
+  // });
 
   // Mount the access-token query at app boot so the JWT is in the auth store
   useQuery({
@@ -199,25 +204,18 @@ export const Bootstrap: React.FC = () => {
       }
       return token;
     },
-    staleTime: 15 * 60 * 1000 - 60 * 1000,
+    staleTime: 15 * 60 * 1000 - 60 * 1000, // 15 min - 1min buffer
     refetchInterval: 15 * 60 * 1000 - 60 * 1000,
   });
 
-  // Refetch the JWT once the user-load settles — the session cookie may
-  // not have been valid when the query first fired. `useRef` latch
-  // prevents Strict Mode's double-mount from triggering two refetches.
+  // Refetch the JWT once the user is loaded
   const didRefetchAfterUserLoad = useRef(false);
   useEffect(() => {
-    if (userQuery.isSuccess && !didRefetchAfterUserLoad.current) {
+    if (isUserSuccess && !didRefetchAfterUserLoad.current) {
       didRefetchAfterUserLoad.current = true;
-      // Lazy import: `useAccessToken` would re-create the query each
-      // call, and its result object is reference-unstable, so we go
-      // through the singleton client directly.
-      void import("./api/queryClient").then(({ queryClient }) =>
-        queryClient.invalidateQueries({ queryKey: ["accessToken"] }),
-      );
+      queryClient.invalidateQueries({ queryKey: ["accessToken"] });
     }
-  }, [userQuery.isSuccess]);
+  }, [isUserSuccess]);
 
   return <></>;
 };
