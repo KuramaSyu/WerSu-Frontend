@@ -8,6 +8,7 @@ import { DirectoryItem } from "./DirectoryItem";
 import { useDirectoryFeatures } from "./DirectoryFeatures.hook";
 import { CreateNote } from "../MainPage/CreateNote";
 import { CreateDirectoryModal } from "../MainPage/CreateDirectory";
+import { useCreateModalsFromUrl } from "../../hooks/useCreateModalsFromUrl";
 import { M3, M4 } from "../../statics";
 import { DirectoryHirarchyItem } from "../../models/HirarchyItem";
 import { ChapterAccordion } from "./ChapterAccordion";
@@ -62,6 +63,13 @@ export const DirectoryView: React.FC = () => {
   // panel. `usePanelSize` writes to the layout context; the AppShell
   // reads it to size the grid column.
   usePanelSize({ left: "clamp(20rem, 25vw, 30rem)" });
+
+  // `?action=create-note|create-directory` -> open the matching
+  // modal, then strip the param.
+  useCreateModalsFromUrl({
+    setCreateNoteOpen,
+    setCreateDirectoryOpen,
+  });
 
   console.log("DirectoryView: childDirectories", childDirectories);
   // Same dep-array rationale as `useRightPanel` in the features hook:

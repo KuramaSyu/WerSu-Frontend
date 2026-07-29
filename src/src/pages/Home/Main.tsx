@@ -25,6 +25,7 @@ import { FavouriteDirectories } from "./FavouriteDirectories";
 import { AllDirectories } from "./AllDirectories";
 import { M3, M4 } from "../../statics";
 import { useRequireAuth } from "../../hooks/useRequireAuth";
+import { useCreateModalsFromUrl } from "../../hooks/useCreateModalsFromUrl";
 import CreateFab from "../../components/CreateFab";
 import { useThemeStore } from "../../zustand/useThemeStore";
 
@@ -42,6 +43,13 @@ export const HomePage: React.FC = () => {
   const { rightPanelOpen } = useLayout();
   const { theme } = useThemeStore();
   useRequireAuth();
+
+  // `?action=create-note|create-directory` -> open the matching
+  // modal, then strip the param.
+  useCreateModalsFromUrl({
+    setCreateNoteOpen,
+    setCreateDirectoryOpen,
+  });
 
   useRightPanel(null);
   usePanelSize({ left: "clamp(20rem, 25vw, 30rem)" });
