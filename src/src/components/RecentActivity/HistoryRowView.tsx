@@ -1,4 +1,4 @@
-import { Box, Chip, Stack, Tooltip, Typography } from "@mui/material";
+import { Box, Stack, Tooltip, Typography } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import VisibilityIcon from "@mui/icons-material/Visibility";
@@ -23,6 +23,7 @@ import {
   formatHistoryRowLabel,
   formatHistoryRowTimestamp,
   getHistoryRowKind,
+  getHistoryRowVariantLabel,
   hasScore,
   type HistoryRowEntry,
   type HistoryRowKind,
@@ -147,10 +148,16 @@ export const HistoryRowView: React.FC<HistoryRowViewProps> = ({
           </Box>
         </Tooltip>
         <Box sx={{ flex: 1, minWidth: 0 }} aria-label={"Creation time"}>
+          {/* Header: variant label only (e.g. "Created a Note"). No id,
+              no note title — those go on the description line. */}
           <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>
-            {entry.title ?? formatHistoryRowLabel(entry)}
+            {getHistoryRowVariantLabel(entry)}
           </Typography>
-          {entry.description && (
+          {/* Description: the resolved entity title — note title or
+              directory display_name. Older records without a snapshot
+              fall through `formatHistoryRowLabel` which never returns
+              a raw id; the line is simply absent when nothing is known. */}
+          {(entry.description ?? formatHistoryRowLabel(entry)) && (
             <Typography
               variant="caption"
               color="textSecondary"
@@ -161,10 +168,13 @@ export const HistoryRowView: React.FC<HistoryRowViewProps> = ({
                 overflow: "hidden",
               }}
             >
-              {entry.description}
+              {entry.description ?? formatHistoryRowLabel(entry)}
             </Typography>
           )}
-          {!entry.description && entry.at && (
+          {/* Date: plain caption line. Always shown when an `at`
+              timestamp is available, independent of the description
+              above, so the user always sees when the action happened. */}
+          {entry.at && (
             <Typography variant="caption" color="textSecondary">
               {formatHistoryRowTimestamp(entry.at)}
             </Typography>

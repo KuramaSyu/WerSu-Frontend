@@ -355,14 +355,66 @@ describe("formatHistoryRowLabel", () => {
     expect(formatHistoryRowLabel(baseRow())).toBe(NOTE_TITLE);
   });
 
-  it("falls back to the raw note_id when the note isn't cached", () => {
+  it("returns an empty string when the note isn't cached (no id leak)", () => {
     expect(formatHistoryRowLabel(baseRow({ note_id: "unknown-note" }))).toBe(
-      "unknown-note",
+      "",
     );
   });
 
   it("ignores score when building the label (the chip handles it)", () => {
     expect(formatHistoryRowLabel(baseRow({ score: 42 }))).toBe(NOTE_TITLE);
+  });
+
+  it("returns the directory display_name when the directory is cached", () => {
+    queryClient.setQueryData(["directory", "dir-1"], {
+      id: "dir-1",
+      display_name: "Project Docs",
+    });
+    try {
+      expect(
+        formatHistoryRowLabel(
+          baseRow({
+            action: "directory_created",
+            note_id: "",
+            directory_id: "dir-1",
+          }),
+        ),
+      ).toBe("Project Docs");
+    } finally {
+      queryClient.removeQueries({ queryKey: ["directory", "dir-1"] });
+    }
+  });
+
+  it("falls back to the directory's `name` when no display_name is cached", () => {
+    queryClient.setQueryData(["directory", "dir-1"], {
+      id: "dir-1",
+      name: "project-docs",
+    });
+    try {
+      expect(
+        formatHistoryRowLabel(
+          baseRow({
+            action: "directory_edited",
+            note_id: "",
+            directory_id: "dir-1",
+          }),
+        ),
+      ).toBe("project-docs");
+    } finally {
+      queryClient.removeQueries({ queryKey: ["directory", "dir-1"] });
+    }
+  });
+
+  it("returns an empty string when the directory isn't cached (no id leak)", () => {
+    expect(
+      formatHistoryRowLabel(
+        baseRow({
+          action: "directory_deleted",
+          note_id: "",
+          directory_id: "dir-unknown",
+        }),
+      ),
+    ).toBe("");
   });
 });
 
@@ -399,9 +451,120 @@ describe("extractNoteMetadata", () => {
     });
   });
 
-  it("returns empty strings for a directory event", () => {
+  it("prefers the new `note_name` snapshot over the legacy `note_title`", () => {
+    const row = baseRow({
+      metadata_json: JSON.stringify({
+        note_name: "New Name",
+        note_title: "Legacy Name",
+        note_content: "body",
+      }),
+    });
+    expect(extractNoteMetadata(row)).toEqual({
+      title: "New Name",
+      description: "body",
+    });
+  });
+
+  it("reads `note_name` when the legacy key is absent", () => {
+    const row = baseRow({
+      metadata_json: JSON.stringify({
+        note_name: "Snapshot",
+        note_content: "x",
+      }),
+    });
+    expect(extractNoteMetadata(row)).toEqual({
+      title: "Snapshot",
+      description: "x",
+    });
+  });
+
+  it("surfaces the share description for a note_shared event", () => {
+    const row = baseRow({
+      action: "note_shared",
+      metadata_json: JSON.stringify({
+        note_name: "My Note",
+        share_id: "share-1",
+        access_as: "ACCESSED_AS_USER",
+        description: "Read-only link for the team",
+      }),
+    });
+    expect(extractNoteMetadata(row)).toEqual({
+      title: "My Note",
+      description: "Read-only link for the team",
+    });
+  });
+
+  it("surfaces the share description for a note_unshared event", () => {
+    const row = baseRow({
+      action: "note_unshared",
+      metadata_json: JSON.stringify({
+        note_name: "My Note",
+        share_id: "share-1",
+        description: "Revoked after the demo",
+      }),
+    });
+    expect(extractNoteMetadata(row)).toEqual({
+      title: "My Note",
+      description: "Revoked after the demo",
+    });
+  });
+
+  it("returns an empty description when a share event has no description", () => {
+    const row = baseRow({
+      action: "note_shared",
+      metadata_json: JSON.stringify({
+        note_name: "My Note",
+        share_id: "share-1",
+      }),
+    });
+    expect(extractNoteMetadata(row)).toEqual({
+      title: "My Note",
+      description: "",
+    });
+  });
+
+  it("ignores `note_content` for share events in favor of `description`", () => {
+    // The share visitor doesn't snapshot `note_content`; if it's
+    // present anyway, the share `description` still wins.
+    const row = baseRow({
+      action: "note_shared",
+      metadata_json: JSON.stringify({
+        note_name: "My Note",
+        note_content: "should be ignored",
+        description: "shared with the team",
+      }),
+    });
+    expect(extractNoteMetadata(row)).toEqual({
+      title: "My Note",
+      description: "shared with the team",
+    });
+  });
+
+  it("returns the directory's `directory_name` for a directory event", () => {
     const row = baseRow({
       action: "directory_created",
+      metadata_json: JSON.stringify({ directory_name: "Project Docs" }),
+    });
+    expect(extractNoteMetadata(row)).toEqual({
+      title: "Project Docs",
+      description: "",
+    });
+  });
+
+  it("falls back to `directory_slug` when `directory_name` is absent", () => {
+    const row = baseRow({
+      action: "directory_edited",
+      metadata_json: JSON.stringify({ directory_slug: "project-docs" }),
+    });
+    expect(extractNoteMetadata(row)).toEqual({
+      title: "project-docs",
+      description: "",
+    });
+  });
+
+  it("ignores note-shaped keys for directory events", () => {
+    const row = baseRow({
+      action: "directory_deleted",
       metadata_json: noteMetadata("ignored", "ignored"),
     });
     expect(extractNoteMetadata(row)).toEqual({ title: "", description: "" });
@@ -410,6 +573,14 @@ describe("extractNoteMetadata", () => {
   it("returns empty strings for a role event", () => {
     const row = baseRow({
       action: "role_grant",
+      metadata_json: noteMetadata("ignored", "ignored"),
+    });
+    expect(extractNoteMetadata(row)).toEqual({ title: "", description: "" });
+  });
+
+  it("returns empty strings when action is missing", () => {
+    const row = baseRow({
+      action: undefined,
       metadata_json: noteMetadata("ignored", "ignored"),
     });
     expect(extractNoteMetadata(row)).toEqual({ title: "", description: "" });

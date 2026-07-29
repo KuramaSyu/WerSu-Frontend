@@ -97,48 +97,64 @@ export interface HistoryRowVariantMeta {
 }
 
 export const VARIANT_META: Record<HistoryRowKind, HistoryRowVariantMeta> = {
-  created: { icon: AddIcon, label: "Created", color: "success" },
-  edited: { icon: EditIcon, label: "Edited", color: "info" },
-  viewed: { icon: VisibilityIcon, label: "Viewed", color: "info" },
-  deleted: { icon: DeleteIcon, label: "Deleted", color: "error" },
-  published: { icon: PublishIcon, label: "Published", color: "primary" },
-  shared: { icon: ShareIcon, label: "Shared", color: "primary" },
-  unshared: { icon: LinkOffIcon, label: "Unshared", color: "warning" },
-  restored: { icon: RestoreFromTrashIcon, label: "Restored", color: "success" },
-  archived: { icon: InventoryIcon, label: "Archived", color: "warning" },
+  created: { icon: AddIcon, label: "Created a Note", color: "success" },
+  edited: { icon: EditIcon, label: "Edited a Note", color: "info" },
+  viewed: { icon: VisibilityIcon, label: "Viewed a Note", color: "info" },
+  deleted: { icon: DeleteIcon, label: "Deleted a Note", color: "error" },
+  published: {
+    icon: PublishIcon,
+    label: "Published a Note",
+    color: "primary",
+  },
+  shared: { icon: ShareIcon, label: "Created a Share", color: "primary" },
+  unshared: { icon: LinkOffIcon, label: "Deleted a Share", color: "warning" },
+  restored: {
+    icon: RestoreFromTrashIcon,
+    label: "Restored a Note",
+    color: "success",
+  },
+  archived: { icon: InventoryIcon, label: "Archived a Note", color: "warning" },
   version_restored: {
     icon: HistoryIcon,
-    label: "Version restored",
+    label: "Restored a Note Version",
     color: "success",
   },
   attachment_added: {
     icon: AttachFileIcon,
-    label: "Attachment added",
+    label: "Added an Attachment",
     color: "info",
   },
   directory_created: {
     icon: CreateNewFolderIcon,
-    label: "Directory created",
+    label: "Created a Directory",
     color: "success",
   },
   directory_viewed: {
     icon: VisibilityIcon,
-    label: "Directory viewed",
+    label: "Viewed a Directory",
     color: "info",
   },
   directory_edited: {
     icon: DriveFileMoveIcon,
-    label: "Directory edited",
+    label: "Edited a Directory",
     color: "info",
   },
   directory_deleted: {
     icon: FolderDeleteIcon,
-    label: "Directory deleted",
+    label: "Deleted a Directory",
     color: "error",
   },
-  role_granted: { icon: VpnKeyIcon, label: "Role granted", color: "success" },
-  role_revoked: { icon: VpnKeyOffIcon, label: "Role revoked", color: "error" },
-  role_changed: { icon: KeyIcon, label: "Role changed", color: "warning" },
+  role_granted: {
+    icon: VpnKeyIcon,
+    label: "Granted a Role",
+    color: "success",
+  },
+  role_revoked: {
+    icon: VpnKeyOffIcon,
+    label: "Revoked a Role",
+    color: "error",
+  },
+  role_changed: { icon: KeyIcon, label: "Changed a Role", color: "warning" },
   trending: {
     icon: LocalFireDepartmentIcon,
     label: "Frequently used",
@@ -292,39 +308,113 @@ export const formatHistoryRowTimestamp = (iso: string): string => {
   return formatDistanceToNow(date, { addSuffix: true });
 };
 
-/** Builds the label for a row entry; looks up the note title via the query cache, falls back to `note_id`. */
+/**
+ * Resolves the entity title for a row entry — the note title or
+ * directory display_name. Prefers the metadata snapshot the activity
+ * visitor wrote (set by `extractNoteMetadata` upstream), then the
+ * query cache. Returns `""` when nothing is known so the UI never
+ * falls back to the raw id; callers can decide whether to hide the
+ * line entirely or render an empty secondary line.
+ */
 export const formatHistoryRowLabel = (entry: HistoryRowEntry): string => {
+  if (entry.action?.startsWith("directory_")) {
+    const dir = queryClient.getQueryData<{
+      display_name?: string;
+      name?: string;
+    }>(["directory", entry.directory_id]);
+    return dir?.display_name || dir?.name || "";
+  }
   const note = queryClient.getQueryData<Note>(["notes", entry.note_id]);
-  return note?.title || entry.note_id;
+  return note?.title || "";
 };
 
-/** Extracts `note_title` / `note_content` from `metadata_json` for note events; returns empty strings for non-notes / malformed / missing. */
+/** Parses `metadata_json` for the snapshot keys the activity visitor emits.
+ *
+ * For note events the visitor now snapshots the title under `note_name`;
+ * the old `note_title` key is still tolerated for records written before
+ * the rename. For directory events `directory_name` carries the human
+ * label and `directory_slug` is the older alias. Share events (visit
+ * metadata: `share_id`, `access_as`, `description`) carry the share's
+ * user-supplied description under `description`.
+ */
+const parseRowMetadata = (
+  metadata_json: string | undefined,
+): {
+  note_name?: string;
+  note_title?: string;
+  note_content?: string;
+  directory_name?: string;
+  directory_slug?: string;
+  description?: string;
+  share_id?: string;
+  access_as?: string;
+} | null => {
+  if (!metadata_json) {
+    return null;
+  }
+  try {
+    return JSON.parse(metadata_json);
+  } catch {
+    return null;
+  }
+};
+
+/** Set of note actions that snapshot a share (so the row description
+ * should come from the share's `description`, not the note's content). */
+const SHARE_NOTE_ACTIONS: ReadonlySet<ActivityKind> = new Set<ActivityKind>([
+  "note_shared",
+  "note_unshared",
+]);
+
+/**
+ * Extracts the display title and (for notes) description preview from
+ * `metadata_json`. Returns empty strings for role events, malformed
+ * payloads, or rows without a metadata snapshot.
+ */
 export const extractNoteMetadata = (
   row: HistoryRowEntry,
 ): { title: string; description: string } => {
-  if (row.action === undefined || !row.action.startsWith("note_")) {
+  if (row.action === undefined) {
     return { title: "", description: "" };
   }
-  if (!row.metadata_json) {
+  const parsed = parseRowMetadata(row.metadata_json);
+  if (parsed === null) {
     return { title: "", description: "" };
   }
-  let parsed: { note_title?: string; note_content?: string };
-  try {
-    parsed = JSON.parse(row.metadata_json);
-  } catch {
-    return { title: "", description: "" };
+  if (row.action.startsWith("note_")) {
+    // Prefer the new `note_name` snapshot; fall back to the legacy
+    // `note_title` so older records still render a label.
+    const title = parsed.note_name ?? parsed.note_title ?? "";
+    // Share events carry a free-form `description` (the share's
+    // user-supplied note) instead of `note_content`. Render it raw
+    // when present so the row can show "Shared with: <description>".
+    let description = "";
+    if (SHARE_NOTE_ACTIONS.has(row.action)) {
+      description = parsed.description ?? "";
+    } else {
+      const content = parsed.note_content ?? "";
+      // `content` is raw markdown; strip tables / emphasis before the crumble so
+      // a row preview shows "Name Description Platform", not "Name | Description | Platform".
+      description = content
+        ? (crumble(
+            markdownPreview(content, {
+              maxLength: HISTORY_ROW_DESCRIPTION_CAP,
+            }),
+            HISTORY_ROW_DESCRIPTION_CAP,
+          )[0] ?? "")
+        : "";
+    }
+    return { title, description };
   }
-  const title = parsed.note_title ?? "";
-  const content = parsed.note_content ?? "";
-  // `content` is raw markdown; strip tables / emphasis before the crumble so
-  // a row preview shows "Name Description Platform", not "Name | Description | Platform".
-  const description = content
-    ? (crumble(
-        markdownPreview(content, { maxLength: HISTORY_ROW_DESCRIPTION_CAP }),
-        HISTORY_ROW_DESCRIPTION_CAP,
-      )[0] ?? "")
-    : "";
-  return { title, description };
+  if (row.action.startsWith("directory_")) {
+    // `directory_name` is the human-readable label; `directory_slug`
+    // is the older alias. We don't surface the description for
+    // directory events.
+    const title = parsed.directory_name ?? parsed.directory_slug ?? "";
+    return { title, description: "" };
+  }
+  // role_* events don't carry a user-facing label here.
+  return { title: "", description: "" };
 };
 
 /** Target entity for the Recent Activity panel; mirrors the historical `ActivityTarget` shape. */
