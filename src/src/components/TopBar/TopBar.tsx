@@ -1,76 +1,73 @@
 import React, { useState } from "react";
-import { SwipeableDrawer } from "@mui/material";
+import { Menu, Popover } from "@mui/material";
 import { useLayout } from "../../LayoutProvider";
 import { TopBarAppBar } from "./TopBarAppBar";
-import { UserPanel } from "./UserPanel";
-import { USER_DRAWER_WIDTH } from "./constants";
+import { UserMenu } from "./UserMenu";
+import { NotificationsPanel } from "./NotificationsPanel";
+import { ServiceFailureDialog } from "./ServiceFailureDialog";
 import { useTopBarScrollVisibility } from "./useTopBarScrollVisibility";
+import { useServiceReachability } from "./useServiceReachability";
 
 export interface TopBarProps {
   scrollContainer?: HTMLElement | null;
 }
 
 /**
- * The application top bar. Owns:
- *
- *   - scroll-driven show / hide (`useLayout().showTopBar`); the
- *     actual `<Slide>` lives inside `TopBarAppBar` so it can wrap
- *     the `position: fixed` `AppBar` directly.
- *   - open / close state for the right-side user drawer
- *
- * All presentational concerns — typography, nav buttons, the
- * notification list itself, the slide animation — live in the
- * `TopBar/TopBarAppBar.tsx`, `TopBar/UserPanel.tsx`, and
- * `TopBar/NotificationsPanel.tsx` siblings. This file is
- * intentionally boring: it wires state between the layout
- * provider, the AppBar, and the SwipeableDrawer.
+ * Application top bar. Owns scroll-driven show/hide, the avatar
+ * `Menu` anchor, the notifications `Popover` anchor, and the
+ * service-failure modal. Presentational pieces live in sibling
+ * files; this just wires state.
  */
 const TopBar: React.FC<TopBarProps> = ({ scrollContainer }) => {
   const { setShowTopBar: setShowBar } = useLayout();
-  // Note: `showTopBar` is consumed by `<TopBarAppBar>`'s `<Slide>`,
-  // not here. The scroll watchdog flips it via `setShowBar`.
-  const [userDrawerOpen, setUserDrawerOpen] = useState(false);
+  const [userMenuAnchor, setUserMenuAnchor] = useState<HTMLElement | null>(
+    null,
+  );
+  const [notificationsAnchor, setNotificationsAnchor] =
+    useState<HTMLElement | null>(null);
+  const reachability = useServiceReachability();
 
-  // Scroll-driven show/hide. The hook owns the listener lifecycle
-  // and the last-Y ref; the rule itself is a pure helper in
-  // `useTopBarScrollVisibility.ts` for unit testing.
   useTopBarScrollVisibility(scrollContainer, setShowBar);
 
   return (
     <>
-      {/* `<Slide>` lives inside `TopBarAppBar` so it can wrap the
-          `position: fixed` `AppBar` directly (the slide target needs
-          to be `position: fixed` / `absolute` to animate). The
-          `SwipeableDrawer` is a *sibling* of the slide target on
-          purpose — the drawer's Modal is `position: fixed` and would
-          otherwise slip out of the slide target's transform, leaving
-          the user drawer visible at the wrong moment. */}
-      <TopBarAppBar onOpenUserDrawer={() => setUserDrawerOpen(true)} />
-      <SwipeableDrawer
-        anchor="right"
-        onOpen={() => setUserDrawerOpen(true)}
-        open={userDrawerOpen}
-        onClose={() => setUserDrawerOpen(false)}
+      {/* Menu + Popover are siblings of the slide target on purpose:
+          their Modal portals are position: fixed and would slip out
+          of the slide target's transform otherwise. */}
+      <TopBarAppBar
+        onOpenUserMenu={(el) => setUserMenuAnchor(el)}
+        onOpenNotifications={(el) => setNotificationsAnchor(el)}
+        servicesReachable={reachability.servicesReachable}
+      />
+      <Menu
+        anchorEl={userMenuAnchor}
+        open={Boolean(userMenuAnchor)}
+        onClose={() => setUserMenuAnchor(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        <UserMenu onRequestClose={() => setUserMenuAnchor(null)} />
+      </Menu>
+      <Popover
+        anchorEl={notificationsAnchor}
+        open={Boolean(notificationsAnchor)}
+        onClose={() => setNotificationsAnchor(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
         slotProps={{
-          // Size the *root* slot, which under `variant="temporary"`
-          // is MUI's `Modal` — the flex container that holds the
-          // sliding `Paper`. The `Modal` defaults to `display:
-          // flex; align-items: center`, so the Paper is centered
-          // within whatever width we pin on the root. Without
-          // `flexShrink: 0` the flex container would collapse the
-          // child under its intrinsic size if any descendant
-          // overflowed.
-          root: {
-            sx: {
-              width: USER_DRAWER_WIDTH,
-              maxWidth: USER_DRAWER_WIDTH,
-              flexShrink: 0,
-            },
-          },
+          // Cap width so the popover fits next to the compact toolbar.
+          paper: { sx: { width: 420, maxWidth: "calc(100vw - 2rem)" } },
         }}
       >
-        <UserPanel onRequestClose={() => setUserDrawerOpen(false)} />
-      </SwipeableDrawer>
+        <NotificationsPanel />
+      </Popover>
+      <ServiceFailureDialog
+        open={reachability.dialogOpen}
+        unreachableServices={reachability.unreachableServices}
+        onClose={reachability.dismissDialog}
+        onIgnore={reachability.dismissDialog}
+        onGoToSettings={reachability.goToSettings}
+      />
     </>
   );
 };

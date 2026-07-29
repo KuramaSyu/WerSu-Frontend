@@ -83,9 +83,11 @@ export const NotificationsPanel: React.FC = () => {
     // Copying the entry counts as "the user saw it" — flip the
     // read flag so the unread badge updates.
     markAsRead(entry.id);
-    const payload = entry.description
-      ? `${entry.message}\n\n${entry.description}`
-      : entry.message;
+    // React-node descriptions can't be serialised; fall back to message only.
+    const payload =
+      typeof entry.description === "string" && entry.description !== ""
+        ? `${entry.message}\n\n${entry.description}`
+        : entry.message;
     const ok = await copyToClipboard(payload);
     // Reuse the global info snackbar so copy feedback matches every
     // other copy button in the app — no extra toast machinery.
@@ -272,20 +274,32 @@ export const NotificationsPanel: React.FC = () => {
                     overflow: "hidden",
                   }}
                 >
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{
-                      whiteSpace: "pre-wrap",
-                      wordBreak: "break-word",
-                      overflow: "hidden",
-                    }}
-                  >
-                    {crumble(
-                      entry.description,
-                      NOTIFICATION_DESCRIPTION_CAP,
-                    ).join("\n\n")}
-                  </Typography>
+                  {typeof entry.description === "string" ? (
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{
+                        whiteSpace: "pre-wrap",
+                        wordBreak: "break-word",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {crumble(
+                        entry.description,
+                        NOTIFICATION_DESCRIPTION_CAP,
+                      ).join("\n\n")}
+                    </Typography>
+                  ) : (
+                    // React-node descriptions render verbatim; the caller owns layout.
+                    <Box
+                      sx={{
+                        color: "text.secondary",
+                        fontSize: (t) => t.typography.body2.fontSize,
+                      }}
+                    >
+                      {entry.description}
+                    </Box>
+                  )}
                 </AccordionDetails>
               )}
             </Accordion>

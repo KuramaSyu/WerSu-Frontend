@@ -2,61 +2,58 @@ import React from "react";
 import {
   AppBar,
   Avatar,
+  Badge,
   Box,
   Button,
   FormControl,
+  IconButton,
   MenuItem,
   Select,
   Slide,
   Stack,
   Toolbar,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import HomeIcon from "@mui/icons-material/Home";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
+import InboxIcon from "@mui/icons-material/Inbox";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useUser } from "../../api/queries/useUser";
 import { LeftPanelToggle, RightPanelToggle } from "../Panels/LeftPanelToggle";
 import SearchBar from "../search/SearchBar";
-import { M1, M2, M3, M4, TOP_BAR_ELEVATION } from "../../statics";
+import { M1, M2, M4, TOP_BAR_ELEVATION } from "../../statics";
 import { useContainedIfSelected, Pages } from "./Pages";
 import { useLayout } from "../../LayoutProvider";
 
 export interface TopBarAppBarProps {
-  /**
-   * Toggled when the user taps their avatar. Owned by the parent
-   * `TopBar` so the SwipeableDrawer can stay next to the state it
-   * drives.
-   */
-  onOpenUserDrawer: () => void;
+  /** Avatar click handler; receives the avatar DOM as Menu anchorEl. */
+  onOpenUserMenu: (anchorEl: HTMLElement) => void;
+  /** Bell click handler; receives the bell DOM as Popover anchorEl. */
+  onOpenNotifications: (anchorEl: HTMLElement) => void;
+  /** false -> red dot is shown on the bell (services unreachable). */
+  servicesReachable: boolean;
 }
 
 /**
- * The `AppBar` + `Toolbar` body of the top bar. Pure presentational
- * apart from navigation hooks; the parent `TopBar` owns open/close
- * state for the user drawer so this component stays trivially
- * testable.
+ * AppBar + Toolbar body. Pure presentational apart from nav
+ * hooks. Parent owns open/close state for the menu + popover.
  */
 export const TopBarAppBar: React.FC<TopBarAppBarProps> = ({
-  onOpenUserDrawer,
+  onOpenUserMenu,
+  onOpenNotifications,
+  servicesReachable,
 }) => {
   const { theme, themeName, setTheme, customThemes } = useThemeStore();
   const navigate = useNavigate();
   const { data: user } = useUser();
   const { showTopBar } = useLayout();
-  // Resolve the per-route variants once per render so the JSX
-  // stays clean and so the hook lint rule sees the hook call in
-  // a stable position at the top of the component body.
   const homeVariant = useContainedIfSelected(Pages.HOME);
   const graphVariant = useContainedIfSelected(Pages.GRAPH);
 
-  // The scroll-driven show / hide animation needs `<Slide>` to wrap
-  // the `position: fixed` `AppBar` directly. Wrapping the `AppBar`
-  // with a static `<Box>` (the previous structure) makes the slide
-  // target un-anchorable and silently kills the animation; the
-  // AppBar's own `position: fixed` is what gives `<Slide direction="down">`
-  // a stable origin to translate against.
+  // Slide wraps the position:fixed AppBar directly; a static Box
+  // wrapper would un-anchor the slide target and kill the animation.
   return (
     <Slide
       appear={false}
@@ -68,19 +65,7 @@ export const TopBarAppBar: React.FC<TopBarAppBarProps> = ({
         exit: theme.transitions.easing.easeInOut,
       }}
     >
-      <AppBar
-        position="fixed"
-        elevation={TOP_BAR_ELEVATION}
-        sx={
-          {
-            // mt: M3,
-            // borderRadius: 2,
-            // left: 0,
-            // right: 0,
-            // width: "auto",
-          }
-        }
-      >
+      <AppBar position="fixed" elevation={TOP_BAR_ELEVATION}>
         <Toolbar>
           <Stack
             direction="row"
@@ -91,10 +76,8 @@ export const TopBarAppBar: React.FC<TopBarAppBarProps> = ({
               justifyContent: "space-between",
             }}
           >
-            {/* Side panel toggle */}
             <LeftPanelToggle />
 
-            {/* Title */}
             <Box sx={{ minWidth: 1 / 10 }}>
               <Button
                 onClick={() => navigate("/")}
@@ -127,7 +110,6 @@ export const TopBarAppBar: React.FC<TopBarAppBarProps> = ({
               </Button>
             </Box>
 
-            {/* Centered search */}
             <Box
               sx={{
                 display: "flex",
@@ -138,7 +120,6 @@ export const TopBarAppBar: React.FC<TopBarAppBarProps> = ({
               <SearchBar />
             </Box>
 
-            {/* Right cluster: theme + nav + avatar */}
             <Box
               sx={{
                 gap: M1,
@@ -156,9 +137,7 @@ export const TopBarAppBar: React.FC<TopBarAppBarProps> = ({
                   displayEmpty
                   sx={{
                     borderRadius: M4,
-                    "& .MuiSelect-select": {
-                      py: "0.35rem",
-                    },
+                    "& .MuiSelect-select": { py: "0.35rem" },
                   }}
                   inputProps={{ "aria-label": "Select theme" }}
                 >
@@ -187,7 +166,14 @@ export const TopBarAppBar: React.FC<TopBarAppBarProps> = ({
               >
                 <AccountTreeIcon />
               </Button>
-              <Button onClick={onOpenUserDrawer} color="inherit">
+              <NotificationsButton
+                onOpen={onOpenNotifications}
+                servicesReachable={servicesReachable}
+              />
+              <Button
+                onClick={(e) => onOpenUserMenu(e.currentTarget)}
+                color="inherit"
+              >
                 <UserAvatarButton user={user} />
               </Button>
               <RightPanelToggle />
@@ -199,11 +185,7 @@ export const TopBarAppBar: React.FC<TopBarAppBarProps> = ({
   );
 };
 
-/**
- * Tiny helper so the AppBar stays focused on layout. The button
- * itself is plain — it just wraps the avatar — and the parent owns
- * the click handler via `onOpenUserDrawer`.
- */
+/** Plain avatar wrapper; parent owns the click handler. */
 const UserAvatarButton: React.FC<{
   user: ReturnType<typeof useUser>["data"];
 }> = ({ user }) => (
@@ -213,5 +195,39 @@ const UserAvatarButton: React.FC<{
     alt={user ? user.username : ""}
   />
 );
+
+/** Bell + red dot indicating unreachable services. */
+const NotificationsButton: React.FC<{
+  onOpen: (anchorEl: HTMLElement) => void;
+  servicesReachable: boolean;
+}> = ({ onOpen, servicesReachable }) => {
+  const button = (
+    <IconButton
+      color="inherit"
+      aria-label={
+        servicesReachable
+          ? "Open notifications"
+          : "Open notifications — backend services unreachable"
+      }
+      onClick={(e) => onOpen(e.currentTarget)}
+    >
+      <Badge
+        color="error"
+        variant="dot"
+        invisible={servicesReachable}
+        overlap="circular"
+      >
+        <InboxIcon />
+      </Badge>
+    </IconButton>
+  );
+  return servicesReachable ? (
+    button
+  ) : (
+    <Tooltip title="Backend services unreachable — see Settings">
+      {button}
+    </Tooltip>
+  );
+};
 
 export default TopBarAppBar;

@@ -23,20 +23,5 @@ export const NOTIFICATION_MESSAGE_CAP = 140;
  */
 export const NOTIFICATION_DESCRIPTION_CAP = 1500;
 
-/**
- * Maximum height (in pixels) of the scrollable notification list
- * inside the user drawer. Sized so ~5 rows fit comfortably without
- * pushing the Logout button off-screen on a standard laptop.
- */
+/** Max height of the notifications popover's scroll list (~5 rows). */
 export const NOTIFICATIONS_PANEL_MAX_HEIGHT = 360;
-
-/**
- * Width of the user drawer as a fraction of the viewport.
- *
- * Applied directly to the `SwipeableDrawer`'s `Paper` slot via
- * `slotProps.paper.sx` in `TopBar.tsx`, where MUI evaluates CSS
- * tokens at runtime — that's the only place the `"3/8"` literal
- * is valid (in CSS it would need to be `calc(3/8 * 100%)`, but
- * the MUI `sx` shorthand accepts the bare fraction).
- */
-export const USER_DRAWER_WIDTH = "3/8";
