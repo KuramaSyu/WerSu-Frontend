@@ -115,6 +115,40 @@ const slashCommands: SlashCommand[] = [
       editor.chain().focus().setCodeBlock().run();
     },
   },
+  {
+    id: "details",
+    label: "Details (collapsible)",
+    keywords: ["details", "disclosure", "collapse", "expand", "summary"],
+    run: (editor) => {
+      clearSlashLine(editor);
+      // Always insert a complete details node with both summary and
+      // body. `setDetails()` would wrap the empty paragraph but leave
+      // summary empty and content holding the slash query — not what
+      // users want when invoking this command.
+      editor
+        .chain()
+        .focus()
+        .insertContent({
+          type: "details",
+          content: [
+            {
+              type: "detailsSummary",
+              content: [{ type: "text", text: "Summary" }],
+            },
+            {
+              type: "detailsContent",
+              content: [
+                {
+                  type: "paragraph",
+                  content: [{ type: "text", text: "Details content" }],
+                },
+              ],
+            },
+          ],
+        })
+        .run();
+    },
+  },
 ];
 
 /**

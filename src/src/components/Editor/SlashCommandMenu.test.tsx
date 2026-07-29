@@ -61,13 +61,15 @@ import {
   getMatchingSlashCommands,
   type SlashCommand,
 } from "./SlashCommandMenu";
+import { CustomDetails } from "./CustomDetails";
+import { DetailsContent, DetailsSummary } from "@tiptap/extension-details";
 
 function makeEditor(): Editor {
   // Build a minimal editor in node mode; the helpers we test only
   // operate on `editor.state.selection.$from`, which exists as soon
   // as the editor is constructed.
   return new Editor({
-    extensions: [StarterKit],
+    extensions: [StarterKit, CustomDetails, DetailsSummary, DetailsContent],
   });
 }
 
@@ -136,6 +138,33 @@ describe("SlashCommandMenu — extraCommands", () => {
       // assert on doc.isEmpty.
       const text = editor.state.doc.textContent;
       expect(text).toBe("");
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("/details matches and inserts a details node when typed", () => {
+    const editor = makeEditor();
+    try {
+      editor.commands.setContent("<p>/details</p>");
+      editor.commands.focus("end");
+
+      const matches = getMatchingSlashCommands(editor);
+      // id "details" matches query "details" exactly → score 100, top.
+      expect(matches[0]?.id).toBe("details");
+
+      matches[0]!.run(editor);
+
+      // After running, the editor should contain a `details` node with
+      // summary + content. The slash query "/details" must NOT leak into
+      // either summary or content — both should have placeholder text.
+      const json = JSON.stringify(editor.getJSON());
+      expect(json).toContain('"type":"details"');
+      expect(json).toContain('"type":"detailsSummary"');
+      expect(json).toContain('"text":"Summary"');
+      expect(json).toContain('"text":"Details content"');
+      // Slash query must not survive in the doc.
+      expect(editor.state.doc.textContent).not.toContain("/details");
     } finally {
       editor.destroy();
     }
