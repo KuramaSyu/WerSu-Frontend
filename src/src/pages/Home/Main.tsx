@@ -48,22 +48,6 @@ export const HomePage: React.FC = () => {
   useLeftPanel(
     <UpperPanel>
       <NavigationSection />
-      <PanelSection title="Actions" showDivider>
-        <PanelButtons>
-          <PanelButtons.Secondary
-            startIcon={<AddIcon />}
-            onClick={() => setCreateDirectoryOpen(true)}
-          >
-            New directory
-          </PanelButtons.Secondary>
-          <PanelButtons.Primary
-            startIcon={<CreateIcon />}
-            onClick={() => setCreateNoteOpen(true)}
-          >
-            New note
-          </PanelButtons.Primary>
-        </PanelButtons>
-      </PanelSection>
       <PanelSection
         title="Frequently used"
         titleIcon={<LocalFireDepartmentIcon fontSize="small" />}
