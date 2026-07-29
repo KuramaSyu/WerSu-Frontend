@@ -19,10 +19,15 @@ import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
 import LockIcon from "@mui/icons-material/Lock";
 import ErrorOutlineOutlinedIcon from "@mui/icons-material/ErrorOutlineOutlined";
 import PersonIcon from "@mui/icons-material/Person";
+import { useLocation } from "react-router-dom";
 import {
   getCollabEntry,
   useNoteCollaboration,
 } from "../../hooks/useNoteCollaboration";
+import {
+  getPublicCollabEntry,
+  usePublicNoteCollaboration,
+} from "../../hooks/usePublicNoteCollaboration";
 import {
   useCollabDiagnostic,
   useCollabStatus,
@@ -370,8 +375,16 @@ export const CollabStatusBadge: React.FC = () => {
   const { editMode } = useEditorSettings();
   const status = useCollabStatus(noteId);
   const diagnostic = useCollabDiagnostic(noteId);
+  // The badge is shared by both NotePage and PublicNotePage, so handle both
+  const isPublic = useLocation().pathname.startsWith("/public/");
   // Subscribe so the chip can read the current provider for a manual retry.
-  const collab = useNoteCollaboration(editMode && noteId ? noteId : undefined);
+  const privateCollab = useNoteCollaboration(
+    !isPublic && editMode && noteId ? noteId : undefined,
+  );
+  const publicCollab = usePublicNoteCollaboration(
+    isPublic && editMode && noteId ? noteId : undefined,
+  );
+  const collab = isPublic ? publicCollab : privateCollab;
 
   // Live users from the Hocuspocus awareness store. We render the
   // count chip only when `connected` AND there is at least one live
@@ -397,11 +410,19 @@ export const CollabStatusBadge: React.FC = () => {
     status === "tokenFetchError";
 
   const handleRetry = () => {
-    if (status === "tokenFetchError") {
+    if (!isPublic && status === "tokenFetchError") {
       queryClient.invalidateQueries({ queryKey: ["accessToken"] });
       return;
     }
-    (collab?.provider ?? getCollabEntry(noteId ?? "")?.provider)?.connect();
+    // Public route uses the share JWT; invalidating the user access-token
+    // query has no effect there, so retry should just reconnect the
+    // cached public provider.
+    const provider =
+      collab?.provider ??
+      (isPublic
+        ? getPublicCollabEntry(noteId ?? "")?.provider
+        : getCollabEntry(noteId ?? "")?.provider);
+    provider?.connect();
   };
 
   const showLiveUsersChip = status === "connected" && liveUserIds.length > 0;
