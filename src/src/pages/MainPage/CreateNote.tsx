@@ -1,12 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Box,
-  Divider,
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  IconButton,
+  Button,
   InputAdornment,
   Slide,
   Snackbar,
@@ -14,7 +9,6 @@ import {
   TextField,
   Tooltip,
 } from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import CreateIcon from "@mui/icons-material/Create";
 import { note_of_date_at_hour } from "../../utils/NoteTitleTemplates";
@@ -22,8 +16,8 @@ import { getNoteApi, NoteApi } from "../../api/NoteApi";
 import { UserError } from "../../api/models/UserError";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { useThemeStore } from "../../zustand/useThemeStore";
-import { M3 } from "../../statics";
 import { useUpdateNote } from "../../api/queries/useNoteQueries";
+import { ModalShell } from "../../components/ModalShell";
 
 export interface CreateNoteProps {
   open: boolean;
@@ -56,16 +50,14 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
     setContent("");
   };
 
-  // True when the user hasn't typed anything into the body. Used to
-  // route the close path into a "cancel" instead of a "save empty note"
-  // - an empty body is almost always a mistake, and the fullscreen
-  // editor can't render an empty document anyway.
+  // True when the user hasn't typed anything into the body. Routes
+  // the close path into "cancel" instead of "save empty note" - the
+  // fullscreen editor can't render an empty document anyway.
   const isContentEmpty = content.trim() === "";
 
   // Fullscreen editor needs *some* content to mount. When the user
   // clicks "open fullscreen" with an empty body, send a single
-  // space so the API + editor see a non-empty document; the space
-  // renders as a blank line and is easy to overwrite.
+  // space so the API + editor see a non-empty document.
   const bodyForSave = isContentEmpty ? " " : content;
 
   const saveNote = async () => {
@@ -83,9 +75,6 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
       setSnackbarState({ open: true });
       updateNote({ noteId: note.id, title: note.title, content: note.content });
 
-      // Move the new note into the current directory when the dialog
-      // is mounted from a directory context. Skipping this for the Home
-      // page preserves the original behaviour (note lands at root).
       if (
         currentDirectoryId &&
         currentDirectoryId !== "root" &&
@@ -127,10 +116,7 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
   };
 
   const closeDialog = async () => {
-    // Empty body means the user dismissed the dialog without
-    // intending to publish - skip the POST entirely and just close.
-    // Dialogs `<Dialog onClose>` (backdrop click + Esc) also routes
-    // through here, so "clicking next to the modal" cancels too.
+    // Empty body = user dismissed without intending to publish.
     if (isContentEmpty) {
       onOpenChange(false);
       resetDraft();
@@ -159,187 +145,106 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
 
   return (
     <>
-      <Dialog
+      <ModalShell
         open={open}
         onClose={() => void closeDialog()}
-        fullWidth
-        maxWidth="md"
-        slotProps={{
-          backdrop: {
-            sx: {
-              backdropFilter: "blur(10px)",
-              backgroundColor: "rgba(0, 0, 0, 0.35)",
-            },
-          },
-          paper: {
-            sx: {
-              borderRadius: 4,
-              border: `1px solid ${theme.palette.divider}`,
-              backgroundImage: "none",
-              overflow: "hidden",
-              boxShadow: theme.shadows[10],
-            },
-          },
-        }}
-      >
-        <DialogTitle
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            px: 2.5,
-            py: 2,
-            backgroundColor: theme.palette.background.paper,
-          }}
-        >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
-            <Box
-              sx={{
-                display: "grid",
-                placeItems: "center",
-                width: 32,
-                height: 32,
-                borderRadius: "999px",
-                backgroundColor: theme.palette.action.hover,
-                color: theme.palette.primary.main,
-              }}
+        icon={<CreateIcon fontSize="small" />}
+        title="New note"
+        subtitle="Save now or open fullscreen"
+        minHeight="42vh"
+        actions={
+          <>
+            <Button
+              variant="outlined"
+              onClick={() => void closeDialog()}
+              disabled={isSaving}
             >
-              <CreateIcon fontSize="small" />
-            </Box>
-            <Box
-              sx={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 0.25,
-              }}
-            >
-              <Box
-                component="span"
-                sx={{
-                  fontSize: "0.95rem",
-                  fontWeight: 600,
-                  lineHeight: 1.2,
-                }}
-              >
-                New note
-              </Box>
-              <Box
-                component="span"
-                sx={{
-                  fontSize: "0.78rem",
-                  color: theme.palette.text.secondary,
-                }}
-              >
-                Save now or open fullscreen
-              </Box>
-            </Box>
-          </Box>
-
-          <Stack direction="row" spacing={0.5}>
+              Cancel
+            </Button>
             <Tooltip title="Save and open fullscreen">
               <span>
-                <IconButton
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<OpenInFullIcon fontSize="small" />}
                   onClick={() => void saveAndOpen()}
-                  size="small"
-                  aria-label="Save and open note fullscreen"
                   disabled={isSaving}
                 >
-                  <OpenInFullIcon fontSize="small" />
-                </IconButton>
+                  Save &amp; open
+                </Button>
               </span>
             </Tooltip>
-            <Tooltip title="Close">
-              <IconButton
-                onClick={() => void closeDialog()}
-                size="small"
-                aria-label="Close create note dialog"
-                disabled={isSaving}
-              >
-                <CloseIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          </Stack>
-        </DialogTitle>
+          </>
+        }
+      >
+        <Stack spacing={2.25} sx={{ py: 0.5 }}>
+          <TextField
+            placeholder="Title"
+            variant="standard"
+            fullWidth
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            autoFocus
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <CreateIcon
+                      sx={{
+                        fontSize: "1rem",
+                        color: theme.palette.text.secondary,
+                      }}
+                    />
+                  </InputAdornment>
+                ),
+              },
+            }}
+            sx={{
+              "& .MuiInputBase-input": {
+                fontSize: "1.15rem",
+                fontWeight: 600,
+                py: 0.5,
+              },
+              "& .MuiInput-root:before, & .MuiInput-root:after": {
+                borderBottomColor: theme.palette.divider,
+              },
+            }}
+          />
 
-        <Divider />
-
-        <DialogContent
-          sx={{
-            backgroundColor: theme.palette.background.default,
-            minHeight: "42vh",
-            px: 2.5,
-            py: 2.5,
-          }}
-        >
-          <Stack spacing={2.25} sx={{ py: 0.5 }}>
-            <TextField
-              placeholder="Title"
-              variant="standard"
-              fullWidth
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              autoFocus
-              slotProps={{
-                input: {
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <CreateIcon
-                        sx={{
-                          fontSize: "1rem",
-                          color: theme.palette.text.secondary,
-                        }}
-                      />
-                    </InputAdornment>
-                  ),
+          <TextField
+            placeholder="Take a note..."
+            variant="outlined"
+            minRows={14}
+            multiline
+            fullWidth
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            disabled={isSaving}
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                borderRadius: 3,
+                backgroundColor: theme.palette.background.paper,
+                transition: "border-color 120ms ease, box-shadow 120ms ease",
+              },
+              "& .MuiOutlinedInput-notchedOutline": {
+                borderColor: theme.palette.divider,
+              },
+              "& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline":
+                {
+                  borderColor: theme.palette.action.active,
                 },
-              }}
-              sx={{
-                "& .MuiInputBase-input": {
-                  fontSize: "1.15rem",
-                  fontWeight: 600,
-                  py: 0.5,
+              "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline":
+                {
+                  borderColor: theme.palette.primary.main,
+                  borderWidth: 1,
                 },
-                "& .MuiInput-root:before, & .MuiInput-root:after": {
-                  borderBottomColor: theme.palette.divider,
-                },
-              }}
-            />
-
-            <TextField
-              placeholder="Take a note..."
-              variant="outlined"
-              minRows={14}
-              multiline
-              fullWidth
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              disabled={isSaving}
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: 3,
-                  backgroundColor: theme.palette.background.paper,
-                  transition: "border-color 120ms ease, box-shadow 120ms ease",
-                },
-                "& .MuiOutlinedInput-notchedOutline": {
-                  borderColor: theme.palette.divider,
-                },
-                "& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline":
-                  {
-                    borderColor: theme.palette.action.active,
-                  },
-                "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline":
-                  {
-                    borderColor: theme.palette.primary.main,
-                    borderWidth: 1,
-                  },
-                "& .MuiInputBase-inputMultiline": {
-                  lineHeight: 1.6,
-                },
-              }}
-            />
-          </Stack>
-        </DialogContent>
-      </Dialog>
+              "& .MuiInputBase-inputMultiline": {
+                lineHeight: 1.6,
+              },
+            }}
+          />
+        </Stack>
+      </ModalShell>
 
       <Snackbar
         open={snackbarState.open}
