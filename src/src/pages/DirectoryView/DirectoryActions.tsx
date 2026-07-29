@@ -171,6 +171,10 @@ export const DirectoryActions: React.FC<DirectoryActionsProps> = ({
           zIndex: (theme) => theme.zIndex.appBar + 2,
         }}
       >
+        <CreateFab
+          onCreateNote={handleCreateNote}
+          onCreateDirectory={handleCreateSubdirectory}
+        />
         <SpeedDial
           ariaLabel="Directory settings"
           icon={<SpeedDialIcon open={settingsOpen} icon={<SettingsIcon />} />}
@@ -229,10 +233,6 @@ export const DirectoryActions: React.FC<DirectoryActionsProps> = ({
             }
           />
         </SpeedDial>
-        <CreateFab
-          onCreateNote={handleCreateNote}
-          onCreateDirectory={handleCreateSubdirectory}
-        />
       </Stack>
 
       <ConfirmationModal
