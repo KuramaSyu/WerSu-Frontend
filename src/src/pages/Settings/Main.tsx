@@ -11,6 +11,7 @@ import {
   Typography,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import { useSearchParams } from "react-router-dom";
 import { useLeftPanel, usePanelSize } from "../../LayoutProvider";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { SettingsLeftPanel } from "./SettingsLeftPanel";
@@ -35,6 +36,9 @@ import { useSettingsNavStore } from "./SettingsStore";
 const SettingsPage: React.FC = () => {
   const { isMobile } = useBreakpoint();
   const setActiveCategoryId = useSettingsNavStore((s) => s.setActiveCategoryId);
+  // `?cat=` holds the active section id; it's the only thing that changes on this route.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const catParam = searchParams.get("cat");
 
   // Initialize the active id to the first category so the rail has a
   // highlighted row on first paint, before the observer runs.
@@ -44,6 +48,31 @@ const SettingsPage: React.FC = () => {
       setActiveCategoryId(firstId);
     }
   }, [setActiveCategoryId]);
+
+  // One-shot scroll-into-view from `?cat=` on mount; the observer
+  // below owns scroll-driven URL updates after that.
+  const didInitialScrollRef = useRef(false);
+  useEffect(() => {
+    if (didInitialScrollRef.current) {
+      return;
+    }
+    didInitialScrollRef.current = true;
+    if (catParam === null || isMobile) {
+      return;
+    }
+    const match = settingsCategories.find((c) => c.id === catParam);
+    if (!match) {
+      return;
+    }
+    setActiveCategoryId(match.id);
+    // Defer one frame so the section DOM exists before scrolling.
+    const raf = window.requestAnimationFrame(() => {
+      document
+        .getElementById(match.id)
+        ?.scrollIntoView({ behavior: "auto", block: "start" });
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [catParam, isMobile, setActiveCategoryId]);
 
   // Mount the left rail in the layout's side-panel slot (per the
   // task brief: the left side panel lives in `useLeftPanel()`, not
@@ -57,7 +86,8 @@ const SettingsPage: React.FC = () => {
   const bodyRef = useRef<HTMLDivElement | null>(null);
 
   // Desktop-only: feed the most-visible section back into the store
-  // so the left rail highlights the row the user is reading.
+  // and push `?cat=` so the section is shareable. `replace: true`
+  // keeps the history stack from filling with scroll entries.
   useEffect(() => {
     if (isMobile) {
       return;
@@ -66,6 +96,7 @@ const SettingsPage: React.FC = () => {
     if (!root) {
       return;
     }
+    let lastVisibleId: string | null = null;
     const observer = new IntersectionObserver(
       (entries) => {
         // Pick the entry whose visible fraction is the largest; that's
@@ -73,8 +104,16 @@ const SettingsPage: React.FC = () => {
         const visible = entries
           .filter((e) => e.isIntersecting)
           .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (visible?.target?.id) {
-          setActiveCategoryId(visible.target.id);
+        const id = visible?.target?.id ?? null;
+        if (id !== null && id !== lastVisibleId) {
+          lastVisibleId = id;
+          setActiveCategoryId(id);
+          if (catParam !== id) {
+            // Defensive copy: `setSearchParams` mutates in place.
+            const next = new URLSearchParams(searchParams);
+            next.set("cat", id);
+            setSearchParams(next, { replace: true });
+          }
         }
       },
       {
@@ -93,7 +132,7 @@ const SettingsPage: React.FC = () => {
     nodes.forEach((el) => observer.observe(el));
 
     return () => observer.disconnect();
-  }, [isMobile, setActiveCategoryId]);
+  }, [isMobile, setActiveCategoryId, catParam, searchParams, setSearchParams]);
 
   const desktopBody = (
     <Paper
