@@ -26,6 +26,7 @@ import { AllDirectories } from "./AllDirectories";
 import { M3, M4 } from "../../statics";
 import { useRequireAuth } from "../../hooks/useRequireAuth";
 import CreateFab from "../../components/CreateFab";
+import { useThemeStore } from "../../zustand/useThemeStore";
 
 /**
  * Home page.
@@ -39,6 +40,7 @@ export const HomePage: React.FC = () => {
   const [createNoteOpen, setCreateNoteOpen] = useState(false);
   const [createDirectoryOpen, setCreateDirectoryOpen] = useState(false);
   const { rightPanelOpen } = useLayout();
+  const { theme } = useThemeStore();
   useRequireAuth();
 
   useRightPanel(null);
@@ -104,11 +106,13 @@ export const HomePage: React.FC = () => {
           <AllDirectories />
         </Stack>
       </Stack>
-      <Box
+      <Stack
+        direction="row"
+        spacing={2}
         sx={{
           position: "fixed",
-          right: 24,
-          bottom: 24,
+          right: theme.spacing(2),
+          bottom: theme.spacing(2),
           zIndex: (theme) => theme.zIndex.appBar + 2,
         }}
       >
@@ -116,7 +120,7 @@ export const HomePage: React.FC = () => {
           onCreateNote={() => setCreateNoteOpen(true)}
           onCreateDirectory={() => setCreateDirectoryOpen(true)}
         />
-      </Box>
+      </Stack>
       <CreateNote open={createNoteOpen} onOpenChange={setCreateNoteOpen} />
       <CreateDirectoryModal
         open={createDirectoryOpen}
