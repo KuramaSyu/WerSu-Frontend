@@ -57,9 +57,7 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
     () => [...new Set(liveUsers.map((u) => u.userId))],
     [liveUsers],
   );
-  console.log("Live users:", liveUsers);
   const { data: usersById } = useUsers(userIds);
-  console.log("Users by ID:", usersById);
 
   // Controls the version history drawer.
   const [versionsOpen, setVersionsOpen] = useState(false);
