@@ -4,19 +4,13 @@ import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SettingsIcon from "@mui/icons-material/Settings";
-import {
-  Box,
-  SpeedDial,
-  SpeedDialAction,
-  SpeedDialIcon,
-  Stack,
-} from "@mui/material";
+import { Box, SpeedDial, SpeedDialAction, SpeedDialIcon } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
 import { useFavouritesStore } from "../../zustand/useFavouritesStore";
 import { ConfirmationModal } from "../Settings/ConfirmationModal";
 import type { HirarchyItem } from "../../models/HirarchyItem";
 import type { CascadePreview } from "./DirectoryFeatures.hook";
-import { ColoredCollapseButton } from "../../components/ColoredCollapseButton";
+import { TooltipButton } from "../../components/ColoredCollapseButton";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import CreateFab from "../../components/CreateFab";
 
@@ -38,7 +32,7 @@ export interface DirectoryActionsProps {
  * nothing extra when the directory is empty so empty deletes stay
  * short.
  */
-const CascadePreviewMessage: React.FC<{
+const DeletePreviewMessage: React.FC<{
   directoryName: string;
   preview: CascadePreview;
 }> = ({ directoryName, preview }) => {
@@ -86,19 +80,7 @@ const CascadePreviewMessage: React.FC<{
 };
 
 /**
- * Two speed dials for directory-level actions.
- *
- * The two dials are stacked side-by-side and sit in the left panel
- * between the navigation section and the directory tree:
- *
- * - The `+` (plus) dial exposes the "new" actions: create note,
- *   create subdirectory.
- * - The `gear` (settings) dial exposes the per-directory settings:
- *   edit, toggle favourite, delete.
- *
- * The settings dial's mutation actions (`edit`, `favourite`, `delete`)
- * are no-ops when viewing the synthetic root, mirroring the
- * `disabled={isRoot}` behavior the toolbar used to enforce.
+ * Two speed dials and FABs for directory-level actions.
  */
 export const DirectoryActions: React.FC<DirectoryActionsProps> = ({
   currentNode,
@@ -114,7 +96,7 @@ export const DirectoryActions: React.FC<DirectoryActionsProps> = ({
   // Softened primary that drives the speed-dial sub-items. A small
   // `blendWithContrast` amount keeps the items on-theme but distinct
   // from the pure `primary.main` used for the FABs.
-  const actionColor = theme.blendWithContrast("primary", 0.3);
+  const actionColor = theme.palette.secondary.main;
   const isRoot = currentNode.getId() === "root";
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -152,93 +134,89 @@ export const DirectoryActions: React.FC<DirectoryActionsProps> = ({
   };
 
   return (
-    <>
-      <Stack
-        // Fixed to the bottom-right of the screen. The settings
-        // SpeedDial opens upward so its actions don't overflow the
-        // viewport. The settings dial sits on the left and the
-        // `CreateFab` stack sits on the right - the FAB stack is
-        // the rightmost corner element. `alignItems: "flex-end"`
-        // keeps both aligned to the same bottom baseline even
-        // though their roots have different intrinsic heights.
-        sx={{
-          position: "fixed",
-          right: 24,
-          bottom: 24,
-          flexDirection: "row",
-          alignItems: "flex-end",
-          gap: 2,
-          zIndex: (theme) => theme.zIndex.appBar + 2,
-        }}
+    <Box
+      sx={{
+        position: "absolute",
+        right: theme.spacing(2),
+        bottom: theme.spacing(2),
+        display: "flex",
+        flexDirection: "row",
+        alignItems: "flex-end",
+        gap: 2,
+        zIndex: (theme) => theme.zIndex.appBar + 2,
+      }}
+    >
+      <Box
+        sx={{ pb: 1 }} // pb to center items manually with settings dial (center does not work because of the FAB's extended form)
       >
         <CreateFab
           onCreateNote={handleCreateNote}
           onCreateDirectory={handleCreateSubdirectory}
         />
-        <SpeedDial
-          ariaLabel="Directory settings"
-          icon={<SpeedDialIcon open={settingsOpen} icon={<SettingsIcon />} />}
-          direction="up"
-          open={settingsOpen}
-          onOpen={() => setSettingsOpen(true)}
-          onClose={() => setSettingsOpen(false)}
-        >
-          <SpeedDialAction
-            icon={
-              <ColoredCollapseButton
-                color={actionColor}
-                whenSelected="Edit directory"
-                disabled={isRoot}
-                onClick={() => {
-                  if (!isRoot) handleRenameDirectory();
-                  setSettingsOpen(false);
-                }}
-              >
-                <MenuBookIcon fontSize="small" />
-              </ColoredCollapseButton>
-            }
-          />
-          <SpeedDialAction
-            icon={
-              <ColoredCollapseButton
-                color={actionColor}
-                whenSelected={isFavourite ? "Unfavourite" : "Favourite"}
-                disabled={isRoot}
-                onClick={() => {
-                  if (!isRoot && directoryId) toggleDirectory(directoryId);
-                  setSettingsOpen(false);
-                }}
-              >
-                {isFavourite ? (
-                  <StarIcon fontSize="small" />
-                ) : (
-                  <StarBorderIcon fontSize="small" />
-                )}
-              </ColoredCollapseButton>
-            }
-          />
-          <SpeedDialAction
-            icon={
-              <ColoredCollapseButton
-                color={actionColor}
-                whenSelected="Delete directory"
-                disabled={isRoot}
-                onClick={() => {
-                  if (!isRoot) openDeleteDialog();
-                  setSettingsOpen(false);
-                }}
-              >
-                <DeleteIcon fontSize="small" />
-              </ColoredCollapseButton>
-            }
-          />
-        </SpeedDial>
-      </Stack>
-
+      </Box>
+      <SpeedDial
+        ariaLabel="Directory settings"
+        icon={<SpeedDialIcon open={settingsOpen} icon={<SettingsIcon />} />}
+        direction="up"
+        open={settingsOpen}
+        onOpen={() => setSettingsOpen(true)}
+        onClose={() => setSettingsOpen(false)}
+        FabProps={{ color: "secondary" }}
+      >
+        <SpeedDialAction
+          icon={
+            <TooltipButton
+              color={actionColor}
+              tooltipTitle="Edit directory"
+              disabled={isRoot}
+              onClick={() => {
+                if (!isRoot) handleRenameDirectory();
+                setSettingsOpen(false);
+              }}
+            >
+              <MenuBookIcon fontSize="small" />
+            </TooltipButton>
+          }
+        />
+        <SpeedDialAction
+          icon={
+            <TooltipButton
+              color={actionColor}
+              tooltipTitle={isFavourite ? "Unfavourite" : "Favourite"}
+              disabled={isRoot}
+              onClick={() => {
+                if (!isRoot && directoryId) toggleDirectory(directoryId);
+                setSettingsOpen(false);
+              }}
+            >
+              {isFavourite ? (
+                <StarIcon fontSize="small" />
+              ) : (
+                <StarBorderIcon fontSize="small" />
+              )}
+            </TooltipButton>
+          }
+        />
+        <SpeedDialAction
+          icon={
+            <TooltipButton
+              color={actionColor}
+              tooltipTitle="Delete directory"
+              disabled={isRoot}
+              onClick={() => {
+                if (!isRoot) openDeleteDialog();
+                setSettingsOpen(false);
+              }}
+            >
+              <DeleteIcon fontSize="small" />
+            </TooltipButton>
+          }
+        />
+      </SpeedDial>
       <ConfirmationModal
         title="Delete this directory?"
         message={
-          <CascadePreviewMessage
+          <DeletePreviewMessage
             directoryName={currentNode.getName()}
             preview={cascadePreview}
           />
@@ -255,6 +233,6 @@ export const DirectoryActions: React.FC<DirectoryActionsProps> = ({
         }}
         onConfirm={() => void runDelete()}
       />
-    </>
+    </Box>
   );
 };
