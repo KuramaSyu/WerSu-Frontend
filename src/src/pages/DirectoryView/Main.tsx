@@ -88,20 +88,11 @@ export const DirectoryView: React.FC = () => {
         display: "flex",
         flexDirection: "column",
         height: "100%",
-        // The inner Paper below owns the scrollbar. If we let
-        // overflow default to visible, content that exceeds this
-        // view's height would also overflow the AppShell's main
-        // scroll container and produce a second scrollbar.
+        // The inner Paper below owns the scrollbar
         overflow: "hidden",
       }}
     >
-      {/*
-          DragDropProvider is required because DirectorySideView registers
-          droppable targets via dnd-kit hooks. Even if DirectoryView doesn't
-          initiate drag operations itself, the provider ensures the directory
-          tree can still accept note drops from elsewhere in the app without
-          runtime hook errors.
-        */}
+      {/* dnd probably not needed anymore */}
       <DragDropProvider onDragEnd={() => undefined}>
         <Stack direction="row" spacing={M4} sx={{ alignItems: "flex-start" }}>
           <Paper
@@ -110,9 +101,7 @@ export const DirectoryView: React.FC = () => {
               flex: 1,
               p: M3,
               // The directory/note content can grow tall (lots of
-              // children or an expanded accordion). Clip here so the
-              // scrollbar stays scoped to this view instead of
-              // spilling into the AppShell main scroll container.
+              // children or an expanded accordion). Clip here
               height: "100%",
               overflow: "auto",
             }}
