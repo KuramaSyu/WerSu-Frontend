@@ -94,6 +94,17 @@ export interface CustomTheme extends Theme {
   changeSaturation(color: ColorInput, ChangeAmount: number): string;
 
   /**
+   * Apply a MUI-style elevation overlay to a color: mixes the source
+   * against `palette.background.default` at a level-dependent opacity.
+   * Direction (toward lighter or darker) follows the theme mode.
+   *
+   * @param color the surface color to elevate (hex or named palette role)
+   * @param level elevation level 0-24 (clamped); 0 returns the color unchanged
+   * @returns the elevated color in hex format
+   */
+  elevate(color: ColorInput, level: number): string;
+
+  /**
    * Updates `transitions.duration.complex` in-place and refreshes derived
    * transition style snippets that depend on that duration.
    */
@@ -397,18 +408,21 @@ export class CustomThemeImpl implements CustomTheme {
     console.log("custom props", RootColorAndRadius);
 
     // Merge custom component overrides
+    const tooltipBbackground = this.elevate(this.palette.background.paper, 24);
     this.components = {
       ...this.components, // Spread existing component overrides
       MuiTooltip: {
         styleOverrides: {
           tooltip: {
-            backgroundColor: this.palette.background.paper,
-            color: this.palette.text.primary,
-            fontSize: this.typography.body1.fontSize,
-            borderRadius: "8px",
+            backgroundColor: tooltipBbackground,
+            color: this.palette.getContrastText(tooltipBbackground),
+            fontSize: this.typography.caption.fontSize,
+            borderRadius: 8,
+            border: `1px solid ${this.palette.divider}`,
           },
           arrow: {
-            color: this.palette.background.paper,
+            color: tooltipBbackground,
+            zIndex: 1, // 1 higher than the tooltip
           },
         },
       },
@@ -553,6 +567,16 @@ export class CustomThemeImpl implements CustomTheme {
     return rgbToHex(adjusted);
   }
 
+  elevate(color: ColorInput, level: number): string {
+    const resolved = this.resolveColor(color);
+    // MUI Paper applies the elevation overlay only in dark mode (light mode
+    // relies on box-shadow alone). In dark mode the overlay is plain white
+    // at the alpha returned by `getOverlayAlpha` (the same curve MUI uses
+    // for `Paper elevation={n}`).
+    if (this.palette.mode !== "dark") return resolved;
+    return blendWithAlpha(resolved, "#ffffff", getOverlayAlpha(level));
+  }
+
   setComplexDuration(durationMs: number): void {
     // Keep duration valid and integral (MUI expects milliseconds).
     const normalized = Math.max(1, Math.round(durationMs));
@@ -652,6 +676,35 @@ export class CustomThemeImpl implements CustomTheme {
     console.error(`Unknown color input in resolveColor: ${color}`);
     return color;
   }
+}
+
+// Returns the overlay opacity for a given elevation level, matching the
+// curve MUI's `<Paper>` uses to tint the surface with `rgba(255,255,255,a)`.
+// Source: `packages/mui-material/src/styles/getOverlayAlpha.ts`.
+//
+// Kept module-level (same rationale as the rgb/hsl helpers below): it
+// must not become a (private) member on `CustomThemeImpl`, since that
+// would break assignability to `Partial<Theme>`.
+function getOverlayAlpha(elevation: number): number {
+  let alphaValue;
+  if (elevation < 1) {
+    alphaValue = 5.11916 * elevation ** 2;
+  } else {
+    alphaValue = 4.5 * Math.log(elevation + 1) + 2;
+  }
+  return Math.round(alphaValue * 10) / 1000;
+}
+
+// Mixes a color toward `overlay` at fractional opacity `alpha` (0-1).
+// Equivalent to `alpha(overlay, alpha)` composited over `base`.
+function blendWithAlpha(base: string, overlay: string, alpha: number): string {
+  const baseRgb = hexToRgb(base);
+  const overlayRgb = hexToRgb(overlay);
+  return rgbToHex({
+    r: Math.round(baseRgb.r + (overlayRgb.r - baseRgb.r) * alpha),
+    g: Math.round(baseRgb.g + (overlayRgb.g - baseRgb.g) * alpha),
+    b: Math.round(baseRgb.b + (overlayRgb.b - baseRgb.b) * alpha),
+  });
 }
 
 // Module-level color helpers. Kept out of the class so that they don't appear
