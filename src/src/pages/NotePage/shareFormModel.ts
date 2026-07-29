@@ -68,12 +68,25 @@ export interface ShareFormValue {
 }
 
 /**
+ * Build the default description text shown in a brand-new share form.
+ *
+ * Prefers the current note title (so the row reads "Shared note: My
+ * Note") and falls back to a generic placeholder when no title is
+ * available yet — the title is still being typed in the editor.
+ */
+export const defaultShareDescription = (noteTitle: string): string => {
+  const trimmed = noteTitle.trim();
+  return trimmed.length > 0 ? `Shared note: ${trimmed}` : "";
+};
+
+/**
  * Build a "blank" form value — used when entering create mode.
  *
  * Defaults match the original ShareDialog:
- *   - link-shared, read-only, expires in 1 month, no description.
+ *   - link-shared, read-only, expires in 1 month, description seeded
+ *     with the note title (see `defaultShareDescription`).
  */
-export const blankShareFormValue = (): ShareFormValue => {
+export const blankShareFormValue = (noteTitle?: string): ShareFormValue => {
   const oneMonthFromNow = new Date(
     Date.now() + 60 * 60 * 24 * 30 * 1000,
   ).toISOString();
@@ -81,6 +94,6 @@ export const blankShareFormValue = (): ShareFormValue => {
     visibility: "link",
     permission: "read",
     onlineUntil: oneMonthFromNow,
-    description: "",
+    description: defaultShareDescription(noteTitle ?? ""),
   };
 };

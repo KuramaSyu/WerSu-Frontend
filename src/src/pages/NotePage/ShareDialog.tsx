@@ -32,11 +32,13 @@ import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { ShareFormSection } from "./ShareFormSection";
 import {
   blankShareFormValue,
+  defaultShareDescription,
   type Permission,
   type ShareFormValue,
 } from "./shareFormModel";
 import type { NoteShareReply } from "../../api/models/sharing";
 import { ShareCard } from "./ShareCard";
+import { useActiveNoteStore } from "../../zustand/editorStore";
 
 export interface ShareDialogProps {
   noteId: string;
@@ -109,7 +111,10 @@ interface EditBaseline {
   description: string;
 }
 
-const baselineFromShare = (share: NoteShareReply): EditBaseline => ({
+const baselineFromShare = (
+  share: NoteShareReply,
+  noteTitle: string,
+): EditBaseline => ({
   permission: permissionFromString(share.permission),
   // When the existing share has no `online_until` it's an
   // open-ended ("Never expires") share — preserve that by treating
@@ -117,7 +122,12 @@ const baselineFromShare = (share: NoteShareReply): EditBaseline => ({
   // appear dirty the moment the user opens it for edit, because the
   // previous default (one month from now) would never match.
   onlineUntil: share.online_until ?? "",
-  description: share.description ?? "",
+  // Lazy default: if the share has no description, seed the form
+  // with the note-title placeholder so the user can see/edit it
+  // before saving. Existing custom descriptions are preserved.
+  description: share.description?.trim()
+    ? share.description
+    : defaultShareDescription(noteTitle),
 });
 
 const valueFromBaseline = (b: EditBaseline): ShareFormValue => ({
@@ -139,12 +149,16 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
 }) => {
   const { theme } = useThemeStore();
   const setMessage = useInfoStore((s) => s.setMessage);
+  // The active note's current title — used to seed the share form's
+  // default description (so new shares aren't blank by default) and
+  // to backfill an empty description when editing an older share.
+  const noteTitle = useActiveNoteStore((s) => s.title);
 
   // ─── Form state ─────────────────────────────────────────────────────
   // `null` → create mode; a share id → edit mode bound to that share.
   const [editingShareId, setEditingShareId] = useState<string | null>(null);
   const [formValue, setFormValue] = useState<ShareFormValue>(
-    blankShareFormValue(),
+    blankShareFormValue(noteTitle),
   );
   const [baseline, setBaseline] = useState<EditBaseline | null>(null);
 
@@ -161,12 +175,12 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
 
   const enterCreateMode = () => {
     setEditingShareId(null);
-    setFormValue(blankShareFormValue());
+    setFormValue(blankShareFormValue(noteTitle));
     setBaseline(null);
   };
 
   const enterEditMode = (share: NoteShareReply) => {
-    const base = baselineFromShare(share);
+    const base = baselineFromShare(share, noteTitle);
     setEditingShareId(share.id);
     setBaseline(base);
     setFormValue(valueFromBaseline(base));
