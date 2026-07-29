@@ -68,6 +68,7 @@ export const FrequentlyUsedPanel: React.FC<FrequentlyUsedPanelProps> = ({
             key={entry.note_id}
             entry={entry}
             onClick={handleItemClick}
+            headerMode="entityTitle"
           />
         ))}
       </Stack>

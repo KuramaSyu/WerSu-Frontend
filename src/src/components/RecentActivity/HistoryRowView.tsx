@@ -94,6 +94,18 @@ const renderRowIcon = (entry: HistoryRowEntry): React.ReactNode => {
 export interface HistoryRowViewProps {
   entry: HistoryRowEntry;
   onClick: (entry: HistoryRowEntry) => void;
+  /**
+   * What the header line should display.
+   *
+   * - `"variantLabel"` (default) — the action label only
+   *   (`Created a Note`, `Created a Share`, etc.). Used by the
+   *   Recent Activity panel where the action verb is the primary
+   *   signal.
+   * - `"entityTitle"` — the resolved note / directory title
+   *   instead. Used by the Frequently Used panel where the user
+   *   wants to see which note is at the top.
+   */
+  headerMode?: "variantLabel" | "entityTitle";
 }
 
 /**
@@ -107,16 +119,19 @@ export interface HistoryRowViewProps {
  * -----------
  * Recent Activity panel: pass an entry derived from
  * `ActivityReply`. The chip stays hidden because `score` is
- * undefined.
+ * undefined. `headerMode` defaults to `"variantLabel"`.
  *
  * Frequently Used panel: pass an entry derived from
  * `ActivityScoreReply` with the looked-up title; the chip renders
  * the aggregated score and the flame icon is used because
- * `getHistoryRowKind` returns `trending`.
+ * `getHistoryRowKind` returns `trending`. Set
+ * `headerMode="entityTitle"` so the header shows the note title
+ * rather than a "Frequently used" label.
  */
 export const HistoryRowView: React.FC<HistoryRowViewProps> = ({
   entry,
   onClick,
+  headerMode = "variantLabel",
 }) => {
   const kind: HistoryRowKind = getHistoryRowKind(entry);
   const { theme } = useThemeStore();
@@ -148,10 +163,13 @@ export const HistoryRowView: React.FC<HistoryRowViewProps> = ({
           </Box>
         </Tooltip>
         <Box sx={{ flex: 1, minWidth: 0 }} aria-label={"Creation time"}>
-          {/* Header: variant label only (e.g. "Created a Note"). No id,
-              no note title — those go on the description line. */}
+          {/* Header: variant label by default (e.g. "Created a Note"),
+              or the resolved entity title when the caller opted into
+              `headerMode="entityTitle"` (Frequently Used panel). */}
           <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>
-            {getHistoryRowVariantLabel(entry)}
+            {headerMode === "entityTitle"
+              ? (entry.title ?? formatHistoryRowLabel(entry))
+              : getHistoryRowVariantLabel(entry)}
           </Typography>
           {/* Description: the resolved entity title — note title or
               directory display_name. Older records without a snapshot
