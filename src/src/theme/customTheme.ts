@@ -268,18 +268,9 @@ export class CustomThemeImpl implements CustomTheme {
           },
         ),
         "&:hover": {
-          transition: this.transitions.create(
-            [
-              "background-color",
-              "color",
-              "border-color",
-              "transform",
-              "border-radius",
-            ],
-            {
-              duration: this.transitions.duration.short,
-            },
-          ),
+          transition: this.transitions.create(["all"], {
+            duration: this.transitions.duration.short,
+          }),
         },
       },
     };
@@ -496,9 +487,11 @@ export class CustomThemeImpl implements CustomTheme {
       MuiFab: {
         styleOverrides: {
           root: {
-            borderRadius: "50%",
+            ...this.colorTransition.root,
+            borderRadius: 64,
             "&:hover": {
-              borderRadius: "50%",
+              ...this.colorTransition.root["&:hover"],
+              borderRadius: 16,
             },
           },
         },
