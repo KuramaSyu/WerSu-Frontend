@@ -12,6 +12,8 @@
   </head>
   <body style="background-color: #3B4252;">
     <div id="root"></div>
+    <!-- Runtime config (see `docker/20-runtime-env.sh`); classic script before the module so `window.__ENV__` is populated when `statics.tsx` first evaluates. -->
+    <script src="/env.js"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

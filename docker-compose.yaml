@@ -11,6 +11,10 @@ services:
     restart: unless-stopped
     ports:
       - "5173:5173"
+    # Runtime override for `BACKEND_BASE` / `HOCUSPOCUS_WS_URL`; `docker/20-runtime-env.sh` writes these to `/env.js` so the SPA picks them up instead of the build-time `VITE_*` values. Unset a var to fall through to the build-time default.
+    environment:
+      BACKEND_BASE: ${BACKEND_BASE:-http://localhost:8080}
+      HOCUSPOCUS_WS_URL: ${HOCUSPOCUS_WS_URL:-ws://localhost:8666}
     depends_on:
       - wersu-rest
 

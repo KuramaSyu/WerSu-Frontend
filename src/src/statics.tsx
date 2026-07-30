@@ -1,15 +1,29 @@
 declare global {
   interface ImportMetaEnv {
     readonly VITE_BACKEND_URL?: string;
+    readonly VITE_HOCUSPOCUS_WS_URL?: string;
   }
 
   interface ImportMeta {
     readonly env: ImportMetaEnv;
   }
+
+  // Runtime config injected by `docker/20-runtime-env.sh`; absent keys fall through to the build-time `VITE_*` fallback.
+  interface Window {
+    readonly __ENV__?: {
+      readonly BACKEND_BASE?: string;
+      readonly HOCUSPOCUS_WS_URL?: string;
+    };
+  }
 }
 
-export const BACKEND_BASE = import.meta.env.VITE_BACKEND_URL ?? "";
-export const HOCUSPOCUS_WS_URL = import.meta.env.VITE_HOCUSPOCUS_WS_URL ?? "";
+// Prefer runtime env (Docker `-e` -> `/env.js`) and fall back to build-time `VITE_*`; the `typeof window` guard keeps this evaluable in Vitest's `node` env and SSR.
+const runtimeEnv = typeof window !== "undefined" ? window.__ENV__ : undefined;
+
+export const BACKEND_BASE =
+  runtimeEnv?.BACKEND_BASE ?? import.meta.env.VITE_BACKEND_URL ?? "";
+export const HOCUSPOCUS_WS_URL =
+  runtimeEnv?.HOCUSPOCUS_WS_URL ?? import.meta.env.VITE_HOCUSPOCUS_WS_URL ?? "";
 export const M1 = "0.25rem";
 export const M2 = "0.5rem";
 export const M3 = "1rem";
