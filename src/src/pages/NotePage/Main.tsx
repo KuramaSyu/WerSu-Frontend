@@ -2,21 +2,18 @@ import { useCallback, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { Box, Fade } from "@mui/material";
 import { LoginPage } from "../LoginPage/Main";
-import { LoadingPage } from "../LoadingPage/Main";
-import { M1, M3, M4, M5 } from "../../statics";
-import { useBreakpoint } from "../../hooks/useBreakpoint";
-import { useLoadingStore } from "../../zustand/loadingStore";
+import { M3, M4 } from "../../statics";
 import type { Note } from "../../api/models/search";
-import TopBar from "../../components/TopBar";
 import { NoteEditor } from "./Editor";
-import { NoteSidePanel } from "./panel/Main";
+import { NoteLeftPanel } from "./Panel/MainLeft";
+import { NoteRightPanel } from "./Panel/MainRight";
 import {
   useNote,
   useUpdateNote,
   type UpdateNoteVariables,
 } from "../../api/queries/useNoteQueries";
 import { useUser } from "../../api/queries/useUser";
-import { useLayout, useLeftPanel, usePanelSize } from "../../LayoutProvider";
+import { useLeftPanel, usePanelSize } from "../../LayoutProvider";
 import { useRightPanel } from "../../LayoutProvider";
 import { NoteEditorSkeleton } from "./NoteEditorSkeleton";
 import { useThemeStore } from "../../zustand/useThemeStore";
@@ -75,18 +72,16 @@ export const NotePage: React.FC = () => {
   );
 
   useLeftPanel(
-    <NoteSidePanel note={note} noteId={id} onNoteUpdated={updateNote} />,
+    <NoteLeftPanel note={note} noteId={id} onNoteUpdated={updateNote} />,
     [id],
   );
-  usePanelSize({ left: `clamp(15rem, 25vw, 30rem)` });
-
-  // The note editor owns the full canvas - no right rail. Pin
-  // `rightPanel` to null on this route so a previous page's
-  // content (e.g. a directory's actions) doesn't bleed into the
-  // layout context. The TopBar's `RightPanelToggle` only renders
-  // when a panel is mounted, so this also keeps the right-side
-  // collapse icon out of the way.
-  useRightPanel(null);
+  useRightPanel(<NoteRightPanel note={note} noteId={id} />, [id]);
+  usePanelSize({
+    left: `clamp(15rem, 25vw, 30rem)`,
+    right: "21rem",
+    openLeft: "lg",
+    openRight: "xl",
+  });
 
   // Honour the `?section=<slug>` deep-link by scrolling the matching
   // heading into view after the editor's outline has loaded.
