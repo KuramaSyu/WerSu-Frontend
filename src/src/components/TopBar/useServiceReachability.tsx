@@ -17,17 +17,19 @@ export function useServiceReachability(): ServiceReachability {
   const query = useQuery<StatusResponse, Error>({
     queryKey: ["service-status"],
     queryFn: () => getStatusApi().getStatus(),
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
     refetchOnMount: false,
     refetchInterval: false,
-    staleTime: Infinity,
+    staleTime: 60 * 30 * 1000, // 30 min
     gcTime: Infinity,
   });
 
   const data = query.data;
   const servicesReachable =
-    query.status === "success" && (data?.overall_ok ?? false);
+    query.status === "success" &&
+    !query.isLoading &&
+    (data?.overall_ok ?? false);
   const unreachableServices = unreachableServiceLabels(data);
   // Query failure = "everything down" for both copy and dedupe.
   const queryFailed = query.status === "error";
