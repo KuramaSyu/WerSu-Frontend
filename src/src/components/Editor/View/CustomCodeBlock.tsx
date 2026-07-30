@@ -16,10 +16,17 @@ import { CodeBlockNodeView } from "./CodeBlockNodeView";
  * import { CustomCodeBlock } from ".../Editor/View/CustomCodeBlock";
  *
  * extensions: [
- *   CustomCodeBlock.configure({ lowlight }),
+ *   CustomCodeBlock.configure({ lowlight, defaultLanguage: "plaintext" }),
  *   // ...
  * ]
  * ```
+ *
+ * Always pair the `lowlight` instance with `defaultLanguage: "plaintext"`.
+ * Without it, `@tiptap/extension-code-block-lowlight` falls back to
+ * `lowlight.highlightAuto(...)` for any code block without an explicit
+ * `language` attr, which freezes the editor on real notes. See
+ * [components/Editor/lowlight.ts](../../Editor/lowlight.ts) for the
+ * full rationale.
  */
 export const CustomCodeBlock = CodeBlockLowlight.extend({
   addNodeView() {

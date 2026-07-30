@@ -55,11 +55,9 @@ import { CellSelection } from "@tiptap/pm/tables";
 import "../../styles/tiptap.css";
 import { TableWithControls } from "./TableControlls/TableControlls";
 
-// codeblock extension + all languages
+// codeblock extension + shared lowlight instance
 import { CustomCodeBlock } from "./View/CustomCodeBlock";
-import { all, createLowlight } from "lowlight";
-
-const lowlight = createLowlight(all);
+import { lowlight } from "./lowlight";
 
 // Custom React component for demonstration
 const CustomReactComponent = ({ node }: any) => {
@@ -160,7 +158,7 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
         hardBreak: false,
       }),
       CustomHardBreak,
-      CustomCodeBlock.configure({ lowlight }),
+      CustomCodeBlock.configure({ lowlight, defaultLanguage: "plaintext" }),
       // Details,
       // DetailsSummary,
       // DetailsContent,
