@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Divider } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { Note, type NoteData } from "../../../api/models/search";
 import { useDirectoriesQuery } from "../../../api/queries/directoryQueries";
@@ -271,16 +270,9 @@ export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
           onRemoveParent={handleRemoveParentDirectory}
           canRemoveParent={Boolean(note && noteId)}
         />
-        <Divider sx={{ opacity: 0.3 }} />
-        {note && <AttachmentPanelSection note={note} />}
-        <Divider sx={{ opacity: 0.3 }} />
         <OutlinePanel />
-        <Divider sx={{ opacity: 0.3 }} />
+        {note && <AttachmentPanelSection note={note} />}
         <VersionInfo noteId={noteId} />
-        {/* RecentActivityPanel intentionally omitted: the per-note
-            `/api/history?note_id=...` query currently 500s on the
-            backend, and the `VersionInfo` timeline already serves
-            as the per-note activity listing. */}
       </UpperPanel>
 
       <ManageParentsDialog

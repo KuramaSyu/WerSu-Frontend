@@ -1,16 +1,15 @@
-import { alpha, Avatar, Box, Button, Grid, Stack } from "@mui/material";
+import { alpha, Avatar, Box, Button, Chip, Grid, Stack } from "@mui/material";
+import { PanelSection } from "../../components/Panels/PanelSection";
 import Timeline from "@mui/lab/Timeline";
 import TimelineItem, { timelineItemClasses } from "@mui/lab/TimelineItem";
 import TimelineSeparator from "@mui/lab/TimelineSeparator";
 import TimelineConnector from "@mui/lab/TimelineConnector";
-import TimelineOppositeContent from "@mui/lab/TimelineOppositeContent";
 import TimelineContent, {
   timelineContentClasses,
 } from "@mui/lab/TimelineContent";
 import TimelineDot from "@mui/lab/TimelineDot";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { IconDropletFilled } from "@tabler/icons-react";
-import { IconArrowNarrowRightDashed } from "@tabler/icons-react";
 import type {
   DiscordUser,
   DiscordUserImpl,
@@ -26,7 +25,6 @@ import { useNoteActivity } from "../../api/queries/recentActivity";
 import { useNote } from "../../api/queries/useNoteQueries";
 import { formatDistanceToNow } from "date-fns";
 import type { Note } from "../../api/models/search";
-import { IconArrowNarrowRight } from "@tabler/icons-react";
 import { queryClient } from "../../api/queryClient";
 import { useNoteVersion } from "../../api/queries/useNoteQueries";
 import { useActiveNoteStore } from "../../zustand/editorStore";
@@ -170,95 +168,125 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
   const showLiveVersion = true;
   return (
     <>
-      <Timeline
-        sx={{
-          padding: 0,
-          margin: 0,
-        }}
-      >
-        {showLiveVersion && (
-          <LiveVersionItem
-            users={Object.values(usersById ?? {})}
-            onClick={handleLiveClick}
-          />
-        )}
-        {versions?.map((version, index) => {
-          const len = versions?.length ?? 0;
-          const bg = rgbToHex(
-            blendColors(
-              hexToRgb(theme.palette.background.paper),
-              hexToRgb(theme.palette.secondary.main),
-              1 - (index * 0.8) / len,
-            ),
-          );
-          const textColor = theme.palette.getContrastText(bg);
+      <PanelSection title="Versions" collapsible defaultExpanded>
+        <Timeline
+          sx={{
+            padding: 0,
+            margin: 0,
 
-          return (
-            <TimelineItem key={version.version_index}>
-              <TimelineOppositeContent
-                // align="right"
-                variant="body2"
-                // sx={{
-                //   color: "text.secondary",
-                //   m: "auto 0",
-                // }}
+            // Drop the default `::before` spacer (no TimelineOppositeContent).
+            [`& .${timelineItemClasses.root}:before`]: {
+              display: "none",
+            },
+          }}
+        >
+          {showLiveVersion && (
+            <LiveVersionItem
+              users={Object.values(usersById ?? {})}
+              onClick={handleLiveClick}
+            />
+          )}
+          {versions?.map((version, index) => {
+            const len = versions?.length ?? 0;
+            const isLast = index === len - 1;
+            const isSelected =
+              selectedVersion?.version_index === version.version_index;
+            const bg = rgbToHex(
+              blendColors(
+                hexToRgb(theme.palette.background.paper),
+                hexToRgb(theme.palette.secondary.main),
+                1 - (index * 0.8) / len,
+              ),
+            );
+            const textColor = theme.palette.getContrastText(bg);
+            const relativeDate = formatDistanceToNow(
+              new Date(version.created_at),
+              { addSuffix: true },
+            );
+
+            return (
+              <TimelineItem
+                key={version.version_index}
+                sx={{
+                  // Drop the 70px `TimelineItem` minimum so each row hugs its
+                  // content. The connector stretches to fill what remains,
+                  // so dots stay aligned in one column and the line between
+                  // rows reaches the next dot.
+                  minHeight: 0,
+                }}
               >
-                {selectedVersion?.version_index === version.version_index &&
-                user ? (
+                <TimelineSeparator>
+                  {/* Top connector pairs with the bottom connector of the row
+                      above (or `Live`'s bottom connector for row 0) to draw a
+                      continuous line down to this dot. */}
+                  <TimelineConnector />
+                  <TimelineDot
+                    color={isSelected ? "primary" : "grey"}
+                    sx={{
+                      m: 0,
+                      p: 0,
+                      border: 0,
+                      boxShadow: "none",
+                      width: 1.5,
+                      height: 1.5,
+                    }}
+                  />
+                  {/* Bottom connector pairs with the top connector of the row
+                      below to draw a continuous line down to the next dot;
+                      the last row skips it so the timeline tail matches the
+                      first row's leading spacer on `Live`. */}
+                  {!isLast && <TimelineConnector />}
+                  {isLast && <Box sx={{ flexGrow: 1 }} />}
+                </TimelineSeparator>
+                <TimelineContent sx={{ p: 0, m: "auto 0" }}>
                   <Stack
-                    direction={"row"}
-                    sx={{ alignItems: "center" }}
-                    spacing={2}
+                    direction="row"
+                    spacing={1}
+                    sx={{ alignItems: "center", py: 0.5 }}
                   >
-                    <AvatarOrAvatarGroup users={[user]} />
-                    <IconArrowNarrowRight
-                      stroke={2}
-                      color={theme.palette.text.secondary}
+                    <Button
+                      onClick={async () => {
+                        setSelectedVersion(version);
+                        const note = await queryClient.fetchQuery({
+                          queryKey: ["versions", noteId, version.version_index],
+                          queryFn: async () =>
+                            await new NoteApi().getVersion(
+                              noteId!,
+                              version.version_index,
+                            ),
+                        });
+                        await handleRestoreVersion(version, note);
+                      }}
+                      sx={{
+                        backgroundColor: bg,
+                        color: textColor,
+                        width: "fit-content",
+                        height: "fit-content",
+                        padding: theme.spacing(0.5, 2),
+                        borderRadius: theme.shape.borderRadius,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      v{version.version_index}
+                    </Button>
+                    <Chip
+                      size="small"
+                      variant="outlined"
+                      label={relativeDate}
                     />
+                    {isSelected && user && (
+                      <Avatar
+                        src={user.getAvatarUrl()}
+                        sx={{ width: 24, height: 24 }}
+                      />
+                    )}
                   </Stack>
-                ) : (
-                  formatDistanceToNow(new Date(version.created_at), {
-                    addSuffix: true,
-                  })
-                )}
-              </TimelineOppositeContent>
-              <TimelineSeparator>
-                <TimelineDot></TimelineDot>
-                <TimelineConnector />
-              </TimelineSeparator>
-              <TimelineContent>
-                <Button
-                  onClick={async () => {
-                    setSelectedVersion(version);
-                    const note = await queryClient.fetchQuery({
-                      queryKey: ["versions", noteId, version.version_index],
-                      queryFn: async () =>
-                        await new NoteApi().getVersion(
-                          noteId!,
-                          version.version_index,
-                        ),
-                    });
-                    await handleRestoreVersion(version, note);
-                  }}
-                  sx={{
-                    backgroundColor: bg,
-                    color: textColor,
-                    width: "fit-content",
-                    height: "fit-content",
-                    padding: theme.spacing(0.5, 2),
-                    borderRadius: theme.shape.borderRadius,
-                    whiteSpace: "nowrap",
-
-                    // display: "flex",
-                  }}
-                >
-                  v{version.version_index}
-                </Button>
-              </TimelineContent>
-            </TimelineItem>
-          );
-        })}
-      </Timeline>
+                </TimelineContent>
+              </TimelineItem>
+            );
+          })}
+        </Timeline>
+      </PanelSection>
       {/* Right-side version history drawer */}
       <NoteVersionsDrawer
         open={versionsOpen}
@@ -284,45 +312,58 @@ const LiveVersionItem = ({
   const { theme } = useThemeStore();
 
   return (
-    <TimelineItem>
-      <TimelineOppositeContent>
-        <Stack direction={"row"} sx={{ justifyContent: "flex-end" }}>
-          <AvatarOrAvatarGroup users={users} />
-          {users.length > 0 && (
-            <Box>
-              <IconArrowNarrowRightDashed color={theme.palette.common.white} />
-            </Box>
-          )}
-        </Stack>
-      </TimelineOppositeContent>
+    <TimelineItem
+      sx={{
+        // Drop the 70px `TimelineItem` minimum so the row hugs the
+        // content; the connector stretches to fill what remains so the
+        // `Live` dot aligns with the v0 dot below it.
+        minHeight: 0,
+      }}
+    >
       <TimelineSeparator>
-        <TimelineDot></TimelineDot>
+        <TimelineConnector />
+        <TimelineDot
+          sx={{
+            m: 0,
+            p: 0,
+            border: 0,
+            boxShadow: "none",
+            width: 1.5,
+            height: 1.5,
+          }}
+        />
         <TimelineConnector />
       </TimelineSeparator>
-      <TimelineContent>
-        <Box
-          role="button"
-          tabIndex={0}
-          onClick={onClick}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              onClick();
-            }
-          }}
-          sx={{
-            cursor: "pointer",
-            backgroundColor: "transparent",
-            border: `2px dashed ${theme.palette.secondary.main}`,
-            width: "fit-content",
-            height: "fit-content",
-            padding: theme.spacing(0.5, 2),
-            borderRadius: theme.shape.borderRadius,
-            // display: "flex",
-          }}
+      <TimelineContent sx={{ p: 0, m: "auto 0" }}>
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{ alignItems: "center", py: 0.5 }}
         >
-          Live
-        </Box>
+          <Box
+            role="button"
+            tabIndex={0}
+            onClick={onClick}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onClick();
+              }
+            }}
+            sx={{
+              cursor: "pointer",
+              backgroundColor: "transparent",
+              border: `2px dashed ${theme.palette.secondary.main}`,
+              width: "fit-content",
+              height: "fit-content",
+              padding: theme.spacing(0.5, 2),
+              borderRadius: theme.shape.borderRadius,
+            }}
+          >
+            Live
+          </Box>
+          {users.length > 0 && <AvatarOrAvatarGroup users={users} />}
+        </Stack>
       </TimelineContent>
     </TimelineItem>
   );

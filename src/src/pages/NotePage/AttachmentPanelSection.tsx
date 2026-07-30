@@ -1,7 +1,4 @@
 import {
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
   Box,
   Chip,
   Dialog,
@@ -11,11 +8,11 @@ import {
 } from "@mui/material";
 import type { AttachmentMetadata } from "../../api/models/attachment";
 import { useThemeStore } from "../../zustand/useThemeStore";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AttachmentView } from "./AttachmentView";
 import type { Note } from "../../api/models/search";
 import { useAttachments } from "../../api/queries/useAttachmentQueries";
+import { PanelSection } from "../../components/Panels/PanelSection";
 
 export interface AttachmentPanelSectionProps {
   note: Note;
@@ -37,100 +34,75 @@ export const AttachmentPanelSection: React.FC<AttachmentPanelSectionProps> = ({
   const [selectedAttachment, setSelectedAttachment] =
     useState<AttachmentMetadata | null>(null);
 
-  const [requestOpen, setRequestOpen] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+  const attachmentIds = note.attachment_ids ?? [];
+  const hasAttachments = attachmentIds.length > 0;
 
   const { data: attachments } = useAttachments(
     note.id,
-    note.attachment_ids,
-    requestOpen,
+    attachmentIds,
+    hasAttachments,
   );
 
-  // expand the accordion, as soon as data is loaded after user requested it by clicking
-  useEffect(() => {
-    if (requestOpen && attachments !== undefined) {
-      setExpanded(true);
-    }
-  }, [attachments, requestOpen]);
-
-  const loading = requestOpen && attachments === undefined;
+  const loading = hasAttachments && attachments === undefined;
 
   return (
     <>
-      {/* with wrap we get as much chips in a row as possible, and then wrap to
-      the next line */}
-      <Accordion
-        elevation={2}
-        expanded={expanded}
-        onChange={(_, isExpanded) => {
-          if (isExpanded) {
-            setRequestOpen(true);
-          } else {
-            setExpanded(false);
-            setRequestOpen(false);
-          }
-        }}
-      >
-        <AccordionSummary expandIcon={<ExpandMoreIcon />} color="primary">
-          <Stack direction={"column"}>
-            <Typography component="span" sx={{ width: "33%", flexShrink: 0 }}>
-              Attachments
-            </Typography>
-            <Typography
-              component="span"
-              sx={{ color: "textSecondary" }}
-              variant="caption"
-            >
-              Click to view or drag into the editor
-            </Typography>
-            {loading && <LinearProgress sx={{ mt: 1 }} />}
-          </Stack>
-        </AccordionSummary>
-        <AccordionDetails>
-          <Box
-            sx={{ display: "flex", flexWrap: "wrap", gap: theme.spacing(1) }}
+      <PanelSection title="Attachments" collapsible defaultExpanded={false}>
+        <Stack spacing={1}>
+          <Typography
+            component="span"
+            sx={{ color: "textSecondary" }}
+            variant="caption"
           >
-            {attachments
-              ?.filter((a) => !!a)
-              .map((a) => (
-                <Chip
-                  key={a.key}
-                  label={a.filename}
-                  draggable
-                  onClick={() => {
-                    setSelectedAttachment(a);
-                    setDialogOpen(true);
-                  }}
-                  onDragStart={(e) => {
-                    console.log(
-                      `start dragging attachment ${a.filename} with key ${a.key} and content type ${a.content_type}`,
-                    );
-                    e.dataTransfer.setData(
-                      "application/x-application-attachment",
+            Click to view or drag into the editor
+          </Typography>
+          {loading && <LinearProgress />}
+          {hasAttachments && (
+            <Box
+              sx={{ display: "flex", flexWrap: "wrap", gap: theme.spacing(1) }}
+            >
+              {attachments
+                ?.filter((a) => !!a)
+                .map((a) => (
+                  <Chip
+                    key={a.key}
+                    label={a.filename}
+                    draggable
+                    onClick={() => {
+                      setSelectedAttachment(a);
+                      setDialogOpen(true);
+                    }}
+                    onDragStart={(e) => {
+                      console.log(
+                        `start dragging attachment ${a.filename} with key ${a.key} and content type ${a.content_type}`,
+                      );
+                      e.dataTransfer.setData(
+                        "application/x-application-attachment",
 
-                      JSON.stringify({
-                        key: a.key,
-                        filename: a.filename,
-                        contentType: a.content_type,
-                      } as ApplicationAttachmentBody),
-                    );
-                  }}
-                  sx={{
-                    "&:hover": {
-                      cursor: "pointer",
-                      backgroundColor: theme.palette.primary.main,
-                      color: theme.blendWithContrast(
-                        theme.palette.primary.main,
-                        0.7,
-                        undefined,
-                      ),
-                    },
-                  }}
-                />
-              ))}
-          </Box>
-        </AccordionDetails>
-      </Accordion>
+                        JSON.stringify({
+                          key: a.key,
+                          filename: a.filename,
+                          contentType: a.content_type,
+                        } as ApplicationAttachmentBody),
+                      );
+                    }}
+                    sx={{
+                      "&:hover": {
+                        cursor: "pointer",
+                        backgroundColor: theme.palette.primary.main,
+                        color: theme.blendWithContrast(
+                          theme.palette.primary.main,
+                          0.7,
+                          undefined,
+                        ),
+                      },
+                    }}
+                  />
+                ))}
+            </Box>
+          )}
+        </Stack>
+      </PanelSection>
       <Dialog
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}

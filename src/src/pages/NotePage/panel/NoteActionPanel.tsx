@@ -8,6 +8,7 @@ import {
   Typography,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import { PanelSection } from "../../../components/Panels/PanelSection";
 
 export interface ParentDirectoryPath {
   id: string;
@@ -48,11 +49,7 @@ export const NoteActionPanel: React.FC<NoteActionPanelProps> = ({
   canRemoveParent,
 }) => {
   return (
-    <Stack spacing={1.5}>
-      <Typography variant="subtitle2" color="textSecondary">
-        Metadata
-      </Typography>
-
+    <PanelSection title="Metadata" collapsible defaultExpanded>
       {isLoading ? (
         <Typography variant="body2" color="textSecondary">
           Loading metadata...
@@ -123,6 +120,6 @@ export const NoteActionPanel: React.FC<NoteActionPanelProps> = ({
           </Stack>
         </Stack>
       )}
-    </Stack>
+    </PanelSection>
   );
 };
