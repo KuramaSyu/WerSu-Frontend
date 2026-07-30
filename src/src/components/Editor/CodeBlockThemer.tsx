@@ -1,6 +1,8 @@
-import { lighten, styled } from "@mui/material/styles";
+import { styled } from "@mui/material/styles";
 import { Box } from "@mui/material";
 
+// primarily to highlight `code` markdown elements - theming of the
+// actual ``` ``` codeblock is done elsewhere (CodeBlockNodeView, ThemedEditorBox)
 export const CodeBlockThemer = styled(Box)(({ theme }) => ({
   // Wrapper styles
   "&.tiptap": {
@@ -31,42 +33,9 @@ export const CodeBlockThemer = styled(Box)(({ theme }) => ({
         padding: 0,
       },
 
-      // Code block syntax highlighting using hljs classes
-      ".hljs-comment, .hljs-quote": {
-        color: lighten(theme.palette.background.paper, 0.5),
-      },
-
-      // variables
-
-      ".hljs-variable, .hljs-template-variable, .hljs-attribute, .hljs-tag, .hljs-regexp, .hljs-link, .hljs-name, .hljs-selector-id, .hljs-selector-class":
-        {
-          color: theme.palette.secondary.main,
-        },
-
-      ".hljs-number, .hljs-meta, .hljs-built_in, .hljs-builtin-name, .hljs-literal, .hljs-type, .hljs-params":
-        {
-          color: theme.palette.warning.main,
-        },
-
-      ".hljs-string, .hljs-symbol, .hljs-bullet": {
-        color: theme.palette.success.main,
-      },
-
-      ".hljs-title, .hljs-section": {
-        color: theme.palette.info.light,
-      },
-
-      ".hljs-keyword, .hljs-selector-tag": {
-        color: theme.palette.primary.main,
-      },
-
-      ".hljs-emphasis": {
-        fontStyle: "italic",
-      },
-
-      ".hljs-strong": {
-        fontWeight: 700,
-      },
+      // Per-token colors come from the hljs CSS themes imported in
+      // `./lowlight` (atom-one-light.css / atom-one-dark.css).
+      // This wrapper only paints the code-block chrome.
     },
   },
 }));
