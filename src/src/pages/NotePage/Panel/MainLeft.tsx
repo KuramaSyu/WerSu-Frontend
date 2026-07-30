@@ -9,9 +9,7 @@ import {
   type HirarchyItem,
 } from "../../../models/HirarchyItem";
 import { UpperPanel } from "../../../components/Panels/UpperPanel";
-import { AttachmentPanelSection } from "../AttachmentPanelSection";
 import { OutlinePanel } from "./OutlinePanel";
-import { VersionInfo } from "../VersionInfo";
 import { useNote } from "../../../api/queries/useNoteQueries";
 import {
   NoteActionPanel,
@@ -21,7 +19,7 @@ import {
 import { ManageParentsDialog } from "./ManageParentsDialog";
 import { ROOT_PARENT_ID } from "./DirectorySelect";
 
-interface NoteSidePanelProps {
+interface NoteLeftPanelProps {
   note?: Note;
   noteId?: string;
   onNoteUpdated: (note: Note) => void;
@@ -79,11 +77,11 @@ const getParentDirectoryIds = (directoryIds?: string[]): string[] => {
 const EMPTY_PERMISSION_SECTIONS: PermissionSection[] = [];
 
 /**
- * Side-panel orchestrator for the note page. Composes the metadata
- * block, attachments section, version timeline, and the dialog used to
- * add/remove parent directories.
+ * Left side-panel orchestrator for the note page. Composes the
+ * metadata block, the outline (heading scroll-spy), and the dialog
+ * used to add/remove parent directories.
  */
-export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
+export const NoteLeftPanel: React.FC<NoteLeftPanelProps> = ({
   noteId,
   onNoteUpdated,
 }) => {
@@ -179,12 +177,12 @@ export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
       return;
     }
     if (parentDirectoryIds.includes(selectedParentId)) {
-      // Already a parent — nothing to do.
+      // Already a parent - nothing to do.
       setMoveDialogOpen(false);
       return;
     }
 
-    // Root means "no parent" — clear the list entirely.
+    // Root means "no parent" - clear the list entirely.
     const isRoot = selectedParentId === ROOT_PARENT_ID;
     const nextDirectoryIds = isRoot
       ? []
@@ -271,8 +269,6 @@ export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
           canRemoveParent={Boolean(note && noteId)}
         />
         <OutlinePanel />
-        {note && <AttachmentPanelSection note={note} />}
-        <VersionInfo noteId={noteId} />
       </UpperPanel>
 
       <ManageParentsDialog

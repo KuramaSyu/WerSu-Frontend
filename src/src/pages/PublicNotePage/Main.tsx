@@ -14,7 +14,7 @@ import { PublicNoteEditor } from "../NotePage/Editor";
 import { NoteEditorSkeleton } from "../NotePage/NoteEditorSkeleton";
 import { PublicShareUnavailable } from "./PublicShareUnavailable";
 import { getPublicCollabEntry } from "../../hooks/usePublicNoteCollaboration";
-import { OutlinePanel } from "../NotePage/panel/OutlinePanel";
+import { OutlinePanel } from "../NotePage/Panel/OutlinePanel";
 import { useScrollToSectionOnLoad } from "../../hooks/useScrollToSectionOnLoad";
 
 /**
