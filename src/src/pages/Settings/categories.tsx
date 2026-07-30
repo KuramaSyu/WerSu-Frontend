@@ -1,10 +1,13 @@
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
+import PaletteIcon from "@mui/icons-material/Palette";
 import type { SettingsCategory } from "./types";
 import { BookstackImportSection } from "./BookstackImportSection";
 import { CacheSection } from "./CacheSection";
 import { AdministrationSection } from "./AdministrationSection";
+import { AppearanceSection } from "./AppearanceSection";
+import { useAppearanceSettings } from "../../zustand/useAppearanceSettings";
 
 /**
  * Add new categories here; both the left rail and the right-column
@@ -29,5 +32,17 @@ export const settingsCategories: SettingsCategory[] = [
     label: "Cache",
     icon: <DeleteSweepIcon />,
     settingsContent: <CacheSection />,
+  },
+  {
+    id: "appearance",
+    label: "Appearance",
+    icon: <PaletteIcon />,
+    settingsContent: <AppearanceSection />,
+    resetLogic: () => {
+      const { setCodeBlockThemeLight, setCodeBlockThemeDark } =
+        useAppearanceSettings.getState();
+      setCodeBlockThemeLight("tokyo-night-light");
+      setCodeBlockThemeDark("material-palenight");
+    },
   },
 ];

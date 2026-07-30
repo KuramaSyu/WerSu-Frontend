@@ -14,6 +14,8 @@ import { useEffect, useState } from "react";
 import type { Editor } from "@tiptap/core";
 import type { latex } from "codemirror-lang-latex";
 import { useThemeStore } from "../../zustand/useThemeStore";
+import { useAppearanceSettings } from "../../zustand/useAppearanceSettings";
+import { loadCodeBlockTheme } from "./lowlight";
 
 export const ThemedEditorBox = ({
   children,
@@ -24,6 +26,13 @@ export const ThemedEditorBox = ({
 }) => {
   const { editMode } = useEditorSettings();
   const { theme } = useThemeStore();
+  const { codeBlockThemeLight, codeBlockThemeDark } = useAppearanceSettings();
+  const codeBlockTheme =
+    theme.palette.mode === "dark" ? codeBlockThemeDark : codeBlockThemeLight;
+  // Inject the scoped CSS once per theme change.
+  useEffect(() => {
+    loadCodeBlockTheme(codeBlockTheme);
+  }, [codeBlockTheme]);
 
   return (
     <Box
@@ -210,7 +219,9 @@ export const ThemedEditorBox = ({
         },
       }}
     >
-      <CodeBlockThemer className="tiptap">{children}</CodeBlockThemer>
+      <Box data-cb-theme={codeBlockTheme} sx={{ display: "contents" }}>
+        <CodeBlockThemer className="tiptap">{children}</CodeBlockThemer>
+      </Box>
     </Box>
   );
 };
