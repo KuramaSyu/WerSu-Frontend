@@ -7,18 +7,29 @@ import {
   useLayoutEffect,
   useState,
 } from "react";
+import { useMediaQuery, useTheme } from "@mui/material";
 
 type LayoutContextType = {
   leftPanel: ReactNode | null;
   rightPanel: ReactNode | null;
   leftPanelOpen: boolean;
   rightPanelOpen: boolean;
+  // `true` after the user has interacted with the panel toggle.
+  // While set, `usePanelSize`'s resize-driven auto-open/close is
+  // suppressed so the user's choice persists across breakpoints; the
+  // user can still freely toggle the panel themselves. `useLeftPanel`
+  // / `useRightPanel` clear the override when the panel content
+  // changes (e.g. route navigation).
+  leftPanelUserOverride: boolean;
+  rightPanelUserOverride: boolean;
   leftPanelSize: string;
   rightPanelSize: string;
   setLeftPanel: (panel: ReactNode | null) => void;
   setRightPanel: (panel: ReactNode | null) => void;
   setLeftPanelOpen: (open: boolean) => void;
   setRightPanelOpen: (open: boolean) => void;
+  setLeftPanelUserOverride: (override: boolean) => void;
+  setRightPanelUserOverride: (override: boolean) => void;
   setLeftPanelSize: (size: string) => void;
   setRightPanelSize: (size: string) => void;
   showTopBar: boolean;
@@ -56,6 +67,11 @@ export const LayoutProvider: React.FC<AppLayoutProps> = ({
 
   // usually not in use
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
+
+  // Tracks whether the user has explicitly toggled the panel since the
+  // last content change. See `LayoutContextType.leftPanelUserOverride`.
+  const [leftPanelUserOverride, setLeftPanelUserOverride] = useState(false);
+  const [rightPanelUserOverride, setRightPanelUserOverride] = useState(false);
   const [showTopBar, setShowTopBar] = useState(true);
   const [leftPanelSize, setLeftPanelSize] = useState(defaultLeftPanelSize);
   const [rightPanelSize, setRightPanelSize] = useState(defaultRightPanelSize);
@@ -72,6 +88,8 @@ export const LayoutProvider: React.FC<AppLayoutProps> = ({
         rightPanel,
         leftPanelOpen,
         rightPanelOpen,
+        leftPanelUserOverride,
+        rightPanelUserOverride,
         leftPanelSize,
         rightPanelSize,
         setLeftPanel,
@@ -79,6 +97,8 @@ export const LayoutProvider: React.FC<AppLayoutProps> = ({
         clearPanels,
         setLeftPanelOpen,
         setRightPanelOpen,
+        setLeftPanelUserOverride,
+        setRightPanelUserOverride,
         setLeftPanelSize,
         setRightPanelSize,
         showTopBar,
@@ -106,14 +126,21 @@ export function useLayout(): LayoutContextType {
 // in this app already remounts the routed page component, so a mount/unmount
 // model swaps panels correctly without leaking that requirement to every
 // caller.
+//
+// A new panel (mount or `deps` change) is treated as a fresh content
+// surface: the user override is cleared and the panel opens by default.
+// `usePanelSize({ openLeft })` may then auto-close below its breakpoint
+// if the user has not toggled the panel since.
 export function useLeftPanel(
   panel: ReactNode | null,
   deps: DependencyList = [],
 ): void {
-  const { setLeftPanel, setLeftPanelOpen } = useLayout();
+  const { setLeftPanel, setLeftPanelOpen, setLeftPanelUserOverride } =
+    useLayout();
 
   useEffect(() => {
     setLeftPanel(panel);
+    setLeftPanelUserOverride(false);
     if (panel !== null) {
       setLeftPanelOpen(true);
     } else {
@@ -131,14 +158,21 @@ export function useLeftPanel(
 //
 // `deps` works the same way as in `useLeftPanel`: pass an optional array
 // to re-set the panel when one of those values changes.
+//
+// A new panel is treated as a fresh content surface: the user override
+// is cleared and the panel opens by default. `usePanelSize({ openRight })`
+// may then auto-close below its breakpoint if the user has not toggled
+// the panel since.
 export function useRightPanel(
   panel: ReactNode | null,
   deps: DependencyList = [],
 ): void {
-  const { setRightPanel, setRightPanelOpen } = useLayout();
+  const { setRightPanel, setRightPanelOpen, setRightPanelUserOverride } =
+    useLayout();
 
   useEffect(() => {
     setRightPanel(panel);
+    setRightPanelUserOverride(false);
     if (panel !== null) {
       setRightPanelOpen(true);
     } else {
@@ -151,11 +185,23 @@ export function useRightPanel(
   }, deps);
 }
 
+// MUI-aligned breakpoint tokens that `usePanelSize` accepts for its
+// `openLeft` / `openRight` options. The same set is used by
+// `useBreakpoint` for `isTablet` / `isDesktop` / `isXL`.
+export type PanelOpenBreakpoint = "xs" | "sm" | "md" | "lg" | "xl";
+
 export interface PanelSizeOptions {
   // Any CSS length value, e.g. "280px", "10vw", "clamp(20rem, 25vw, 30rem)".
   // Omitted sides keep their current size.
   left?: string;
   right?: string;
+  // Minimum viewport breakpoint at which the panel auto-opens. Below the
+  // breakpoint the panel is collapsed so the canvas stays wide on small
+  // screens; the user can still toggle the panel via the TopBar. When
+  // unset, the panel uses its existing open-on-mount behaviour (left
+  // defaults open, right defaults closed).
+  openLeft?: PanelOpenBreakpoint;
+  openRight?: PanelOpenBreakpoint;
 }
 
 // Sets the open width of one or both side panels. Accepts any CSS
@@ -165,11 +211,38 @@ export interface PanelSizeOptions {
 // `grid-template-columns` transition animates straight from the old
 // page's size to the new page's size instead of through
 // `DEFAULT_PANEL_SIZE`.
+//
+// `openLeft` / `openRight` to show the panel when >= breakpoint and hide otherwise
 export function usePanelSize(sizes: PanelSizeOptions): void {
-  const { leftPanelSize, rightPanelSize, setLeftPanelSize, setRightPanelSize } =
-    useLayout();
+  const {
+    leftPanelSize,
+    rightPanelSize,
+    setLeftPanelSize,
+    setRightPanelSize,
+    setLeftPanelOpen,
+    setRightPanelOpen,
+    leftPanelUserOverride,
+    rightPanelUserOverride,
+  } = useLayout();
+  const theme = useTheme();
 
-  const { left, right } = sizes;
+  const { left, right, openLeft, openRight } = sizes;
+
+  // `xs` means "open regardless of viewport" — query against a
+  // degenerate min-width so `useMediaQuery` always returns `true`.
+  // `undefined` means the side isn't being auto-driven — also use the
+  // degenerate query so the hook order stays stable regardless of
+  // which options the caller provides.
+  const queryLeft =
+    openLeft === "xs" || openLeft === undefined
+      ? "(min-width: 0px)"
+      : theme.breakpoints.up(openLeft);
+  const queryRight =
+    openRight === "xs" || openRight === undefined
+      ? "(min-width: 0px)"
+      : theme.breakpoints.up(openRight);
+  const leftMatches = useMediaQuery(queryLeft);
+  const rightMatches = useMediaQuery(queryRight);
 
   useLayoutEffect(() => {
     if (left !== undefined && left !== leftPanelSize) {
@@ -179,4 +252,22 @@ export function usePanelSize(sizes: PanelSizeOptions): void {
       setRightPanelSize(right);
     }
   }, [left, right]);
+
+  // Drive the open state from the reactive media-query result. Runs in
+  // a regular effect so it lands after `useLeftPanel`/`useRightPanel`'s
+  // mount-default writes. Skips writes when the user has set an
+  // override; the override is cleared by `useLeftPanel`/`useRightPanel`
+  // each time the panel content changes, so the auto-default resumes
+  // from the next render.
+  useEffect(() => {
+    if (openLeft !== undefined && !leftPanelUserOverride) {
+      setLeftPanelOpen(leftMatches);
+    }
+  }, [openLeft, leftPanelUserOverride, leftMatches]);
+
+  useEffect(() => {
+    if (openRight !== undefined && !rightPanelUserOverride) {
+      setRightPanelOpen(rightMatches);
+    }
+  }, [openRight, rightPanelUserOverride, rightMatches]);
 }
