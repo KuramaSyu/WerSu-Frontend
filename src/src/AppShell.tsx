@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { LoadingPage } from "./pages/LoadingPage/Main";
 import TopBar from "./components/TopBar";
 import { useThemeStore } from "./zustand/useThemeStore";
+import { useScrollElementStore } from "./zustand/outlineStore";
 
 export const AppShell: React.FC = () => {
   const {
@@ -26,6 +27,11 @@ export const AppShell: React.FC = () => {
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(
     null,
   );
+  // Mirror the scroll container into a shared store so deep-link handlers and the outline panel can read it without prop-drilling.
+  useEffect(() => {
+    useScrollElementStore.getState().setElement(scrollElement);
+    return () => useScrollElementStore.getState().setElement(null);
+  }, [scrollElement]);
   const TOP_BAR_PANEL_DISTANCE = M2;
   const oneOrZero = Math.round(exitPercentage / 100) * 100;
 

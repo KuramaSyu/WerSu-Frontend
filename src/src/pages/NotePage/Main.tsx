@@ -20,6 +20,7 @@ import { useLayout, useLeftPanel, usePanelSize } from "../../LayoutProvider";
 import { useRightPanel } from "../../LayoutProvider";
 import { NoteEditorSkeleton } from "./NoteEditorSkeleton";
 import { useThemeStore } from "../../zustand/useThemeStore";
+import { useScrollToSectionOnLoad } from "../../hooks/useScrollToSectionOnLoad";
 
 export const NotePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -86,6 +87,10 @@ export const NotePage: React.FC = () => {
   // when a panel is mounted, so this also keeps the right-side
   // collapse icon out of the way.
   useRightPanel(null);
+
+  // Honour the `?section=<slug>` deep-link by scrolling the matching
+  // heading into view after the editor's outline has loaded.
+  useScrollToSectionOnLoad();
 
   if (user === null) {
     return <LoginPage />;

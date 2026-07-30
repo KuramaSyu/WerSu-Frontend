@@ -14,6 +14,8 @@ import { PublicNoteEditor } from "../NotePage/Editor";
 import { NoteEditorSkeleton } from "../NotePage/NoteEditorSkeleton";
 import { PublicShareUnavailable } from "./PublicShareUnavailable";
 import { getPublicCollabEntry } from "../../hooks/usePublicNoteCollaboration";
+import { OutlinePanel } from "../NotePage/panel/OutlinePanel";
+import { useScrollToSectionOnLoad } from "../../hooks/useScrollToSectionOnLoad";
 
 /**
  * Route `/public/n/:share_id` - opens a note published through a
@@ -42,18 +44,20 @@ export const PublicNotePage: React.FC = () => {
   const isWrite = grant?.permission === "SHARE_PERMISSION_WRITE";
   const noteIdFromGrant = grant?.note_id;
 
-  // Collapse both side panels for the lifetime of this page; restore
-  // the LayoutProvider defaults on unmount so the next route is clean.
+  // Mount the outline on the left rail; keep right collapsed. Restore defaults on unmount so the next route is clean.
   useEffect(() => {
-    setLeftPanel(null);
+    setLeftPanel(<OutlinePanel />);
     setRightPanel(null);
-    setLeftPanelOpen(false);
+    setLeftPanelOpen(true);
     setRightPanelOpen(false);
     return () => {
       setLeftPanel(null);
       setRightPanel(null);
     };
   }, [setLeftPanel, setRightPanel, setLeftPanelOpen, setRightPanelOpen]);
+
+  // Honour `?section=<slug>` deep-link (same hook as the private note page).
+  useScrollToSectionOnLoad();
 
   // Force read mode per default; the user can flip to write if the
   // share grants it. On mount: reset the per-attachment JWT map so a
