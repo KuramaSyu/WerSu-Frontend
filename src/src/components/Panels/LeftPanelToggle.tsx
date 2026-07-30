@@ -5,13 +5,17 @@ import {
   IconLayoutSidebarRightExpandFilled,
 } from "@tabler/icons-react";
 import { useLayout } from "../../LayoutProvider";
-import Box from "@mui/material/Box";
 import { M1 } from "../../statics";
 import { IconButton, Tooltip } from "@mui/material";
 import { useThemeStore } from "../../zustand/useThemeStore";
 
 export const LeftPanelToggle: React.FC = () => {
-  const { leftPanel, leftPanelOpen, setLeftPanelOpen } = useLayout();
+  const {
+    leftPanel,
+    leftPanelOpen,
+    setLeftPanelOpen,
+    setLeftPanelUserOverride,
+  } = useLayout();
   const { theme } = useThemeStore();
   // The toggle only makes sense when something is actually mounted
   // in the left panel. Without this guard the icon shows on every
@@ -20,10 +24,17 @@ export const LeftPanelToggle: React.FC = () => {
   if (leftPanel === null) {
     return null;
   }
+  // Toggling the panel is the user's explicit choice; mark the override
+  // so `usePanelSize`'s resize-driven auto-open/close doesn't override
+  // it on the next breakpoint cross.
+  const handleClick = () => {
+    setLeftPanelOpen(!leftPanelOpen);
+    setLeftPanelUserOverride(true);
+  };
   return (
     <Tooltip title={leftPanelOpen ? "Close left panel" : "Open left panel"}>
       <IconButton
-        onClick={() => setLeftPanelOpen(!leftPanelOpen)}
+        onClick={handleClick}
         sx={{
           padding: M1,
         }}
@@ -43,17 +54,26 @@ export const LeftPanelToggle: React.FC = () => {
 };
 
 export const RightPanelToggle: React.FC = () => {
-  const { rightPanel, rightPanelOpen, setRightPanelOpen } = useLayout();
+  const {
+    rightPanel,
+    rightPanelOpen,
+    setRightPanelOpen,
+    setRightPanelUserOverride,
+  } = useLayout();
   const { theme } = useThemeStore();
   // Same guard as `LeftPanelToggle`: the right-side collapse icon
   // is only useful when a panel is actually mounted on the right.
   if (rightPanel === null) {
     return null;
   }
+  const handleClick = () => {
+    setRightPanelOpen(!rightPanelOpen);
+    setRightPanelUserOverride(true);
+  };
   return (
     <Tooltip title={rightPanelOpen ? "Close right panel" : "Open right panel"}>
       <IconButton
-        onClick={() => setRightPanelOpen(!rightPanelOpen)}
+        onClick={handleClick}
         sx={{
           padding: M1,
         }}
