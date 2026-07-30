@@ -5,10 +5,7 @@ import {
   Badge,
   Box,
   Button,
-  FormControl,
   IconButton,
-  MenuItem,
-  Select,
   Slide,
   Stack,
   Toolbar,
@@ -16,15 +13,12 @@ import {
   Typography,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import HomeIcon from "@mui/icons-material/Home";
-import AccountTreeIcon from "@mui/icons-material/AccountTree";
 import InboxIcon from "@mui/icons-material/Inbox";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useUser } from "../../api/queries/useUser";
 import { LeftPanelToggle, RightPanelToggle } from "../Panels/LeftPanelToggle";
 import SearchBar from "../search/SearchBar";
-import { M1, M2, M4, TOP_BAR_ELEVATION } from "../../statics";
-import { useContainedIfSelected, Pages } from "./Pages";
+import { M1, M2, TOP_BAR_ELEVATION } from "../../statics";
 import { useLayout } from "../../LayoutProvider";
 
 export interface TopBarAppBarProps {
@@ -45,12 +39,10 @@ export const TopBarAppBar: React.FC<TopBarAppBarProps> = ({
   onOpenNotifications,
   servicesReachable,
 }) => {
-  const { theme, themeName, setTheme, customThemes } = useThemeStore();
+  const { theme } = useThemeStore();
   const navigate = useNavigate();
   const { data: user } = useUser();
   const { showTopBar } = useLayout();
-  const homeVariant = useContainedIfSelected(Pages.HOME);
-  const graphVariant = useContainedIfSelected(Pages.GRAPH);
 
   // Slide wraps the position:fixed AppBar directly; a static Box
   // wrapper would un-anchor the slide target and kill the animation.
@@ -130,42 +122,6 @@ export const TopBarAppBar: React.FC<TopBarAppBarProps> = ({
                 minWidth: 2 / 5,
               }}
             >
-              <FormControl size="small" sx={{ minWidth: 150 }}>
-                <Select
-                  value={themeName}
-                  onChange={(event) => setTheme(event.target.value)}
-                  displayEmpty
-                  sx={{
-                    borderRadius: M4,
-                    "& .MuiSelect-select": { py: "0.35rem" },
-                  }}
-                  inputProps={{ "aria-label": "Select theme" }}
-                >
-                  {customThemes.map((theme) => (
-                    <MenuItem
-                      key={theme.custom.themeName}
-                      value={theme.custom.themeName}
-                    >
-                      {theme.custom.longName}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              <Button
-                variant={homeVariant}
-                onClick={() => navigate(Pages.HOME)}
-                color="inherit"
-              >
-                <HomeIcon />
-              </Button>
-              <Button
-                variant={graphVariant}
-                onClick={() => navigate(Pages.GRAPH)}
-                color="inherit"
-              >
-                <AccountTreeIcon />
-              </Button>
               <NotificationsButton
                 onOpen={onOpenNotifications}
                 servicesReachable={servicesReachable}
