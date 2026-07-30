@@ -11,6 +11,7 @@ import {
 } from "../../../models/HirarchyItem";
 import { UpperPanel } from "../../../components/Panels/UpperPanel";
 import { AttachmentPanelSection } from "../AttachmentPanelSection";
+import { OutlinePanel } from "./OutlinePanel";
 import { VersionInfo } from "../VersionInfo";
 import { useNote } from "../../../api/queries/useNoteQueries";
 import {
@@ -272,6 +273,8 @@ export const NoteSidePanel: React.FC<NoteSidePanelProps> = ({
         />
         <Divider sx={{ opacity: 0.3 }} />
         {note && <AttachmentPanelSection note={note} />}
+        <Divider sx={{ opacity: 0.3 }} />
+        <OutlinePanel />
         <Divider sx={{ opacity: 0.3 }} />
         <VersionInfo noteId={noteId} />
         {/* RecentActivityPanel intentionally omitted: the per-note

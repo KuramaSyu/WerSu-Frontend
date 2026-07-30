@@ -30,7 +30,7 @@ import StarterKit from "@tiptap/starter-kit";
 import Collaboration from "@tiptap/extension-collaboration";
 import { CollaborationCaret } from "@tiptap/extension-collaboration-caret";
 import { CustomCodeBlock } from "../../components/Editor/View/CustomCodeBlock";
-import { all, createLowlight } from "lowlight";
+import { lowlight } from "../../components/Editor/lowlight";
 import { TaskItem, TaskList } from "@tiptap/extension-list";
 import { Youtube } from "@tiptap/extension-youtube";
 import { Twitch } from "@tiptap/extension-twitch";
@@ -83,6 +83,8 @@ import {
   type CollabStatus,
 } from "../../zustand/useCollabStatusStore";
 import { useActiveNoteStore } from "../../zustand/editorStore";
+import { useOutlineStore } from "../../zustand/outlineStore";
+import { uniqueSlugify } from "../../utils/slugify";
 import { useUpdateNote } from "../../api/queries/useNoteQueries";
 import { AttachmentLinkBuilder } from "../../api/utils/AttachmentLInkBuilder";
 import { randomMatchingColor } from "../../utils/blendWithContrast";
@@ -91,8 +93,6 @@ import type { HocuspocusProvider } from "@hocuspocus/provider";
 import * as Y from "yjs";
 import { Awareness } from "y-protocols/awareness";
 import { imageLinkToBlock } from "./editorFormatUtils";
-
-const lowlight = createLowlight(all);
 
 export interface NoteEditorProps {
   note?: Note;
@@ -248,7 +248,7 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
             color: randomMatchingColor(theme),
           },
         }),
-        CustomCodeBlock.configure({ lowlight }),
+        CustomCodeBlock.configure({ lowlight, defaultLanguage: "plaintext" }),
         TaskList,
         TaskItem.configure({ nested: true }),
         Youtube.configure({ inline: false, width: 480, height: 320 }),
@@ -369,6 +369,7 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
             return "Write anything or use / for commands";
           },
         }),
+        // No `TableOfContents` extension here — its plugin freezes on real notes (per-transaction doc walk + textContent materialization). The outline effect below handles it post-update.
         Markdown,
       ],
 
@@ -451,6 +452,63 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
     });
 
     return () => useActiveNoteStore.getState().setEditor(null);
+  }, [editor]);
+
+  // Mirror the editor's live outline into `useOutlineStore` on every
+  // `editor.on("update")` (post-transaction, off the edit hot path).
+  // Each heading gets a stable kebab slug (`id`) used as the URL
+  // section param AND stamped onto the DOM node so
+  // `document.getElementById` lookups work for click-to-scroll and
+  // the `?section=` deep link.
+  useEffect(() => {
+    if (!editor) return;
+    const push = () => {
+      const doc = editor.state.doc;
+      const headings: {
+        level: number;
+        textContent: string;
+        dom: HTMLElement;
+      }[] = [];
+      doc.descendants((node, pos) => {
+        if (node.type.name !== "heading") return;
+        // Materialize textContent once — getter is O(content_length).
+        const textContent = node.textContent;
+        if (textContent.length === 0) return;
+        const dom = editor.view.nodeDOM(pos) as HTMLElement | null;
+        if (!dom) return;
+        headings.push({
+          level: node.attrs.level ?? 1,
+          textContent,
+          dom,
+        });
+      });
+
+      if (headings.length === 0) {
+        useOutlineStore.getState().clear();
+        return;
+      }
+
+      const slugs = uniqueSlugify(headings.map((h) => h.textContent));
+      // Stamp the slug id onto each heading's DOM node (post-update, off the hot path).
+      for (let i = 0; i < headings.length; i++) {
+        const dom = headings[i].dom;
+        if (dom.id !== slugs[i]) {
+          dom.id = slugs[i];
+        }
+      }
+      const items = headings.map((heading, index) => ({
+        id: slugs[index],
+        level: heading.level,
+        textContent: heading.textContent,
+      }));
+      useOutlineStore.getState().setItems(items);
+    };
+    editor.on("update", push);
+    push(); // seed
+    return () => {
+      editor.off("update", push);
+      useOutlineStore.getState().clear();
+    };
   }, [editor]);
 
   // set content when node id or editor changes. dont set on mode change
