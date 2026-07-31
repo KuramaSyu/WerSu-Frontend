@@ -14,7 +14,7 @@ import { PublicNoteEditor } from "../NotePage/Editor";
 import { NoteEditorSkeleton } from "../NotePage/NoteEditorSkeleton";
 import { PublicShareUnavailable } from "./PublicShareUnavailable";
 import { getPublicCollabEntry } from "../../hooks/usePublicNoteCollaboration";
-import { OutlinePanel } from "../NotePage/Panel/OutlinePanel";
+import { TableOfContentsPanel } from "../NotePage/Panel/TableOfContentsPanel";
 import { useScrollToSectionOnLoad } from "../../hooks/useScrollToSectionOnLoad";
 
 /**
@@ -46,7 +46,7 @@ export const PublicNotePage: React.FC = () => {
 
   // Mount the outline on the left rail; keep right collapsed. Restore defaults on unmount so the next route is clean.
   useEffect(() => {
-    setLeftPanel(<OutlinePanel />);
+    setLeftPanel(<TableOfContentsPanel />);
     setRightPanel(null);
     setLeftPanelOpen(true);
     setRightPanelOpen(false);

@@ -9,7 +9,7 @@ import {
   type HirarchyItem,
 } from "../../../models/HirarchyItem";
 import { UpperPanel } from "../../../components/Panels/UpperPanel";
-import { OutlinePanel } from "./OutlinePanel";
+import { TableOfContentsPanel } from "./TableOfContentsPanel";
 import { useNote } from "../../../api/queries/useNoteQueries";
 import {
   NoteActionPanel,
@@ -268,7 +268,7 @@ export const NoteLeftPanel: React.FC<NoteLeftPanelProps> = ({
           onRemoveParent={handleRemoveParentDirectory}
           canRemoveParent={Boolean(note && noteId)}
         />
-        <OutlinePanel />
+        <TableOfContentsPanel />
       </UpperPanel>
 
       <ManageParentsDialog

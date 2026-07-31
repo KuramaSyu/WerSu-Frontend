@@ -59,7 +59,7 @@ const calculateVisibleSections = (
   return { primaryId: primary, visibleIds: visible };
 };
 
-export const OutlinePanel: React.FC = () => {
+export const TableOfContentsPanel: React.FC = () => {
   const items = useOutlineStore((s) => s.items);
   // `primaryId` = active heading (bright). `visibleIds` = every on-screen heading.
   const [primaryId, setPrimaryId] = useState<string | null>(null);
@@ -99,7 +99,7 @@ export const OutlinePanel: React.FC = () => {
 
   if (items.length === 0) {
     return (
-      <PanelSection title="Outline" collapsible defaultExpanded>
+      <PanelSection title="Table of Contents" collapsible defaultExpanded>
         <Typography variant="body2" color="text.secondary">
           No headings yet.
         </Typography>
@@ -108,7 +108,7 @@ export const OutlinePanel: React.FC = () => {
   }
 
   return (
-    <PanelSection title="Outline" collapsible defaultExpanded>
+    <PanelSection title="Table of Contents" collapsible defaultExpanded>
       <Timeline
         sx={{
           p: 0,
