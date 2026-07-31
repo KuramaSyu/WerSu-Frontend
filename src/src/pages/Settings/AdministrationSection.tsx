@@ -10,10 +10,12 @@ import {
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { ColorChip, type ColorChipStatus } from "../../components/ColorChip";
 import {
+  checkRestApi,
   getStatusApi,
   type ServiceStatus,
   type StatusResponse,
 } from "../../api/StatusApi";
+import { BACKEND_BASE } from "../../statics";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { blendAgainstContrast } from "../../utils/blendWithContrast";
 
@@ -110,6 +112,9 @@ const ServiceStatusCard: React.FC<{ status: ServiceStatus }> = ({ status }) => {
 
 export const AdministrationSection: React.FC = () => {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
+  const [restApiStatus, setRestApiStatus] = useState<ServiceStatus | null>(
+    null,
+  );
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const loadStatus = async () => {
@@ -126,11 +131,18 @@ export const AdministrationSection: React.FC = () => {
     }
   };
 
+  const loadRestApi = async () => {
+    const result = await checkRestApi(BACKEND_BASE);
+    setRestApiStatus(result);
+  };
+
   useEffect(() => {
     void loadStatus();
+    void loadRestApi();
 
     const interval = window.setInterval(() => {
       void loadStatus();
+      void loadRestApi();
     }, 30000);
 
     return () => window.clearInterval(interval);
@@ -163,7 +175,10 @@ export const AdministrationSection: React.FC = () => {
         <Button
           variant="outlined"
           startIcon={<RefreshIcon />}
-          onClick={() => void loadStatus()}
+          onClick={() => {
+            void loadStatus();
+            void loadRestApi();
+          }}
           disabled={isRefreshing}
         >
           {isRefreshing ? "Refreshing..." : "Refresh"}
@@ -172,7 +187,24 @@ export const AdministrationSection: React.FC = () => {
 
       {isRefreshing && <LinearProgress />}
 
-      {state.kind === "loading" && (
+      {state.kind === "success" && (
+        <Alert
+          severity={state.data.overall_ok ? "success" : "warning"}
+          variant="outlined"
+        >
+          Overall status: {state.data.overall_ok ? "healthy" : "degraded"}
+          {checkedAt ? ` • Checked at ${checkedAt}` : ""}
+        </Alert>
+      )}
+
+      {restApiStatus && (
+        <Stack spacing={1}>
+          <Typography variant="subtitle2">REST API</Typography>
+          <ServiceStatusCard status={restApiStatus} />
+        </Stack>
+      )}
+
+      {state.kind === "loading" && !restApiStatus && (
         <Typography variant="body2" color="text.secondary">
           Loading status...
         </Typography>
@@ -186,24 +218,14 @@ export const AdministrationSection: React.FC = () => {
 
       {state.kind === "success" && (
         <Stack spacing={2}>
-          <Alert
-            severity={state.data.overall_ok ? "success" : "warning"}
-            variant="outlined"
-          >
-            Overall status: {state.data.overall_ok ? "healthy" : "degraded"}
-            {checkedAt ? ` • Checked at ${checkedAt}` : ""}
-          </Alert>
-
-          <Stack spacing={2}>
-            {(
-              Object.keys(serviceLabel) as Array<keyof typeof serviceLabel>
-            ).map((key) => (
+          {(Object.keys(serviceLabel) as Array<keyof typeof serviceLabel>).map(
+            (key) => (
               <Stack key={key} spacing={1}>
                 <Typography variant="subtitle2">{serviceLabel[key]}</Typography>
                 <ServiceStatusCard status={state.data[key]} />
               </Stack>
-            ))}
-          </Stack>
+            ),
+          )}
         </Stack>
       )}
 
