@@ -60,6 +60,25 @@ vi.mock("./api/SearchNotesApi", () => ({
 vi.mock("./api/UserApi", () => ({
   getUserApi: () => ({ fetchUser: vi.fn() }),
 }));
+// `useUser` and `useShareAccessToken` are read by `<Bootstrap>` itself.
+// They were the only un-mocked paths from `Bootstrap.tsx` into the real
+// module graph, and the real `useUser` transitively imports
+// `components/DiscordLogin.tsx` -> `@mui/material` ->
+// `@mui/material/internal/Transition.mjs` -> `react-transition-group/TransitionGroupContext`.
+// `react-transition-group@4.4.5` ships that subpath as a directory
+// shim with no `exports` field, which Vite 8 / Vitest 4's strict
+// ESM resolver refuses ("Directory import ... is not supported").
+// Stubbing these here keeps the test out of MUI entirely.
+vi.mock("./api/queries/useUser", () => ({
+  useUser: () => ({
+    data: globalUser,
+    isLoading: false,
+    isSuccess: true,
+  }),
+}));
+vi.mock("./api/queries/useShareAccessToken", () => ({
+  useShareAccessToken: () => undefined,
+}));
 
 // `globalUser` is read by the mocked `useUserStore` selector. Each test
 // sets it before rendering so the hook sees the right slice.
