@@ -25,13 +25,17 @@ type LoadState =
   | { kind: "success"; data: StatusResponse };
 
 const serviceLabel: Record<
-  keyof Pick<StatusResponse, "garage" | "spicedb" | "wersu" | "imgproxy">,
+  keyof Pick<
+    StatusResponse,
+    "garage" | "spicedb" | "wersu" | "imgproxy" | "postgres"
+  >,
   string
 > = {
   garage: "Garage",
   spicedb: "SpiceDB",
   wersu: "WerSu",
   imgproxy: "Imgproxy",
+  postgres: "Postgres",
 };
 
 const formatCheckedAt = (checkedAt: string): string => {
@@ -58,6 +62,15 @@ const ServiceStatusCard: React.FC<{ status: ServiceStatus }> = ({ status }) => {
     : hasError
       ? "error"
       : "warning";
+  // Backend reports masked credentials as URL-encoded asterisks
+  // (e.g. `postgres://%2A%2A%2A:%2A%2A%2A@host:5433/db`); decode
+  // for display so the address reads naturally.
+  let displayAddress = status.address;
+  try {
+    displayAddress = decodeURIComponent(status.address);
+  } catch {
+    // Malformed URI sequence -- fall back to the raw address.
+  }
 
   return (
     <Stack
@@ -78,7 +91,7 @@ const ServiceStatusCard: React.FC<{ status: ServiceStatus }> = ({ status }) => {
           flexWrap: "wrap",
         }}
       >
-        <Typography variant="subtitle1">{status.address}</Typography>
+        <Typography variant="subtitle1">{displayAddress}</Typography>
         <ColorChip label={label} colorProp={colorProp} size="small" />
       </Stack>
 

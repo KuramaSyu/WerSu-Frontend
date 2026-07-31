@@ -24,6 +24,7 @@ export interface StatusResponse {
   spicedb: ServiceStatus;
   wersu: ServiceStatus;
   imgproxy: ServiceStatus;
+  postgres: ServiceStatus;
   checked_at: string;
 }
 

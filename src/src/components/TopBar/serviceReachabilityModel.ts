@@ -1,13 +1,17 @@
 import type { StatusResponse } from "../../api/StatusApi";
 
 const SERVICE_LABEL: Record<
-  keyof Pick<StatusResponse, "garage" | "spicedb" | "wersu" | "imgproxy">,
+  keyof Pick<
+    StatusResponse,
+    "garage" | "spicedb" | "wersu" | "imgproxy" | "postgres"
+  >,
   string
 > = {
   garage: "Garage",
   spicedb: "SpiceDB",
   wersu: "WerSu",
   imgproxy: "Imgproxy",
+  postgres: "Postgres",
 };
 
 /** Service labels that are reachable=false in the given status. */

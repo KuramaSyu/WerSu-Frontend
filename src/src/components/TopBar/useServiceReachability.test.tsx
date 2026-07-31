@@ -12,7 +12,10 @@ import type { StatusResponse } from "../../api/StatusApi";
 
 const fakeStatus = (
   overrides: Partial<
-    Pick<StatusResponse, "garage" | "spicedb" | "wersu" | "imgproxy">
+    Pick<
+      StatusResponse,
+      "garage" | "spicedb" | "wersu" | "imgproxy" | "postgres"
+    >
   > & { overall_ok?: boolean },
 ): StatusResponse => ({
   overall_ok:
@@ -22,11 +25,13 @@ const fakeStatus = (
       spicedb: overrides.spicedb,
       wersu: overrides.wersu,
       imgproxy: overrides.imgproxy,
+      postgres: overrides.postgres,
     }).every((s) => s === undefined || s.reachable === true),
   garage: overrides.garage ?? makeService(true),
   spicedb: overrides.spicedb ?? makeService(true),
   wersu: overrides.wersu ?? makeService(true),
   imgproxy: overrides.imgproxy ?? makeService(true),
+  postgres: overrides.postgres ?? makeService(true),
   checked_at: "2026-01-01T00:00:00Z",
 });
 
