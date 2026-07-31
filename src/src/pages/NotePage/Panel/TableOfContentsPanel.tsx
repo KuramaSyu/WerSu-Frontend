@@ -121,15 +121,19 @@ export const TableOfContentsPanel: React.FC = () => {
         }}
       >
         {items.map((item, idx) => {
+          if (item.level > 4) {
+            return null;
+          }
           const isPrimary = item.id === primaryId;
           const isVisible = visibleIds.has(item.id);
           const isFirst = idx === 0;
           const isLast = idx === items.length - 1;
+
           return (
             <TimelineItem
               key={item.id}
               sx={{
-                // Drop 70px minHeight so row hugs the button height.
+                // Drop 70px minHeight; otherwise items are miss-aligned
                 minHeight: 0,
               }}
             >
@@ -139,7 +143,7 @@ export const TableOfContentsPanel: React.FC = () => {
                   <TimelineConnector />
                 )}
                 {isFirst && (
-                  // No top connector on first row -- spacer keeps the dot centered.
+                  // spacer keeps the dot centered
                   <Box sx={{ flexGrow: 1 }} />
                 )}
                 <TimelineDot
@@ -211,7 +215,8 @@ export const TableOfContentsPanel: React.FC = () => {
                               : item.level === 2
                                 ? "0.85rem"
                                 : "0.8rem",
-                          fontWeight: item.level <= 2 ? 500 : 400,
+                          fontWeight: isPrimary ? "bold" : "normal",
+                          color: isPrimary ? "text.primary" : "text.secondary",
                         }}
                       >
                         {item.textContent}
