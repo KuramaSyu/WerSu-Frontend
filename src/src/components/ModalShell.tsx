@@ -93,21 +93,23 @@ export const ModalShell: React.FC<ModalShellProps> = ({
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          px: 2.5,
-          py: 2,
-          backgroundColor: theme.palette.background.paper,
+          px: 2,
+          py: 1,
+          backgroundColor: theme.elevate(theme.palette.background.default, 14),
         }}
         id={labelledBy}
       >
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
           <Box
             sx={{
               display: "grid",
               placeItems: "center",
               width: 32,
               height: 32,
+              // increase size by 1.5
+              transform: "scale(1.5)",
               borderRadius: "999px",
-              backgroundColor: theme.palette.action.hover,
+              // backgroundColor: theme.palette.background.default,
               color: theme.palette.primary.main,
             }}
           >
@@ -139,7 +141,7 @@ export const ModalShell: React.FC<ModalShellProps> = ({
 
       <DialogContent
         sx={{
-          backgroundColor: theme.palette.background.default,
+          backgroundColor: theme.elevate(theme.palette.background.default, 1),
           minHeight,
           px: 2.5,
           py: 2.5,
@@ -155,7 +157,10 @@ export const ModalShell: React.FC<ModalShellProps> = ({
             sx={{
               px: 2.5,
               py: 1.5,
-              backgroundColor: theme.palette.background.paper,
+              backgroundColor: theme.elevate(
+                theme.palette.background.default,
+                1,
+              ),
             }}
           >
             <Stack
