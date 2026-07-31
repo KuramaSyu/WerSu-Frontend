@@ -120,6 +120,42 @@
   padding-left: 1.6rem;
 }
 
+/* Task list: drop the bullet and put the checkbox on the same line as the
+   content. The stock structure is
+     <ul data-type="taskList">
+       <li data-checked="...">
+         <label contenteditable="false"><input type="checkbox"><span></span></label>
+         <div><p>...</p></div>
+       </li>
+     </ul>
+   so the <ul> needs its marker removed and the <li> needs to lay its
+   <label> and <div> children out as a row. */
+.tiptap ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0.25rem;
+}
+
+.tiptap ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+
+.tiptap ul[data-type="taskList"] li > label {
+  margin-top: 0.25em;
+  user-select: none;
+  flex: none;
+}
+
+.tiptap ul[data-type="taskList"] li > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.tiptap ul[data-type="taskList"] li > div > p {
+  margin: 0;
+}
+
 /* collaboration caret */
 .collaboration-carets__caret {
   position: relative;
