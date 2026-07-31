@@ -20,6 +20,7 @@ import { LeftPanelToggle, RightPanelToggle } from "../Panels/LeftPanelToggle";
 import SearchBar from "../search/SearchBar";
 import { M1, M2, TOP_BAR_ELEVATION } from "../../statics";
 import { useLayout } from "../../LayoutProvider";
+import { topbarContrastText } from "../../theme/topbarContrastText";
 
 export interface TopBarAppBarProps {
   /** Avatar click handler; receives the avatar DOM as Menu anchorEl. */
@@ -84,7 +85,8 @@ export const TopBarAppBar: React.FC<TopBarAppBarProps> = ({
                     fontSize: "inherit",
                     fontFamily: "inherit",
                     fontWeight: "inherit",
-                    color: theme.palette.primary.light,
+                    color: topbarContrastText(theme),
+                    textTransform: "none",
                   }}
                 >
                   Wer
@@ -94,7 +96,8 @@ export const TopBarAppBar: React.FC<TopBarAppBarProps> = ({
                     fontSize: "inherit",
                     fontFamily: "inherit",
                     fontWeight: "inherit",
-                    color: theme.palette.secondary.light,
+                    color: topbarContrastText(theme),
+                    textTransform: "none",
                   }}
                 >
                   Su

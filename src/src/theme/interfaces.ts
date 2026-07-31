@@ -20,6 +20,14 @@ declare module "@mui/material/styles" {
        */
       panel: string;
     };
+    /**
+     * Contrast color tuned for the AppBar surface, which differs per
+     * mode (light = `primary.main`, dark = `background.paper` + overlay).
+     * Use this for icons/text that sit on the AppBar without relying on
+     * CSS inheritance — matches what `IconButton color="inherit"` would
+     * resolve to for the bar.
+     */
+    contrast: string;
   }
 
   interface PaletteOptions {
@@ -36,6 +44,7 @@ declare module "@mui/material/styles" {
     surfaces?: {
       panel?: string;
     };
+    contrast?: string;
   }
 
   interface Theme {

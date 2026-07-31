@@ -100,6 +100,9 @@ export const AppShell: React.FC = () => {
           sx={{
             overflowY: "auto",
             mb: TOP_BAR_PANEL_DISTANCE,
+            // Canvas-side gap so the Paper's box-shadow can render
+            // inside the cell without being clipped.
+            pr: M3,
           }}
         >
           {leftPanel}
@@ -112,8 +115,8 @@ export const AppShell: React.FC = () => {
             overflowY: "auto", // make it scrollable
             display: "block",
             scrollbarWidth: "none",
-            mx: M2,
-            mb: M2,
+            px: M2,
+            pb: M2,
           }}
         >
           <Stack direction={"column"} sx={{ position: "relative" }}>
@@ -131,7 +134,8 @@ export const AppShell: React.FC = () => {
           sx={{
             overflowY: "auto",
             mb: TOP_BAR_PANEL_DISTANCE,
-            ml: M3,
+            // to not clip shadows
+            pl: M3,
           }}
         >
           {rightPanel}

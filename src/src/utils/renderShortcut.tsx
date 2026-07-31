@@ -1,6 +1,7 @@
 import { Box, Paper, Stack } from "@mui/material";
 import { useThemeStore } from "../zustand/useThemeStore";
 import type React from "react";
+import { topbarContrastText } from "../theme/topbarContrastText";
 
 /**
  * Renders a keyboard shortcut string into styled React components.
@@ -26,12 +27,17 @@ export function renderShortcut(
   shortcut: string,
   onlyText: boolean = false,
 ): React.ReactNode {
+  const { theme } = useThemeStore();
   var components: React.ReactNode[] = [];
   for (const [index, key] of shortcut.split(/([+,])/).entries()) {
     // Process each key
     if (key === "+") {
       components.push(
-        <Box key={index} component="span" sx={{ mx: 0.5 }}>
+        <Box
+          key={index}
+          component="span"
+          sx={{ mx: 0.5, color: topbarContrastText(theme) }}
+        >
           {key}
         </Box>,
       );
@@ -68,8 +74,10 @@ function Key({
       // component="kbd"
       elevation={onlyText ? 0 : 15}
       sx={{
-        fontSize: "inherit",
-        color: "inherit",
+        fontSize: "inherit", // Use the AppBar-aware contrast color so chips stay readable
+        // when the parent passes an arbitrary color (e.g. the SearchBar
+        // button sits on a `primary.main` AppBar in light mode).
+        // color: theme.palette.background.paper,
         border: onlyText ? undefined : `1px solid`,
         px: 1,
         borderRadius: onlyText ? undefined : theme.shape.borderRadius,

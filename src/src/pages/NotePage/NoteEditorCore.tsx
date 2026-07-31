@@ -49,7 +49,13 @@ import {
   clearSlashLine,
   type SlashCommand,
 } from "../../components/Editor/SlashCommandMenu";
-import { M2, M3, NOTE_EDITOR_A4_WIDTH } from "../../statics";
+import {
+  M2,
+  M3,
+  NOTE_EDITOR_A4_WIDTH,
+  NOTE_EDITOR_ELEVATION,
+  TOP_BAR_ELEVATION,
+} from "../../statics";
 import type { Note } from "../../api/models/search";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import UploadFileDialog from "./UploadSpeedDialAction";
@@ -738,13 +744,17 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
   return (
     <>
       <Paper
+        // Light mode needs a real drop shadow to read as elevated paper
+        // against the canvas (which is the same `background.default`
+        // tone). Dark mode relies on MUI's white overlay that
+        // `theme.elevate()` already handles — that's why we reuse the
+        // AppBar elevation constant here.
+        elevation={theme.palette.mode === "dark" ? 1 : NOTE_EDITOR_ELEVATION}
         sx={{
-          // Border around the note body. `theme.palette.divider` carries
-          // the right contrast in both light and dark themes.
-          border: `1px solid ${theme.palette.divider}`,
           backgroundColor: theme.palette.background.paper,
           borderRadius: 2,
-          p: M2,
+          px: M3,
+          my: M2,
 
           mx: "auto",
           transition: (t) =>

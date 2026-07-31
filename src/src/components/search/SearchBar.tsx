@@ -6,6 +6,7 @@ import { useSearchNotesStore } from "../../zustand/useSearchNotesStore";
 import SearchResultsOverlay from "./Main";
 import { isCtrlPlus } from "../../utils/CtrlPlus";
 import { KeyboardShortcut } from "../../utils/renderShortcut";
+import { topbarContrastText } from "../../theme/topbarContrastText";
 
 // top-bar button that opens the search dialog with Ctrl+K
 export const SearchBar: React.FC = () => {
@@ -30,7 +31,8 @@ export const SearchBar: React.FC = () => {
         variant="text"
         onClick={() => setIsDialogOpen(true)}
         sx={{
-          border: `1px solid ${theme.palette.primary.main}`,
+          border: `1px solid ${topbarContrastText(theme)}`,
+          color: topbarContrastText(theme),
           justifyContent: "space-between",
           borderRadius: theme.shape.borderRadius,
           p: 1,

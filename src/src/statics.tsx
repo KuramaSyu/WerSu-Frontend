@@ -39,6 +39,20 @@ export const M8 = "16rem";
  */
 export const TOP_BAR_ELEVATION = 4;
 /**
+ * Light-mode `elevation` for the note editor `Paper`. The note
+ * canvas is the same `background.default` tone as the page, so a
+ * strong shadow is the only thing that lifts the editor off the
+ * background. Dark mode relies on MUI's white overlay (handled by
+ * `theme.elevate`) and uses `TOP_BAR_ELEVATION` instead.
+ */
+export const NOTE_EDITOR_ELEVATION = 6; /**
+ * Light-mode `elevation` for the side-rail `Paper` (left + right
+ * rails). Smaller than the note editor's elevation because the rails
+ * sit beside the canvas instead of being the canvas; a too-strong
+ * shadow would make them look like floating dialogs. Dark mode uses
+ * `TOP_BAR_ELEVATION` via MUI's white overlay.
+ */
+export const SIDE_PANEL_ELEVATION = 3; /**
  * Default max-width for the note editor body, expressed in `rem` so the
  * layout scales with the user's font-size preference. A4 portrait at
  * 96 DPI is ~8.27in; 48rem at the default 16px root font-size renders

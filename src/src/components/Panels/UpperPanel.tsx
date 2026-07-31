@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Paper, Stack } from "@mui/material";
-import { TOP_BAR_ELEVATION } from "../../statics";
+import { SIDE_PANEL_ELEVATION, TOP_BAR_ELEVATION } from "../../statics";
 import { useThemeStore } from "../../zustand/useThemeStore";
 
 export interface UpperPanelProps {
@@ -39,7 +39,7 @@ export const UpperPanel: React.FC<UpperPanelProps> = ({
   const { theme } = useThemeStore();
   return (
     <Paper
-      elevation={theme.palette.mode === "dark" ? TOP_BAR_ELEVATION : 1}
+      elevation={SIDE_PANEL_ELEVATION}
       sx={{
         backgroundColor: theme.palette.background.paper,
         borderRadius: 2,
