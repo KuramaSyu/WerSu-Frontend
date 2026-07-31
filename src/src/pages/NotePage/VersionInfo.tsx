@@ -1,4 +1,13 @@
-import { alpha, Avatar, Box, Button, Chip, Grid, Stack } from "@mui/material";
+import {
+  alpha,
+  Avatar,
+  Box,
+  Button,
+  Chip,
+  Grid,
+  IconButton,
+  Stack,
+} from "@mui/material";
 import { PanelSection } from "../../components/Panels/PanelSection";
 import Timeline from "@mui/lab/Timeline";
 import TimelineItem, { timelineItemClasses } from "@mui/lab/TimelineItem";
@@ -9,7 +18,11 @@ import TimelineContent, {
 } from "@mui/lab/TimelineContent";
 import TimelineDot from "@mui/lab/TimelineDot";
 import { useThemeStore } from "../../zustand/useThemeStore";
-import { IconDropletFilled } from "@tabler/icons-react";
+import {
+  IconChevronDown,
+  IconChevronUp,
+  IconDropletFilled,
+} from "@tabler/icons-react";
 import type {
   DiscordUser,
   DiscordUserImpl,
@@ -166,6 +179,23 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
   };
 
   const showLiveVersion = true;
+
+  // show only latest 3 Versions to keep view uncluttered
+  const VISIBLE_LIMIT = 3;
+  const [versionsExpanded, setVersionsExpanded] = useState(false);
+  const visibleVersions = useMemo(() => {
+    if (!versions) {
+      return [];
+    }
+    return versionsExpanded ? versions : versions.slice(0, VISIBLE_LIMIT);
+  }, [versions, versionsExpanded]);
+  const totalVersions = versions?.length ?? 0;
+  const hasMoreVersions = totalVersions > VISIBLE_LIMIT;
+
+  // Once expanded, the toggle stays visible so the user can collapse back
+  // to the latest 3 even after V1 is already on screen. Collapsed, we
+  // only show the toggle when there's more history to reveal.
+  const showVersionToggle = versionsExpanded || hasMoreVersions;
   return (
     <>
       <PanelSection title="Versions" collapsible defaultExpanded>
@@ -186,16 +216,18 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
               onClick={handleLiveClick}
             />
           )}
-          {versions?.map((version, index) => {
-            const len = versions?.length ?? 0;
-            const isLast = index === len - 1;
+          {visibleVersions.map((version, index) => {
+            // Blend ratio uses the full history so the chip color stays
+            // stable as the user expands / collapses the timeline.
+            const totalLen = versions?.length ?? 0;
+            const isLastVisible = index === visibleVersions.length - 1;
             const isSelected =
               selectedVersion?.version_index === version.version_index;
             const bg = rgbToHex(
               blendColors(
                 hexToRgb(theme.palette.background.paper),
                 hexToRgb(theme.palette.secondary.main),
-                1 - (index * 0.8) / len,
+                1 - (index * 0.8) / totalLen,
               ),
             );
             const textColor = theme.palette.getContrastText(bg);
@@ -233,10 +265,12 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
                   />
                   {/* Bottom connector pairs with the top connector of the row
                       below to draw a continuous line down to the next dot;
-                      the last row skips it so the timeline tail matches the
-                      first row's leading spacer on `Live`. */}
-                  {!isLast && <TimelineConnector />}
-                  {isLast && <Box sx={{ flexGrow: 1 }} />}
+                      the last visible row skips it so the timeline tail
+                      matches the first row's leading spacer on `Live`. */}
+                  {!isLastVisible && <TimelineConnector />}
+                  {isLastVisible && !showVersionToggle && (
+                    <Box sx={{ flexGrow: 1 }} />
+                  )}
                 </TimelineSeparator>
                 <TimelineContent sx={{ p: 0, m: "auto 0" }}>
                   <Stack
@@ -285,6 +319,60 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
               </TimelineItem>
             );
           })}
+          {showVersionToggle && (
+            <TimelineItem sx={{ minHeight: 0 }}>
+              <TimelineSeparator>
+                <TimelineConnector />
+                <TimelineDot
+                  sx={{
+                    m: 0,
+                    p: 0,
+                    border: 0,
+                    boxShadow: "none",
+                    bgcolor: "transparent",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <IconButton
+                    size="small"
+                    aria-label={
+                      versionsExpanded
+                        ? "Show fewer versions"
+                        : "Show more versions"
+                    }
+                    onClick={() => setVersionsExpanded((v) => !v)}
+                    sx={{ p: 0.25 }}
+                  >
+                    {versionsExpanded ? (
+                      <IconChevronUp size={18} />
+                    ) : (
+                      <IconChevronDown size={18} />
+                    )}
+                  </IconButton>
+                </TimelineDot>
+                {/* Stretch the trailing spacer so the chevron stays aligned
+                    with the version dots above it, matching the layout the
+                    last visible row uses when the toggle is hidden. */}
+                <Box sx={{ flexGrow: 1 }} />
+              </TimelineSeparator>
+              <TimelineContent sx={{ p: 0, m: "auto 0" }}>
+                <Button
+                  size="small"
+                  onClick={() => setVersionsExpanded((v) => !v)}
+                  sx={{
+                    textTransform: "none",
+                    minWidth: 0,
+                    p: 0,
+                    color: "text.secondary",
+                  }}
+                >
+                  {versionsExpanded ? "Show less" : "Show more"}
+                </Button>
+              </TimelineContent>
+            </TimelineItem>
+          )}
         </Timeline>
       </PanelSection>
       {/* Right-side version history drawer */}
