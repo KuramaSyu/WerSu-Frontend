@@ -371,7 +371,14 @@ describe("CustomDetails (<details>) extension", () => {
       "</details>";
     editor.commands.setContent(src, { contentType: "markdown" });
 
-    const doc = editor.getJSON();
+    // ProseMirror's `JSONContent` is a `NodeType | TextType` union,
+    // and `TextType` carries no `type` / `content` fields. Cast the doc
+    // to it to prevent typing issue
+    type DocNode = {
+      type?: string;
+      content?: DocNode[];
+    };
+    const doc = editor.getJSON() as unknown as DocNode;
     const details = doc.content?.find((n) => n.type === "details");
     expect(details).toBeDefined();
 
