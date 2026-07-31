@@ -75,7 +75,7 @@ export const NotePage: React.FC = () => {
     <NoteLeftPanel note={note} noteId={id} onNoteUpdated={updateNote} />,
     [id],
   );
-  useRightPanel(<NoteRightPanel note={note} noteId={id} />, [id]);
+  useRightPanel(<NoteRightPanel noteId={id} />, [id]);
   usePanelSize({
     left: `clamp(15rem, 25vw, 30rem)`,
     right: "21rem",

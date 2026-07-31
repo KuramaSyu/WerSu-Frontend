@@ -1,10 +1,9 @@
-import { Note } from "../../../api/models/search";
 import { AttachmentPanelSection } from "../AttachmentPanelSection";
 import { VersionInfo } from "../VersionInfo";
 import { UpperPanel } from "../../../components/Panels/UpperPanel";
+import { useNote } from "../../../api/queries/useNoteQueries";
 
 export interface NoteRightPanelProps {
-  note?: Note;
   noteId?: string;
 }
 
@@ -15,14 +14,12 @@ export interface NoteRightPanelProps {
  * visible. Mirrors the structure of `NoteLeftPanel` so both rails
  * share the spacing rhythm.
  */
-export const NoteRightPanel: React.FC<NoteRightPanelProps> = ({
-  note,
-  noteId,
-}) => {
+export const NoteRightPanel: React.FC<NoteRightPanelProps> = ({ noteId }) => {
+  const { data: note } = useNote(noteId);
   return (
     <UpperPanel spacing={2}>
-      {note && <AttachmentPanelSection note={note} />}
       <VersionInfo noteId={noteId} />
+      {note && <AttachmentPanelSection note={note} />}
     </UpperPanel>
   );
 };

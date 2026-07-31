@@ -37,13 +37,13 @@ export const AttachmentPanelSection: React.FC<AttachmentPanelSectionProps> = ({
   const attachmentIds = note.attachment_ids ?? [];
   const hasAttachments = attachmentIds.length > 0;
 
-  const { data: attachments } = useAttachments(
+  const { data: attachments, isLoading } = useAttachments(
     note.id,
     attachmentIds,
     hasAttachments,
   );
 
-  const loading = hasAttachments && attachments === undefined;
+  const loading = isLoading;
 
   return (
     <>
