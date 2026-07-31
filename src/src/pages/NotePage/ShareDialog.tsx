@@ -39,6 +39,7 @@ import {
 import type { NoteShareReply } from "../../api/models/sharing";
 import { ShareCard } from "./ShareCard";
 import { useActiveNoteStore } from "../../zustand/editorStore";
+import ModalShell from "../../components/ModalShell";
 
 export interface ShareDialogProps {
   noteId: string;
@@ -364,85 +365,82 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
   };
 
   return (
-    <Dialog
+    <ModalShell
       open={open}
       onClose={onClose}
-      fullWidth
-      maxWidth="md"
-      sx={{ overflow: "hidden", p: 0, m: 0 }}
-    >
-      <DialogContent sx={{ overflow: "hidden" }}>
-        {/* group with share icon and content */}
-        <Stack direction={"row"} spacing={M4} sx={{}}>
-          <RotatingStrokeBox
-            color={theme.palette.primary.main}
-            borderRadius={100}
-          >
-            <ShareIcon sx={{ fontSize: theme.typography.h3.fontSize }} />
-          </RotatingStrokeBox>
-          <Divider orientation="vertical" flexItem />
-
-          {/* group with sharing options and schedule */}
-          <Stack direction="column" spacing={M3} sx={{ flex: 1, minWidth: 0 }}>
-            <Typography variant="h4">
-              {isEditMode ? "Edit share" : "Create share"}
-            </Typography>
-
-            <ShareFormSection value={formValue} onChange={setFormValue} />
-          </Stack>
-
-          <Divider orientation="vertical" flexItem />
-
-          {/* Third column: existing shares for this note. */}
-          <Stack
-            className="dialog-existing-shares"
-            direction="column"
-            spacing={M3}
-            sx={{ flex: 1, minWidth: 0 }}
-          >
-            <Typography variant="h4">Existing shares</Typography>
-            {/* empty box so that create share buttongroup aligns with start of shares */}
-            <Box sx={{ pb: M2 }}></Box>{" "}
-            {sharesQuery.isLoading && (
-              <Stack
-                direction="row"
-                spacing={M1}
-                sx={{ alignItems: "center", color: "text.secondary" }}
-              >
-                <CircularProgress size={16} />
-                <Typography variant="body2">Loading shares…</Typography>
-              </Stack>
-            )}
-            {!sharesQuery.isLoading && existingShares.length === 0 && (
-              <Typography variant="body2" color="text.secondary">
-                No shares for this note yet.
+      icon={<ShareIcon />}
+      title="Sharing"
+      subtitle="Create and manage shares of the current note"
+      children={
+        <>
+          {/* group with share icon and content */}
+          <Stack direction={"row"} spacing={M4} sx={{}}>
+            {/* group with sharing options and schedule */}
+            <Stack
+              direction="column"
+              spacing={M3}
+              sx={{ width: 8 / 13 }}
+              aria-label="Manage and create shares"
+            >
+              <Typography variant="h4">
+                {isEditMode ? "Edit share" : "Create share"}
               </Typography>
-            )}
-            {!sharesQuery.isLoading && existingShares.length > 0 && (
-              <Stack
-                spacing={M2}
-                sx={{ maxHeight: 360, overflowY: "auto", pr: 1 }}
-              >
-                {existingShares.map((share) => (
-                  <ShareCard
-                    key={share.id}
-                    share={share}
-                    expanded={effectiveEditingShareId === share.id}
-                    onExpandedChange={(next: boolean) =>
-                      handleCardToggle(share.id, next)
-                    }
-                    isEditing={effectiveEditingShareId === share.id}
-                    onRequestDelete={handleCardRequestDelete}
-                  />
-                ))}
-              </Stack>
-            )}
-          </Stack>
-        </Stack>
-      </DialogContent>
 
-      <DialogActions sx={{ gap: M1, pr: M3 }}>
-        {isEditMode ? (
+              <ShareFormSection value={formValue} onChange={setFormValue} />
+            </Stack>
+
+            <Divider orientation="vertical" flexItem />
+
+            {/* Third column: existing shares for this note. */}
+            <Stack
+              className="dialog-existing-shares"
+              direction="column"
+              spacing={M3}
+              sx={{ flex: 1, minWidth: 0 }}
+            >
+              <Typography variant="h4">Existing shares</Typography>
+              {/* empty box so that create share buttongroup aligns with start of shares */}
+              <Box sx={{ pb: M2 }}></Box>{" "}
+              {sharesQuery.isLoading && (
+                <Stack
+                  direction="row"
+                  spacing={M1}
+                  sx={{ alignItems: "center", color: "text.secondary" }}
+                >
+                  <CircularProgress size={16} />
+                  <Typography variant="body2">Loading shares…</Typography>
+                </Stack>
+              )}
+              {!sharesQuery.isLoading && existingShares.length === 0 && (
+                <Typography variant="body2" color="text.secondary">
+                  No shares for this note yet.
+                </Typography>
+              )}
+              {!sharesQuery.isLoading && existingShares.length > 0 && (
+                <Stack
+                  spacing={M2}
+                  sx={{ maxHeight: 360, overflowY: "auto", pr: 1 }}
+                >
+                  {existingShares.map((share) => (
+                    <ShareCard
+                      key={share.id}
+                      share={share}
+                      expanded={effectiveEditingShareId === share.id}
+                      onExpandedChange={(next: boolean) =>
+                        handleCardToggle(share.id, next)
+                      }
+                      isEditing={effectiveEditingShareId === share.id}
+                      onRequestDelete={handleCardRequestDelete}
+                    />
+                  ))}
+                </Stack>
+              )}
+            </Stack>
+          </Stack>
+        </>
+      }
+      actions={
+        isEditMode ? (
           <>
             <Tooltip title="Discard changes and go back to creating a new share">
               <span>
@@ -526,9 +524,9 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
               </span>
             </Tooltip>
           </>
-        )}
-      </DialogActions>
-    </Dialog>
+        )
+      }
+    ></ModalShell>
   );
 };
 
