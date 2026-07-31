@@ -32,6 +32,38 @@ export const CustomCodeBlock = CodeBlockLowlight.extend({
   addNodeView() {
     return ReactNodeViewRenderer(CodeBlockNodeView);
   },
+
+  // Canonicalize the language attr on the read side: a bare ``` fence
+  // (no tag after the backticks) becomes `language: "plaintext"`.
+  // Otherwise the extension would fail to render its contents resulting
+  // in missing contents
+  parseMarkdown: (token, helpers) => {
+    if (
+      token.raw?.startsWith("```") === false &&
+      token.raw?.startsWith("~~~") === false &&
+      token.codeBlockStyle !== "indented"
+    ) {
+      return [];
+    }
+
+    return helpers.createNode(
+      "codeBlock",
+      { language: token.lang || "plaintext" },
+      token.text ? [helpers.createTextNode(token.text)] : [],
+    );
+  },
+
+  // Drop the `plaintext` language tag from the markdown writeback so
+  // plain code blocks round-trip as bare ``` fences. Any other language
+  // is preserved verbatim inside the fence.
+  renderMarkdown: (node, h) => {
+    const raw = node.attrs?.language;
+    const language = raw && raw !== "plaintext" ? raw : "";
+    if (!node.content) {
+      return `\`\`\`${language}\n\n\`\`\``;
+    }
+    return `\`\`\`${language}\n${h.renderChildren(node.content)}\n\`\`\``;
+  },
 });
 
 export default CustomCodeBlock;
