@@ -17,6 +17,23 @@ export const TOPBAR_HIDE_TRIGGER_DELTA = 4;
 export const TOPBAR_TOP_THRESHOLD_PX = 24;
 
 /**
+ * Tolerance (in px) for treating the current scroll position as
+ * "at the bottom" of its container. Browsers and OSes emit a brief
+ * negative delta once the user has flung to the end: rubber-band
+ * overscroll on macOS trackpads typically lands within ~30-50 px of
+ * the actual bottom, and a similar magnitude shows up when the
+ * trackpad's inertial motion overshoots a clamped `scrollTop`. We
+ * treat anything within this many px of `scrollHeight - clientHeight`
+ * as the edge and ignore upward signals there.
+ *
+ * Picked at 50 px on purpose: a deliberate upward scroll that
+ * starts within 50 px of the bottom only moves the visible content
+ * a few px up — not enough to make the user want the navigation
+ * back. Any larger upward delta opens the guard back up.
+ */
+export const TOPBAR_BOTTOM_EDGE_SLACK_PX = 50;
+
+/**
  * Pure decision function used by `useTopBarScrollVisibility`.
  *
  * Returns one of:
@@ -34,12 +51,20 @@ export const TOPBAR_TOP_THRESHOLD_PX = 24;
  *                  `TOPBAR_TOP_THRESHOLD_PX`).
  * @param triggerPx The minimum downward delta (see
  *                  `TOPBAR_HIDE_TRIGGER_DELTA`).
+ * @param bottomY   When provided, an upward delta that lands at or
+ *                  within `TOPBAR_BOTTOM_EDGE_SLACK_PX` of `bottomY`
+ *                  is treated as rubber-band overscroll and
+ *                  suppressed (`null` instead of `true`). This stops
+ *                  the top bar from popping back in when the user
+ *                  flings down past the end of the page and the
+ *                  browser bounces.
  */
 export function computeNextShowBar(
   y: number,
   lastY: number,
   topPx: number = TOPBAR_TOP_THRESHOLD_PX,
   triggerPx: number = TOPBAR_HIDE_TRIGGER_DELTA,
+  bottomY: number | null = null,
 ): boolean | null {
   const delta = y - lastY;
   if (Math.abs(delta) < triggerPx) {
@@ -50,6 +75,13 @@ export function computeNextShowBar(
     return false;
   }
   if (delta < 0) {
+    // Suppress rubber-band overscroll at the bottom edge: a real
+    // upward scroll that should reveal the bar has to start from
+    // somewhere the user can still see content above — which a
+    // bottom-edge bounce doesn't.
+    if (bottomY !== null && y >= bottomY - TOPBAR_BOTTOM_EDGE_SLACK_PX) {
+      return null;
+    }
     // Scrolling up → show.
     return true;
   }
@@ -83,11 +115,27 @@ export function useTopBarScrollVisibility(
     const target = scrollContainer ?? window;
     const getY = () =>
       scrollContainer ? scrollContainer.scrollTop : window.scrollY;
+    // The bottom edge of the container is `scrollHeight - clientHeight`,
+    // but it can be 0 if the container hasn't laid out yet or isn't
+    // scrollable. Only `window` (fallback target) has no per-target
+    // bottom — leave `null` there so the rule is unchanged.
+    const getBottomY = (): number | null => {
+      if (!scrollContainer) return null;
+      const max = scrollContainer.scrollHeight - scrollContainer.clientHeight;
+      // Negative means the container can't scroll (content fits).
+      return max > 0 ? max : null;
+    };
     lastYRef.current = getY();
 
     const onScroll = () => {
       const y = getY();
-      const decision = computeNextShowBar(y, lastYRef.current);
+      const decision = computeNextShowBar(
+        y,
+        lastYRef.current,
+        TOPBAR_TOP_THRESHOLD_PX,
+        TOPBAR_HIDE_TRIGGER_DELTA,
+        getBottomY(),
+      );
       if (decision !== null) {
         setShowBar(decision);
       }

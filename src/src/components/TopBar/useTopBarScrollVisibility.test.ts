@@ -23,6 +23,7 @@ import { renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   computeNextShowBar,
+  TOPBAR_BOTTOM_EDGE_SLACK_PX,
   TOPBAR_HIDE_TRIGGER_DELTA,
   TOPBAR_TOP_THRESHOLD_PX,
   useTopBarScrollVisibility,
@@ -174,6 +175,89 @@ describe("computeNextShowBar()", () => {
       );
     });
   });
+
+  describe("bottom-edge overscroll suppression", () => {
+    const bottomY = 1000;
+    // Anchor well above the top band, well below the bottom edge —
+    // so any "show" decision is unambiguous. The bottom-edge guard
+    // should suppress the upward signal here.
+    const midPage = bottomY - 200;
+
+    it("suppresses an upward delta when y is at the bottom edge", () => {
+      // Rubber-band bounce: lastY at the very bottom, current y
+      // one or two px short (the first overscroll frame lands
+      // fractionally above max). Delta is negative and well past
+      // the trigger.
+      expect(
+        computeNextShowBar(bottomY - 1, bottomY, TOP_PX, TRIGGER, bottomY),
+      ).toBeNull();
+      expect(
+        computeNextShowBar(bottomY, bottomY + 1, TOP_PX, TRIGGER, bottomY),
+      ).toBeNull();
+    });
+
+    it("suppresses within the configured slack", () => {
+      // Just outside the slack — a real upward scroll that started
+      // 10 px above the edge — should still show the bar.
+      expect(
+        computeNextShowBar(
+          bottomY - TOPBAR_BOTTOM_EDGE_SLACK_PX - 10,
+          bottomY,
+          TOP_PX,
+          TRIGGER,
+          bottomY,
+        ),
+      ).toBe(true);
+      // Inside the slack (lastY at the edge, y a fraction above)
+      // → suppressed.
+      expect(
+        computeNextShowBar(
+          bottomY - TOPBAR_BOTTOM_EDGE_SLACK_PX + 1,
+          bottomY,
+          TOP_PX,
+          TRIGGER,
+          bottomY,
+        ),
+      ).toBeNull();
+    });
+
+    it("still shows the bar on a real upward scroll that starts mid-page", () => {
+      // Anchor comfortably below the top band; the upward delta
+      // lands y well above the bottom edge.
+      const lastY = midPage + TRIGGER + 50;
+      const y = midPage;
+      expect(y).toBeGreaterThan(TOP_PX);
+      expect(y).toBeLessThan(bottomY - TOPBAR_BOTTOM_EDGE_SLACK_PX);
+      expect(computeNextShowBar(y, lastY, TOP_PX, TRIGGER, bottomY)).toBe(
+        true,
+      );
+    });
+
+    it("passes bottomY through as null when omitted (unchanged behaviour)", () => {
+      // No bottomY at all → the rule behaves like the pre-fix
+      // version (every negative delta past the trigger shows).
+      // Use a delta well above the trigger so the noise-suppression
+      // short-circuit doesn't swallow the signal first.
+      expect(
+        computeNextShowBar(
+          bottomY - (TRIGGER + 50),
+          bottomY,
+          TOP_PX,
+          TRIGGER,
+        ),
+      ).toBe(true);
+    });
+
+    it("doesn't suppress downward hides at the bottom edge", () => {
+      // Downward scroll that lands at the bottom should still hide
+      // the bar — the bottom-edge guard only suppresses *upward*
+      // signals.
+      const lastY = bottomY - TRIGGER - 50;
+      expect(computeNextShowBar(bottomY, lastY, TOP_PX, TRIGGER, bottomY)).toBe(
+        false,
+      );
+    });
+  });
 });
 
 describe("useTopBarScrollVisibility()", () => {
@@ -305,6 +389,72 @@ describe("useTopBarScrollVisibility()", () => {
     expect(setShowBar).not.toHaveBeenCalled();
 
     other.remove();
+  });
+
+  it("suppresses the rubber-band bounce at the bottom edge", () => {
+    // Reproduce the production bug: user flings down, the page
+    // reaches the bottom, the OS emits one more scroll event with
+    // y a fraction above the max (overscroll), and a previous
+    // build would have shown the top bar here. With the fix the
+    // bar stays hidden.
+    //
+    // The test target simulates a `scrollHeight - clientHeight` of
+    // 1000 by feeding the hook directly via a manual scroll event
+    // with the `target.scrollTop` getter temporarily raised. We do
+    // it by replacing the descriptor for the duration of this test.
+    const fakeMax = 1000;
+    Object.defineProperty(target, "scrollTop", {
+      configurable: true,
+      get() {
+        return this._scrollTop ?? 0;
+      },
+      set(v: number) {
+        this._scrollTop = v;
+      },
+    });
+
+    // jsdom doesn't recompute layout, so `scrollHeight` is whatever
+    // we set it to. We lie about both dimensions to make the guard
+    // think the bottom is at `fakeMax`.
+    Object.defineProperty(target, "scrollHeight", {
+      configurable: true,
+      get: () => fakeMax + 200,
+    });
+    Object.defineProperty(target, "clientHeight", {
+      configurable: true,
+      get: () => 200,
+    });
+
+    renderHook(() => useTopBarScrollVisibility(target, setShowBar));
+
+    // Prime at the top, then fling all the way to the bottom in one
+    // step. A single scroll event past the noise floor is enough to
+    // hide the bar.
+    (target as unknown as { _scrollTop: number })._scrollTop = 0;
+    target.dispatchEvent(new Event("scroll"));
+    setShowBar.mockClear();
+    (target as unknown as { _scrollTop: number })._scrollTop = fakeMax;
+    target.dispatchEvent(new Event("scroll"));
+    expect(setShowBar).toHaveBeenCalledWith(false);
+    setShowBar.mockClear();
+
+    // Now the rubber-band bounce: y lands a fraction above the max.
+    // This is the event that used to pop the top bar back in.
+    (target as unknown as { _scrollTop: number })._scrollTop = fakeMax - 1;
+    target.dispatchEvent(new Event("scroll"));
+    expect(setShowBar).not.toHaveBeenCalled();
+
+    // ... and a deeper bounce (further above the edge). Still
+    // suppressed — the guard only opens up once we're comfortably
+    // above the bottom slack.
+    (target as unknown as { _scrollTop: number })._scrollTop = fakeMax - 50;
+    target.dispatchEvent(new Event("scroll"));
+    expect(setShowBar).not.toHaveBeenCalled();
+
+    // A real upward scroll from well above the edge — bar reappears.
+    (target as unknown as { _scrollTop: number })._scrollTop = fakeMax - 200;
+    target.dispatchEvent(new Event("scroll"));
+    expect(setShowBar).toHaveBeenCalledWith(true);
   });
 
   it("falls back to window when scrollContainer is null", () => {
