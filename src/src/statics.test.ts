@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type RuntimeEnv = {
-  BACKEND_BASE?: string;
+  BACKEND_URL?: string;
   HOCUSPOCUS_WS_URL?: string;
 };
 
@@ -44,7 +44,7 @@ describe("statics", () => {
 
   it("prefers runtime BACKEND_BASE over build-time VITE_BACKEND_URL", async () => {
     setBuildEnv({ VITE_BACKEND_URL: "https://build.example.com" });
-    setRuntimeEnv({ BACKEND_BASE: "https://runtime.example.com" });
+    setRuntimeEnv({ BACKEND_URL: "https://runtime.example.com" });
     const { BACKEND_BASE } = await import("./statics");
     expect(BACKEND_BASE).toBe("https://runtime.example.com");
   });
@@ -65,7 +65,7 @@ describe("statics", () => {
 
   it("lets an empty-string runtime value override the build-time one", async () => {
     setBuildEnv({ VITE_BACKEND_URL: "https://build.example.com" });
-    setRuntimeEnv({ BACKEND_BASE: "" });
+    setRuntimeEnv({ BACKEND_URL: "" });
     const { BACKEND_BASE } = await import("./statics");
     expect(BACKEND_BASE).toBe("");
   });

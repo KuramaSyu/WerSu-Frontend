@@ -11,7 +11,7 @@ declare global {
   // Runtime config injected by `docker/20-runtime-env.sh`; absent keys fall through to the build-time `VITE_*` fallback.
   interface Window {
     readonly __ENV__?: {
-      readonly BACKEND_BASE?: string;
+      readonly BACKEND_URL?: string;
       readonly HOCUSPOCUS_WS_URL?: string;
     };
   }
@@ -21,7 +21,7 @@ declare global {
 const runtimeEnv = typeof window !== "undefined" ? window.__ENV__ : undefined;
 
 export const BACKEND_BASE =
-  runtimeEnv?.BACKEND_BASE ?? import.meta.env.VITE_BACKEND_URL ?? "";
+  runtimeEnv?.BACKEND_URL ?? import.meta.env.VITE_BACKEND_URL ?? "";
 export const HOCUSPOCUS_WS_URL =
   runtimeEnv?.HOCUSPOCUS_WS_URL ?? import.meta.env.VITE_HOCUSPOCUS_WS_URL ?? "";
 export const M1 = "0.25rem";
