@@ -4,6 +4,7 @@ import { useFrequentlyUsedRows } from "./FrequentlyUsedFeatures";
 import type { HistoryRowEntry } from "../RecentActivity/HistoryRowFeatures";
 
 import { useThemeStore } from "../../zustand/useThemeStore";
+import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
 import { HistoryRowView } from "../RecentActivity/HistoryRowView";
 
 /**
@@ -31,6 +32,9 @@ export const FrequentlyUsedPanel: React.FC<FrequentlyUsedPanelProps> = ({
   const { rows, isLoading, hasError } = useFrequentlyUsedRows(limit);
   const { theme } = useThemeStore();
   const navigate = useNavigate();
+  const developerMode = useFeatureStore(
+    (state) => state.flags[FeatureFlagName.DeveloperMode],
+  );
 
   // when clicking, reroute to /n/<note_id>
   const handleItemClick = (entry: HistoryRowEntry) => {
@@ -69,6 +73,7 @@ export const FrequentlyUsedPanel: React.FC<FrequentlyUsedPanelProps> = ({
             entry={entry}
             onClick={handleItemClick}
             headerMode="entityTitle"
+            developerMode={developerMode}
           />
         ))}
       </Stack>

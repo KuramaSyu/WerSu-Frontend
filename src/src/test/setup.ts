@@ -107,6 +107,10 @@ const storeSpecs: Record<string, StoreSpec> = {
     pick: (mod) =>
       (mod as { useEditorSettings?: StoreHandle }).useEditorSettings,
   },
+  featureFlags: {
+    module: () => import("../zustand/FeatureStore"),
+    pick: (mod) => (mod as { useFeatureStore?: StoreHandle }).useFeatureStore,
+  },
   // Intentionally lazy: `useThemeStore.tsx` imports
   // `@mui/material/styles`, which transitively pulls in the deep
   // `material-color-utilities` ESM graph that Vite 8 cannot
@@ -152,6 +156,7 @@ beforeEach(async () => {
         "collabStatus",
         "auth",
         "editorSettings",
+        "featureFlags",
       ] as const
     ).map(loadStore),
   );

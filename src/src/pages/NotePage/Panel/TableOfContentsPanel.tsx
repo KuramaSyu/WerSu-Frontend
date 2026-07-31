@@ -56,6 +56,10 @@ const calculateVisibleSections = (
       break;
     }
   }
+  // if no primary was found, use the first visible heading as primary (if any)
+  if (!primary && visible.size > 0) {
+    primary = visible.values().next().value ?? null;
+  }
   return { primaryId: primary, visibleIds: visible };
 };
 

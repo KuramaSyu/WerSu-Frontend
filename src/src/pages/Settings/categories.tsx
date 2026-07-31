@@ -7,6 +7,7 @@ import { BookstackImportSection } from "./BookstackImportSection";
 import { CacheSection } from "./CacheSection";
 import { AdministrationSection } from "./AdministrationSection";
 import { AppearanceSection } from "./AppearanceSection";
+import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
 import { useAppearanceSettings } from "../../zustand/useAppearanceSettings";
 
 /**
@@ -43,6 +44,9 @@ export const settingsCategories: SettingsCategory[] = [
         useAppearanceSettings.getState();
       setCodeBlockThemeLight("tokyo-night-light");
       setCodeBlockThemeDark("material-palenight");
+      // Developer mode is part of appearance preferences; reset it too
+      // so "Reset Appearance settings" returns to the shipped defaults.
+      useFeatureStore.getState().setFlag(FeatureFlagName.DeveloperMode, false);
     },
   },
 ];

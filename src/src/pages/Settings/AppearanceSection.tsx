@@ -4,6 +4,7 @@ import {
   MenuItem,
   Select,
   Stack,
+  Switch,
   Typography,
 } from "@mui/material";
 import {
@@ -11,6 +12,7 @@ import {
   useAppearanceSettings,
   type CodeBlockTheme,
 } from "../../zustand/useAppearanceSettings";
+import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
 
 /**
  * Pretty labels for the four bundled hljs themes.
@@ -27,10 +29,14 @@ const THEME_LABEL: Record<CodeBlockTheme, string> = {
 
 /**
  * Body of the Settings `Appearance` category. Exposes one picker per
- * MUI color mode so light/dark UI gets separate token palettes.
+ * MUI color mode so light/dark UI gets separate token palettes, and a
+ * developer-mode toggle for extra debug surfaces.
  *
- * Choices live in `useAppearanceSettings` (sessionStorage), so they
- * reset when the browser session ends and never ride on API cookies.
+ * Code-block theme choices live in `useAppearanceSettings`
+ * (sessionStorage), so they reset when the browser session ends and
+ * never ride on API cookies. The developer-mode flag lives in
+ * `useFeatureStore` (localStorage) — it survives across sessions by
+ * design, since it's a sticky debug preference.
  */
 export const AppearanceSection: React.FC = () => {
   const {
@@ -39,6 +45,10 @@ export const AppearanceSection: React.FC = () => {
     setCodeBlockThemeLight,
     setCodeBlockThemeDark,
   } = useAppearanceSettings();
+  const developerMode = useFeatureStore(
+    (state) => state.flags[FeatureFlagName.DeveloperMode],
+  );
+  const setFlag = useFeatureStore((state) => state.setFlag);
 
   return (
     <Stack direction="column" spacing={3}>
@@ -85,6 +95,33 @@ export const AppearanceSection: React.FC = () => {
           ))}
         </Select>
       </FormControl>
+
+      <Stack
+        direction="row"
+        spacing={2}
+        sx={{
+          py: 1.5,
+          borderTop: 1,
+          borderColor: "divider",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <Stack direction="column" spacing={1}>
+          <Typography variant="subtitle1">Developer mode</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Show extra debug information in tooltips and other surfaces that are
+            normally hidden.
+          </Typography>
+        </Stack>
+        <Switch
+          checked={developerMode}
+          onChange={(_, checked) =>
+            setFlag(FeatureFlagName.DeveloperMode, checked)
+          }
+          slotProps={{ input: { "aria-label": "Developer mode toggle" } }}
+        />
+      </Stack>
     </Stack>
   );
 };

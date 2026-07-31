@@ -7,6 +7,7 @@ import {
 } from "./HistoryRowFeatures";
 
 import { useThemeStore } from "../../zustand/useThemeStore";
+import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
 import { HistoryRowView } from "./HistoryRowView";
 
 /**
@@ -45,6 +46,9 @@ export const RecentActivityPanel: React.FC<RecentActivityPanelProps> = ({
   const { rows, isLoading, hasError } = useHistoryRows(target, limit, days);
   const { theme } = useThemeStore();
   const navigate = useNavigate();
+  const developerMode = useFeatureStore(
+    (state) => state.flags[FeatureFlagName.DeveloperMode],
+  );
 
   // Hide rows that carry a `score` here -- those are the
   // most-used variant and belong to the upcoming Frequently Used
@@ -90,6 +94,7 @@ export const RecentActivityPanel: React.FC<RecentActivityPanelProps> = ({
             key={entry.id ?? entry.note_id}
             entry={entry}
             onClick={handleItemClick}
+            developerMode={developerMode}
           />
         ))}
       </Stack>

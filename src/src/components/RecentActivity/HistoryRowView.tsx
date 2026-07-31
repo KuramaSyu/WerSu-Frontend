@@ -106,6 +106,16 @@ export interface HistoryRowViewProps {
    *   wants to see which note is at the top.
    */
   headerMode?: "variantLabel" | "entityTitle";
+  /**
+   * When `true`, wrap the row in a `Tooltip` that dumps the raw
+   * entry as JSON. Off by default — only useful while debugging
+   * and gated behind the `DeveloperMode` feature flag.
+   *
+   * The caller is expected to read the flag from
+   * `useFeatureStore` and pass it down; the view itself stays
+   * store-free so it stays trivially testable.
+   */
+  developerMode?: boolean;
 }
 
 /**
@@ -132,31 +142,34 @@ export const HistoryRowView: React.FC<HistoryRowViewProps> = ({
   entry,
   onClick,
   headerMode = "variantLabel",
+  developerMode = false,
 }) => {
   const kind: HistoryRowKind = getHistoryRowKind(entry);
   const { theme } = useThemeStore();
 
-  return (
-    <Tooltip title={JSON.stringify(entry)} placement="right">
-      <Stack
-        direction="row"
-        spacing={theme.spacing(1)}
-        sx={{
-          alignItems: "flex-start",
-          cursor: "pointer",
-          borderRadius: 1,
-          px: 1,
-          py: 0.5,
-          transition: theme.transitions.create(
-            ["background-color", "transform"],
-            { duration: theme.transitions.duration.short },
-          ),
-          "&:hover": {
-            backgroundColor: theme.palette.action.hover,
-          },
-        }}
-        onClick={() => onClick(entry)}
-      >
+  // Outer Tooltip is the raw-JSON debug surface. Only wrap when the
+  // caller has opted in via `developerMode`; production users should
+  // never see it.
+  const row = (
+    <Stack
+      direction="row"
+      spacing={theme.spacing(1)}
+      sx={{
+        alignItems: "flex-start",
+        cursor: "pointer",
+        borderRadius: 1,
+        px: 1,
+        py: 0.5,
+        transition: theme.transitions.create(
+          ["background-color", "transform"],
+          { duration: theme.transitions.duration.short },
+        ),
+        "&:hover": {
+          backgroundColor: theme.palette.action.hover,
+        },
+      }}
+      onClick={() => onClick(entry)}
+    >
         <Tooltip title={kind} placement="right">
           <Box sx={{ pt: 0.25, display: "flex", alignItems: "center" }}>
             {renderRowIcon(entry)}
@@ -201,7 +214,13 @@ export const HistoryRowView: React.FC<HistoryRowViewProps> = ({
         {/* {hasScore(entry) && (
             <Chip size="small" label={entry.score} sx={{ alignSelf: "center" }} />
           )} */}
-      </Stack>
+    </Stack>
+  );
+  return developerMode ? (
+    <Tooltip title={JSON.stringify(entry)} placement="right">
+      {row}
     </Tooltip>
+  ) : (
+    row
   );
 };
