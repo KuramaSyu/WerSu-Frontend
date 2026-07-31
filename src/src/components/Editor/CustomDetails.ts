@@ -11,13 +11,16 @@
 import { Details } from "@tiptap/extension-details";
 import type {
   JSONContent,
+  MarkdownParseHelpers,
   MarkdownParseResult,
+  MarkdownRendererHelpers,
   MarkdownToken,
 } from "@tiptap/core";
 
-// Pull summary text and inner content from a `<details>...</details>` raw
-// html token. Returns null when the fragment doesn't look like a details
-// element so the schema-aware default can take over.
+// Split the raw HTML of a `<details>...</details>` token into its
+// summary text and body string. Returns null when the fragment is
+// malformed or missing a `<summary>` so the caller can fall back to
+// the schema-aware default parser.
 function splitDetailsFragment(
   raw: string | undefined,
 ): { summary: string; body: string } | null {
@@ -39,24 +42,107 @@ function splitDetailsFragment(
   return { summary, body };
 }
 
-export const CustomDetails = Details.extend({
-  // prefer raw HTML like `<details>` HTML instead of the stock `:::details` Pandoc syntax.
-  markdownTokenName: "html",
-  // Disable the Pandoc-style tokenizer so marked's html token isn't
-  // preempted by a `:::details` regex that would never match.
-  markdownTokenizer: undefined,
-  parseMarkdown: (token: MarkdownToken): MarkdownParseResult => {
-    if (!token.block) {
-      // Returning null here means "this handler doesn't claim this token",
-      // which is the documented skip signal in @tiptap/markdown's
-      // MarkdownManager. The public type doesn't include null because the
-      // editor's surface assumes a result, but the runtime tolerates it.
-      return null as unknown as MarkdownParseResult;
+// Custom tokenizer that consumes the entire `<details>...</details>`
+// block as a single marked token. Without this, marked splits the
+// fragment at the first blank line (its html block rule ends there),
+// so the inner content (code blocks, lists, etc.) ends up as siblings
+// of the closing `</details>` instead of nested inside the body.
+//
+// The body string is run back through the lexer's `blockTokens` so any
+// markdown inside it is parsed regularly. The resulting block tokens are
+// attached to the returned token and consumed by `parseMarkdown` below.
+//
+// The trailing blank line right after `</details>` is folded into the
+// token's raw so the markdown parser doesn't add an extra empty
+// paragraph for it. The original code did this implicitly because
+// marked's html block rule consumes the trailing blank line too.
+const detailsTokenizer = {
+  name: "details",
+  level: "block" as const,
+  start(src: string) {
+    const m = /^<details\b/i.exec(src);
+    return m ? m.index : -1;
+  },
+  tokenize(
+    src: string,
+    _tokens: MarkdownToken[],
+    lexer: { blockTokens: (s: string) => MarkdownToken[] },
+  ): MarkdownToken | undefined {
+    const openMatch = /^<details\b[^>]*>/i.exec(src);
+    if (!openMatch) {
+      return undefined;
     }
+    const closeTag = "</details>";
+    let depth = 1;
+    let pos = openMatch[0].length;
+    while (depth > 0) {
+      const nextOpen = src.indexOf("<details", pos);
+      const nextClose = src.indexOf(closeTag, pos);
+      if (nextClose === -1) {
+        return undefined;
+      }
+      if (nextOpen !== -1 && nextOpen < nextClose) {
+        depth++;
+        pos = nextOpen + 1;
+      } else {
+        depth--;
+        if (depth === 0) {
+          let endIdx = nextClose + closeTag.length;
+          // Fold the trailing blank line (one paragraph separator) into
+          // the raw so the parser sees it as part of the token rather
+          // than as boundary space. Without this, the trailing blank
+          // line adds an extra empty paragraph on every round-trip.
+          if (src[endIdx] === "\n" && src[endIdx + 1] === "\n") {
+            endIdx += 2;
+          }
+          const raw = src.slice(0, endIdx);
+          const inner = src.slice(openMatch[0].length, nextClose);
+          const summaryMatch = /<summary\b[^>]*>([\s\S]*?)<\/summary>/i.exec(
+            inner,
+          );
+          if (!summaryMatch) {
+            // No summary: skip and let the default html handler take
+            // over so the schema can fill in an empty one.
+            return undefined;
+          }
+          const body = inner
+            .slice(summaryMatch.index + summaryMatch[0].length)
+            .trim();
+          const bodyTokens = body ? lexer.blockTokens(body + "\n") : [];
+          return {
+            type: "details",
+            raw,
+            tokens: bodyTokens,
+          };
+        }
+        pos = nextClose + 1;
+      }
+    }
+    return undefined;
+  },
+};
+
+export const CustomDetails = Details.extend({
+  // Pin the token name to `details` so the custom tokenizer above is
+  // the only handler that claims these tokens. The base Details
+  // extension otherwise defaults to `:::details` Pandoc syntax and
+  // ships its own tokenizer that we don't want.
+  markdownTokenName: "details",
+  markdownTokenizer: detailsTokenizer,
+  parseMarkdown: (
+    token: MarkdownToken,
+    helpers: MarkdownParseHelpers,
+  ): MarkdownParseResult => {
     const split = splitDetailsFragment(token.raw);
     if (!split) {
+      // Returning null here means "this handler doesn't claim this
+      // token", which is the documented skip signal in
+      // @tiptap/markdown's MarkdownManager. The public type doesn't
+      // include null because the editor's surface assumes a result,
+      // but the runtime tolerates it.
       return null as unknown as MarkdownParseResult;
     }
+    const bodyContent = helpers.parseChildren(token.tokens ?? []);
     const node: JSONContent = {
       type: "details",
       content: [
@@ -66,23 +152,19 @@ export const CustomDetails = Details.extend({
         },
         {
           type: "detailsContent",
-          content: split.body
-            ? [
-                {
-                  type: "paragraph",
-                  content: [{ type: "text", text: split.body }],
-                },
-              ]
-            : [],
+          content: bodyContent,
         },
       ],
     };
     return node;
   },
-  renderMarkdown: (node: JSONContent): string => {
+  renderMarkdown: (
+    node: JSONContent,
+    helpers: MarkdownRendererHelpers,
+  ): string => {
     const open = node.attrs?.open ? " open" : "";
     let summary = "summary";
-    let body = "content";
+    let bodyContent: JSONContent[] = [];
     if (Array.isArray(node.content)) {
       for (const child of node.content) {
         if (child.type === "detailsSummary") {
@@ -91,19 +173,12 @@ export const CustomDetails = Details.extend({
               ?.map((c) => (c.type === "text" ? (c.text ?? "") : ""))
               .join("") || "";
         } else if (child.type === "detailsContent") {
-          body =
-            child.content
-              ?.map((c) =>
-                c.type === "paragraph"
-                  ? (c.content ?? [])
-                      .map((cc) => (cc.type === "text" ? (cc.text ?? "") : ""))
-                      .join("")
-                  : "",
-              )
-              .join("\n") || "";
+          bodyContent = (child.content ?? []) as JSONContent[];
         }
       }
     }
+    const body =
+      bodyContent.length > 0 ? helpers.renderChildren(bodyContent, "\n\n") : "";
     return `<details${open}><summary>${summary}</summary>${body}</details>\n\n`;
   },
 }).configure({

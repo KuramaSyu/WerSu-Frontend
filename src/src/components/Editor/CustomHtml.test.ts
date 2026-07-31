@@ -7,7 +7,7 @@
 import "../../test/setup";
 
 import { afterEach, describe, expect, it } from "vitest";
-import { Editor } from "@tiptap/core";
+import { Editor, Node } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { Image } from "@tiptap/extension-image";
 import { Markdown } from "@tiptap/markdown";
@@ -54,6 +54,42 @@ const ImageWithStyle = Image.extend({
   },
 });
 
+// StarterKit's `codeBlock` is disabled in this test to avoid pulling
+// MUI via the node view, but the markdown parser still needs a
+// `parseMarkdown` handler for the marked `code` token type so fenced
+// code blocks inside other nodes (e.g. <details>) round-trip
+// correctly. The minimal stub below does the job without dragging in
+// prosemirror-highlight.
+const StubCodeBlock = Node.create({
+  name: "codeBlock",
+  group: "block",
+  content: "text*",
+  marks: "",
+  code: true,
+  defining: true,
+  addAttributes() {
+    return { language: { default: null } };
+  },
+  parseHTML() {
+    return [{ tag: "pre" }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ["pre", HTMLAttributes, ["code", {}, 0]];
+  },
+  markdownTokenName: "code",
+  parseMarkdown: (token, helpers) =>
+    helpers.createNode(
+      "codeBlock",
+      { language: token.lang || null },
+      token.text ? [helpers.createTextNode(token.text)] : [],
+    ),
+  renderMarkdown: (node, h) => {
+    const lang = node.attrs?.language ?? "";
+    const text = h.renderChildren(node.content || []);
+    return `\`\`\`${lang}\n${text}\n\`\`\``;
+  },
+});
+
 function makeEditor(): Editor {
   return new Editor({
     extensions: [
@@ -62,6 +98,7 @@ function makeEditor(): Editor {
         undoRedo: false,
         hardBreak: false,
       }),
+      StubCodeBlock,
       CustomHardBreak,
       ImageWithStyle,
       ...CustomHtml,
@@ -313,6 +350,49 @@ describe("CustomDetails (<details>) extension", () => {
     // Wrapper flips to is-open so the CSS rotation kicks in.
     const wrapper = dom.querySelector('div[data-type="details"]');
     expect(wrapper?.classList.contains("is-open")).toBe(true);
+  });
+
+  // Regression: a fenced code block inside <details> used to be torn
+  // out of the element. Marked's html block rule ends at a blank line,
+  // so the fragment was split into three tokens (open tag, code block,
+  // close tag) and the code block landed as a sibling instead of being
+  // nested inside the details content. The CustomDetails tokenizer now
+  // consumes the whole <details>...</details> as one block so the body
+  // gets tokenized normally.
+  it("nests a fenced code block inside <details> (not as a sibling)", () => {
+    const editor = freshEditor();
+    const src =
+      "<details>\n" +
+      "  <summary>Generate gnupg key</summary>\n" +
+      "\n" +
+      "```\n" +
+      "code\n" +
+      "```\n" +
+      "</details>";
+    editor.commands.setContent(src, { contentType: "markdown" });
+
+    const doc = editor.getJSON();
+    const details = doc.content?.find((n) => n.type === "details");
+    expect(details).toBeDefined();
+
+    const body = details!.content?.find(
+      (n) => n.type === "detailsContent",
+    )?.content;
+    // The body must contain a codeBlock, not a paragraph wrapping the
+    // raw fence text.
+    expect(body?.some((n) => n.type === "codeBlock")).toBe(true);
+    expect(body?.some((n) => n.type === "paragraph")).toBe(false);
+
+    // The code block must NOT be a sibling of the details element.
+    expect(doc.content?.some((n) => n.type === "codeBlock")).toBe(false);
+
+    // Round-trip preserves the fenced code block inside the details.
+    const out = editor.getMarkdown();
+    expect(out).toContain("<details>");
+    expect(out).toContain("<summary>Generate gnupg key</summary>");
+    expect(out).toContain("```");
+    expect(out).toContain("code");
+    expect(out).toContain("</details>");
   });
 });
 
