@@ -31,12 +31,20 @@ const jwtExpSeconds = (token: string): number | null => {
 
 /**
  * How many ms before `exp` (in epoch seconds) we should fire the next refresh.
- * Clamped at 0 so an already-expired token still triggers an immediate refetch.
+ *
+ * Returns `FALLBACK_REFRESH_MS` when the token is already expired (or
+ * expiring within `JWT_REFRESH_BUFFER`). Clamping to 0 here would call
+ * `setTimeout(refresh, 0)` and the backend would be hit on every tick
+ * — a tight loop whenever the backend keeps handing out already-expired
+ * tokens (revoked/expired share, online_until in the past, etc.).
  */
 const scheduleRefreshMs = (expEpochSeconds: number): number => {
   const waitMs =
     expEpochSeconds * 1000 - Date.now() - JWT_REFRESH_BUFFER * 1000;
-  return Math.max(0, waitMs);
+  if (waitMs <= 0) {
+    return FALLBACK_REFRESH_MS;
+  }
+  return waitMs;
 };
 
 export interface UseShareAccessTokenOptions {
