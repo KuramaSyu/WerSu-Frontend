@@ -7,14 +7,19 @@ import { useAuthStore } from "../../zustand/useAuthStore";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { useViewConfig } from "../../zustand/useViewConfig";
 import { useThemeStore } from "../../zustand/useThemeStore";
-import { useLayout } from "../../LayoutProvider";
+import {
+  useLeftPanel,
+  useRightPanel,
+  usePanelSize,
+} from "../../LayoutProvider";
 import { M3, M4 } from "../../statics";
 import type { Note } from "../../api/models/search";
 import { PublicNoteEditor } from "../NotePage/Editor";
 import { NoteEditorSkeleton } from "../NotePage/NoteEditorSkeleton";
 import { PublicShareUnavailable } from "./PublicShareUnavailable";
 import { getPublicCollabEntry } from "../../hooks/usePublicNoteCollaboration";
-import { TableOfContentsPanel } from "../NotePage/Panel/TableOfContentsPanel";
+import { NoteLeftPanel } from "../NotePage/Panel/MainLeft";
+import { NoteRightPanel } from "../NotePage/Panel/MainRight";
 import { useScrollToSectionOnLoad } from "../../hooks/useScrollToSectionOnLoad";
 
 /**
@@ -38,23 +43,46 @@ export const PublicNotePage: React.FC = () => {
     share_id: share_id ?? "",
   });
   const { theme } = useThemeStore();
-  const { setLeftPanel, setRightPanel, setLeftPanelOpen, setRightPanelOpen } =
-    useLayout();
 
   const isWrite = grant?.permission === "SHARE_PERMISSION_WRITE";
   const noteIdFromGrant = grant?.note_id;
 
-  // Mount the outline on the left rail; keep right collapsed. Restore defaults on unmount so the next route is clean.
-  useEffect(() => {
-    setLeftPanel(<TableOfContentsPanel />);
-    setRightPanel(null);
-    setLeftPanelOpen(true);
-    setRightPanelOpen(false);
-    return () => {
-      setLeftPanel(null);
-      setRightPanel(null);
-    };
-  }, [setLeftPanel, setRightPanel, setLeftPanelOpen, setRightPanelOpen]);
+  const {
+    data: note,
+    isError: noteIsError,
+    error: noteError,
+  } = useNote(noteIdFromGrant);
+
+  const { mutate } = useUpdateNote();
+  const updateNote = (n: Note) => {
+    if (!noteIdFromGrant) return;
+    mutate({
+      noteId: noteIdFromGrant,
+      title: n.title,
+      content: n.content,
+    });
+  };
+
+  // Mount the same left and right rails as the private note page so the
+  // share view shows the metadata block + outline on the left and
+  // version history + attachments on the right. The left panel is
+  // pinned to read-only: a share viewer can't move the note between
+  // directories. Same panel sizes and breakpoints as `NotePage`.
+  useLeftPanel(
+    <NoteLeftPanel
+      noteId={noteIdFromGrant}
+      onNoteUpdated={updateNote}
+      readOnly
+    />,
+    [noteIdFromGrant],
+  );
+  useRightPanel(<NoteRightPanel noteId={noteIdFromGrant} />, [noteIdFromGrant]);
+  usePanelSize({
+    left: `clamp(15rem, 25vw, 30rem)`,
+    right: "21rem",
+    openLeft: "lg",
+    openRight: "xl",
+  });
 
   // Honour `?section=<slug>` deep-link (same hook as the private note page).
   useScrollToSectionOnLoad();
@@ -82,12 +110,6 @@ export const PublicNotePage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [grant?.permission, grant?.note_id]);
 
-  const {
-    data: note,
-    isError: noteIsError,
-    error: noteError,
-  } = useNote(noteIdFromGrant);
-
   const shareAttachmentTokensLoaded = useAuthStore(
     (s) => s.shareAttachmentTokensLoaded,
   );
@@ -98,16 +120,6 @@ export const PublicNotePage: React.FC = () => {
     console.log("PublicNotePage - note", note);
     useAuthStore.getState().setShareAttachmentTokens(note?.tokens ?? {});
   }, [note]);
-
-  const { mutate } = useUpdateNote();
-  const updateNote = (n: Note) => {
-    if (!noteIdFromGrant) return;
-    mutate({
-      noteId: noteIdFromGrant,
-      title: n.title,
-      content: n.content,
-    });
-  };
 
   if (isError) {
     return <PublicShareUnavailable error={error} />;
