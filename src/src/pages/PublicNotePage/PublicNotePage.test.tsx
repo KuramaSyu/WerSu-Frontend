@@ -79,6 +79,19 @@ vi.mock("../../zustand/useThemeStore", () => ({
   }),
 }));
 
+// The page now mounts the same left/right rails as the private note
+// page. Some of those rail modules transitively reach `@mui/material/styles`
+// `Theme` types, which `useThemeStore` -> `customTheme` brings in
+// alongside `@material/material-color-utilities`. That package's
+// ESM-graph internal re-exports break Vitest's default node resolver
+// on this checkout (extension-less `dynamic_scheme` import). Mock it
+// away so the mocked `useThemeStore` is the only thing that loads.
+vi.mock("@material/material-color-utilities", () => ({
+  themeFromSourceColor: () => ({}),
+  argbFromHex: () => 0,
+  hexFromArgb: () => "#000000",
+}));
+
 // The page uses `Box` and `Fade` from `@mui/material`. We mock
 // the whole `@mui/material` module so we don't pull in MUI's
 // internal ESM graph (the `react-transition-group/TransitionGroupContext`
@@ -112,6 +125,18 @@ vi.mock("@mui/material", () => ({
         {children}
       </div>
     ),
+  // `usePanelSize` reaches into MUI's theme for breakpoint queries
+  // (`theme.breakpoints.up`). Return a stub that always matches up
+  // to xl, so the panel sizes recorded by the test aren't driven by
+  // jsdom's lack of `matchMedia`. The breakpoint tokens we use here
+  // are dumb strings - the assertions only care about the values
+  // passed to `usePanelSize`, never the resulting open/close state.
+  useTheme: () => ({
+    breakpoints: {
+      up: () => "(min-width: 0px)",
+    },
+  }),
+  useMediaQuery: () => true,
 }));
 
 // `PublicNoteEditor` and `NoteEditorSkeleton` still live in
