@@ -23,6 +23,10 @@ interface NoteLeftPanelProps {
   note?: Note;
   noteId?: string;
   onNoteUpdated: (note: Note) => void;
+  // When true, hide the parent-directory editing affordances (add/remove
+  // chips, click-to-navigate). Used by the public share view where the
+  // viewer can't move the note between directories.
+  readOnly?: boolean;
 }
 
 /**
@@ -84,6 +88,7 @@ const EMPTY_PERMISSION_SECTIONS: PermissionSection[] = [];
 export const NoteLeftPanel: React.FC<NoteLeftPanelProps> = ({
   noteId,
   onNoteUpdated,
+  readOnly = false,
 }) => {
   const { data: note } = useNote(noteId);
   const navigate = useNavigate();
@@ -262,11 +267,15 @@ export const NoteLeftPanel: React.FC<NoteLeftPanelProps> = ({
           lastEditedLabel={formatTimestamp(note?.updated_at)}
           parentDirectories={parentDirectoryPaths}
           permissionSections={EMPTY_PERMISSION_SECTIONS}
-          onNavigateToDirectory={(directoryId) => navigate(`/d/${directoryId}`)}
+          onNavigateToDirectory={
+            readOnly
+              ? () => {}
+              : (directoryId) => navigate(`/d/${directoryId}`)
+          }
           onChangeParentClick={() => setMoveDialogOpen(true)}
-          canChangeParent={Boolean(note && noteId)}
+          canChangeParent={!readOnly && Boolean(note && noteId)}
           onRemoveParent={handleRemoveParentDirectory}
-          canRemoveParent={Boolean(note && noteId)}
+          canRemoveParent={!readOnly && Boolean(note && noteId)}
         />
         <TableOfContentsPanel />
       </UpperPanel>
