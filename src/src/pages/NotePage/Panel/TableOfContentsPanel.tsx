@@ -7,7 +7,7 @@ import {
   TimelineSeparator,
 } from "@mui/lab";
 import { Box, ListItemButton, ListItemText, Typography } from "@mui/material";
-import { useEffect, useState, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { PanelSection } from "../../../components/Panels/PanelSection";
 import {
   useOutlineStore,
@@ -101,6 +101,24 @@ export const TableOfContentsPanel: React.FC = () => {
     };
   }, [items]);
 
+  // Skip the first primaryId change so we don't overwrite a freshly
+  // stripped invalid `?section` from `useScrollToSectionOnLoad`.
+  const skipNextSyncRef = useRef(true);
+
+  // Sync `?section=<primaryId>` via replaceState so the URL tracks the
+  // active heading (scroll-spy on scroll, setPrimaryId on click).
+  useEffect(() => {
+    if (!primaryId) return;
+    if (skipNextSyncRef.current) {
+      skipNextSyncRef.current = false;
+      return;
+    }
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("section") === primaryId) return;
+    url.searchParams.set("section", primaryId);
+    window.history.replaceState(null, "", url.toString());
+  }, [primaryId]);
+
   if (items.length === 0) {
     return (
       <PanelSection title="Table of Contents" collapsible defaultExpanded>
@@ -177,10 +195,7 @@ export const TableOfContentsPanel: React.FC = () => {
                   disableGutters
                   onClick={(event: MouseEvent<HTMLDivElement>) => {
                     event.preventDefault();
-                    setPrimaryId(item.id); // instant highlight
-                    const url = new URL(window.location.href);
-                    url.searchParams.set("section", item.id);
-                    window.history.replaceState(null, "", url.toString());
+                    setPrimaryId(item.id); // instant highlight; URL sync via primaryId effect
                     document.getElementById(item.id)?.scrollIntoView({
                       block: "start",
                       behavior: "smooth",
