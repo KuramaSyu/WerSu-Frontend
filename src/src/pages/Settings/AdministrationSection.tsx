@@ -15,7 +15,9 @@ import {
   type ServiceStatus,
   type StatusResponse,
 } from "../../api/StatusApi";
+import { WersuServiceInterface } from "../../api/WersuServiceInterface";
 import { BACKEND_BASE } from "../../statics";
+import { servicesFromStatus } from "../../components/TopBar/serviceReachabilityModel";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { blendAgainstContrast } from "../../utils/blendWithContrast";
 
@@ -23,20 +25,6 @@ type LoadState =
   | { kind: "loading" }
   | { kind: "error"; message: string }
   | { kind: "success"; data: StatusResponse };
-
-const serviceLabel: Record<
-  keyof Pick<
-    StatusResponse,
-    "garage" | "spicedb" | "wersu" | "imgproxy" | "postgres"
-  >,
-  string
-> = {
-  garage: "Garage",
-  spicedb: "SpiceDB",
-  wersu: "WerSu",
-  imgproxy: "Imgproxy",
-  postgres: "Postgres",
-};
 
 const formatCheckedAt = (checkedAt: string): string => {
   const date = new Date(checkedAt);
@@ -50,27 +38,28 @@ const formatCheckedAt = (checkedAt: string): string => {
   }).format(date);
 };
 
-const ServiceStatusCard: React.FC<{ status: ServiceStatus }> = ({ status }) => {
-  const hasError = !status.reachable && Boolean(status.error);
-  const label = status.reachable
+/**
+ * Card for one :class:`WersuServiceInterface`. Decodes URI-masked
+ * credentials in the address before display so the row reads
+ * naturally instead of showing URL-encoded asterisks.
+ */
+const ServiceStatusCard: React.FC<{ service: WersuServiceInterface }> = ({
+  service,
+}) => {
+  const details = service.details();
+  const dns = service.dns_status();
+  const svc = service.service_status();
+  const hasError = !details.reachable && Boolean(details.error);
+  const label = details.reachable
     ? "Reachable"
     : hasError
       ? "Unreachable"
       : "Unknown";
-  const colorProp: ColorChipStatus = status.reachable
+  const colorProp: ColorChipStatus = details.reachable
     ? "success"
     : hasError
       ? "error"
       : "warning";
-  // Backend reports masked credentials as URL-encoded asterisks
-  // (e.g. `postgres://%2A%2A%2A:%2A%2A%2A@host:5433/db`); decode
-  // for display so the address reads naturally.
-  let displayAddress = status.address;
-  try {
-    displayAddress = decodeURIComponent(status.address);
-  } catch {
-    // Malformed URI sequence -- fall back to the raw address.
-  }
 
   return (
     <Stack
@@ -91,31 +80,25 @@ const ServiceStatusCard: React.FC<{ status: ServiceStatus }> = ({ status }) => {
           flexWrap: "wrap",
         }}
       >
-        <Typography variant="subtitle1">{displayAddress}</Typography>
+        <Typography variant="subtitle1">{service.display_host()}</Typography>
         <ColorChip label={label} colorProp={colorProp} size="small" />
       </Stack>
 
       <Stack spacing={1}>
         <Typography variant="body2" color="text.secondary">
-          DNS:{" "}
-          {status.dns.reachable
-            ? "reachable"
-            : status.dns.error || "unreachable"}
+          DNS: {dns.reachable ? "reachable" : dns.error || "unreachable"}
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Service:{" "}
-          {status.service.reachable
-            ? "reachable"
-            : status.service.error || "unreachable"}
+          Service: {svc.reachable ? "reachable" : svc.error || "unreachable"}
         </Typography>
-        {status.detail && (
+        {details.detail && (
           <Typography variant="body2" color="text.secondary">
-            Detail: {status.detail}
+            Detail: {details.detail}
           </Typography>
         )}
-        {status.error && !status.reachable && (
+        {details.error && !details.reachable && (
           <Alert severity="error" variant="outlined">
-            {status.error}
+            {details.error}
           </Alert>
         )}
       </Stack>
@@ -123,11 +106,14 @@ const ServiceStatusCard: React.FC<{ status: ServiceStatus }> = ({ status }) => {
   );
 };
 
+/** Wrap the synthetic REST-API probe in the same interface. */
+const restApiService = (status: ServiceStatus): WersuServiceInterface =>
+  new WersuServiceInterface("REST API", status);
+
 export const AdministrationSection: React.FC = () => {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
-  const [restApiStatus, setRestApiStatus] = useState<ServiceStatus | null>(
-    null,
-  );
+  const [restApiStatus, setRestApiStatus] =
+    useState<WersuServiceInterface | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const loadStatus = async () => {
@@ -146,7 +132,7 @@ export const AdministrationSection: React.FC = () => {
 
   const loadRestApi = async () => {
     const result = await checkRestApi(BACKEND_BASE);
-    setRestApiStatus(result);
+    setRestApiStatus(restApiService(result));
   };
 
   useEffect(() => {
@@ -212,8 +198,8 @@ export const AdministrationSection: React.FC = () => {
 
       {restApiStatus && (
         <Stack spacing={1}>
-          <Typography variant="subtitle2">REST API</Typography>
-          <ServiceStatusCard status={restApiStatus} />
+          <Typography variant="subtitle2">{restApiStatus.name()}</Typography>
+          <ServiceStatusCard service={restApiStatus} />
         </Stack>
       )}
 
@@ -231,14 +217,12 @@ export const AdministrationSection: React.FC = () => {
 
       {state.kind === "success" && (
         <Stack spacing={2}>
-          {(Object.keys(serviceLabel) as Array<keyof typeof serviceLabel>).map(
-            (key) => (
-              <Stack key={key} spacing={1}>
-                <Typography variant="subtitle2">{serviceLabel[key]}</Typography>
-                <ServiceStatusCard status={state.data[key]} />
-              </Stack>
-            ),
-          )}
+          {servicesFromStatus(state.data).map((service) => (
+            <Stack key={service.name()} spacing={1}>
+              <Typography variant="subtitle2">{service.name()}</Typography>
+              <ServiceStatusCard service={service} />
+            </Stack>
+          ))}
         </Stack>
       )}
 
