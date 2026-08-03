@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { getStatusApi, type StatusResponse } from "../../api/StatusApi";
 import { unreachableServiceLabels } from "./serviceReachabilityModel";
@@ -11,9 +11,17 @@ import { unreachableServiceLabels } from "./serviceReachabilityModel";
  * One-shot fetch only: no polling, no refetch on focus/reconnect/
  * remount. The modal dedupes against the last shown outage shape
  * so re-renders with the same shape don't re-open it.
+ *
+ * When a new outage shape arrives we also invalidate the cached
+ * entry so the next render is backed by a fresh fetch — otherwise
+ * `staleTime: 30 min` would keep the user staring at a "service
+ * down" modal long after the backend recovered. The dedupe via
+ * `lastAnnouncedRef` keeps this to one extra fetch per new
+ * outage shape.
  */
 export function useServiceReachability(): ServiceReachability {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const query = useQuery<StatusResponse, Error>({
     queryKey: ["service-status"],
     queryFn: () => getStatusApi().getStatus(),
@@ -56,8 +64,20 @@ export function useServiceReachability(): ServiceReachability {
       return;
     }
     lastAnnouncedRef.current = effectiveUnreachable;
+    // Force a fresh fetch so the modal copy isn't held hostage by
+    // a stale entry — `staleTime: 30 min` would otherwise leave
+    // the user looking at a "service down" view long after the
+    // backend recovered. The dedupe above ensures we only
+    // invalidate once per new outage shape.
+    void queryClient.invalidateQueries({ queryKey: ["service-status"] });
     setDialogOpen(true);
-  }, [query.status, servicesReachable, queryFailed, effectiveUnreachable]);
+  }, [
+    query.status,
+    servicesReachable,
+    queryFailed,
+    effectiveUnreachable,
+    queryClient,
+  ]);
 
   return {
     status: servicesReachable
