@@ -25,14 +25,18 @@
 
 .tiptap table {
   width: 100%;
-  table-layout: fixed;
+  /* `auto` lets each column size itself to its content, so wide cells
+     (long text, images) take the space they need instead of forcing
+     equal-width columns. */
+  table-layout: auto;
 }
 
 .tiptap .table-nodeview [data-node-view-content-react][data-node-view-wrapper] {
   /* Runtime table rows are mounted into a div contentDOM. Treat it as table layout. */
   display: table !important;
   width: 100% !important;
-  table-layout: fixed !important;
+  /* See `.tiptap table` -- columns size to content. */
+  table-layout: auto !important;
   border-collapse: collapse !important;
 }
 
