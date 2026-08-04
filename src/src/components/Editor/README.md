@@ -79,6 +79,10 @@ The components here are intentionally split by responsibility: editor shell, for
 	- Bubble menu for table operations when selection is inside a table.
 	- Not always mounted in every editor surface, but available for table-focused workflows.
 
+- `TableColumnMenu.tsx`
+	- Bubble menu shown above the active table column.
+	- Column-level operations: move left, move right, delete.
+
 - `TableButtonGroup.tsx`
 	- Static toolbar group with quick table insertion button.
 

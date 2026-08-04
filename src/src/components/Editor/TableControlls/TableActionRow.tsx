@@ -1,4 +1,4 @@
-import { Box, IconButton, Stack, Tooltip, useTheme } from "@mui/material";
+import { IconButton, Paper, Stack, Tooltip } from "@mui/material";
 import React from "react";
 import type { Editor } from "@tiptap/react";
 import { TextSelection } from "@tiptap/pm/state";
@@ -12,17 +12,22 @@ import {
   IconArrowUp,
   IconArrowDown,
 } from "@tabler/icons-react";
-import { M1 } from "../../../statics";
+import { useThemeStore } from "../../../zustand/useThemeStore";
 
-interface ActionRowProps {
+interface TableActionRowProps {
   editor: Editor;
 }
 
 /**
- * Action toolbar for table operations.
+ * Row + column action toolbar for the active table. Styled to
+ * match `TableColumnMenu` (round-corner paper, icon buttons with
+ * tooltips). Shown above the table by `TableControlls` once a cell
+ * has been clicked.
  */
-export function ActionRow({ editor }: ActionRowProps): React.ReactElement {
-  const theme = useTheme();
+export function TableActionRow({
+  editor,
+}: TableActionRowProps): React.ReactElement {
+  const { theme } = useThemeStore();
 
   /** Add a row before the current row. */
   function addRowBefore(): void {
@@ -161,140 +166,111 @@ export function ActionRow({ editor }: ActionRowProps): React.ReactElement {
     moveRow(1);
   }
 
+  const rowInfo = getRowInfo();
+  const canMoveUp = !!rowInfo && rowInfo.cellRect.top > 0;
+  const canMoveDown =
+    !!rowInfo && rowInfo.cellRect.top < rowInfo.map.height - 1;
+
   return (
-    <Stack
-      direction="row"
-      spacing={0.5}
+    <Paper
+      elevation={18}
       sx={{
-        alignItems: "center",
-        backgroundColor: theme.palette.background.paper,
-        borderRadius: 1,
-        p: M1,
         border: `1px solid ${theme.palette.divider}`,
+        borderRadius: 50,
+        p: 1,
       }}
     >
-      {/* Add row before */}
-      <Tooltip title="Add row at top">
-        <span>
-          <IconButton
-            size="small"
-            onClick={addRowBefore}
-            disabled={!editor.can().chain().focus().addRowBefore().run()}
-          >
-            <IconRowInsertTop size={18} />
-          </IconButton>
-        </span>
-      </Tooltip>
+      <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
+        {/* Add row before */}
+        <Tooltip title="Add row at top">
+          <span>
+            <IconButton
+              size="small"
+              onClick={addRowBefore}
+              disabled={!editor.can().chain().focus().addRowBefore().run()}
+            >
+              <IconRowInsertTop size={18} />
+            </IconButton>
+          </span>
+        </Tooltip>
 
-      {/* Add row after */}
-      <Tooltip title="Add row at bottom">
-        <span>
-          <IconButton
-            size="small"
-            onClick={addRowAfter}
-            disabled={!editor.can().chain().focus().addRowAfter().run()}
-          >
-            <IconRowInsertBottom size={18} />
-          </IconButton>
-        </span>
-      </Tooltip>
+        {/* Add row after */}
+        <Tooltip title="Add row at bottom">
+          <span>
+            <IconButton
+              size="small"
+              onClick={addRowAfter}
+              disabled={!editor.can().chain().focus().addRowAfter().run()}
+            >
+              <IconRowInsertBottom size={18} />
+            </IconButton>
+          </span>
+        </Tooltip>
 
-      {/* Add column before */}
-      <Tooltip title="Add column at left">
-        <span>
-          <IconButton
-            size="small"
-            onClick={addColumnBefore}
-            disabled={!editor.can().chain().focus().addColumnBefore().run()}
-          >
-            <IconColumnInsertLeft size={18} />
-          </IconButton>
-        </span>
-      </Tooltip>
+        {/* Add column before */}
+        <Tooltip title="Add column at left">
+          <span>
+            <IconButton
+              size="small"
+              onClick={addColumnBefore}
+              disabled={!editor.can().chain().focus().addColumnBefore().run()}
+            >
+              <IconColumnInsertLeft size={18} />
+            </IconButton>
+          </span>
+        </Tooltip>
 
-      {/* Add column after */}
-      <Tooltip title="Add column at right">
-        <span>
-          <IconButton
-            size="small"
-            onClick={addColumnAfter}
-            disabled={!editor.can().chain().focus().addColumnAfter().run()}
-          >
-            <IconColumnInsertRight size={18} />
-          </IconButton>
-        </span>
-      </Tooltip>
+        {/* Add column after */}
+        <Tooltip title="Add column at right">
+          <span>
+            <IconButton
+              size="small"
+              onClick={addColumnAfter}
+              disabled={!editor.can().chain().focus().addColumnAfter().run()}
+            >
+              <IconColumnInsertRight size={18} />
+            </IconButton>
+          </span>
+        </Tooltip>
 
-      {/* Divider */}
-      <Box
-        sx={{
-          width: 1,
-          height: 24,
-          borderLeft: `1px solid ${theme.palette.divider}`,
-        }}
-      />
+        {/* Delete row */}
+        <Tooltip title="Remove current row">
+          <span>
+            <IconButton
+              size="small"
+              color="error"
+              onClick={deleteRow}
+              disabled={!editor.can().chain().focus().deleteRow().run()}
+            >
+              <IconRowRemove size={18} />
+            </IconButton>
+          </span>
+        </Tooltip>
 
-      {/* Delete row */}
-      <Tooltip title="Remove current row">
-        <span>
-          <IconButton
-            size="small"
-            color="error"
-            onClick={deleteRow}
-            disabled={!editor.can().chain().focus().deleteRow().run()}
-          >
-            <IconRowRemove size={18} />
-          </IconButton>
-        </span>
-      </Tooltip>
+        {/* Move row up */}
+        <Tooltip title="Move row up">
+          <span>
+            <IconButton size="small" onClick={moveRowUp} disabled={!canMoveUp}>
+              <IconArrowUp size={18} />
+            </IconButton>
+          </span>
+        </Tooltip>
 
-      {/* Divider */}
-      <Box
-        sx={{
-          width: 1,
-          height: 24,
-          borderLeft: `1px solid ${theme.palette.divider}`,
-        }}
-      />
-
-      {(() => {
-        const rowInfo = getRowInfo();
-        const canMoveUp = !!rowInfo && rowInfo.cellRect.top > 0;
-        const canMoveDown =
-          !!rowInfo && rowInfo.cellRect.top < rowInfo.map.height - 1;
-
-        return (
-          <>
-            {/* Move row up */}
-            <Tooltip title="Move row up">
-              <span>
-                <IconButton
-                  size="small"
-                  onClick={moveRowUp}
-                  disabled={!canMoveUp}
-                >
-                  <IconArrowUp size={18} />
-                </IconButton>
-              </span>
-            </Tooltip>
-
-            {/* Move row down */}
-            <Tooltip title="Move row down">
-              <span>
-                <IconButton
-                  size="small"
-                  onClick={moveRowDown}
-                  disabled={!canMoveDown}
-                >
-                  <IconArrowDown size={18} />
-                </IconButton>
-              </span>
-            </Tooltip>
-          </>
-        );
-      })()}
-    </Stack>
+        {/* Move row down */}
+        <Tooltip title="Move row down">
+          <span>
+            <IconButton
+              size="small"
+              onClick={moveRowDown}
+              disabled={!canMoveDown}
+            >
+              <IconArrowDown size={18} />
+            </IconButton>
+          </span>
+        </Tooltip>
+      </Stack>
+    </Paper>
   );
 }
 
-export default ActionRow;
+export default TableActionRow;

@@ -1,4 +1,4 @@
-import { Box, useTheme, Button, Fade, Stack } from "@mui/material";
+import { Box, Button, Collapse, Fade, Stack, useTheme } from "@mui/material";
 import {
   NodeViewWrapper,
   NodeViewContent,
@@ -8,15 +8,17 @@ import {
 } from "@tiptap/react";
 import { Table } from "@tiptap/extension-table";
 import { TextSelection } from "@tiptap/pm/state";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { IconPlus as AddIcon } from "@tabler/icons-react";
 import { useEditorMenuStore } from "../../../zustand/editorMenuStore";
 import { M2 } from "../../../statics";
-import { ActionRow } from "./ActionRow";
-import { IconPlus as AddIcon } from "@tabler/icons-react";
+import { TableActionRow } from "./TableActionRow";
+import { TableColumnMenuHost } from "./TableColumnMenu";
 
-/**
- * Table node view with controls (moved into `TableControlls` folder).
- */
+// Grace period before the menus hide after the cursor leaves
+// the table. Lets the user cross the gap to the column menu.
+const CELL_CLICKED_HIDE_DELAY_MS = 200;
+
 export const TableNodeView: React.FC<ReactNodeViewProps> = ({
   editor,
   getPos,
@@ -24,6 +26,8 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
   const [isTableHovered, setIsTableHovered] = useState(false);
   const [showAddRowControl, setShowAddRowControl] = useState(false);
   const [showAddColControl, setShowAddColControl] = useState(false);
+  const [cellClicked, setCellClicked] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
   const theme = useTheme();
   const isTextSelectionMenuOpen = useEditorMenuStore(
     (state) => state.isTextSelectionMenuOpen,
@@ -35,6 +39,35 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
     }),
   });
   const shouldHideTableControls = hasSelection || isTextSelectionMenuOpen;
+  const showActionRow =
+    cellClicked && editor.isEditable && !shouldHideTableControls;
+
+  // Debounced hide: schedule a reset, but cancel if the cursor
+  // re-enters the table or the column menu within the window.
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const scheduleHideCellClicked = () => {
+    if (hideTimerRef.current !== null) return;
+    hideTimerRef.current = setTimeout(() => {
+      hideTimerRef.current = null;
+      setCellClicked(false);
+    }, CELL_CLICKED_HIDE_DELAY_MS);
+  };
+
+  const cancelHideCellClicked = () => {
+    if (hideTimerRef.current !== null) {
+      clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (hideTimerRef.current !== null) {
+        clearTimeout(hideTimerRef.current);
+      }
+    };
+  }, []);
 
   const addColumnAfter = () => {
     const pos = getPos();
@@ -117,23 +150,44 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
     setShowAddColControl(isLastCol);
   };
 
+  const handleTableClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+    if (target.closest("td, th")) {
+      setCellClicked(true);
+    }
+  };
+
   return (
     <NodeViewWrapper
+      ref={wrapperRef}
       className="table-nodeview"
-      onMouseEnter={() => setIsTableHovered(true)}
-      onMouseLeave={() => {
+      onMouseEnter={() => {
+        setIsTableHovered(true);
+        cancelHideCellClicked();
+      }}
+      onMouseLeave={(event: React.MouseEvent<HTMLDivElement>) => {
         setIsTableHovered(false);
         setShowAddRowControl(false);
         setShowAddColControl(false);
+        // Don't schedule a hide if the cursor is moving to the
+        // column menu (the menu sits above the wrapper).
+        const related = event.relatedTarget as HTMLElement | null;
+        if (related?.closest("[data-table-column-menu]")) {
+          return;
+        }
+        scheduleHideCellClicked();
       }}
-      onMouseMove={handleTableMouseMove}
+      onMouseMove={(event: React.MouseEvent<HTMLDivElement>) => {
+        handleTableMouseMove(event);
+        cancelHideCellClicked();
+      }}
+      onClick={handleTableClick}
       style={{
         position: "relative",
         marginBottom: "16px",
         overflow: "visible",
       }}
     >
-      {/* table controlls */}
       <Box
         sx={{
           ".table-nodeview:hover & .hoverBox": shouldHideTableControls
@@ -155,30 +209,37 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
           },
         }}
       >
-        <Stack
-          className="hoverBox"
-          direction="row"
-          spacing={0.75}
+        <Box
           sx={{
-            alignItems: "center",
             position: "absolute",
             bottom: "calc(100% + 6px)",
             width: "max-content",
-            padding: M2,
             zIndex: 25,
-            // backgroundColor: "transparent",
-            "&::after": {
-              content: '""',
-              position: "absolute",
-              top: "100%",
-              left: 0,
-              right: 0,
-              height: "10px",
-            },
+            pointerEvents: showActionRow ? "auto" : "none",
           }}
         >
-          {editor.isEditable && <ActionRow editor={editor} />}
-        </Stack>
+          <Collapse in={showActionRow} timeout={200} mountOnEnter unmountOnExit>
+            <Stack
+              direction="row"
+              spacing={0}
+              sx={{
+                alignItems: "center",
+                padding: M2,
+                position: "relative",
+                "&::after": {
+                  content: '""',
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  right: 0,
+                  height: "10px",
+                },
+              }}
+            >
+              <TableActionRow editor={editor} />
+            </Stack>
+          </Collapse>
+        </Box>
 
         {/* add column side button */}
         <Fade in={isTableHovered && showAddColControl && editor.isEditable}>
@@ -233,6 +294,18 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
       <CssOverrideForImageCellsBox>
         <NodeViewContent />
       </CssOverrideForImageCellsBox>
+
+      {/* column menu sits at the wrapper root so its absolute
+          positioning is anchored to the wrapper, not the
+          controls box. */}
+      {editor.isEditable && (
+        <TableColumnMenuHost
+          editor={editor}
+          menuVisible={cellClicked}
+          onMouseEnterMenu={cancelHideCellClicked}
+          onMouseLeaveMenu={scheduleHideCellClicked}
+        />
+      )}
     </NodeViewWrapper>
   );
 };
@@ -248,16 +321,5 @@ export default TableWithControls;
 const CssOverrideForImageCellsBox: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  return (
-    <Box
-      // force image to use width = 100%
-      sx={{
-        "& td img, & th img": {
-          width: "100%",
-        },
-      }}
-    >
-      {children}
-    </Box>
-  );
+  return <Box sx={{ "& td img, & th img": { width: "100%" } }}>{children}</Box>;
 };
