@@ -46,9 +46,11 @@ import { ThemedEditorBox } from "../../components/Editor/ThemedEditorBox";
 import { TextSelectionBubbleMenu } from "../../components/Editor/TextSelectionBubbleMenu";
 import {
   SlashCommandMenu,
+  SlashMenuStateExtension,
   clearSlashLine,
   type SlashCommand,
 } from "../../components/Editor/SlashCommandMenu";
+import { SmartTextReplacement } from "../../components/Editor/SmartTextReplacement";
 import {
   M2,
   M3,
@@ -376,6 +378,8 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
           },
         }),
         // No `TableOfContents` extension here — its plugin freezes on real notes (per-transaction doc walk + textContent materialization). The outline effect below handles it post-update.
+        SmartTextReplacement,
+        SlashMenuStateExtension,
         Markdown,
       ],
 
