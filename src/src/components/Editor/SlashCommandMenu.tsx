@@ -1,6 +1,8 @@
 import type { Editor } from "@tiptap/core";
+import { Extension } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
 import { FloatingMenu } from "@tiptap/react/menus";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { useEffect, useRef, useState } from "react";
 import {
   List,
@@ -28,6 +30,101 @@ export interface SlashCommand {
   run: (editor: Editor) => void | Promise<void>;
 }
 
+// Tracks the position of the last "/" the user typed so the slash menu
+// can open mid-paragraph, not only on an empty line. Stored as plugin
+// state on the editor; cleared by ESC or when a command runs.
+type SlashMenuState = { pos: number } | null;
+
+type SlashMenuMeta = { type: "set"; pos: number } | { type: "clear" };
+
+export const slashMenuStateKey = new PluginKey<SlashMenuState>(
+  "slashMenuState",
+);
+
+// Tiptap extension: register alongside the other editor extensions so the
+// slash menu state lives on the editor regardless of which React component
+// is currently rendering.
+export const SlashMenuStateExtension = Extension.create({
+  name: "slashMenuState",
+
+  addProseMirrorPlugins() {
+    return [
+      new Plugin<SlashMenuState>({
+        key: slashMenuStateKey,
+        state: {
+          init() {
+            return null;
+          },
+          apply(tr, value) {
+            // Explicit set/clear via tr.setMeta wins over any inherited value.
+            const meta = tr.getMeta(slashMenuStateKey) as
+              | SlashMenuMeta
+              | undefined;
+            if (meta) {
+              if (meta.type === "set") {
+                return { pos: meta.pos };
+              }
+              if (meta.type === "clear") {
+                return null;
+              }
+            }
+            return value;
+          },
+        },
+        props: {
+          // Detect "/" typed by the user and remember where it landed so
+          // the menu can keep filtering as more characters are typed
+          // after it.
+          handleTextInput(view, from, to, text) {
+            const slashIdx = text.indexOf("/");
+            if (slashIdx === -1) {
+              return false;
+            }
+            const slashPos = from + slashIdx;
+            const $slash = view.state.doc.resolve(slashPos);
+            // Don't trigger inside code leaves; let the code-block
+            // input handler deal with it.
+            if ($slash.parent.type.spec.code) {
+              return false;
+            }
+            const tr = view.state.tr.setMeta(slashMenuStateKey, {
+              type: "set",
+              pos: slashPos,
+            });
+            view.dispatch(tr);
+            return false;
+          },
+          // ESC closes the slash menu without removing the typed "/".
+          // We don't preventDefault so other handlers can still react
+          // to the keypress.
+          handleKeyDown(view, event) {
+            if (event.key === "Escape") {
+              const tr = view.state.tr.setMeta(slashMenuStateKey, {
+                type: "clear",
+              });
+              view.dispatch(tr);
+            }
+            return false;
+          },
+        },
+      }),
+    ];
+  },
+});
+
+/**
+ * Test / programmatic hook: directly set or clear the slash menu state.
+ * Production code does not need this — the plugin's handleTextInput
+ * handles live typing. Useful for unit tests that want to assert on
+ * menu behavior without going through the input event.
+ */
+export const setSlashMenuState = (editor: Editor, pos: number | null): void => {
+  const meta: SlashMenuMeta =
+    pos === null ? { type: "clear" } : { type: "set", pos };
+  const tr = editor.state.tr.setMeta(slashMenuStateKey, meta);
+  editor.view.dispatch(tr);
+};
+
 const getCurrentParagraphRange = (editor: Editor) => {
   // We only replace content in the current paragraph (the slash line).
   const { $from } = editor.state.selection;
@@ -45,6 +142,9 @@ export const clearSlashLine = (editor: Editor) => {
   // Remove "/..." before inserting/toggling the selected block command.
   const range = getCurrentParagraphRange(editor);
   editor.chain().focus().deleteRange(range).run();
+  // Also clear the slash menu state so the floating menu closes.
+  const tr = editor.state.tr.setMeta(slashMenuStateKey, { type: "clear" });
+  editor.view.dispatch(tr);
 };
 
 const slashCommands: SlashCommand[] = [
@@ -149,7 +249,63 @@ const slashCommands: SlashCommand[] = [
         .run();
     },
   },
+  {
+    id: "bold",
+    label: "Bold",
+    keywords: ["bold", "strong", "**"],
+    run: (editor) => {
+      clearSlashLine(editor);
+      insertMarkerPair(editor, "****", 2);
+    },
+  },
+  {
+    id: "italic",
+    label: "Italic",
+    keywords: ["italic", "emphasis", "em", "*"],
+    run: (editor) => {
+      clearSlashLine(editor);
+      insertMarkerPair(editor, "**", 1);
+    },
+  },
+  {
+    id: "strike",
+    label: "Strikethrough",
+    keywords: ["strike", "strikethrough", "deleted", "~~"],
+    run: (editor) => {
+      clearSlashLine(editor);
+      insertMarkerPair(editor, "~~~~", 2);
+    },
+  },
+  {
+    id: "latex",
+    label: "LaTeX",
+    keywords: ["latex", "math", "$$", "formula", "equation"],
+    run: (editor) => {
+      clearSlashLine(editor);
+      insertMarkerPair(editor, "$$$$", 2);
+    },
+  },
 ];
+
+/**
+ * Insert a marker pair (e.g. "****" for bold) at the current caret and
+ * place the cursor in the middle so the user can start typing the
+ * emphasized text immediately. Assumes `clearSlashLine` has already
+ * emptied the paragraph and left the caret at its start.
+ */
+const insertMarkerPair = (
+  editor: Editor,
+  marker: string,
+  cursorOffset: number,
+) => {
+  const insertPos = editor.state.selection.from;
+  editor
+    .chain()
+    .focus()
+    .insertContent(marker)
+    .setTextSelection(insertPos + cursorOffset)
+    .run();
+};
 
 /**
  * @returns what the user has typed after "/"
@@ -161,7 +317,35 @@ const getSlashQuery = (editor: Editor) => {
     return "";
   }
 
-  // if "/" was not typed first, then nothing
+  // Prefer the slash state set by the SlashMenuStateExtension when
+  // the user typed "/" — this allows the menu to open mid-paragraph
+  // and gives a stable anchor that survives further typing.
+  const slashState = slashMenuStateKey.getState(editor.state);
+  if (slashState) {
+    try {
+      const $slash = editor.state.doc.resolve(slashState.pos);
+      const $cursor = selection.$from;
+      // The slash and the caret must share a parent — otherwise the
+      // query text is meaningless.
+      if ($slash.parent !== $cursor.parent) {
+        return "";
+      }
+      // The caret must be at or past the slash position; otherwise the
+      // user has navigated backwards and the query is gone.
+      if (selection.from < slashState.pos + 1) {
+        return "";
+      }
+      return editor.state.doc
+        .textBetween(slashState.pos + 1, selection.from)
+        .toLowerCase();
+    } catch {
+      return "";
+    }
+  }
+
+  // Fallback: the paragraph's text starts with "/" (after trimming
+  // leading whitespace). Kept for backward compatibility and for
+  // content pasted in from elsewhere that already starts with "/".
   const text = selection.$from.parent.textContent.trimStart();
   if (!text.startsWith("/")) {
     return "";
@@ -247,11 +431,12 @@ export function getMatchingSlashCommands(
 /**
  * Determines whether the current editor context allows displaying slash commands.
  *
- * Slash commands are only shown when:
+ * Slash commands are shown when:
  * - No text is currently selected
  * - The cursor is not in a structured editing block (table, list, code block)
- * - The cursor is within a paragraph
- * - The paragraph content (trimmed) starts with a forward slash "/"
+ * - Either the SlashMenuStateExtension has recorded a "/" the user typed
+ *   at a position still reachable from the caret, OR (as a fallback) the
+ *   current block's text starts with "/"
  *
  * @param editor The ProseMirror editor instance to check
  * @returns `true` if the context is valid for showing slash commands, `false` otherwise
@@ -274,12 +459,35 @@ export function isSlashCommandContext(editor: Editor): boolean {
     return false;
   }
 
-  const { $from } = selection;
-  if ($from.parent.type.name !== "paragraph") {
-    return false;
+  // Primary path: a "/" was typed by the user and the caret is still
+  // in the same block, after the slash. This covers slash typed
+  // mid-paragraph or anywhere else a text block accepts input.
+  const slashState = slashMenuStateKey.getState(editor.state);
+  if (slashState) {
+    try {
+      const $slash = editor.state.doc.resolve(slashState.pos);
+      const $cursor = selection.$from;
+      // Code leaves are excluded above via isActive("codeBlock"); this
+      // belt-and-suspenders guards against any code-style node.
+      if ($slash.parent.type.spec.code) {
+        return false;
+      }
+      if ($slash.parent !== $cursor.parent) {
+        return false;
+      }
+      if (selection.from < slashState.pos + 1) {
+        return false;
+      }
+      return true;
+    } catch {
+      return false;
+    }
   }
 
-  return $from.parent.textContent.trimStart().startsWith("/");
+  // Fallback: the current block's text (after trimming leading
+  // whitespace) starts with "/". Covers content pasted in already
+  // starting with "/" and unit tests that seed content directly.
+  return selection.$from.parent.textContent.trimStart().startsWith("/");
 }
 
 /**
