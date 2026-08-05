@@ -95,6 +95,30 @@ describe("normalizeTableCell", () => {
 
     expect(normalizeTableCell(input)).toEqual(input);
   });
+
+  // Regression for the <br/> in cell bug: destructParagraph used to
+  // flatten every paragraph into its inlines, which made the cell
+  // multi-child and let `extension-table`'s renderTableToMarkdown leak
+  // the U+001F cell-line separator into the cell text. Inline-only
+  // paragraphs (text + hardBreak) must stay intact so the cell stays
+  // a single child and the round-trip stays clean.
+  it("keeps paragraphs with a hardBreak intact (no leak on <br/>)", () => {
+    const input = {
+      type: "tableCell",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: "line one" },
+            { type: "hardBreak" },
+            { type: "text", text: "line two" },
+          ],
+        },
+      ],
+    };
+
+    expect(normalizeTableCell(input)).toEqual(input);
+  });
 });
 
 describe("normalizeTables", () => {

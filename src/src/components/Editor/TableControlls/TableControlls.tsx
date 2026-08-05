@@ -20,6 +20,114 @@ import { useTableColumnRect } from "./TableColumnMenu.hooks.tsx";
 // the table. Lets the user cross the gap to the column menu.
 const CELL_CLICKED_HIDE_DELAY_MS = 200;
 
+/**
+ * Per-cell text assembly.
+ *
+ * `extension-table`'s stock `renderTableToMarkdown` runs `collapseWhitespace`
+ * on each cell, which collapses line breaks into single spaces. That's fine
+ * for plain prose but loses the line structure when a cell holds a list
+ * (`- a / - b / - c`), ordered list, multiple paragraphs, etc. We assemble
+ * the cell text ourselves: render each block-level child separately, join
+ * the lines with `<br/>` so the markdown source keeps the line breaks, then
+ * collapse only the *intra*-line whitespace. `|` is backslash-escaped so
+ * marked's cell splitter does not split cells that happen to contain a
+ * literal pipe character.
+ *
+ * Uses `h.renderChild` (not `h.renderChildren`): `renderChildren` flattens
+ * a node's `.content` into siblings with the parent's separator, which
+ * silently drops the list's own `\n`-separator logic when the cell only
+ * holds a single block-level child like a `bulletList`. `renderChild`
+ * routes through the child's own `renderMarkdown` instead, so the list
+ * renders its items with `\n` and we can collapse that to `<br/>`.
+ */
+function assembleCellText(
+  h: { renderChild: (n: unknown, i: number) => string },
+  content: unknown,
+): string {
+  const children = Array.isArray(content) ? content : content ? [content] : [];
+  if (children.length === 0) return "";
+  // Render each block-level child of the cell. A child may itself be a
+  // multi-line structure (a bullet list, ordered list, multiple
+  // paragraphs, ...). Split its rendered output on newline so each
+  // logical line becomes a separate "<br/>"-joined cell line.
+  const lines: string[] = [];
+  for (let i = 0; i < children.length; i += 1) {
+    const raw = h.renderChild(children[i], i);
+    for (const part of raw.split(/\r?\n/)) {
+      const cleaned = part.replace(/\s+/g, " ").trim().replace(/\|/g, "\\|");
+      if (cleaned.length > 0) lines.push(cleaned);
+    }
+  }
+  return lines.join("<br/>");
+}
+
+/**
+ * Reimplementation of the table layout that ships inside
+ * `extension-table@3.26.x`. We can't reuse the stock `renderTableToMarkdown`
+ * because its `collapseWhitespace` step kills the line breaks our cell text
+ * assembly just preserved. The shape (header row, separator row, body rows
+ * with padded cells) matches what `extension-table` produces so the
+ * round-trip parses the result back identically.
+ */
+function renderWerSuTable(
+  node: {
+    content?: Array<{
+      content?: Array<{
+        type: string;
+        attrs?: Record<string, unknown>;
+        content?: unknown;
+      }>;
+    }> | null;
+  },
+  h: { renderChild?: (n: unknown, i: number) => string },
+): string {
+  if (!node.content || node.content.length === 0) return "";
+  type Row = { text: string; isHeader: boolean }[];
+  const rows: Row[] = [];
+  for (const rowNode of node.content) {
+    const cells: Row = [];
+    if (rowNode.content) {
+      for (const cellNode of rowNode.content) {
+        cells.push({
+          text: assembleCellText(
+            { renderChild: h.renderChild ?? (() => "") },
+            cellNode.content,
+          ),
+          isHeader: cellNode.type === "tableHeader",
+        });
+      }
+    }
+    rows.push(cells);
+  }
+  const columnCount = rows.reduce((max, r) => Math.max(max, r.length), 0);
+  if (columnCount === 0) return "";
+  const colWidths: number[] = new Array(columnCount).fill(0);
+  for (const r of rows) {
+    for (let i = 0; i < columnCount; i += 1) {
+      const t = r[i]?.text || "";
+      colWidths[i] = Math.max(colWidths[i], t.length, 3);
+    }
+  }
+  const pad = (s: string, w: number) =>
+    s + " ".repeat(Math.max(0, w - s.length));
+  const headerRow = rows[0];
+  const hasHeader = headerRow.some((c) => c.isHeader);
+  let out = "\n";
+  const headerTexts = new Array(columnCount)
+    .fill(0)
+    .map((_, i) => (hasHeader ? headerRow[i]?.text || "" : ""));
+  out += `| ${headerTexts.map((t, i) => pad(t, colWidths[i])).join(" | ")} |\n`;
+  out += `| ${colWidths.map((w) => "-".repeat(Math.max(3, w))).join(" | ")} |\n`;
+  const body = hasHeader ? rows.slice(1) : rows;
+  for (const r of body) {
+    out += `| ${new Array(columnCount)
+      .fill(0)
+      .map((_, i) => pad(r[i]?.text || "", colWidths[i]))
+      .join(" | ")} |\n`;
+  }
+  return out;
+}
+
 export const TableNodeView: React.FC<ReactNodeViewProps> = ({
   editor,
   getPos,
@@ -397,6 +505,9 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
 export const TableWithControls = Table.extend({
   addNodeView() {
     return ReactNodeViewRenderer(TableNodeView);
+  },
+  renderMarkdown: (node, h) => {
+    return renderWerSuTable(node as never, h as never);
   },
 });
 
