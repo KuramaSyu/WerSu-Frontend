@@ -60,39 +60,35 @@ function App() {
     <ThemeProvider theme={theme}>
       {/* <CssBaseline /> */}
       <Router>
-        <Box
+        {/* <Box
           sx={{
             width: "100vw",
             height: "100vh",
             display: "flex",
             flexDirection: "column",
             overflow: "hidden", // Prevents content from growing beyond 100vh
-            backgroundColor: theme.palette.background.default,
           }}
-        >
-          <Bootstrap />
-          <NavigationRecorder />
-          <LayoutProvider>
-            <Routes>
-              <Route element={<AppShell />}>
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/" element={<HomePage />} />
-                <Route path="/n/:id" element={<NotePage />} />
-                <Route path="/d/:id" element={<DirectoryView />} />
-                <Route path="/d/:id/edit" element={<DirectoryEditPage />} />
-                <Route path="/d/:id/new" element={<CreateSubdirectoryPage />} />
-                <Route path="/graph" element={<FileGraphPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
-                <Route
-                  path="/public/n/:share_id"
-                  element={<PublicNotePage />}
-                />
-                <Route path="/docs/*" element={<SwaggerDocs />} />
-              </Route>
-            </Routes>
-          </LayoutProvider>
-          <InfoDisplay />
-        </Box>
+        > */}
+        <Bootstrap />
+        <NavigationRecorder />
+        <LayoutProvider>
+          <Routes>
+            <Route element={<AppShell />}>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/" element={<HomePage />} />
+              <Route path="/n/:id" element={<NotePage />} />
+              <Route path="/d/:id" element={<DirectoryView />} />
+              <Route path="/d/:id/edit" element={<DirectoryEditPage />} />
+              <Route path="/d/:id/new" element={<CreateSubdirectoryPage />} />
+              <Route path="/graph" element={<FileGraphPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/public/n/:share_id" element={<PublicNotePage />} />
+              <Route path="/docs/*" element={<SwaggerDocs />} />
+            </Route>
+          </Routes>
+        </LayoutProvider>
+        <InfoDisplay />
+        {/* </Box> */}
       </Router>
     </ThemeProvider>
   );
