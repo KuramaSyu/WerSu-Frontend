@@ -1,7 +1,20 @@
 import React from "react";
-import { Box, Paper, Stack } from "@mui/material";
-import { SIDE_PANEL_ELEVATION, TOP_BAR_ELEVATION } from "../../statics";
+import { Box, Stack } from "@mui/material";
 import { useThemeStore } from "../../zustand/useThemeStore";
+
+/**
+ * Visual style for the panel shell.
+ *
+ *   - `"plain"` (default): transparent, no border, no shadow. Used on
+ *     the LEFT rail, where the rail itself already paints the canvas
+ *     (background.default) and content sits directly on it.
+ *   - `"outlined"`: paper background with a 1px divider-coloured
+ *     border and elevation 0. Used on the RIGHT rail, which is
+ *     transparent and sits on the shell's paper canvas — the outlined
+ *     shell groups the section children into one visible card so they
+ *     read as outlined boxes rather than loose rows.
+ */
+export type UpperPanelVariant = "plain" | "outlined";
 
 export interface UpperPanelProps {
   /** Sections stacked vertically inside the panel body. */
@@ -20,34 +33,48 @@ export interface UpperPanelProps {
    * without inheriting the body's padding.
    */
   header?: React.ReactNode;
+  /**
+   * Shell variant. Defaults to `"plain"` for backwards compatibility
+   * with the left rail. Right-rail callers pass `"outlined"` to get
+   * the bordered card grouping.
+   */
+  variant?: UpperPanelVariant;
 }
 
 /**
- * Canonical side-rail panel: the `Paper` shell, the section spacing, the
- * background, the rounded corners, the dark/light elevation, and the
- * inner scroll container all live here.
+ * Canonical side-rail panel: section spacing and the scroll container.
  *
- * Every left-rail call-site (Home, DirectoryView, Settings, the home
- * content view, the note route) routes through this component so the
- * shell, color, and shape can never drift apart.
+ * The default `"plain"` variant has no shell — content sits directly
+ * on the rail's canvas. The `"outlined"` variant wraps the sections
+ * in a paper-toned card with a 1px border, used by the right rail so
+ * its content reads as outlined boxes against the shell's paper
+ * canvas.
+ *
+ * Every side-rail call-site routes through this component so the
+ * spacing and shape can never drift apart.
  */
 export const UpperPanel: React.FC<UpperPanelProps> = ({
   children,
   spacing = 2,
   header,
+  variant = "plain",
 }) => {
   const { theme } = useThemeStore();
   return (
-    <Paper
-      elevation={SIDE_PANEL_ELEVATION}
+    <Box
       sx={{
-        backgroundColor: theme.palette.background.paper,
-        borderRadius: 2,
-        overflow: "hidden",
         display: "flex",
         flexDirection: "column",
         height: "100%",
         width: "100%",
+        ...(variant === "outlined" && {
+          // Right-rail outline: a single vertical line on the left
+          // edge (matches the visual "this section sits next to the
+          // canvas" reading) instead of a full 4-sided border. The
+          // left rail keeps the plain variant (no border at all).
+          backgroundColor: theme.palette.background.paper,
+          borderLeft: `1px solid ${theme.palette.divider}`,
+        }),
       }}
     >
       <Box sx={{ overflowY: "auto", flex: 1, minHeight: 0 }}>
@@ -56,6 +83,6 @@ export const UpperPanel: React.FC<UpperPanelProps> = ({
           <Stack spacing={spacing}>{children}</Stack>
         </Box>
       </Box>
-    </Paper>
+    </Box>
   );
 };
