@@ -37,7 +37,7 @@ export const LeftPanelToggle: React.FC = () => {
         onClick={handleClick}
         sx={{
           padding: M1,
-          color: theme.palette.contrast,
+          color: theme.palette.text.primary,
         }}
       >
         {leftPanelOpen ? (
@@ -77,7 +77,7 @@ export const RightPanelToggle: React.FC = () => {
         onClick={handleClick}
         sx={{
           padding: M1,
-          color: theme.palette.contrast,
+          color: theme.palette.text.primary,
         }}
       >
         {rightPanelOpen ? (
