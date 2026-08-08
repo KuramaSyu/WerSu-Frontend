@@ -118,9 +118,28 @@ export const formatActivityTimestamp = (value: string): string => {
 export const formatActivityLabel = (
   activity: NoteVersionSummaryReply,
 ): string => {
-  const note = queryClient.getQueryData<Note>(["notes", activity.note_id]);
+  // Cache lookup is a prefix scan rather than an exact-key read,
+  // since it contains user key as last key.
+  const matches = queryClient.getQueriesData<Note>({
+    queryKey: ["notes"],
+    exact: false,
+  });
+  let title: string | undefined;
+  for (const [key, data] of matches) {
+    if (!data?.title) continue;
+    let matched = false;
+    for (const segment of key) {
+      if (segment === activity.note_id) {
+        matched = true;
+        break;
+      }
+    }
+    if (!matched) continue;
+    title = data.title;
+    break;
+  }
   const v = activity.version_index;
-  return `${note?.title || activity.note_id} ` + (v > 1 ? `(v${v})` : "");
+  return `${title || activity.note_id} ` + (v > 1 ? `(v${v})` : "");
 };
 
 /**
