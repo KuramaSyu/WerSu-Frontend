@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { getStatusApi, type StatusResponse } from "../../api/StatusApi";
@@ -38,13 +38,26 @@ export function useServiceReachability(): ServiceReachability {
     query.status === "success" &&
     !query.isLoading &&
     (data?.overall_ok ?? false);
-  const unreachableServices = unreachableServiceLabels(data);
   // Query failure = "everything down" for both copy and dedupe.
   const queryFailed = query.status === "error";
-  const effectiveUnreachable =
-    queryFailed && unreachableServices.length === 0
+  // `unreachableServiceLabels(...)` returns a brand-new array on
+  // every call. Memoize it on the status payload so the reference
+  // stays stable across renders; without this, anything that lists
+  // the array in a `useEffect` dep array would re-run on every
+  // render -> setState -> re-render -> infinite update loop. (The
+  // original `useEffect` below is what crashed with "Maximum
+  // update depth exceeded" when the LeftRail started calling this
+  // hook on every layout render.)
+  const unreachableServices = useMemo(
+    () => unreachableServiceLabels(data),
+    [data],
+  );
+  // `effectiveUnreachable` is also a fresh array unless memoized.
+  const effectiveUnreachable = useMemo(() => {
+    return queryFailed && unreachableServices.length === 0
       ? ["Backend"]
       : unreachableServices;
+  }, [queryFailed, unreachableServices]);
 
   // Ref because we never render from it; just dedupe by outage shape.
   const lastAnnouncedRef = useRef<string[]>([]);
