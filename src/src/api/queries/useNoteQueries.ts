@@ -22,7 +22,8 @@ import { getNoteApi, type INoteApi } from "../NoteApi";
 import { updateNoteParentDirectory } from "../../utils/updateNoteParentDirectory";
 import { useDirectoryStore } from "../../zustand/useDirectoryStore";
 import { useTagStore } from "../../zustand/useTagStore";
-import { DiscordUserImpl } from "../../components/DiscordLogin";
+import { WersuUserImpl } from "../../components/DiscordLogin";
+import { useUserKey } from "./useUser";
 
 export interface UpdateNoteVariables {
   noteId: string;
@@ -71,8 +72,8 @@ export const noteQueries = {
    * Returns a `NotesReply` (notes + referenced directories + tags) so
    * the directory and tag stores stay in sync.
    */
-  list: () => ({
-    queryKey: ["notes"],
+  list: (userKey: string | null) => ({
+    queryKey: ["notes", userKey],
 
     queryFn: async (): Promise<NotesReply> =>
       mergeNotesReplyIntoStores(
@@ -89,12 +90,13 @@ export const noteQueries = {
    * two query stores drifting apart.
    */
   search: (
+    userKey: string | null,
     searchType: RestNotesSearchType,
     query: string,
     limit: number,
     offset: number,
   ) => ({
-    queryKey: ["notes", "search", searchType, query],
+    queryKey: ["notes", "search", searchType, query, userKey],
 
     queryFn: async (): Promise<NotesReply> =>
       mergeNotesReplyIntoStores(
@@ -106,8 +108,8 @@ export const noteQueries = {
    * Full note details with permissions and full content
    * @returns Note
    */
-  detail: (noteId: string) => ({
-    queryKey: ["notes", noteId],
+  detail: (userKey: string | null, noteId: string) => ({
+    queryKey: ["notes", noteId, userKey],
 
     queryFn: () => noteApi.get(noteId),
 
@@ -127,8 +129,9 @@ export const noteQueries = {
  * @returns MinimalNote[] of the latest 50 notes
  */
 export function useLatestNotes() {
+  const userKey = useUserKey();
   return useQuery({
-    ...noteQueries.list(),
+    ...noteQueries.list(userKey),
     select: (reply: NotesReply | undefined) => reply?.notes ?? [],
   });
 }
@@ -145,15 +148,18 @@ export function useInfiniteNoteSearch(
   limit = 20,
   enabled = true,
 ) {
+  const userKey = useUserKey();
   return useInfiniteQuery({
-    queryKey: ["notes", "search", searchType, query],
+    queryKey: ["notes", "search", searchType, query, userKey],
 
     /**
      * pageParam is our offset.
      * First page starts with offset=0
      */
     queryFn: ({ pageParam = 0 }) =>
-      noteQueries.search(searchType, query, limit, pageParam).queryFn(),
+      noteQueries
+        .search(userKey, searchType, query, limit, pageParam)
+        .queryFn(),
 
     /**
      * Determines pageParam = offset for the next call. We use the note
@@ -190,8 +196,9 @@ export function useInfiniteNoteSearch(
  * @returns Note
  */
 export function useNote(noteId?: string) {
+  const userKey = useUserKey();
   return useQuery({
-    queryKey: ["notes", noteId],
+    queryKey: ["notes", noteId, userKey],
 
     queryFn: () => {
       if (!noteId) {
@@ -215,8 +222,9 @@ export function useNoteVersion(
   noteId?: string,
   versionIndex?: number,
 ): UseQueryResult<Note, Error> {
+  const userKey = useUserKey();
   return useQuery({
-    queryKey: ["versions", noteId, versionIndex],
+    queryKey: ["versions", noteId, versionIndex, userKey],
 
     queryFn: () => {
       if (!noteId || !versionIndex) {
@@ -233,6 +241,7 @@ export function useNoteVersion(
 
 export function useUpdateNote() {
   const queryClient = useQueryClient();
+  const userKey = useUserKey();
 
   return useMutation({
     mutationFn: ({
@@ -248,7 +257,7 @@ export function useUpdateNote() {
      * refresh detail cache instantly
      */
     onSuccess: (updatedNote) => {
-      queryClient.setQueryData(["notes", updatedNote.id], updatedNote);
+      queryClient.setQueryData(["notes", updatedNote.id, userKey], updatedNote);
 
       // Refresh notes lists and searches
       queryClient.invalidateQueries({
@@ -273,6 +282,7 @@ export function useUpdateNote() {
  */
 export function useCreateNote() {
   const queryClient = useQueryClient();
+  const userKey = useUserKey();
 
   return useMutation({
     mutationFn: ({ title, content }: { title: string; content: string }) =>
@@ -280,19 +290,21 @@ export function useCreateNote() {
 
     onSuccess: (createdNote) => {
       // update "notes" e.g. latest 50
-      queryClient.setQueryData<NotesReply | undefined>(["notes"], (old) =>
-        old
-          ? {
-              ...old,
-              notes: [createdNote, ...old.notes],
-            }
-          : old,
+      queryClient.setQueryData<NotesReply | undefined>(
+        ["notes", userKey],
+        (old) =>
+          old
+            ? {
+                ...old,
+                notes: [createdNote, ...old.notes],
+              }
+            : old,
       );
 
-      queryClient.setQueryData(["notes", createdNote.id], createdNote);
+      queryClient.setQueryData(["notes", createdNote.id, userKey], createdNote);
 
       // Update the detail cache
-      queryClient.setQueryData(["notes", createdNote.id], createdNote);
+      queryClient.setQueryData(["notes", createdNote.id, userKey], createdNote);
 
       // Refresh activity lists so the new note appears immediately
       queryClient.invalidateQueries({
@@ -307,6 +319,7 @@ export function useCreateNote() {
  */
 export function useDeleteNote() {
   const queryClient = useQueryClient();
+  const userKey = useUserKey();
 
   return useMutation({
     mutationFn: (noteId: string) => noteApi.delete(noteId),
@@ -315,7 +328,7 @@ export function useDeleteNote() {
     onSuccess: (_, noteId) => {
       // remove detail cache
       queryClient.removeQueries({
-        queryKey: ["notes", noteId],
+        queryKey: ["notes", noteId, userKey],
       });
 
       // refresh all lists/searches
@@ -332,6 +345,7 @@ export function useDeleteNote() {
  */
 export function useMoveNote() {
   const queryClient = useQueryClient();
+  const userKey = useUserKey();
 
   return useMutation({
     mutationFn: ({
@@ -346,7 +360,7 @@ export function useMoveNote() {
     onSuccess: (_, noteId) => {
       // remove detail cache
       queryClient.removeQueries({
-        queryKey: ["notes", noteId],
+        queryKey: ["notes", noteId, userKey],
       });
 
       // refresh all lists/searches
@@ -358,18 +372,25 @@ export function useMoveNote() {
     // patch the note permissions and update it
     onMutate: async ({ noteId, directoryId }) => {
       await queryClient.cancelQueries({
-        queryKey: ["notes", noteId],
+        queryKey: ["notes", noteId, userKey],
       });
 
-      const previous = queryClient.getQueryData<Note>(["notes", noteId]);
+      const previous = queryClient.getQueryData<Note>([
+        "notes",
+        noteId,
+        userKey,
+      ]);
       const previousParentId = previous?.directory_ids?.[0];
-      queryClient.setQueryData(["notes", noteId], (note: Note | undefined) => {
-        if (!note) {
-          return note;
-        }
+      queryClient.setQueryData(
+        ["notes", noteId, userKey],
+        (note: Note | undefined) => {
+          if (!note) {
+            return note;
+          }
 
-        return updateNoteParentDirectory(note, directoryId);
-      });
+          return updateNoteParentDirectory(note, directoryId);
+        },
+      );
 
       return { previousParentId };
     },
@@ -392,13 +413,13 @@ export function useMoveNote() {
       // invalidate their cache
       for (const directoryId of directoryIds) {
         queryClient.removeQueries({
-          queryKey: ["directory", "notes", directoryId],
+          queryKey: ["directory", "notes", directoryId, userKey],
         });
       }
 
       // invalidate default view
       queryClient.invalidateQueries({
-        queryKey: ["notes"],
+        queryKey: ["notes", userKey],
         exact: true,
       });
 

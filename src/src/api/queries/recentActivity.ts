@@ -1,10 +1,7 @@
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { UserApi } from "../UserApi";
 import { useAuthStore } from "../../zustand/useAuthStore";
-import {
-  DiscordUserImpl,
-  type DiscordUser,
-} from "../../components/DiscordLogin";
+import { WersuUserImpl, type WersuUser } from "../../components/DiscordLogin";
 import { getActivityApi } from "../ActivityApi";
 import type { NoteVersionSummaryReply } from "../models/activity";
 

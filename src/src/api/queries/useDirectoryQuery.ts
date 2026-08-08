@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getDirectoryApi } from "../DirectoryApi";
 import { UserError } from "../models/UserError";
+import { useUserKey } from "./useUser";
 
 // Use the registered singleton so the share-token provider installed on
 // `Bootstrap` reaches this instance. See `useNoteQueries` for rationale.
@@ -20,7 +21,8 @@ const shouldRetryFetchDirectory = (
 
 export const directoryQueryKeys = {
   all: ["directory"] as const,
-  detail: (directoryId: string) => ["directory", directoryId] as const,
+  detail: (userKey: string | null, directoryId: string) =>
+    ["directory", directoryId, userKey] as const,
 };
 
 /**
@@ -33,8 +35,9 @@ export const directoryQueryKeys = {
  * `useDirectoryStore` cache while this query is in flight.
  */
 export function useDirectory(directoryId?: string) {
+  const userKey = useUserKey();
   return useQuery({
-    queryKey: directoryQueryKeys.detail(directoryId ?? ""),
+    queryKey: directoryQueryKeys.detail(userKey, directoryId ?? ""),
     queryFn: async () => {
       if (!directoryId) {
         return null;

@@ -3,6 +3,7 @@ import { getDirectoryApi, type ListDirectoryNotesQuery } from "../DirectoryApi";
 import type { NotesReply } from "../models/search";
 import { useDirectoryStore } from "../../zustand/useDirectoryStore";
 import { useTagStore } from "../../zustand/useTagStore";
+import { useUserKey } from "./useUser";
 
 // Use the registered singleton so the share-token provider installed on
 // `Bootstrap` reaches this instance. See `useNoteQueries` for rationale.
@@ -10,8 +11,11 @@ const directoryApi = getDirectoryApi();
 
 export const directoryNotesQueryKeys = {
   all: ["directory", "notes"] as const,
-  list: (directoryId: string, query: ListDirectoryNotesQuery = {}) =>
-    ["directory", "notes", directoryId, query] as const,
+  list: (
+    userKey: string | null,
+    directoryId: string,
+    query: ListDirectoryNotesQuery = {},
+  ) => ["directory", "notes", directoryId, query, userKey] as const,
 };
 
 /**
@@ -50,8 +54,9 @@ export function useDirectoryNotesQuery(
   directoryId?: string,
   query: ListDirectoryNotesQuery = {},
 ) {
+  const userKey = useUserKey();
   return useQuery<NotesReply>({
-    queryKey: directoryNotesQueryKeys.list(directoryId ?? "", query),
+    queryKey: directoryNotesQueryKeys.list(userKey, directoryId ?? "", query),
     queryFn: async () => {
       if (!directoryId) {
         throw new Error("directoryId required");

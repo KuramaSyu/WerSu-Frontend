@@ -2,10 +2,8 @@ import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { getUserApi } from "../UserApi";
 import { UserError } from "../models/UserError";
 import { useAuthStore } from "../../zustand/useAuthStore";
-import {
-  DiscordUserImpl,
-  type DiscordUser,
-} from "../../components/DiscordLogin";
+import { useUserStore } from "../../zustand/userStore";
+import { WersuUserImpl, type WersuUser } from "../../components/DiscordLogin";
 
 // Use the registered singleton so the share-token provider installed on
 // `Bootstrap` reaches this instance. `UserApi` doesn't extend the bearer
@@ -13,7 +11,7 @@ import {
 // lets us add share-token support later without touching call sites.
 const userApi = getUserApi();
 
-const USER_FETCH_RETRY_LIMIT = 3;
+const USER_FETCH_RETRY_LIMIT = 1;
 
 /**
  * `react-query` retry predicate. Returns `false` to skip further
@@ -30,17 +28,32 @@ const shouldRetryFetchUser = (
 };
 
 /**
+ * Identity key for `queryKey` tuples: the logged-in user id when
+ * one is known, otherwise the public-share JWT, otherwise `null`.
+ * Embedding this in a queryKey forces a refetch when the viewer
+ * switches (anonymous -> login, login -> logout, share -> different
+ * share).
+ */
+export function useUserKey(): string | null {
+  const userId = useUserStore((s) => s.user?.id ?? null);
+  const shareToken = useAuthStore((s) => s.shareAccessToken);
+  return userId ?? shareToken;
+}
+
+/**
  * Hook to fetch the current user with discord login authentication.
  */
-export function useUser(): UseQueryResult<DiscordUserImpl, Error> {
-  return useQuery<DiscordUser, Error, DiscordUserImpl>({
+export function useUser(): UseQueryResult<WersuUserImpl, Error> {
+  return useQuery<WersuUser, Error, WersuUserImpl>({
     queryKey: ["user"],
     queryFn: async () => {
-      return await userApi.fetchUser();
+      const result = await userApi.fetchUser();
+      console.log("useUser: fetched user", result);
+      return result;
     },
 
     // the cached entry is plain JSON -> recreate class
-    select: (data) => new DiscordUserImpl(data),
+    select: (data) => new WersuUserImpl(data),
     retry: shouldRetryFetchUser,
   });
 }
@@ -51,7 +64,7 @@ export function useUser(): UseQueryResult<DiscordUserImpl, Error> {
  */
 export function useUsers(
   userIds: string[],
-): UseQueryResult<Record<string, DiscordUser>, Error> {
+): UseQueryResult<Record<string, WersuUser>, Error> {
   return useQuery({
     queryKey: ["users", userIds],
     queryFn: async () => {
@@ -63,9 +76,9 @@ export function useUsers(
 
     // the cached entry is plain JSON -> recreate class
     select: (data) => {
-      var users: Record<string, DiscordUser> = {};
+      var users: Record<string, WersuUser> = {};
       for (const user of data) {
-        users[user.id] = new DiscordUserImpl(user);
+        users[user.id] = new WersuUserImpl(user);
       }
       return users;
     },

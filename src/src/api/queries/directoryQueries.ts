@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getDirectoryApi, type ListDirectoriesQuery } from "../DirectoryApi";
 import { useAuthStore } from "../../zustand/useAuthStore";
+import { useUserKey } from "./useUser";
 
 // Use the registered singleton so the share-token provider installed on
 // `Bootstrap` reaches this instance. See `useNoteQueries` for rationale.
@@ -31,17 +32,19 @@ const emptyStreakByKey = new Map<string, number>();
 
 export const directoryQueryKeys = {
   all: ["directories"] as const,
-  list: (query: ListDirectoriesQuery = {}) =>
-    ["directories", "list", query] as const,
-  byId: (id: string) => ["directories", "byId", id] as const,
+  list: (userKey: string | null, query: ListDirectoriesQuery = {}) =>
+    ["directories", "list", query, userKey] as const,
+  byId: (userKey: string | null, id: string) =>
+    ["directories", "byId", id, userKey] as const,
 };
 
 export const useDirectoriesQuery = (
   query: ListDirectoriesQuery,
   enabled: boolean,
-) =>
-  useQuery({
-    queryKey: directoryQueryKeys.list(query),
+) => {
+  const userKey = useUserKey();
+  return useQuery({
+    queryKey: directoryQueryKeys.list(userKey, query),
     queryFn: async () => await directoryApi.list(query),
     enabled,
     // Re-poll on empty response, because after login no dirs are displayed
@@ -62,6 +65,7 @@ export const useDirectoriesQuery = (
       return EMPTY_POLL_SCHEDULE_MS[idx];
     },
   });
+};
 
 /**
  * Fetches a single `DirectoryReply` by id. Always enabled - pass an
@@ -72,9 +76,10 @@ export const useDirectoriesQuery = (
  * populated `child_note_ids` / `child_dir_ids` before the user
  * expands the chapter.
  */
-export const useDirectoryByIdQuery = (id: string | undefined) =>
-  useQuery({
-    queryKey: directoryQueryKeys.byId(id ?? ""),
+export const useDirectoryByIdQuery = (id: string | undefined) => {
+  const userKey = useUserKey();
+  return useQuery({
+    queryKey: directoryQueryKeys.byId(userKey, id ?? ""),
     queryFn: async () => {
       if (!id) {
         throw new Error("id required");
@@ -83,3 +88,4 @@ export const useDirectoryByIdQuery = (id: string | undefined) =>
     },
     enabled: !!id,
   });
+};
