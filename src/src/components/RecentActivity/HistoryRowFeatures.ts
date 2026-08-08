@@ -309,23 +309,60 @@ export const formatHistoryRowTimestamp = (iso: string): string => {
 };
 
 /**
- * Resolves the entity title for a row entry — the note title or
- * directory display_name. Prefers the metadata snapshot the activity
- * visitor wrote (set by `extractNoteMetadata` upstream), then the
- * query cache. Returns `""` when nothing is known so the UI never
- * falls back to the raw id; callers can decide whether to hide the
- * line entirely or render an empty secondary line.
+ * True when `key` carries the entity id in any position.
+ *
+ * Production keys land as `[..., entityId, userKey]`. Tests / legacy
+ * callers seed bare `[..., entityId]` shapes — accepting both keeps
+ * this helper identity-agnostic without breaking the test fixtures.
+ */
+const keyMatchesEntity = (
+  key: readonly unknown[],
+  entityId: string,
+): boolean => {
+  for (const segment of key) {
+    if (segment === entityId) return true;
+  }
+  return false;
+};
+
+/**
+ * iff note or dir has a cache hit, return the display name. otherwise id or ""
  */
 export const formatHistoryRowLabel = (entry: HistoryRowEntry): string => {
   if (entry.action?.startsWith("directory_")) {
-    const dir = queryClient.getQueryData<{
+    if (!entry.directory_id) {
+      return "";
+    }
+
+    // fetch dir name and return name or id
+    const matches = queryClient.getQueriesData<{
       display_name?: string;
       name?: string;
-    }>(["directory", entry.directory_id]);
-    return dir?.display_name || dir?.name || "";
+    }>({
+      queryKey: ["directory"],
+      exact: false,
+    });
+    for (const [key, data] of matches) {
+      if (!data) continue;
+      if (!keyMatchesEntity(key, entry.directory_id)) continue;
+      return data.display_name || data.name || "";
+    }
+    return "";
   }
-  const note = queryClient.getQueryData<Note>(["notes", entry.note_id]);
-  return note?.title || "";
+  if (!entry.note_id) {
+    return "";
+  }
+  // return note name from cache or ""
+  const matches = queryClient.getQueriesData<Note>({
+    queryKey: ["notes"],
+    exact: false,
+  });
+  for (const [key, data] of matches) {
+    if (!data?.title) continue;
+    if (!keyMatchesEntity(key, entry.note_id)) continue;
+    return data.title;
+  }
+  return "";
 };
 
 /** Parses `metadata_json` for the snapshot keys the activity visitor emits.
