@@ -1,7 +1,7 @@
 import { BACKEND_BASE } from "../statics";
-import type { DiscordUser } from "../components/DiscordLogin";
+import type { WersuUser } from "../components/DiscordLogin";
 
-import { DiscordUserImpl } from "../components/DiscordLogin";
+import { WersuUserImpl } from "../components/DiscordLogin";
 import { useUsersStore, useUserStore } from "../zustand/userStore";
 import type { GetAcccessTokenResponse } from "./models/auth";
 import { th } from "zod/v4/locales";
@@ -10,8 +10,8 @@ import { UserError } from "./models/UserError";
 
 export interface BackendApiInterface {}
 export interface UserApiInterface {
-  fetchUser(): Promise<DiscordUser>;
-  fetchUsers(users: string[]): Promise<DiscordUser[]>;
+  fetchUser(): Promise<WersuUser>;
+  fetchUsers(users: string[]): Promise<WersuUser[]>;
   fetchAccessToken(): Promise<GetAcccessTokenResponse>;
 }
 
@@ -32,7 +32,7 @@ export class UserApi implements UserApiInterface {
    * fetches all given users if the current user has access to them.
    * @param users array of userIds to fetch
    * */
-  async fetchUsers(users: string[]): Promise<DiscordUser[]> {
+  async fetchUsers(users: string[]): Promise<WersuUser[]> {
     // currently not implemented
     const user = await this.fetchUser();
     return [user];
@@ -45,12 +45,12 @@ export class UserApi implements UserApiInterface {
       credentials: "include",
       body: JSON.stringify({ users }),
     });
-    var userData: DiscordUser[] | null = null;
+    var userData: WersuUser[] | null = null;
     if (response.ok) {
       userData = await response.json();
     }
     if (userData !== null) {
-      return userData as DiscordUser[];
+      return userData as WersuUser[];
     } else {
       this.logError(`/api/auth/users`, response.json());
       throw new Error("Failed to fetch user data");
@@ -65,13 +65,13 @@ export class UserApi implements UserApiInterface {
    * so callers (notably `useUser`'s retry policy) can tell a 404
    * "definitely not logged in" apart from a transient network error.
    * */
-  async fetchUser(): Promise<DiscordUser> {
+  async fetchUser(): Promise<WersuUser> {
     const urlPart = "/api/auth/user";
     const response = await fetch(`${BACKEND_BASE}${urlPart}`, {
       credentials: "include",
     });
     if (response.ok) {
-      const userData = (await response.json()) as DiscordUser;
+      const userData = (await response.json()) as WersuUser;
       return userData;
     }
     const description = await response.text().catch(() => "");

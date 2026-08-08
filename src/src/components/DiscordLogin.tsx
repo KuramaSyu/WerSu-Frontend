@@ -16,61 +16,59 @@ import { BACKEND_BASE } from "../statics";
 import LogoutIcon from "@mui/icons-material/Logout";
 import { useBreakpoint } from "../hooks/useBreakpoint";
 
-// Define TypeScript interface for Discord user data
-interface DiscordUser {
+// Shape returned by the backend for an authenticated WerSu user.
+// `avatar_url` is a fully-resolved CDN URL, so we don't need to
+// reconstruct it from raw Discord ids anymore.
+interface WersuUser {
   id: string;
-  discord_id: string;
   username: string;
-  discriminator: string;
-  avatar: string;
+  avatar_url: string;
   email: string;
+  email_verified_at: string;
+  is_active: boolean;
 
   getAvatarUrl(): string;
 }
 
-// Create a DiscordUser class that implements the interface
-class DiscordUserImpl implements DiscordUser {
+class WersuUserImpl implements WersuUser {
   id: string;
-  discord_id: string;
   username: string;
-  discriminator: string;
-  avatar: string;
+  avatar_url: string;
   email: string;
+  email_verified_at: string;
+  is_active: boolean;
 
-  // the users streak - this is not part of the DiscordUser interface
+  // the users streak - this is not part of the WersuUser interface
   streak: number | null;
 
   constructor(data: {
     id: string;
-    discord_id: string;
     username: string;
-    discriminator: string;
-    avatar: string;
+    avatar_url: string;
     email: string;
+    email_verified_at: string;
+    is_active: boolean;
   }) {
     this.id = data.id;
-    this.discord_id = data.discord_id;
     this.username = data.username;
-    this.discriminator = data.discriminator;
-    this.avatar = data.avatar;
+    this.avatar_url = data.avatar_url;
     this.email = data.email;
+    this.email_verified_at = data.email_verified_at;
+    this.is_active = data.is_active;
     this.streak = null;
   }
 
   getAvatarUrl(): string {
-    if (!this.avatar) {
-      // Return Discord's default avatar based on the user's discriminator
-      const defaultAvatarIndex = this.discriminator
-        ? parseInt(this.discriminator) % 5
-        : 0;
-      return `https://cdn.discordapp.com/embed/avatars/${defaultAvatarIndex}.png`;
+    if (this.avatar_url) {
+      return this.avatar_url;
     }
-    return `https://cdn.discordapp.com/avatars/${this.discord_id}/${this.avatar}.png`;
+    // No custom avatar -> fall back to Discord's first embed default.
+    return `https://cdn.discordapp.com/embed/avatars/0.png`;
   }
 }
 
-export { DiscordUserImpl };
-export type { DiscordUser };
+export { WersuUserImpl };
+export type { WersuUser };
 
 const DiscordLogin: React.FC = () => {
   const { user, setUser } = useUserStore();
@@ -189,7 +187,7 @@ const DiscordLogin: React.FC = () => {
 export default DiscordLogin;
 
 interface DiscordViewModelProps {
-  user: DiscordUserImpl | undefined;
+  user: WersuUserImpl | undefined;
 }
 
 export const DiscordViewModel: React.FC<DiscordViewModelProps> = ({ user }) => {
