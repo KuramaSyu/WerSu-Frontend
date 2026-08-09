@@ -9,7 +9,7 @@ import {
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useState } from "react";
-import { M1, M3 } from "../../statics";
+import { M1, M2, M3 } from "../../statics";
 import { useThemeStore } from "../../zustand/useThemeStore";
 
 export interface PanelSectionProps {
@@ -58,7 +58,7 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
 
   const body = <Stack spacing={spacing}>{children}</Stack>;
 
-  // Single source of truth for the title row. `inAccordion` tweaks the
+  // `inAccordion` tweaks the
   // spacing for use inside an `AccordionSummary` (which already reserves
   // its own vertical padding).
   const renderTitleRow = (inAccordion: boolean) => (
@@ -163,7 +163,8 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
 
   // Plain (non-collapsible) title -> shared title row + optional divider + body.
   return (
-    <Box>
+    // px used to allign with padding of accordion
+    <Box sx={{ px: M2 }}>
       {renderTitleRow(false)}
       {children && (
         <>
