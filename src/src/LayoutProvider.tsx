@@ -32,8 +32,12 @@ type LayoutContextType = {
   setRightPanelUserOverride: (override: boolean) => void;
   setLeftPanelSize: (size: string) => void;
   setRightPanelSize: (size: string) => void;
-  showTopBar: boolean;
-  setShowTopBar: (show: boolean) => void;
+  // `true` while the top panel (WerSu wordmark + search bar) is
+  // visible. The AppShell owns this state and flips it via the
+  // scroll watchdog; the rails read it to slide their content up
+  // (margin-top transition) when the top panel hides.
+  showTopPanel: boolean;
+  setShowTopPanel: (show: boolean) => void;
   clearPanels: () => void;
 };
 
@@ -72,7 +76,7 @@ export const LayoutProvider: React.FC<AppLayoutProps> = ({
   // last content change. See `LayoutContextType.leftPanelUserOverride`.
   const [leftPanelUserOverride, setLeftPanelUserOverride] = useState(false);
   const [rightPanelUserOverride, setRightPanelUserOverride] = useState(false);
-  const [showTopBar, setShowTopBar] = useState(true);
+  const [showTopPanel, setShowTopPanel] = useState(true);
   const [leftPanelSize, setLeftPanelSize] = useState(defaultLeftPanelSize);
   const [rightPanelSize, setRightPanelSize] = useState(defaultRightPanelSize);
 
@@ -101,8 +105,8 @@ export const LayoutProvider: React.FC<AppLayoutProps> = ({
         setRightPanelUserOverride,
         setLeftPanelSize,
         setRightPanelSize,
-        showTopBar,
-        setShowTopBar,
+        showTopPanel,
+        setShowTopPanel,
       }}
     >
       {children}
