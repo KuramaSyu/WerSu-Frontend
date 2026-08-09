@@ -1,7 +1,6 @@
 import { Box, CircularProgress, Stack, Typography } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import TopBar from "../../components/TopBar";
 import { DirectoryApi } from "../../api/DirectoryApi";
 import type { DirectoryReply } from "../../api/models/directory";
 import {
@@ -402,10 +401,8 @@ export function FileGraphPage(): React.ReactElement {
         flexDirection: "column",
         height: "100dvh",
         overflow: "hidden",
-        paddingTop: M1,
       }}
     >
-      <TopBar />
       <Box
         sx={{
           flex: 1,
