@@ -6,9 +6,15 @@ import { useSearchNotesStore } from "../../zustand/useSearchNotesStore";
 import SearchResultsOverlay from "./Main";
 import { isCtrlPlus } from "../../utils/CtrlPlus";
 import { KeyboardShortcut } from "../../utils/renderShortcut";
-import { topbarContrastText } from "../../theme/topbarContrastText";
 
-// top-bar button that opens the search dialog with Ctrl+K
+// Side-rail button that opens the search dialog with Ctrl+K.
+// The button fills its container (`width: 100%`) so it adapts to
+// whatever rail width is in effect -- narrow when the rail is
+// collapsed, full when the rail is open. Border + text colour use
+// `text.primary` so it stays readable on the rail's
+// `background.default` surface (the previous topbar-tuned
+// `topbarContrastText` resolved to a white-ish tone in light mode
+// and disappeared against the light rail background).
 export const SearchBar: React.FC = () => {
   const theme = useThemeStore((s) => s.theme);
   const isDialogOpen = useSearchNotesStore((s) => s.isDialogOpen);
@@ -28,19 +34,21 @@ export const SearchBar: React.FC = () => {
   return (
     <>
       <Button
-        variant="text"
+        variant="outlined"
         onClick={() => setIsDialogOpen(true)}
         sx={{
-          border: `1px solid ${topbarContrastText(theme)}`,
-          color: topbarContrastText(theme),
+          // border: "1px solid",
+
+          color: theme.palette.text.primary,
           justifyContent: "space-between",
-          borderRadius: theme.shape.borderRadius,
           p: 1,
-          px: 2,
-          width: `clamp(400px, 30%, 600px)`,
+          width: "clamp(12.5rem, 20vw, 25rem)",
+          minWidth: 0,
+          minHeight: 0,
         }}
       >
-        <SearchIcon /> Search <KeyboardShortcut shortcut="ctrl+k" />
+        <SearchIcon fontSize="small" /> Search{" "}
+        <KeyboardShortcut shortcut="ctrl+k" />
       </Button>
 
       <SearchResultsOverlay
