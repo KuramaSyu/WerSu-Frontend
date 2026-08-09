@@ -12,7 +12,6 @@ import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { LoginPage } from "../LoginPage/Main";
 
 import { MainContent } from "./MainContent";
-import TopBar from "../../components/TopBar";
 import { useUser } from "../../api/queries/useUser";
 
 export const MainPage: React.FC = () => {
