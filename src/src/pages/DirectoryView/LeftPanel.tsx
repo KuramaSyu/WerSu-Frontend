@@ -7,7 +7,6 @@ import { PanelSection } from "../../components/Panels/PanelSection";
 import { NavigationSection } from "../../components/Panels/NavigationSection";
 import { UpperPanel } from "../../components/Panels/UpperPanel";
 import { useDirectory } from "../../api/queries/useDirectoryQuery";
-import { DirectoryActions } from "./DirectoryActions";
 import type { CascadePreview } from "./DirectoryFeatures.hook";
 
 interface DirectoryActionsProps {
@@ -20,15 +19,15 @@ interface DirectoryActionsProps {
 }
 
 /**
- * Left-panel directory actions: navigation, directory tree, recent activity.
+ * Left-panel directory actions: navigation, directory tree, recent
+ * activity. The FAB + speed-dial used to live here too, but they
+ * disappeared with the panel on mobile (the rail is hidden by
+ * default on mobile + `COLLAPSED_PANEL_SIZE = 0px`). They now live
+ * in `DirectoryView/Main.tsx` so they stay visible regardless of
+ * the rail's open / closed state.
  */
 export const DirectoryLeftPanel: React.FC<DirectoryActionsProps> = ({
   currentNode,
-  cascadePreview,
-  handleCreateNote,
-  handleCreateSubdirectory,
-  handleRenameDirectory,
-  handleDeleteDirectory,
 }) => {
   const { data: dir } = useDirectory(
     currentNode.getId() === "root" ? undefined : currentNode.getId(),
@@ -36,14 +35,6 @@ export const DirectoryLeftPanel: React.FC<DirectoryActionsProps> = ({
   return (
     <UpperPanel>
       <NavigationSection />
-      <DirectoryActions
-        currentNode={currentNode}
-        cascadePreview={cascadePreview}
-        handleCreateNote={handleCreateNote}
-        handleCreateSubdirectory={handleCreateSubdirectory}
-        handleRenameDirectory={handleRenameDirectory}
-        handleDeleteDirectory={handleDeleteDirectory}
-      />
       <DirectorySideView />
       <PanelSection
         title="Recent activity"

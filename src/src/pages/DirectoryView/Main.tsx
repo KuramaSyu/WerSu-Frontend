@@ -2,6 +2,7 @@ import { Divider, Paper, Stack, Typography } from "@mui/material";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useState } from "react";
 import { DirectoryLeftPanel } from "./LeftPanel";
+import { DirectoryActions } from "./DirectoryActions";
 import { useLeftPanel, usePanelSize } from "../../LayoutProvider";
 import { DirectoryBreadCrumbs } from "./DirectoryBreadCrumbs";
 import { DirectoryItem } from "./DirectoryItem";
@@ -106,7 +107,7 @@ export const DirectoryView: React.FC = () => {
       <DragDropProvider onDragEnd={() => undefined}>
         <Stack direction="row" spacing={M4} sx={{}}>
           <Paper
-            elevation={2}
+            elevation={0}
             sx={{
               flex: 1,
               p: M3,
@@ -195,6 +196,17 @@ export const DirectoryView: React.FC = () => {
         mode={editDirectoryId ? "edit" : "create"}
         directoryId={editDirectoryId}
         parentId={createDirectoryParentId}
+      />
+      {/* FAB + directory settings speed dial. Lives in the main
+          canvas (not the left rail) so it stays reachable on
+          mobile, where the rail is hidden by default. */}
+      <DirectoryActions
+        currentNode={currentNode}
+        cascadePreview={cascadePreview}
+        handleCreateNote={handleCreateNote}
+        handleCreateSubdirectory={handleCreateSubdirectory}
+        handleRenameDirectory={handleRenameDirectory}
+        handleDeleteDirectory={handleDeleteDirectory}
       />
     </Paper>
   );

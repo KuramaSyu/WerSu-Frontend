@@ -1,4 +1,4 @@
-import { Box, ButtonBase } from "@mui/material";
+import { Box, ButtonBase, Paper } from "@mui/material";
 import type { MinimalNote } from "../../api/models/search";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { ChapterRowView } from "./ChapterRowView";
@@ -60,7 +60,8 @@ export const DirectoryItem: React.FC<DirectoryItemProps> = (props) => {
         overflow: "hidden",
       }}
     >
-      <Box
+      <Paper
+        elevation={2}
         sx={{
           display: "flex",
           alignItems: variant === "directory" ? "center" : "flex-start",
@@ -68,7 +69,7 @@ export const DirectoryItem: React.FC<DirectoryItemProps> = (props) => {
           px: 2,
           py: 1.5,
           borderRadius: 2,
-          backgroundColor: "background.paper",
+
           width: "100%",
         }}
       >
@@ -82,7 +83,7 @@ export const DirectoryItem: React.FC<DirectoryItemProps> = (props) => {
         ) : (
           <NoteRowView note={props.note} accentColor={accentColor} />
         )}
-      </Box>
+      </Paper>
     </ButtonBase>
   );
 };

@@ -19,6 +19,8 @@ import type { CascadePreview } from "./DirectoryFeatures.hook";
 import { TooltipButton } from "../../components/ColoredCollapseButton";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import CreateFab from "../../components/CreateFab";
+import { useBreakpoint } from "../../hooks/useBreakpoint";
+import { MOBILE_BOTTOM_BAR_CLEARANCE } from "../../statics";
 
 export interface DirectoryActionsProps {
   currentNode: HirarchyItem;
@@ -108,6 +110,7 @@ export const DirectoryActions: React.FC<DirectoryActionsProps> = ({
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const { isMobile } = useBreakpoint();
 
   const isFavourite = useFavouritesStore((s) =>
     directoryId ? Boolean(s.directories[directoryId]) : false,
@@ -142,9 +145,15 @@ export const DirectoryActions: React.FC<DirectoryActionsProps> = ({
   return (
     <Box
       sx={{
-        position: "absolute",
+        // Fixed so the FAB + speed dial stay anchored to the
+        // viewport regardless of the page's scroll position
+        // or the left rail's open / closed state.
+        position: "fixed",
         right: theme.spacing(2),
-        bottom: theme.spacing(2),
+        // Bottom bar floats at the bottom of the viewport on
+        // mobile; lift the FAB + speed dial above it so they
+        // stay reachable and don't sit under the bar.
+        bottom: isMobile ? MOBILE_BOTTOM_BAR_CLEARANCE : theme.spacing(2),
         display: "flex",
         flexDirection: "row",
         alignItems: "flex-end",
