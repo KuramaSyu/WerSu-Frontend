@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Box, Stack, Typography } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import CreateIcon from "@mui/icons-material/Create";
@@ -12,6 +12,7 @@ import {
   useRightPanel,
   useLayout,
 } from "../../LayoutProvider";
+import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { UpperPanel } from "../../components/Panels/UpperPanel";
 import { PanelSection } from "../../components/Panels/PanelSection";
 import { PanelButtons } from "../../components/Panels/PanelButtons";
@@ -23,7 +24,7 @@ import { CreateNote } from "../MainPage/CreateNote";
 import { CreateDirectoryModal } from "../MainPage/CreateDirectory";
 import { FavouriteDirectories } from "./FavouriteDirectories";
 import { AllDirectories } from "./AllDirectories";
-import { M3, M4 } from "../../statics";
+import { M3, M4, MOBILE_BOTTOM_BAR_CLEARANCE } from "../../statics";
 import { useRequireAuth } from "../../hooks/useRequireAuth";
 import { useCreateModalsFromUrl } from "../../hooks/useCreateModalsFromUrl";
 import CreateFab from "../../components/CreateFab";
@@ -40,8 +41,14 @@ import { useThemeStore } from "../../zustand/useThemeStore";
 export const HomePage: React.FC = () => {
   const [createNoteOpen, setCreateNoteOpen] = useState(false);
   const [createDirectoryOpen, setCreateDirectoryOpen] = useState(false);
-  const { rightPanelOpen } = useLayout();
+  const {
+    rightPanelOpen,
+    leftPanelOpen,
+    leftPanelUserOverride,
+    setLeftPanelOpen,
+  } = useLayout();
   const { theme } = useThemeStore();
+  const { isMobile } = useBreakpoint();
   useRequireAuth();
 
   // `?action=create-note|create-directory` -> open the matching
@@ -71,6 +78,24 @@ export const HomePage: React.FC = () => {
       <DirectorySideView />
     </UpperPanel>,
   );
+
+  // Mobile: hide the left rail by default. The user can still open
+  // it via the bottom-bar swipe-right gesture (which sets the
+  // override) — see `MobileBottomBar`. Without the override, the
+  // rail stays closed and the bottom-bar shortcuts / FABs reach
+  // the user without competing for screen real estate.
+  useEffect(() => {
+    if (!isMobile) {
+      return;
+    }
+    if (leftPanelUserOverride) {
+      return;
+    }
+    if (leftPanelOpen) {
+      setLeftPanelOpen(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMobile]);
 
   return (
     <Box
@@ -104,7 +129,13 @@ export const HomePage: React.FC = () => {
         sx={{
           position: "fixed",
           right: theme.spacing(2),
-          bottom: theme.spacing(2),
+          // Bottom bar floats at the bottom of the viewport on
+          // mobile; lift the FAB stack above it so the buttons
+          // stay reachable and don't sit under the bar. Desktop
+          // uses the regular `theme.spacing(2)` clearance.
+          bottom: isMobile
+            ? `calc(${theme.spacing(2)} + ${MOBILE_BOTTOM_BAR_CLEARANCE})`
+            : theme.spacing(2),
           zIndex: (theme) => theme.zIndex.appBar + 2,
         }}
       >
