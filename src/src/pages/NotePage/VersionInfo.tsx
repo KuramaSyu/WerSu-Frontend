@@ -5,6 +5,7 @@ import {
   Button,
   Chip,
   Grid,
+  Grow,
   IconButton,
   Stack,
 } from "@mui/material";
@@ -23,10 +24,7 @@ import {
   IconChevronUp,
   IconDropletFilled,
 } from "@tabler/icons-react";
-import type {
-  DiscordUser,
-  DiscordUserImpl,
-} from "../../components/DiscordLogin";
+import type { WersuUser, WersuUserImpl } from "../../components/DiscordLogin";
 import { useUser, useUsers } from "../../api/queries/useUser";
 import { useLiveUsers, type LiveUser } from "../../zustand/useLiveUsersStore";
 import { useEffect, useMemo, useState } from "react";
@@ -44,6 +42,7 @@ import { useActiveNoteStore } from "../../zustand/editorStore";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { color } from "@uiw/react-codemirror/esm/getDefaultExtensions.js";
 import { blendColors, hexToRgb, rgbToHex } from "../../utils/blendWithContrast";
+import { CollabStatusBadge } from "./CollabStatusBadge";
 
 export interface VersionInfoProps {
   noteId: string | undefined;
@@ -394,10 +393,11 @@ const LiveVersionItem = ({
   users,
   onClick,
 }: {
-  users: DiscordUser[];
+  users: WersuUser[];
   onClick: () => void;
 }) => {
   const { theme } = useThemeStore();
+  const { editMode } = useEditorSettings();
 
   return (
     <TimelineItem
@@ -450,14 +450,46 @@ const LiveVersionItem = ({
           >
             Live
           </Box>
-          {users.length > 0 && <AvatarOrAvatarGroup users={users} />}
+          {/* Collab batch sits right next to the user icons in
+              the live row so a viewer can see the connection
+              status + live-user count at a glance. Hidden in
+              read mode: the provider is closed there, so the
+              status chip would always read "disconnected".
+
+              `Grow`'s child must be a single DOM element so the
+              ref lands on a real node -- otherwise `handleEnter`
+              reads `scrollTop` on `null` and crashes. The
+              component children (`AvatarOrAvatarGroup`,
+              `CollabStatusBadge`) are function components and
+              don't forward refs; wrap them in a `<Box>` so Grow
+              gets a DOM ref to measure. */}
+          <Grow
+            in={users.length > 0}
+            mountOnEnter
+            unmountOnExit
+            timeout={theme.transitions.duration.complex}
+          >
+            <Box sx={{ display: "flex", alignItems: "center" }}>
+              <AvatarOrAvatarGroup users={users} />
+            </Box>
+          </Grow>
+          <Grow
+            in={editMode}
+            mountOnEnter
+            unmountOnExit
+            timeout={theme.transitions.duration.complex}
+          >
+            <Box sx={{ display: "flex", alignItems: "center" }}>
+              <CollabStatusBadge />
+            </Box>
+          </Grow>
         </Stack>
       </TimelineContent>
     </TimelineItem>
   );
 };
 
-const AvatarOrAvatarGroup = ({ users }: { users: DiscordUser[] }) => {
+const AvatarOrAvatarGroup = ({ users }: { users: WersuUser[] }) => {
   if (users.length === 0) {
     return null;
   }
@@ -480,7 +512,7 @@ const AvatarOrAvatarGroup = ({ users }: { users: DiscordUser[] }) => {
  * @param param0
  * @returns
  */
-const AvatarGroup = ({ users }: { users: DiscordUser[] }) => {
+const AvatarGroup = ({ users }: { users: WersuUser[] }) => {
   return (
     <Grid
       container
