@@ -5,6 +5,7 @@ import {
   AccordionSummary,
   Box,
   ButtonBase,
+  Paper,
   Typography,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -58,7 +59,7 @@ export const ChapterAccordion: React.FC<ChapterAccordionProps> = ({
     <Accordion
       expanded={expanded}
       disableGutters
-      elevation={0}
+      elevation={1}
       slotProps={{
         transition: {
           unmountOnExit: true,
@@ -220,22 +221,17 @@ const AnimatedTrailBody: React.FC<TrailBodyProps> = ({
                 minWidth: 0,
               }}
             >
-              <Box
+              <Paper
+                elevation={3}
                 sx={{
                   display: "flex",
                   alignItems: "flex-start",
                   gap: 2,
                   px: 2,
-                  py: 1.25,
+                  py: 1,
+                  my: 0.5,
                   width: "100%",
                   borderRadius: 2,
-                  backgroundColor: "background.paper",
-                  // Same reason as the ButtonBase above: a long
-                  // `noWrap` title has a large intrinsic
-                  // min-content width. Without `minWidth: 0` this
-                  // flex item can't shrink and the row's left
-                  // edge (and the bar pinned to it) gets pushed
-                  // past the `px: 2` padding.
                   minWidth: 0,
                 }}
               >
@@ -248,7 +244,7 @@ const AnimatedTrailBody: React.FC<TrailBodyProps> = ({
                   }
                   compact
                 />
-              </Box>
+              </Paper>
             </ButtonBase>
           ))}
         </Trail>
