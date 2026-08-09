@@ -35,7 +35,7 @@ export const SettingsLeftPanel: React.FC = () => {
   };
 
   return (
-    <UpperPanel spacing={1}>
+    <UpperPanel>
       <Typography variant="h5" sx={{ mb: 1 }}>
         Settings
       </Typography>
