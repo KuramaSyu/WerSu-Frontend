@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Paper, Skeleton, Stack } from "@mui/material";
+import { Box, Skeleton, Stack } from "@mui/material";
 
 export interface NoteEditorSkeletonProps {
   showSourceEditor?: boolean;
@@ -9,8 +9,9 @@ export const NoteEditorSkeleton: React.FC<NoteEditorSkeletonProps> = ({
   showSourceEditor = false,
 }) => {
   return (
-    <Paper
-      elevation={1}
+    // Transparent: the AppShell wrapper provides the paper + elevation 1
+    // surface; the editor sits on top of it without nesting a second card.
+    <Box
       sx={{
         flex: 1,
         px: 3,
@@ -20,6 +21,7 @@ export const NoteEditorSkeleton: React.FC<NoteEditorSkeletonProps> = ({
         flexDirection: "column",
         gap: 3,
         minHeight: 500,
+        backgroundColor: "transparent",
       }}
     >
       <Stack
@@ -64,6 +66,6 @@ export const NoteEditorSkeleton: React.FC<NoteEditorSkeletonProps> = ({
         <Skeleton variant="circular" width={48} height={48} />
         <Skeleton variant="circular" width={48} height={48} />
       </Stack>
-    </Paper>
+    </Box>
   );
 };

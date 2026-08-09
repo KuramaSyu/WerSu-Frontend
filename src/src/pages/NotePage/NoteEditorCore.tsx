@@ -51,13 +51,7 @@ import {
   type SlashCommand,
 } from "../../components/Editor/SlashCommandMenu";
 import { SmartTextReplacement } from "../../components/Editor/SmartTextReplacement";
-import {
-  M2,
-  M3,
-  NOTE_EDITOR_A4_WIDTH,
-  NOTE_EDITOR_ELEVATION,
-  TOP_BAR_ELEVATION,
-} from "../../statics";
+import { M2, M3, NOTE_EDITOR_A4_WIDTH } from "../../statics";
 import type { Note } from "../../api/models/search";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import UploadFileDialog from "./UploadSpeedDialAction";
@@ -71,7 +65,6 @@ import {
 import { AttachmentPreviewModal } from "../../components/Editor/controllers/AttachmentPreviewModal";
 import type { ApplicationAttachmentBody } from "./AttachmentPanelSection";
 import { useThemeStore } from "../../zustand/useThemeStore";
-import { NoteButtonActionRow } from "./NoteButtonActionRow";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { useViewConfig } from "../../zustand/useViewConfig";
 import { InsertSpeedDial } from "./SpeedDial";
@@ -86,6 +79,7 @@ import { CustomDetails } from "../../components/Editor/CustomDetails";
 import { DetailsContent, DetailsSummary } from "@tiptap/extension-details";
 import { useUser } from "../../api/queries/useUser";
 import { useLiveUsersStore } from "../../zustand/useLiveUsersStore";
+import { useLayout } from "../../LayoutProvider";
 import {
   collabStatusStore,
   type CollabStatus,
@@ -107,6 +101,14 @@ export interface NoteEditorProps {
   noteId?: string;
   fetchError: string | null;
   onNoteUpdated: (note: Note) => void;
+  /**
+   * When `true`, the editor closes the left rail on mount unless
+   * the user has explicitly opened it (i.e. the panel user
+   * override is set). Pages that want the left rail hidden on
+   * mobile but still openable by the user pass this; pages that
+   * always want the left rail visible leave it `false` / unset.
+   */
+  hideLeftPanel?: boolean;
 }
 
 export interface NoteEditorCoreProps extends NoteEditorProps {
@@ -126,12 +128,35 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
   onNoteUpdated,
   ydoc,
   provider,
+  hideLeftPanel,
 }) => {
   const { theme } = useThemeStore();
   const { data: user } = useUser();
   const setMessage = useInfoStore((s) => s.setMessage);
   const { mutateAsync: updateNote } = useUpdateNote();
   const openDialog = useDialog();
+  const { leftPanelOpen, leftPanelUserOverride, setLeftPanelOpen } =
+    useLayout();
+
+  // Honour `hideLeftPanel` on mount: when the caller asks for the
+  // left rail to be hidden (e.g. mobile on the home page), close
+  // it unless the user has explicitly toggled it open. `useLeftPanel`
+  // already clears the override on each mount, so a re-mount gives
+  // the caller a fresh chance to apply its desired default.
+  useEffect(() => {
+    if (!hideLeftPanel) {
+      return;
+    }
+    if (leftPanelUserOverride) {
+      return;
+    }
+    if (leftPanelOpen) {
+      setLeftPanelOpen(false);
+    }
+    // leftPanelUserOverride flips on the next mount and we don't
+    // want to re-run when it does; the gate above is sufficient.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hideLeftPanel]);
 
   const {
     isSaving: _isSaving,
@@ -748,14 +773,14 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
   return (
     <>
       <Paper
-        // Light mode needs a real drop shadow to read as elevated paper
-        // against the canvas (which is the same `background.default`
-        // tone). Dark mode relies on MUI's white overlay that
-        // `theme.elevate()` already handles — that's why we reuse the
-        // AppBar elevation constant here.
-        elevation={theme.palette.mode === "dark" ? 1 : NOTE_EDITOR_ELEVATION}
+        // The AppShell wrapper already provides the paper + elevation-1
+        // card surface for the page; the note editor sits on top of it
+        // with elevation 0 so it doesn't double-card. (The previous
+        // `NOTE_EDITOR_ELEVATION = 6` made the editor look like a
+        // floating dialog rather than the page's main content.)
+        elevation={1}
         sx={{
-          backgroundColor: theme.palette.background.paper,
+          backgroundColor: "transparent",
           borderRadius: 2,
           px: M3,
           my: M2,
@@ -822,7 +847,6 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
                 }}
               />
             </Box>
-            <NoteButtonActionRow />
           </Stack>
 
           {/* Rich Editor */}
