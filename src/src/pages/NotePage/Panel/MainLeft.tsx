@@ -18,6 +18,7 @@ import {
 } from "./NoteActionPanel";
 import { ManageParentsDialog } from "./ManageParentsDialog";
 import { ROOT_PARENT_ID } from "./DirectorySelect";
+import { Box } from "@mui/material";
 
 interface NoteLeftPanelProps {
   note?: Note;
@@ -261,23 +262,23 @@ export const NoteLeftPanel: React.FC<NoteLeftPanelProps> = ({
 
   return (
     <>
-      <UpperPanel spacing={2}>
+      <UpperPanel spacing={3}>
         <NoteActionPanel
           isLoading={!note}
           lastEditedLabel={formatTimestamp(note?.updated_at)}
           parentDirectories={parentDirectoryPaths}
           permissionSections={EMPTY_PERMISSION_SECTIONS}
           onNavigateToDirectory={
-            readOnly
-              ? () => {}
-              : (directoryId) => navigate(`/d/${directoryId}`)
+            readOnly ? () => {} : (directoryId) => navigate(`/d/${directoryId}`)
           }
           onChangeParentClick={() => setMoveDialogOpen(true)}
           canChangeParent={!readOnly && Boolean(note && noteId)}
           onRemoveParent={handleRemoveParentDirectory}
           canRemoveParent={!readOnly && Boolean(note && noteId)}
         />
-        <TableOfContentsPanel />
+        <Box>
+          <TableOfContentsPanel />
+        </Box>
       </UpperPanel>
 
       <ManageParentsDialog
