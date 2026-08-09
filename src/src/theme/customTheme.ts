@@ -48,7 +48,6 @@ export interface CustomTheme extends Theme {
     surfaces: {
       panel: string;
     };
-    contrast: string;
   };
   colorTransition: {
     root: { transition: string; "&:hover"?: { transition: string } };
@@ -109,18 +108,6 @@ export interface CustomTheme extends Theme {
    * Updates `transitions.duration.complex` in-place and refreshes derived
    * transition style snippets that depend on that duration.
    */
-  /**
-   * Returns a readable text color (typically near-black on a light
-   * background, near-white on a dark one) for the supplied hex /
-   * named-palette color. Thin wrapper around `palette.getContrastText`
-   * so call sites can do `theme.getContrastText(...)` instead of
-   * `theme.palette.getContrastText(...)`.
-   *
-   * Args:
-   *     background: any hex/rgb color or named palette role.
-   */
-  getContrastText(background: string): string;
-
   setComplexDuration(durationMs: number): void;
 
   /**
@@ -192,7 +179,6 @@ export class CustomThemeImpl implements CustomTheme {
   alpha: (color: string, value: string | number) => string;
   lighten: (color: string, coefficient: string | number) => string;
   darken: (color: string, coefficient: string | number) => string;
-  getContrastText!: (background: string) => string;
 
   constructor(theme: CustomTheme);
   constructor(theme: Theme | CustomTheme, config: ThemeCustomExtension);
@@ -241,18 +227,6 @@ export class CustomThemeImpl implements CustomTheme {
     this.palette.surfaces = {
       panel: this.palette.surfaces?.panel ?? computedPanel,
     };
-    // Contrast color tuned for the AppBar surface, which differs per
-    // mode: light mode paints the bar with `primary.main` (so the
-    // contrast color comes from `primary.contrastText`); dark mode
-    // applies an overlay that effectively re-skins the bar to
-    // `background.paper`, where `text.primary` is the readable color.
-    // Forcing a single `getContrastText(primary.main)` here is wrong in
-    // dark mode because the bar isn't `primary.main` anymore.
-    this.palette.contrast =
-      this.palette.mode === "dark"
-        ? this.palette.text.primary
-        : this.palette.primary.contrastText ||
-          this.palette.getContrastText(this.palette.primary.main);
     this.typography.fontFamily = '"Fira Sans", sans-serif';
 
     // Wrap methods to handle string | number parameters
@@ -269,13 +243,6 @@ export class CustomThemeImpl implements CustomTheme {
       const numCoef =
         typeof coefficient === "string" ? parseFloat(coefficient) : coefficient;
       return darken(color, numCoef);
-    };
-    // Expose `getContrastText` at the theme level so call sites can
-    // write `theme.getContrastText(color)` instead of
-    // `theme.palette.getContrastText(color)`. Forward to the MUI
-    // palette method since it already handles WCAG contrast properly.
-    this.getContrastText = (background: string): string => {
-      return this.palette.getContrastText(background);
     };
 
     this.spacing = (...args: Array<number | string>): string => {
@@ -301,9 +268,18 @@ export class CustomThemeImpl implements CustomTheme {
           },
         ),
         "&:hover": {
-          transition: this.transitions.create(["all"], {
-            duration: this.transitions.duration.short,
-          }),
+          transition: this.transitions.create(
+            [
+              "background-color",
+              "color",
+              "border-color",
+              "transform",
+              "border-radius",
+            ],
+            {
+              duration: this.transitions.duration.short,
+            },
+          ),
         },
       },
     };
@@ -439,14 +415,14 @@ export class CustomThemeImpl implements CustomTheme {
         styleOverrides: {
           tooltip: {
             backgroundColor: tooltipBbackground,
+            // Derive the contrast colour from the tooltip's own
+            // background
             color: this.palette.getContrastText(tooltipBbackground),
             fontSize: this.typography.caption.fontSize,
             borderRadius: 8,
-            border: `1px solid ${this.palette.divider}`,
           },
           arrow: {
-            color: tooltipBbackground,
-            zIndex: 1, // 1 higher than the tooltip
+            color: this.elevate(this.palette.background.paper, 24),
           },
         },
       },
@@ -520,12 +496,18 @@ export class CustomThemeImpl implements CustomTheme {
       MuiFab: {
         styleOverrides: {
           root: {
-            ...this.colorTransition.root,
-            borderRadius: 64,
+            borderRadius: "50%",
             "&:hover": {
-              ...this.colorTransition.root["&:hover"],
-              borderRadius: 16,
+              borderRadius: "50%",
             },
+          },
+        },
+      },
+      // hide border from menu rows
+      MuiMenuItem: {
+        styleOverrides: {
+          root: {
+            borderRadius: 0,
           },
         },
       },
