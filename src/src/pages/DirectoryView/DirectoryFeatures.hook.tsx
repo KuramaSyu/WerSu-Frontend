@@ -17,6 +17,7 @@ import {
 import type { MinimalNote } from "../../api/models/search";
 import { getNoteParentDirectoryIds } from "../../utils/fileGraphUtils";
 import { useLatestNotes } from "../../api/queries/useNoteQueries";
+import { useUserKey } from "../../api/queries/useUser";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 
 export interface UseDirectoryFeaturesOptions {
@@ -166,6 +167,7 @@ export function useDirectoryFeatures(
   const { data: notes } = useLatestNotes();
   const { setMessage } = useInfoStore();
   const queryClient = useQueryClient();
+  const userKey = useUserKey();
 
   useEffect(() => {
     console.log("DirectoryView: notes updated: ", notes);
@@ -353,7 +355,9 @@ export function useDirectoryFeatures(
 
     removeDirectory(targetId);
     queryClient.invalidateQueries({ queryKey: ["directories"] });
-    queryClient.invalidateQueries({ queryKey: ["directory", targetId] });
+    queryClient.invalidateQueries({
+      queryKey: ["directory", targetId, userKey],
+    });
     setMessage(new SnackbarUpdateImpl("Directory deleted", "success"));
     return true;
   };

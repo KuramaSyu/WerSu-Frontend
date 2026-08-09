@@ -7,6 +7,7 @@ import type { MinimalNote } from "../../api/models/search";
 import { getNoteApi, type INoteApi } from "../../api/NoteApi";
 import { useDirectory } from "../../api/queries/useDirectoryQuery";
 import { useDirectoryNotesQuery } from "../../api/queries/useDirectoryNotesQuery";
+import { useUserKey } from "../../api/queries/useUser";
 import { useDirectoryStore } from "../../zustand/useDirectoryStore";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { README_NOTE_TITLE, serializeReadme } from "../../utils/readme";
@@ -120,6 +121,7 @@ export function useDirectoryEditForm(
     useDirectoryStore();
   const { setMessage } = useInfoStore();
   const queryClient = useQueryClient();
+  const userKey = useUserKey();
   const noteApi: INoteApi = getNoteApi();
 
   // Prefer the explicit `directoryId` option; fall back to the route
@@ -219,7 +221,7 @@ export function useDirectoryEditForm(
       }
       setReadmeNoteId(created.id);
       queryClient.invalidateQueries({
-        queryKey: ["directory", "notes", id],
+        queryKey: ["directory", "notes", id, userKey],
       });
       setMessage(
         new SnackbarUpdateImpl(
@@ -369,9 +371,11 @@ export function useDirectoryEditForm(
 
       setReadmeNoteId(nextReadmeId);
 
-      invalidateDirectoryQueries(queryClient, id, nextParentId);
+      invalidateDirectoryQueries(queryClient, userKey, id, nextParentId);
       if (nextReadmeId) {
-        queryClient.invalidateQueries({ queryKey: ["notes", nextReadmeId] });
+        queryClient.invalidateQueries({
+          queryKey: ["notes", nextReadmeId, userKey],
+        });
       }
 
       setMessage(new SnackbarUpdateImpl("Directory saved", "success"));

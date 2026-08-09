@@ -7,6 +7,7 @@ import { getNoteApi } from "../../api/NoteApi";
 import { useDirectoryStore } from "../../zustand/useDirectoryStore";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { README_NOTE_TITLE, serializeReadme } from "../../utils/readme";
+import { useUserKey } from "../../api/queries/useUser";
 import { useDirectoryFormShell } from "../DirectoryEdit/directoryFormShell";
 import {
   createDirectoryApi,
@@ -80,6 +81,7 @@ export function useCreateSubdirectoryForm(
   const { upsertDirectory } = useDirectoryStore();
   const { setMessage } = useInfoStore();
   const queryClient = useQueryClient();
+  const userKey = useUserKey();
 
   // The Create form has no `initial` directory, but the parent
   // selector should autoselect the route's `:id` so the user starts
@@ -238,7 +240,7 @@ export function useCreateSubdirectoryForm(
         upsertDirectory(created);
       }
 
-      invalidateDirectoryQueries(queryClient, created.id, parentIds?.[0]);
+      invalidateDirectoryQueries(queryClient, userKey, created.id, parentIds?.[0]);
 
       setMessage(new SnackbarUpdateImpl("Subdirectory created", "success"));
       navigate(`/d/${created.id}`);

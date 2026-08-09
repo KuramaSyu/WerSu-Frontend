@@ -420,18 +420,23 @@ export function useObjectUrl(source: File | null): string | null {
  */
 export function invalidateDirectoryQueries(
   queryClient: ReturnType<typeof useQueryClient>,
+  userKey: string | null,
   directoryId?: string,
   parentId?: string,
 ): void {
   queryClient.invalidateQueries({ queryKey: ["directories"] });
   if (directoryId) {
-    queryClient.invalidateQueries({ queryKey: ["directory", directoryId] });
     queryClient.invalidateQueries({
-      queryKey: ["directory", "notes", directoryId],
+      queryKey: ["directory", directoryId, userKey],
+    });
+    queryClient.invalidateQueries({
+      queryKey: ["directory", "notes", directoryId, userKey],
     });
   }
   if (parentId) {
-    queryClient.invalidateQueries({ queryKey: ["directory", parentId] });
+    queryClient.invalidateQueries({
+      queryKey: ["directory", parentId, userKey],
+    });
   }
   queryClient.invalidateQueries({ queryKey: ["notes"] });
 }
