@@ -6,7 +6,6 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  Paper,
   Stack,
   Typography,
 } from "@mui/material";
@@ -135,15 +134,17 @@ const SettingsPage: React.FC = () => {
   }, [isMobile, setActiveCategoryId, catParam, searchParams, setSearchParams]);
 
   const desktopBody = (
-    <Paper
+    // The AppShell wrapper provides the paper + elevation-1 surface;
+    // settings sits on top of it without nesting a second card.
+    <Box
       ref={bodyRef}
-      elevation={0}
       sx={{
         height: "100%",
         overflowY: "auto",
         px: { xs: 2, md: 4 },
         pt: 4,
         pb: "30vh",
+        backgroundColor: "transparent",
       }}
     >
       {settingsCategories.map((category) => (
@@ -156,7 +157,7 @@ const SettingsPage: React.FC = () => {
           {category.settingsContent}
         </SettingsSection>
       ))}
-    </Paper>
+    </Box>
   );
 
   const mobileList = useMemo(
