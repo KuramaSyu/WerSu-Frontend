@@ -39,24 +39,32 @@ export const M8 = "16rem";
  */
 export const TOP_BAR_ELEVATION = 4;
 /**
- * Light-mode `elevation` for the note editor `Paper`. The note
- * canvas is the same `background.default` tone as the page, so a
- * strong shadow is the only thing that lifts the editor off the
- * background. Dark mode relies on MUI's white overlay (handled by
- * `theme.elevate`) and uses `TOP_BAR_ELEVATION` instead.
- */
-export const NOTE_EDITOR_ELEVATION = 6; /**
- * Light-mode `elevation` for the side-rail `Paper` (left + right
- * rails). Smaller than the note editor's elevation because the rails
- * sit beside the canvas instead of being the canvas; a too-strong
- * shadow would make them look like floating dialogs. Dark mode uses
- * `TOP_BAR_ELEVATION` via MUI's white overlay.
- */
-export const SIDE_PANEL_ELEVATION = 3; /**
  * Default max-width for the note editor body, expressed in `rem` so the
  * layout scales with the user's font-size preference. A4 portrait at
  * 96 DPI is ~8.27in; 48rem at the default 16px root font-size renders
  * to 768px, which sits comfortably within physical A4 on most screens
  * without forcing horizontal scroll on narrower windows.
  */
-export const NOTE_EDITOR_A4_WIDTH = "48rem";
+
+export const NOTE_EDITOR_A4_WIDTH = "52rem"; /**
+ * Normally 48 which looks too small
+ */
+export const COLLAPSED_PANEL_SIZE = "0px";
+/**
+ * Vertical clearance the mobile bottom bar needs from anything
+ * floating at the bottom of the viewport. Use this for the
+ * `bottom` (or `paddingBottom`) of any FAB / speed-dial / fixed
+ * action surface that sits over the mobile canvas, so the action
+ * stays reachable and doesn't slide under the bottom bar.
+ *
+ * Same value backs the AppShell's mobile `paddingBottom` so the
+ * scroll container, the FAB stack, and the bar all line up.
+ */
+export const MOBILE_BOTTOM_BAR_CLEARANCE = "6rem";
+/**
+ * Default `elevation` for the main-content `Paper` (the cell that
+ * hosts routed pages: home, directory, settings, note editor, etc.).
+ * Subtle on purpose so the side rails recede behind the canvas
+ * without competing with any deeper card the page mounts.
+ */
+export const MAIN_PANEL_ELEVATION = 1;
