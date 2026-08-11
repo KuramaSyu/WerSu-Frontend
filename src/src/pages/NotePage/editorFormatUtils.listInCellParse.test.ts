@@ -160,6 +160,12 @@ function freshEditor(): Editor {
   return e;
 }
 
+type DocNode = {
+  type?: string;
+  text?: string;
+  content?: DocNode[];
+};
+
 describe("detectListInCell (pure)", () => {
   it("detects a single-paragraph `<br/>`-separated bullet list", () => {
     const cellContent = [
@@ -507,13 +513,11 @@ describe("markdownToProsemirror list normaliser (end-to-end)", () => {
     expect(md2).toBe(md1);
 
     // And the parsed JSON is still a real bulletList, not flattened prose.
-    const json = editor.getJSON();
+    const json = editor.getJSON() as unknown as DocNode;
     const cell = json.content?.[0].content?.[1].content?.[0];
     expect(cell?.content?.[0].type).toBe("bulletList");
-    const items = (cell?.content?.[0].content ?? []) as Array<{
-      content: Array<{ content: Array<{ text: string }> }>;
-    }>;
-    expect(items.map((i) => i.content[0].content[0].text)).toEqual([
+    const items = cell?.content?.[0].content ?? [];
+    expect(items.map((i) => i.content?.[0].content?.[0].text)).toEqual([
       "Feitan",
       "Machi",
       "Phinks",
@@ -616,13 +620,11 @@ describe("markdownToProsemirror list normaliser (end-to-end)", () => {
 
     expect(md2).toBe(md1);
 
-    const json = editor.getJSON();
+    const json = editor.getJSON() as unknown as DocNode;
     const cell = json.content?.[0].content?.[1].content?.[0];
     expect(cell?.content?.[0].type).toBe("orderedList");
-    const items = (cell?.content?.[0].content ?? []) as Array<{
-      content: Array<{ content: Array<{ text: string }> }>;
-    }>;
-    expect(items.map((i) => i.content[0].content[0].text)).toEqual([
+    const items = cell?.content?.[0].content ?? [];
+    expect(items.map((i) => i.content?.[0].content?.[0].text)).toEqual([
       "Netero",
       "Zeno",
       "Silva",
@@ -838,7 +840,7 @@ describe("markdownToProsemirror mixed prose + list normaliser (end-to-end)", () 
 
     expect(md2).toBe(md1);
 
-    const json = editor.getJSON();
+    const json = editor.getJSON() as unknown as DocNode;
     const cell = json.content?.[0].content?.[1].content?.[0];
     expect(cell?.content?.[0].type).toBe("paragraph");
     expect(cell?.content?.[1].type).toBe("orderedList");

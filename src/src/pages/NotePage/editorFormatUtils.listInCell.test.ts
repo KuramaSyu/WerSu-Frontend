@@ -20,7 +20,7 @@
 import "../../test/setup";
 
 import { afterEach, describe, expect, it } from "vitest";
-import { Editor } from "@tiptap/core";
+import { Editor, type JSONContent } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { Markdown } from "@tiptap/markdown";
 import {
@@ -171,7 +171,7 @@ type ListSpec =
   | { kind: "bulletList"; items: Item[] }
   | { kind: "orderedList"; items: Item[]; start?: number };
 
-function cellListNode(spec: ListSpec) {
+function cellListNode(spec: ListSpec): JSONContent {
   if (spec.kind === "bulletList") {
     return {
       type: "bulletList",
@@ -196,9 +196,9 @@ function cellListNode(spec: ListSpec) {
 }
 
 function makeTableDoc(
-  firstCell: { type: string; content: unknown[] },
+  firstCell: JSONContent,
   secondCellText: string,
-) {
+): JSONContent {
   return {
     type: "doc",
     content: [
