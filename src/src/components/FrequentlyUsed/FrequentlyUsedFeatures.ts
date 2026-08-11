@@ -1,9 +1,13 @@
 import { useMemo } from "react";
 import type { HistoryFilter } from "../../api/models/history";
-import { useMostUsedActivity } from "../../api/queries/historyQueries";
-import type {
-  HistoryRowEntry,
-  HistoryState,
+import {
+  useActivityHistory,
+  useMostUsedActivity,
+} from "../../api/queries/historyQueries";
+import {
+  extractNoteMetadata,
+  type HistoryRowEntry,
+  type HistoryState,
 } from "../RecentActivity/HistoryRowFeatures";
 import { crumble } from "../../utils/stringCrumbler";
 import { markdownPreview } from "../../utils/markdownPreview";
@@ -44,6 +48,42 @@ export function useFrequentlyUsedRows(
       score: r.score,
       title: r.title,
       description,
+    };
+  });
+
+  return {
+    rows,
+    isLoading: result.isLoading,
+    hasError: result.isError,
+  };
+}
+
+/** Fetches the most recent `note_viewed` activity rows for the Last Used panel. Lifts `title` / `description` from `metadata_json` so the view doesn't have to parse JSON. */
+export function useLastUsedRows(
+  limit: number = 2,
+  days: number = 30,
+): HistoryState {
+  const filter = useMemo<HistoryFilter>(
+    () => ({
+      mode: "history",
+      actions: ["note_viewed"],
+      limit,
+      days,
+    }),
+    [limit, days],
+  );
+
+  const result = useActivityHistory(filter);
+
+  // `ActivityReply` rows are a structural superset of `HistoryRowEntry`;
+  // lift title/description from metadata_json so the row view doesn't
+  // re-parse the metadata on every render.
+  const rows: HistoryRowEntry[] = (result.data ?? []).map((row) => {
+    const { title, description } = extractNoteMetadata(row);
+    return {
+      ...row,
+      ...(title ? { title } : {}),
+      ...(description ? { description } : {}),
     };
   });
 

@@ -1,6 +1,9 @@
 import { Box, Stack, Typography } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import { useFrequentlyUsedRows } from "./FrequentlyUsedFeatures";
+import {
+  useFrequentlyUsedRows,
+  useLastUsedRows,
+} from "./FrequentlyUsedFeatures";
 import type { HistoryRowEntry } from "../RecentActivity/HistoryRowFeatures";
 
 import { useThemeStore } from "../../zustand/useThemeStore";
@@ -18,6 +21,18 @@ export interface FrequentlyUsedPanelProps {
 }
 
 /**
+ * Props for the LastUsedPanel component.
+ */
+export interface LastUsedPanelProps {
+  /** Optional title override. */
+  title?: string | null;
+  /** Max number of items to fetch and render. */
+  limit?: number;
+  /** Time window the backend uses to scope the activity log. */
+  days?: number;
+}
+
+/**
  * Generic panel that shows frequently used notes.
  *
  * Reuses `HistoryRowView` for rendering: rows coming back from
@@ -27,7 +42,7 @@ export interface FrequentlyUsedPanelProps {
  */
 export const FrequentlyUsedPanel: React.FC<FrequentlyUsedPanelProps> = ({
   title = "Frequently used",
-  limit = 8,
+  limit = 20,
 }) => {
   const { rows, isLoading, hasError } = useFrequentlyUsedRows(limit);
   const { theme } = useThemeStore();
@@ -70,6 +85,69 @@ export const FrequentlyUsedPanel: React.FC<FrequentlyUsedPanelProps> = ({
         {rows.map((entry) => (
           <HistoryRowView
             key={entry.note_id}
+            entry={entry}
+            onClick={handleItemClick}
+            headerMode="entityTitle"
+            developerMode={developerMode}
+          />
+        ))}
+      </Stack>
+    </Box>
+  );
+};
+
+/**
+ * Shows the most recently viewed notes (last-N `note_viewed` events).
+ *
+ * Defaults to the last 2 entries so the section stays compact -- the
+ * Frequently Used panel already covers the "what should I look at" use
+ * case. Data fetching is owned by `useLastUsedRows`.
+ */
+export const LastUsedPanel: React.FC<LastUsedPanelProps> = ({
+  title = "Last used",
+  limit = 2,
+  days = 30,
+}) => {
+  const { rows, isLoading, hasError } = useLastUsedRows(limit, days);
+  const { theme } = useThemeStore();
+  const navigate = useNavigate();
+  const developerMode = useFeatureStore(
+    (state) => state.flags[FeatureFlagName.DeveloperMode],
+  );
+
+  const handleItemClick = (entry: HistoryRowEntry) => {
+    navigate(`/n/${entry.note_id}`);
+  };
+
+  return (
+    <Box sx={{ color: theme.palette.text.secondary }}>
+      {title && (
+        <Typography
+          variant="subtitle2"
+          sx={{ fontWeight: 600, mb: theme.spacing(1) }}
+        >
+          {title}
+        </Typography>
+      )}
+      {isLoading && (
+        <Typography variant="body2" color="textSecondary">
+          Loading last used notes...
+        </Typography>
+      )}
+      {hasError && !isLoading && (
+        <Typography variant="body2" color="error">
+          Failed to load last used notes.
+        </Typography>
+      )}
+      {!isLoading && !hasError && rows.length === 0 && (
+        <Typography variant="body2" color="textSecondary">
+          No recently viewed notes yet.
+        </Typography>
+      )}
+      <Stack spacing={1}>
+        {rows.map((entry) => (
+          <HistoryRowView
+            key={entry.id ?? entry.note_id}
             entry={entry}
             onClick={handleItemClick}
             headerMode="entityTitle"
