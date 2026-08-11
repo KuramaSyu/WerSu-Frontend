@@ -507,7 +507,10 @@ export class CustomThemeImpl implements CustomTheme {
       MuiMenuItem: {
         styleOverrides: {
           root: {
-            borderRadius: 0,
+            borderRadius: 8,
+            "&:hover": {
+              borderRadius: 8,
+            },
           },
         },
       },
@@ -519,8 +522,9 @@ export class CustomThemeImpl implements CustomTheme {
       MuiListItemButton: {
         styleOverrides: {
           root: {
+            borderRadius: 8,
             "&:hover": {
-              borderRadius: 64,
+              borderRadius: 8,
             },
           },
         },
