@@ -511,6 +511,20 @@ export class CustomThemeImpl implements CustomTheme {
           },
         },
       },
+      // MuiListItemButton extends MuiButtonBase, which inherits the
+      // RootColorAndRadius pill -> 8px transition on hover. Pin the
+      // hover radius to the default-no-hover value so the background
+      // swap on selection/hover doesn't reshape the row (slash command
+      // menu, note versions, settings panels, table of contents, ...).
+      MuiListItemButton: {
+        styleOverrides: {
+          root: {
+            "&:hover": {
+              borderRadius: 64,
+            },
+          },
+        },
+      },
     };
   }
 
