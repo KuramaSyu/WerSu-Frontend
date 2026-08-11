@@ -40,15 +40,50 @@ describe("markdownPreview", () => {
     // Header keeps `|` between cells; data rows are comma-joined.
     expect(out).toContain("Name | Description | Platform");
     // And each data row's three cells appear, comma-joined, in order.
-    expect(out).toContain("Space Sniffer, Space Analyzer, Windows");
+    // The link cells keep their surrounding brackets -- the table cell
+    // is a link, so the link-strip wraps the alt text in `[...]`.
+    expect(out).toContain("[Space Sniffer], Space Analyzer, Windows");
     expect(out).toContain(
-      "CompressO, Open Source Video Comporessor, Video compression, Windows, Mac, Linux",
+      "[CompressO], Open Source Video Comporessor, Video compression, Windows, Mac, Linux",
     );
   });
 
   it("keeps fenced code block content but drops the fence markers", () => {
     const raw = "before\n```js\nconst x = 1;\n```\nafter";
     expect(markdownPreview(raw)).toBe("before const x = 1; after");
+  });
+
+  it("strips fenced code blocks whose opening line carries a list marker", () => {
+    // Regression: the fence regex used to require the opening ``` to be
+    // the first non-whitespace token on its line. When the user wrote
+    // `- ```\nbody\n  ``` ` the list marker blocked the match and the
+    // body was left in the preview with the fence markers orphaned.
+    const raw = [
+      "- get log with",
+      "- ```",
+      "  journalctl -b",
+      "  ```",
+      "- reboot",
+    ].join("\n");
+    const out = markdownPreview(raw);
+    expect(out).not.toContain("```");
+    expect(out).toContain("journalctl -b");
+  });
+
+  it("strips fenced code blocks inside 4-space-indented list items", () => {
+    // The 4-space-indented code body inside a list item is the same
+    // shape the user pasted -- the fence opening carries a `- `,
+    // the body and closing fence are indented two spaces.
+    const raw = [
+      "- get log with",
+      "  ```",
+      "  journalctl -b",
+      "  ```",
+      "- reboot",
+    ].join("\n");
+    const out = markdownPreview(raw);
+    expect(out).not.toContain("```");
+    expect(out).toContain("journalctl -b");
   });
 
   it("strips the ``` opening and closing tick lines but never touches the body", () => {
@@ -81,9 +116,9 @@ describe("markdownPreview", () => {
     expect(markdownPreview("## Section\n### Sub")).toBe("Section Sub");
   });
 
-  it("keeps link text but drops the URL", () => {
+  it("keeps link text wrapped in brackets but drops the URL", () => {
     expect(markdownPreview("see [docs](https://example.com) for more")).toBe(
-      "see docs for more",
+      "see [docs] for more",
     );
   });
 
@@ -91,6 +126,25 @@ describe("markdownPreview", () => {
     expect(markdownPreview("![diagram](pic.png) is here")).toBe(
       "diagram is here",
     );
+  });
+
+  it("strips the image-link-wrapped shape `[![alt](inner)](outer)` to `[alt]`", () => {
+    // Regression: attaching a link around an image used to leave the
+    // outer URL in the preview. The image strip peels `![alt](inner)`
+    // first, then the link strip sees `[alt](outer)` and resolves it.
+    const raw =
+      "[![diagram](https://example.com/pic.png)](https://example.com)";
+    expect(markdownPreview(raw)).toBe("[diagram]");
+  });
+
+  it("drops the URL of an image-link-wrapped picture with empty alt", () => {
+    // Exact shape the user pasted: an empty alt wraps an attachments URL.
+    const raw =
+      "[![](/api/attachments/image?key=abc)](https://example.com/original)";
+    const out = markdownPreview(raw);
+    expect(out).not.toContain("https://");
+    expect(out).not.toContain("attachments");
+    expect(out).toBe("[]");
   });
 
   it("strips unordered and ordered list markers", () => {

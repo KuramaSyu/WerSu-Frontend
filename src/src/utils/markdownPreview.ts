@@ -94,13 +94,18 @@ export class TableTransform implements MarkdownTransform {
 }
 
 // Drops the opening and closing fence lines but leaves the body alone.
-// Up to three spaces of indent are allowed on both fence lines and
-// must match (CommonMark).
+// Up to three spaces of indent are allowed on both fence lines
+// (CommonMark). Accepts an optional leading list marker (`- `, `* `,
+// `+ `, `1. `) on the fence line -- the `ListMarkersTransform` runs
+// later in the pipeline, so fences inside `- ```...``` ` blocks would
+// otherwise be left orphaned. The closing fence may have more indent
+// than the opening (CommonMark permits it) so we re-capture the
+// closing indent independently instead of backreferencing the opening.
 export class FencedCodeTransform implements MarkdownTransform {
   readonly name = "fenced-code";
   rewrite(text: string): string {
     return text.replace(
-      /(?:^|\n)([ \t]{0,3})(```+|~~~+)[^\n]*\n([\s\S]*?)\n\1\2[ \t]*(?=\n|$)/g,
+      /(?:^|\n)([ \t]{0,3})(?:[-*+]\s+|\d+\.\s+)?(```+|~~~+)[^\n]*\n([\s\S]*?)\n([ \t]{0,3})(?:[-*+]\s+|\d+\.\s+)?\2[ \t]*(?=\n|$)/g,
       "\n$3",
     );
   }
@@ -124,15 +129,20 @@ export class HeadingTransform implements MarkdownTransform {
   }
 }
 
-// Images and links. Images are matched first so the leading `!`
-// doesn't trip the link regex; the reference-style link is matched
-// last so the inline form runs cleanly first.
+// Images and links. The image form is matched first so the leading
+// `!` doesn't trip the link regex; the reference-style link is
+// matched last so the inline form runs cleanly first. Images strip
+// to just the alt text (no brackets); inline links keep their
+// surrounding brackets ([xyz]) and reference-style links collapse
+// to the bracket-wrapped label (also [xyz]). The link regex allows
+// one level of nested brackets so the post-image-strip shape
+// `[alt](url)` (image-link-wrapped) still resolves to `[alt]`.
 export class MediaTransform implements MarkdownTransform {
   readonly name = "media";
   rewrite(text: string): string {
     let next = text.replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1");
-    next = next.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1");
-    next = next.replace(/\[([^\]]+)\]\[[^\]]*\]/g, "$1");
+    next = next.replace(/\[([^\[\]]*|\[[^\]]*\])\]\([^)]*\)/g, "[$1]");
+    next = next.replace(/\[([^\]]+)\]\[[^\]]*\]/g, "[$1]");
     return next;
   }
 }
