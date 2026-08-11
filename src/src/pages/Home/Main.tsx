@@ -3,6 +3,7 @@ import { Box, Stack, Typography } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import CreateIcon from "@mui/icons-material/Create";
 import FolderIcon from "@mui/icons-material/Folder";
+import HistoryIcon from "@mui/icons-material/History";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import ScheduleIcon from "@mui/icons-material/Schedule";
 import StarIcon from "@mui/icons-material/Star";
@@ -19,7 +20,10 @@ import { PanelButtons } from "../../components/Panels/PanelButtons";
 import { NavigationSection } from "../../components/Panels/NavigationSection";
 import { DirectorySideView } from "../MainPage/DirectorySideView";
 import { RecentActivityPanel } from "../../components/RecentActivity/Main";
-import { FrequentlyUsedPanel } from "../../components/FrequentlyUsed/Main";
+import {
+  FrequentlyUsedPanel,
+  LastUsedPanel,
+} from "../../components/FrequentlyUsed/Main";
 import { CreateNote } from "../MainPage/CreateNote";
 import { CreateDirectoryModal } from "../MainPage/CreateDirectory";
 import { FavouriteDirectories } from "./FavouriteDirectories";
@@ -63,6 +67,12 @@ export const HomePage: React.FC = () => {
   useLeftPanel(
     <UpperPanel>
       <NavigationSection />
+      <PanelSection
+        title="Last used"
+        titleIcon={<HistoryIcon fontSize="small" />}
+      >
+        <LastUsedPanel title={null} />
+      </PanelSection>
       <PanelSection
         title="Frequently used"
         titleIcon={<LocalFireDepartmentIcon fontSize="small" />}
