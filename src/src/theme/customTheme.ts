@@ -32,93 +32,109 @@ export type ColorInput =
   | "secondaryLight"
   | "secondaryDark";
 
-export interface CustomTheme extends Theme {
-  palette: Palette & {
-    poppyColors: string[]; // for multiple chip components
-    vibrant: {
-      main: string;
-      light: string;
-      dark: string;
+/**
+ * Alias of MUI's `Theme`. The interface is augmented with the project's
+ * extra palette fields and helper methods in `customTheme.ts` and
+ * `interfaces.ts`, so `Theme` already carries everything `CustomTheme`
+ * used to add. Kept as an alias for callers that still import it.
+ */
+export type CustomTheme = Theme;
+
+// Augment MUI's `Theme`, `Palette`, and `ThemeOptions` interfaces with
+// every field and method that `CustomTheme` adds. With this block in
+// place, `useTheme()` already returns the augmented type, so any caller
+// that reads `theme.elevate(...)`, `theme.iconTransition`, etc. no
+// longer needs a cast. `CustomTheme` is now an alias of `Theme` (kept
+// for callers that still import the name), but the augmenting
+// declarations here are what actually drive the runtime typing.
+declare module "@mui/material/styles" {
+  interface Palette {
+    poppyColors: string[];
+  }
+  interface PaletteOptions {
+    poppyColors?: string[];
+  }
+  interface Theme {
+    colorTransition: {
+      root: { transition: string; "&:hover"?: { transition: string } };
     };
-    muted: {
-      main: string;
-      light: string;
-      dark: string;
+    /**
+     * Transition snippets scoped to a `color` change only. Use these on
+     * wrappers whose descendants paint via `currentColor` (icons, plain
+     * text in plain DOM, etc.) so the color shift fades in instead of
+     * snapping. The root variant is the default; the `&:hover` variant
+     * is intended to be spread onto the same wrapper's hover state.
+     */
+    iconTransition: {
+      root: { transition: string; "&:hover"?: { transition: string } };
     };
-    surfaces: {
-      panel: string;
-    };
-  };
-  colorTransition: {
-    root: { transition: string; "&:hover"?: { transition: string } };
-  };
-  custom: ThemeCustomExtension;
 
-  /**
-   * mixes the mainColor with the contrast color from the theme
-   * to a specified amount. Like a dynamic brigthen() or darken()
-   * depending theme.
-   * @param mainColor the color to mix
-   * @param theme the theme to use to get the contrast color
-   * @param amount the amount to mix, 0.0 = mainColor, 1.0 = contrastColor
-   * @returns the blended color in hex format
-   */
-  blendWithContrast(
-    color: ColorInput,
-    amount: number,
-    useTextAsContrast: undefined | "primary" | "secondary",
-  ): string;
+    /**
+     * mixes the mainColor with the contrast color from the theme
+     * to a specified amount. Like a dynamic brigthen() or darken()
+     * depending theme.
+     * @param mainColor the color to mix
+     * @param theme the theme to use to get the contrast color
+     * @param amount the amount to mix, 0.0 = mainColor, 1.0 = contrastColor
+     * @returns the blended color in hex format
+     */
+    blendWithContrast(
+      color: ColorInput,
+      amount: number,
+      useTextAsContrast: undefined | "primary" | "secondary",
+    ): string;
 
-  /**
-   * mixes the mainColor with its calculated contrast color
-   * to a specified amount. Like a dynamic brighten() or darken()
-   * depending on the color's luminance.
-   * @param mainColor the color which gets mixed with the inverted contrast color (dark color -> lighter, light color --> darker)
-   * @param amount the amount to mix, 0.0 = mainColor, 1.0 = contrastColor
-   * @param useTextAsContrast what to use as contrast. undefined: mainColor's contrast color (default), primary and secondary refers to text.primary and text.secondary from the theme
-   * @returns the blended color in hex format
-   */
-  blendAgainstContrast(
-    color: ColorInput,
-    amount: number,
-    useTextAsContrast: undefined | "primary" | "secondary",
-  ): string;
+    /**
+     * mixes the mainColor with its calculated contrast color
+     * to a specified amount. Like a dynamic brighten() or darken()
+     * depending on the color's luminance.
+     * @param mainColor the color which gets mixed with the inverted contrast color (dark color -> lighter, light color --> darker)
+     * @param amount the amount to mix, 0.0 = mainColor, 1.0 = contrastColor
+     * @param useTextAsContrast what to use as contrast. undefined: mainColor's contrast color (default), primary and secondary refers to text.primary and text.secondary from the theme
+     * @returns the blended color in hex format
+     */
+    blendAgainstContrast(
+      color: ColorInput,
+      amount: number,
+      useTextAsContrast: undefined | "primary" | "secondary",
+    ): string;
 
-  /**
-   * Change Saturation of a color by converting it to HSL
-   *
-   * @param color the color to change saturation of
-   * @param ChangeAmount (-1 to 1) the relative amount to change saturation depending on the current saturation. 0 = no change, -1 = desaturate to gray, 1 = fully saturate.
-   * @returns the color with changed saturation in hex format
-   */
-  changeSaturation(color: ColorInput, ChangeAmount: number): string;
+    /**
+     * Change Saturation of a color by converting it to HSL
+     *
+     * @param color the color to change saturation of
+     * @param ChangeAmount (-1 to 1) the relative amount to change saturation depending on the current saturation. 0 = no change, -1 = desaturate to gray, 1 = fully saturate.
+     * @returns the color with changed saturation in hex format
+     */
+    changeSaturation(color: ColorInput, ChangeAmount: number): string;
 
-  /**
-   * Apply a MUI-style elevation overlay to a color: mixes the source
-   * against `palette.background.default` at a level-dependent opacity.
-   * Direction (toward lighter or darker) follows the theme mode.
-   *
-   * @param color the surface color to elevate (hex or named palette role)
-   * @param level elevation level 0-24 (clamped); 0 returns the color unchanged
-   * @returns the elevated color in hex format
-   */
-  elevate(color: ColorInput, level: number): string;
+    /**
+     * Apply a MUI-style elevation overlay to a color: mixes the source
+     * against `palette.background.default` at a level-dependent opacity.
+     * Direction (toward lighter or darker) follows the theme mode.
+     *
+     * @param color the surface color to elevate (hex or named palette role)
+     * @param level elevation level 0-24 (clamped); 0 returns the color unchanged
+     * @returns the elevated color in hex format
+     */
+    elevate(color: ColorInput, level: number): string;
 
-  /**
-   * Updates `transitions.duration.complex` in-place and refreshes derived
-   * transition style snippets that depend on that duration.
-   */
-  setComplexDuration(durationMs: number): void;
+    /**
+     * Updates `transitions.duration.complex` in-place and refreshes derived
+     * transition style snippets that depend on that duration.
+     */
+    setComplexDuration(durationMs: number): void;
 
-  /**
-   * Multiplies all transition duration values in-place.
-   */
-  setDurationMultiplier(multiplier: number): void;
+    /**
+     * Multiplies all transition duration values in-place.
+     */
+    setDurationMultiplier(multiplier: number): void;
 
-  /**
-   * Replaces transition duration values in-place.
-   */
-  setTransitionDurations(durations: Theme["transitions"]["duration"]): void;
+    /**
+     * Replaces transition duration values in-place.
+     */
+    setTransitionDurations(durations: Theme["transitions"]["duration"]): void;
+  }
 }
 /**
  * Config to extend theme.
@@ -168,6 +184,10 @@ export class CustomThemeImpl implements CustomTheme {
   applyStyles!: Theme["applyStyles"];
   containerQueries!: Theme["containerQueries"];
   colorTransition: {
+    root: { transition: string; "&:hover"?: { transition: string } };
+  };
+
+  iconTransition!: {
     root: { transition: string; "&:hover"?: { transition: string } };
   };
   borderRadius: {
@@ -280,6 +300,18 @@ export class CustomThemeImpl implements CustomTheme {
               duration: this.transitions.duration.short,
             },
           ),
+        },
+      },
+    };
+    this.iconTransition = {
+      root: {
+        transition: this.transitions.create(["color"], {
+          duration: this.transitions.duration.complex,
+        }),
+        "&:hover": {
+          transition: this.transitions.create(["color"], {
+            duration: this.transitions.duration.short,
+          }),
         },
       },
     };
@@ -666,6 +698,30 @@ export class CustomThemeImpl implements CustomTheme {
               duration: this.transitions.duration.short,
             },
           ),
+        },
+      },
+    };
+    this.iconTransition = {
+      root: {
+        transition: this.transitions.create(["color"], {
+          duration: this.transitions.duration.complex,
+        }),
+        "&:hover": {
+          transition: this.transitions.create(["color"], {
+            duration: this.transitions.duration.short,
+          }),
+        },
+      },
+    };
+    this.iconTransition = {
+      root: {
+        transition: this.transitions.create(["color"], {
+          duration: this.transitions.duration.complex,
+        }),
+        "&:hover": {
+          transition: this.transitions.create(["color"], {
+            duration: this.transitions.duration.short,
+          }),
         },
       },
     };
