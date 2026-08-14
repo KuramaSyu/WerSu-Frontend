@@ -44,9 +44,17 @@ export function renderShortcut(
     } else if (key === ",") {
       // Do nothing for the comma separator
     } else if (key === "super" || key === "cmd" || key === "ctrl") {
-      components.push(<Key onlyText={onlyText}>{superKey()}</Key>);
+      components.push(
+        <Key key={index} onlyText={onlyText}>
+          {superKey()}
+        </Key>,
+      );
     } else {
-      components.push(<Key onlyText={onlyText}>{key}</Key>);
+      components.push(
+        <Key key={index} onlyText={onlyText}>
+          {key}
+        </Key>,
+      );
     }
   }
   return (
