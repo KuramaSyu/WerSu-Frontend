@@ -60,7 +60,7 @@ export function useFrequentlyUsedRows(
 
 /** Fetches the most recent `note_viewed` activity rows for the Last Used panel. Lifts `title` / `description` from `metadata_json` so the view doesn't have to parse JSON. */
 export function useLastUsedRows(
-  limit: number = 2,
+  limit: number = 3,
   days: number = 30,
 ): HistoryState {
   const filter = useMemo<HistoryFilter>(
@@ -78,7 +78,7 @@ export function useLastUsedRows(
   // `ActivityReply` rows are a structural superset of `HistoryRowEntry`;
   // lift title/description from metadata_json so the row view doesn't
   // re-parse the metadata on every render.
-  const rows: HistoryRowEntry[] = (result.data ?? []).map((row) => {
+  const rawRows: HistoryRowEntry[] = (result.data ?? []).map((row) => {
     const { title, description } = extractNoteMetadata(row);
     return {
       ...row,
@@ -86,6 +86,21 @@ export function useLastUsedRows(
       ...(description ? { description } : {}),
     };
   });
+
+  // Collapse duplicates by `note_id` so re-viewing the same note doesn't
+  // push other recently-viewed notes out of the list. The backend
+  // returns rows newest-first, so the first occurrence per id is the
+  // most recent event for that note. We over-fetch on the wire (a
+  // multiple of `limit`) to keep the visible list at `limit` entries
+  // even after dedupe trims duplicates.
+  const seen = new Set<string>();
+  const rows: HistoryRowEntry[] = [];
+  for (const row of rawRows) {
+    if (seen.has(row.note_id)) continue;
+    seen.add(row.note_id);
+    rows.push(row);
+    if (rows.length >= limit) break;
+  }
 
   return {
     rows,
