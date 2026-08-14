@@ -528,6 +528,7 @@ export class CustomThemeImpl implements CustomTheme {
       MuiFab: {
         styleOverrides: {
           root: {
+            // 50% for circular FABs; override if not wanted
             borderRadius: "50%",
             "&:hover": {
               borderRadius: "50%",
