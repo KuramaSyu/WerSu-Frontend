@@ -59,6 +59,9 @@ const CreateFab: React.FC<CreateFabProps> = ({
           size="medium"
           sx={{
             borderRadius: 6,
+            "&:hover": {
+              borderRadius: 6,
+            },
           }}
         >
           <NoteAddIcon sx={{ mr: 1 }} />
@@ -74,6 +77,9 @@ const CreateFab: React.FC<CreateFabProps> = ({
           size="medium"
           sx={{
             borderRadius: 6,
+            "&:hover": {
+              borderRadius: 6,
+            },
           }}
         >
           <CreateNewFolderIcon sx={{ mr: 1 }} />
