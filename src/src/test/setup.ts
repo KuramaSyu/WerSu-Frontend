@@ -111,6 +111,12 @@ const storeSpecs: Record<string, StoreSpec> = {
     module: () => import("../zustand/FeatureStore"),
     pick: (mod) => (mod as { useFeatureStore?: StoreHandle }).useFeatureStore,
   },
+  shortcutModifier: {
+    module: () => import("../zustand/useShortcutModifierStore"),
+    pick: (mod) =>
+      (mod as { useShortcutModifierStore?: StoreHandle })
+        .useShortcutModifierStore,
+  },
   // Intentionally lazy: `useThemeStore.tsx` imports
   // `@mui/material/styles`, which transitively pulls in the deep
   // `material-color-utilities` ESM graph that Vite 8 cannot
@@ -157,6 +163,7 @@ beforeEach(async () => {
         "auth",
         "editorSettings",
         "featureFlags",
+        "shortcutModifier",
       ] as const
     ).map(loadStore),
   );

@@ -4,6 +4,7 @@ import { Box, Typography } from "@mui/material";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { StaticCircleBackground } from "../LoadingPage/CircleBackground";
 import { DiscordLoginBig } from "./DiscordLoginBig";
+import { PasskeyLogin } from "./PasskeyLogin";
 import { Title } from "../LoadingPage/Title";
 import React from "react";
 import { LogoSvgComponent } from "../LoadingPage/Main";
@@ -86,6 +87,7 @@ export const LoginPage: React.FC = () => {
         }}
       >
         <DiscordLoginBig></DiscordLoginBig>
+        <PasskeyLogin />
       </Box>
       <Box
         ref={containerRef}

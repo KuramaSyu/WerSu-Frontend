@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { Box, InputAdornment, Stack, TextField } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import { useSearchFilterStore } from "../../../zustand/useSearchFilterStore";
 import SearchStrategySelect from "../../SearchStrategySelect";
 import { M3, M4 } from "../../../statics";
 import { useDebouncedSearchSync } from "./SearchOverlayHeader.hook";
+import { isCtrlPlus } from "../../../utils/CtrlPlus";
 
 interface Props {
   // Kept on the interface so callers don't break when they still
@@ -27,7 +28,24 @@ export const SearchOverlayHeader: React.FC<Props> = () => {
   const setSearch = useSearchFilterStore((s) => s.setSearch);
   const setSearchType = useSearchFilterStore((s) => s.setSearchType);
 
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
   useDebouncedSearchSync(search);
+
+  // When the overlay is already open, Ctrl+K re-focuses the
+  // search input instead of toggling the overlay (the open
+  // half of the shortcut is owned by `SearchBar`). The handler
+  // is mounted only while this header is in the tree, so the
+  // focus branch only fires when the overlay is open.
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!isCtrlPlus(event, "k")) return;
+      event.preventDefault();
+      inputRef.current?.focus();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   return (
     <Stack
@@ -46,6 +64,7 @@ export const SearchOverlayHeader: React.FC<Props> = () => {
         onChange={(e) => setSearch(e.target.value)}
         color="primary"
         sx={{ flex: 1, minWidth: 0 }}
+        inputRef={inputRef}
         slotProps={{
           input: {
             startAdornment: (

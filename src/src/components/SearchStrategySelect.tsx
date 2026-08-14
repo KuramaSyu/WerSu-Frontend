@@ -1,18 +1,33 @@
-import React, { memo } from "react";
-import {
-  ToggleButtonGroup,
-  ToggleButton,
-  Tooltip,
-  Collapse,
-  Typography,
-  Box,
-} from "@mui/material";
+import React, { memo, useEffect } from "react";
+import { ToggleButtonGroup, Box, Stack, Typography } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import ManageSearchIcon from "@mui/icons-material/ManageSearch";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import { M4 } from "../statics";
 import { RestNotesSearchType } from "../api/models/search";
 import CollapseToggleButton from "./CollapseToggleButton";
+import { KeyboardShortcut } from "../utils/renderShortcut";
+import { isCtrlPlus } from "../utils/CtrlPlus";
+import { ShortcutHint } from "./ShortcutHint";
+
+// Map shortcut key -> search type. Kept at module scope so the
+// keyboard handler and the hint labels stay in sync. The keys
+// here are the exact set passed to `isCtrlPlus` in the listener
+// below; add a row and a new pill at once.
+const STRATEGY_SHORTCUTS: Record<string, RestNotesSearchType> = {
+  q: RestNotesSearchType.KEYWORD,
+  w: RestNotesSearchType.TYPO_TOLERANT,
+  e: RestNotesSearchType.CONTEXT,
+};
+
+// Display order for the single hint popover anchored to the
+// group. Matches the left-to-right pill order in the toggle.
+const STRATEGY_KEYS: string[] = ["q", "w", "e"];
+const STRATEGY_LABELS: Record<string, string> = {
+  q: "Keyword",
+  w: "Fuzzy",
+  e: "Context",
+};
 
 interface Props {
   searchType: RestNotesSearchType;
@@ -25,26 +40,60 @@ const SearchStrategySelect: React.FC<Props> = ({
   setSearchType,
   color,
 }) => {
+  // Wire up Ctrl+Q / Ctrl+W / Ctrl+E while the picker is mounted.
+  // The three keys collide with browser shortcuts on some
+  // platforms (Ctrl+W closes the tab), so the matched branch
+  // calls preventDefault before flipping the search type.
+  // `isCtrlPlus` accepts the key list as an array so a single
+  // guard handles all three.
+  useEffect(() => {
+    const keys = Object.keys(STRATEGY_SHORTCUTS);
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!isCtrlPlus(event, keys)) return;
+      const next = STRATEGY_SHORTCUTS[event.key.toLowerCase()];
+      if (!next) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setSearchType(next);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [setSearchType]);
+
+  // Single hint popover for the whole group. Renders three
+  // shortcut chips side-by-side (`Ctrl + Q`, `Ctrl + W`,
+  // `Ctrl + E`) so the user learns all three without any extra
+  // text -- the toggle pills already name the modes.
+  const groupHint = (
+    <Stack direction="column" spacing={1}>
+      {STRATEGY_KEYS.map((key) => (
+        <Stack direction="row" spacing={1}>
+          <KeyboardShortcut shortcut={`ctrl+${key}`} />{" "}
+          <Typography>{STRATEGY_LABELS[key]}</Typography>
+        </Stack>
+      ))}
+    </Stack>
+  );
+
   return (
-    <ToggleButtonGroup
-      value={searchType}
-      exclusive
-      onChange={(_event, newSearchType) => {
-        if (newSearchType !== null) {
-          setSearchType(newSearchType as RestNotesSearchType);
-        }
-      }}
-      color={color}
-      aria-label="search type"
-      sx={{
-        borderRadius: M4,
-        width: "100%",
-        py: 0,
-        my: 0,
-      }}
-      // color="inherit"
-    >
-      <Tooltip title="Keyword: Search for exact matches">
+    <ShortcutHint body={groupHint} placement="bottom">
+      <ToggleButtonGroup
+        value={searchType}
+        exclusive
+        onChange={(_event, newSearchType) => {
+          if (newSearchType !== null) {
+            setSearchType(newSearchType as RestNotesSearchType);
+          }
+        }}
+        color={color}
+        aria-label="search type"
+        sx={{
+          borderRadius: M4,
+          width: "100%",
+          py: 0,
+          my: 0,
+        }}
+      >
         <CollapseToggleButton
           whenSelected={<Box sx={{ whiteSpace: "nowrap" }}>Keyword</Box>}
           selected={searchType === RestNotesSearchType.KEYWORD}
@@ -59,8 +108,6 @@ const SearchStrategySelect: React.FC<Props> = ({
         >
           <SearchIcon />
         </CollapseToggleButton>
-      </Tooltip>
-      <Tooltip title="Typo Tolerant: Search with typo tolerance">
         <CollapseToggleButton
           whenSelected={<Box>Fuzzy</Box>}
           selected={searchType === RestNotesSearchType.TYPO_TOLERANT}
@@ -71,8 +118,6 @@ const SearchStrategySelect: React.FC<Props> = ({
         >
           <ManageSearchIcon />
         </CollapseToggleButton>
-      </Tooltip>
-      <Tooltip title="Context: Search for notes with similar content">
         <CollapseToggleButton
           color={color}
           whenSelected={<Box>Context</Box>}
@@ -87,8 +132,8 @@ const SearchStrategySelect: React.FC<Props> = ({
         >
           <AutoAwesomeIcon />
         </CollapseToggleButton>
-      </Tooltip>
-    </ToggleButtonGroup>
+      </ToggleButtonGroup>
+    </ShortcutHint>
   );
 };
 

@@ -10,6 +10,7 @@ import { useShareAccessToken } from "./api/queries/useShareAccessToken";
 import { apiRegistry } from "./api/apiRegistry";
 import { queryClient } from "./api/queryClient";
 import { useUser } from "./api/queries/useUser";
+import { useGlobalModifier } from "./hooks/useGlobalModifier";
 
 /**
  * Routes under `/public/*` are served by the share JWT only — never by
@@ -216,6 +217,11 @@ export const Bootstrap: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ["accessToken"] });
     }
   }, [isUserSuccess]);
+
+  // Drive the shared `isModifierPressed` flag every ShortcutHint
+  // reads from. Mounted here so the listener lives for the entire
+  // app lifetime and never re-registers as routes change.
+  useGlobalModifier();
 
   return <></>;
 };

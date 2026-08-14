@@ -15,6 +15,11 @@ import { KeyboardShortcut } from "../../utils/renderShortcut";
 // `background.default` surface (the previous topbar-tuned
 // `topbarContrastText` resolved to a white-ish tone in light mode
 // and disappeared against the light rail background).
+//
+// Ctrl+K while the overlay is open is handled by
+// `SearchOverlayHeader` (it refocuses the input). Here we only
+// open the overlay — closing still happens via ESC, the backdrop
+// tap, or the drawer's swipe-down gesture.
 export const SearchBar: React.FC = () => {
   const theme = useThemeStore((s) => s.theme);
   const isDialogOpen = useSearchNotesStore((s) => s.isDialogOpen);
@@ -22,10 +27,14 @@ export const SearchBar: React.FC = () => {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (isCtrlPlus(event, "k")) {
-        event.preventDefault();
-        setIsDialogOpen(!isDialogOpen);
+      if (!isCtrlPlus(event, "k")) return;
+      event.preventDefault();
+      if (!isDialogOpen) {
+        setIsDialogOpen(true);
       }
+      // If already open, the inner SearchOverlayHeader handler
+      // will focus the input. Letting this handler fall through
+      // would close the overlay right after it opens.
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
