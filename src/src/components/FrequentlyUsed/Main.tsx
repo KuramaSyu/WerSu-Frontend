@@ -101,13 +101,16 @@ export const FrequentlyUsedPanel: React.FC<FrequentlyUsedPanelProps> = ({
 /**
  * Shows the most recently viewed notes (last-N `note_viewed` events).
  *
- * Defaults to the last 2 entries so the section stays compact -- the
- * Frequently Used panel already covers the "what should I look at" use
- * case. Data fetching is owned by `useLastUsedRows`.
+ * Defaults to the last 3 unique notes so the section stays compact
+ * while still showing a useful recent-history snippet. Duplicates are
+ * collapsed by `note_id` -- re-viewing the same note repeatedly should
+ * not push other recently-viewed notes out of the list. The
+ * Frequently Used panel covers the "what should I look at" use case.
+ * Data fetching is owned by `useLastUsedRows`.
  */
 export const LastUsedPanel: React.FC<LastUsedPanelProps> = ({
   title = "Last used",
-  limit = 2,
+  limit = 3,
   days = 30,
 }) => {
   const { rows, isLoading, hasError } = useLastUsedRows(limit, days);
@@ -156,6 +159,7 @@ export const LastUsedPanel: React.FC<LastUsedPanelProps> = ({
             entry={entry}
             onClick={handleItemClick}
             headerMode="entityTitle"
+            showDescription={false}
             developerMode={developerMode}
           />
         ))}

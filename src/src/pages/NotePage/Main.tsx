@@ -18,6 +18,8 @@ import { useRightPanel } from "../../LayoutProvider";
 import { NoteEditorSkeleton } from "./NoteEditorSkeleton";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useScrollToSectionOnLoad } from "../../hooks/useScrollToSectionOnLoad";
+import { queryClient } from "../../api/queryClient";
+import { historyQueryKeys } from "../../api/queries/historyQueries";
 
 export const NotePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -33,6 +35,12 @@ export const NotePage: React.FC = () => {
   useEffect(() => {
     noteRef.current = note;
   }, [note]);
+
+  // Refetch activity-history panels (Last used, Frequently used, Recent
+  // activity) as soon as the user opens a note
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: historyQueryKeys.all });
+  }, [id]);
 
   const sameStringArray = (left: string[], right: string[]) =>
     left.length === right.length &&

@@ -107,6 +107,15 @@ export interface HistoryRowViewProps {
    */
   headerMode?: "variantLabel" | "entityTitle";
   /**
+   * Render the description caption under the header. Defaults to
+   * `true`. Set to `false` for compact panels (`LastUsedPanel`,
+   * speed dials, etc.) where the header alone is enough context.
+   * The `description` field is still lifted onto the entry by the
+   * data hooks -- this only controls the view, so callers that
+   * switch back on later get the data for free.
+   */
+  showDescription?: boolean;
+  /**
    * When `true`, wrap the row in a `Tooltip` that dumps the raw
    * entry as JSON. Off by default — only useful while debugging
    * and gated behind the `DeveloperMode` feature flag.
@@ -142,6 +151,7 @@ export const HistoryRowView: React.FC<HistoryRowViewProps> = ({
   entry,
   onClick,
   headerMode = "variantLabel",
+  showDescription = true,
   developerMode = false,
 }) => {
   const kind: HistoryRowKind = getHistoryRowKind(entry);
@@ -170,25 +180,28 @@ export const HistoryRowView: React.FC<HistoryRowViewProps> = ({
       }}
       onClick={() => onClick(entry)}
     >
-        <Tooltip title={kind} placement="right">
-          <Box sx={{ pt: 0.25, display: "flex", alignItems: "center" }}>
-            {renderRowIcon(entry)}
-          </Box>
-        </Tooltip>
-        <Box sx={{ flex: 1, minWidth: 0 }} aria-label={"Creation time"}>
-          {/* Header: variant label by default (e.g. "Created a Note"),
+      <Tooltip title={kind} placement="right">
+        <Box sx={{ pt: 0.25, display: "flex", alignItems: "center" }}>
+          {renderRowIcon(entry)}
+        </Box>
+      </Tooltip>
+      <Box sx={{ flex: 1, minWidth: 0 }} aria-label={"Creation time"}>
+        {/* Header: variant label by default (e.g. "Created a Note"),
               or the resolved entity title when the caller opted into
               `headerMode="entityTitle"` (Frequently Used panel). */}
-          <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>
-            {headerMode === "entityTitle"
-              ? (entry.title ?? formatHistoryRowLabel(entry))
-              : getHistoryRowVariantLabel(entry)}
-          </Typography>
-          {/* Description: the resolved entity title — note title or
+        <Typography variant="body2" sx={{ fontWeight: 600 }} noWrap>
+          {headerMode === "entityTitle"
+            ? (entry.title ?? formatHistoryRowLabel(entry))
+            : getHistoryRowVariantLabel(entry)}
+        </Typography>
+        {/* Description: the resolved entity title — note title or
               directory display_name. Older records without a snapshot
               fall through `formatHistoryRowLabel` which never returns
-              a raw id; the line is simply absent when nothing is known. */}
-          {(entry.description ?? formatHistoryRowLabel(entry)) && (
+              a raw id; the line is simply absent when nothing is known.
+              `showDescription` lets compact panels (Last used) opt out
+              without losing the data on the entry itself. */}
+        {showDescription &&
+          (entry.description ?? formatHistoryRowLabel(entry)) && (
             <Typography
               variant="caption"
               color="textSecondary"
@@ -202,16 +215,16 @@ export const HistoryRowView: React.FC<HistoryRowViewProps> = ({
               {entry.description ?? formatHistoryRowLabel(entry)}
             </Typography>
           )}
-          {/* Date: plain caption line. Always shown when an `at`
+        {/* Date: plain caption line. Always shown when an `at`
               timestamp is available, independent of the description
               above, so the user always sees when the action happened. */}
-          {entry.at && (
-            <Typography variant="caption" color="textSecondary">
-              {formatHistoryRowTimestamp(entry.at)}
-            </Typography>
-          )}
-        </Box>
-        {/* {hasScore(entry) && (
+        {entry.at && (
+          <Typography variant="caption" color="textSecondary">
+            {formatHistoryRowTimestamp(entry.at)}
+          </Typography>
+        )}
+      </Box>
+      {/* {hasScore(entry) && (
             <Chip size="small" label={entry.score} sx={{ alignSelf: "center" }} />
           )} */}
     </Stack>
