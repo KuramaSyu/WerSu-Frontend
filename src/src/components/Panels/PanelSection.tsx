@@ -7,8 +7,9 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import { ThemeProvider, useTheme } from "@mui/material/styles";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { M1, M2, M3 } from "../../statics";
 import { useThemeStore } from "../../zustand/useThemeStore";
 
@@ -53,14 +54,46 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
   defaultExpanded = true,
 }) => {
   const [expanded, setExpanded] = useState(defaultExpanded);
+  const [hovered, setHovered] = useState(false);
   const renderDivider = showDivider ?? title !== undefined;
-  const { theme } = useThemeStore();
+
+  const theme = useTheme();
+  // `iconTransition` is a static snippet per theme (doesn't change on
+  // hover), so reading it from the global store is fine -- no need to
+  // mirror it into the swapped theme.
+  const iconTransition = useThemeStore((s) => s.theme.iconTransition);
+
+  // dim function which dimms given color
+  const dim = (color: string) =>
+    theme.palette.mode === "dark"
+      ? theme.darken(color, 0.3)
+      : theme.lighten(color, 0.3);
+
+  // dimmed theme for not hovered state
+  const dimmedTheme = useMemo(
+    () => ({
+      ...theme,
+      palette: {
+        ...theme.palette,
+        text: {
+          ...theme.palette.text,
+          primary: dim(theme.palette.text.primary),
+          secondary: dim(theme.palette.text.secondary),
+          disabled: dim(theme.palette.text.disabled),
+        },
+      },
+    }),
+    [theme],
+  );
+  const activeTheme = hovered ? theme : dimmedTheme;
+
+  const hoverHandlers = {
+    onMouseEnter: () => setHovered(true),
+    onMouseLeave: () => setHovered(false),
+  };
 
   const body = <Stack spacing={spacing}>{children}</Stack>;
 
-  // `inAccordion` tweaks the
-  // spacing for use inside an `AccordionSummary` (which already reserves
-  // its own vertical padding).
   const renderTitleRow = (inAccordion: boolean) => (
     <Box
       sx={{
@@ -70,6 +103,8 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
         mb: inAccordion ? 0 : M1,
         minHeight: 24,
         width: "100%",
+        color: activeTheme.palette.text.primary,
+        ...iconTransition.root,
       }}
     >
       {titleIcon !== undefined && (
@@ -87,7 +122,6 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
         </Box>
       )}
       <Typography
-        color="textSecondary"
         variant="body1"
         sx={{
           textTransform: "uppercase",
@@ -105,10 +139,14 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
   // explicitly asked for one (e.g. with `showDivider`).
   if (title === undefined) {
     return (
-      <Box>
-        {renderDivider && <Divider sx={{ opacity: dividerOpacity, mb: 1.5 }} />}
-        {body}
-      </Box>
+      <ThemeProvider theme={activeTheme}>
+        <Box {...hoverHandlers}>
+          {renderDivider && (
+            <Divider sx={{ opacity: dividerOpacity, mb: 1.5 }} />
+          )}
+          {body}
+        </Box>
+      </ThemeProvider>
     );
   }
 
@@ -116,64 +154,69 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
   // row plus the body.
   if (collapsible) {
     return (
-      <Accordion
-        expanded={expanded}
-        onChange={(_, isExpanded) => setExpanded(isExpanded)}
-        disableGutters
-        elevation={0}
-        square
-        sx={{
-          backgroundColor: "transparent",
-          "&:before": { display: "none" },
-          "&.MuiAccordion-root": {
-            margin: 0,
-          },
-          "& .MuiAccordionSummary-root": {
-            minHeight: 32,
-            px: 0,
-            "&:hover": {
-              backgroundColor: "action.hover",
+      <ThemeProvider theme={activeTheme}>
+        <Accordion
+          {...hoverHandlers}
+          expanded={expanded}
+          onChange={(_, isExpanded) => setExpanded(isExpanded)}
+          disableGutters
+          elevation={0}
+          square
+          sx={{
+            backgroundColor: "transparent",
+            "&:before": { display: "none" },
+            "&.MuiAccordion-root": {
+              margin: 0,
             },
-            "&.Mui-expanded": {
+            "& .MuiAccordionSummary-root": {
               minHeight: 32,
-            },
-            "& .MuiAccordionSummary-content": {
-              my: 0,
+              px: 0,
+              "&:hover": {
+                backgroundColor: "action.hover",
+              },
               "&.Mui-expanded": {
+                minHeight: 32,
+              },
+              "& .MuiAccordionSummary-content": {
                 my: 0,
+                "&.Mui-expanded": {
+                  my: 0,
+                },
               },
             },
-          },
-          "& .MuiAccordionDetails-root": {
-            px: 0,
-            py: 1,
-          },
-        }}
-      >
-        <AccordionSummary expandIcon={<ExpandMoreIcon fontSize="small" />}>
-          {renderTitleRow(true)}
-        </AccordionSummary>
-        {renderDivider && <Divider sx={{ opacity: dividerOpacity }} />}
-        <AccordionDetails>
-          <Box sx={{ px: M3, color: theme.palette.text.secondary }}>{body}</Box>
-        </AccordionDetails>
-      </Accordion>
+            "& .MuiAccordionDetails-root": {
+              px: 0,
+              py: 1,
+            },
+          }}
+        >
+          <AccordionSummary expandIcon={<ExpandMoreIcon fontSize="small" />}>
+            {renderTitleRow(true)}
+          </AccordionSummary>
+          {renderDivider && <Divider sx={{ opacity: dividerOpacity }} />}
+          <AccordionDetails>
+            <Box sx={{ px: M3 }}>{body}</Box>
+          </AccordionDetails>
+        </Accordion>
+      </ThemeProvider>
     );
   }
 
   // Plain (non-collapsible) title -> shared title row + optional divider + body.
   return (
     // px used to allign with padding of accordion
-    <Box sx={{ px: M2 }}>
-      {renderTitleRow(false)}
-      {children && (
-        <>
-          {renderDivider && (
-            <Divider sx={{ opacity: dividerOpacity, mb: 1.5 }} />
-          )}
-          {body}
-        </>
-      )}
-    </Box>
+    <ThemeProvider theme={activeTheme}>
+      <Box {...hoverHandlers} sx={{ px: M2 }}>
+        {renderTitleRow(false)}
+        {children && (
+          <>
+            {renderDivider && (
+              <Divider sx={{ opacity: dividerOpacity, mb: 1.5 }} />
+            )}
+            {body}
+          </>
+        )}
+      </Box>
+    </ThemeProvider>
   );
 };
