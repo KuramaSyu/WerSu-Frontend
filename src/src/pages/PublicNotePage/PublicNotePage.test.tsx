@@ -125,6 +125,11 @@ vi.mock("@mui/material", () => ({
         {children}
       </div>
     ),
+  // `RotatingStrokeBox` (transitively reachable via the right rail's
+  // `ShareDialog`) calls `keyframes` at module-load time and
+  // interpolates the result into an `animation: ${...}` string, so a
+  // bare function returning a stable identifier is enough.
+  keyframes: () => "mock-keyframes",
   // `usePanelSize` reaches into MUI's theme for breakpoint queries
   // (`theme.breakpoints.up`). Return a stub that always matches up
   // to xl, so the panel sizes recorded by the test aren't driven by
@@ -137,6 +142,40 @@ vi.mock("@mui/material", () => ({
     },
   }),
   useMediaQuery: () => true,
+}));
+
+// `PanelSection` (transitively reachable via `VersionInfo` /
+// `AttachmentPanelSection` in the right rail) imports `ThemeProvider`
+// and `useTheme` from `@mui/material/styles`. The top-level mock above
+// does NOT cover subpath imports, so resolving `/styles` would
+// otherwise pull in MUI's barrel `index.mjs`.
+vi.mock("@mui/material/styles", () => ({
+  ThemeProvider: ({ children }: { children?: React.ReactNode }) => children,
+  useTheme: () => ({
+    breakpoints: {
+      up: () => "(min-width: 0px)",
+    },
+  }),
+}));
+
+// `CollapseToggleButton` (used by `ShareFormSection` in the share
+// dialog chain reached via the right rail's `ShareDialog`) imports
+// `Collapse` from `@mui/material/Collapse` as a subpath import.
+// Subpath imports bypass both the top-level `@mui/material` and
+// `@mui/material/styles` mocks, and `Collapse` transitively loads
+// `@mui/material/internal/Transition.mjs`, which does a directory
+// import of `react-transition-group/TransitionGroupContext` that
+// Vitest's default node ESM resolver refuses to handle. The
+// assertions don't care about the real Collapse behaviour, so a
+// stub keyed off the `in` prop is enough.
+vi.mock("@mui/material/Collapse", () => ({
+  default: ({
+    children,
+    in: inProp,
+  }: {
+    children?: React.ReactNode;
+    in?: boolean;
+  }) => (inProp ? children : null),
 }));
 
 // `PublicNoteEditor` and `NoteEditorSkeleton` still live in
