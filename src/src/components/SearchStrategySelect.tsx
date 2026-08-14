@@ -40,16 +40,16 @@ const SearchStrategySelect: React.FC<Props> = ({
   setSearchType,
   color,
 }) => {
-  // Wire up Ctrl+Q / Ctrl+W / Ctrl+E while the picker is mounted.
-  // The three keys collide with browser shortcuts on some
-  // platforms (Ctrl+W closes the tab), so the matched branch
-  // calls preventDefault before flipping the search type.
-  // `isCtrlPlus` accepts the key list as an array so a single
-  // guard handles all three.
+  // Wire up Ctrl+Alt+Q / Ctrl+Alt+W / Ctrl+Alt+E while the
+  // picker is mounted. The Alt chord puts the binding outside
+  // plain-Ctrl shortcuts (Ctrl+W closes the tab), so
+  // `preventDefault` is sufficient to own them. `isCtrlPlus`
+  // accepts the key list as an array so a single guard handles
+  // all three.
   useEffect(() => {
     const keys = Object.keys(STRATEGY_SHORTCUTS);
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (!isCtrlPlus(event, keys)) return;
+      if (!isCtrlPlus(event, keys, { alt: true })) return;
       const next = STRATEGY_SHORTCUTS[event.key.toLowerCase()];
       if (!next) return;
       event.preventDefault();
@@ -60,15 +60,15 @@ const SearchStrategySelect: React.FC<Props> = ({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [setSearchType]);
 
-  // Single hint popover for the whole group. Renders three
-  // shortcut chips side-by-side (`Ctrl + Q`, `Ctrl + W`,
-  // `Ctrl + E`) so the user learns all three without any extra
-  // text -- the toggle pills already name the modes.
+  // Single hint popover for the whole group. Three shortcut
+  // chips side-by-side (`Ctrl + Alt + Q`, `Ctrl + Alt + W`,
+  // `Ctrl + Alt + E`) so the user learns all three without any
+  // extra text -- the toggle pills already name the modes.
   const groupHint = (
     <Stack direction="column" spacing={1}>
       {STRATEGY_KEYS.map((key) => (
         <Stack direction="row" spacing={1}>
-          <KeyboardShortcut shortcut={`ctrl+${key}`} />{" "}
+          <KeyboardShortcut shortcut={`ctrl+alt+${key}`} />{" "}
           <Typography>{STRATEGY_LABELS[key]}</Typography>
         </Stack>
       ))}

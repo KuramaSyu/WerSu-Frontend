@@ -19,13 +19,19 @@ export interface CreateFabProps {
  * drop it into an existing layout container without conflicting
  * `position: fixed` rules.
  *
- * Shortcuts: while this component is mounted, Ctrl+N opens the
- * note dialog and Ctrl+D opens the directory dialog. Both
- * preventDefault so they don't trigger browser "new window"
- * shortcuts. Shortcut hints point `placement="bottom"` because
- * the FABs sit at the bottom-right of the viewport -- a
- * top-anchored popover would visually overlap the button
- * itself instead of clearing it.
+ * Shortcuts: while this component is mounted, Ctrl+Alt+N opens
+ * the note dialog and Ctrl+Alt+D opens the directory dialog.
+ * The combo is Ctrl+Alt (not plain Ctrl) because plain Ctrl+N is
+ * hard-wired to Firefox's "new window" command and Ctrl+D to
+ * "bookmark this page" -- `preventDefault()` cannot suppress
+ * either reliably across builds. Adding Alt to the binding puts
+ * the shortcut outside the browser's reserved combos, so the
+ * keybinding belongs to us alone.
+ *
+ * Shortcut hints point `placement="bottom"` because the FABs sit
+ * at the bottom-right of the viewport -- a top-anchored popover
+ * would visually overlap the button itself instead of clearing
+ * it.
  */
 const CreateFab: React.FC<CreateFabProps> = ({
   onCreateNote,
@@ -33,12 +39,12 @@ const CreateFab: React.FC<CreateFabProps> = ({
 }) => {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (isCtrlPlus(event, "n")) {
+      if (isCtrlPlus(event, "n", { alt: true })) {
         event.preventDefault();
         onCreateNote();
         return;
       }
-      if (isCtrlPlus(event, "d")) {
+      if (isCtrlPlus(event, "d", { alt: true })) {
         event.preventDefault();
         onCreateDirectory();
         return;
@@ -50,7 +56,7 @@ const CreateFab: React.FC<CreateFabProps> = ({
 
   return (
     <Stack spacing={2} direction="row">
-      <ShortcutHint shortcut="ctrl+n" placement="bottom">
+      <ShortcutHint shortcut="ctrl+alt+n" placement="bottom">
         <Fab
           color="primary"
           aria-label="New note"
@@ -59,7 +65,7 @@ const CreateFab: React.FC<CreateFabProps> = ({
           size="medium"
           sx={{
             borderRadius: 6,
-            "&:hover": {
+            ":hover": {
               borderRadius: 6,
             },
           }}
@@ -68,7 +74,7 @@ const CreateFab: React.FC<CreateFabProps> = ({
           <Typography>Note</Typography>
         </Fab>
       </ShortcutHint>
-      <ShortcutHint shortcut="ctrl+d" placement="bottom">
+      <ShortcutHint shortcut="ctrl+alt+d" placement="bottom">
         <Fab
           color="primary"
           aria-label="New directory"
@@ -77,7 +83,7 @@ const CreateFab: React.FC<CreateFabProps> = ({
           size="medium"
           sx={{
             borderRadius: 6,
-            "&:hover": {
+            ":hover": {
               borderRadius: 6,
             },
           }}

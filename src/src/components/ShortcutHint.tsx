@@ -143,11 +143,19 @@ export const ShortcutHint: React.FC<ShortcutHintProps> = ({
           anchorOrigin={origins.anchorOrigin}
           transformOrigin={origins.transformOrigin}
           disablePortal
+          // Both focus-management hooks are off: this popover
+          // is a *hint*, never an interactive dialog. Without
+          // these MUI grabs focus on mount and traps focus on
+          // unmount, yanking the user out of whatever input
+          // they were typing in. With them off, the popover
+          // becomes a passive pointer-events: none surface.
+          disableAutoFocus
+          disableEnforceFocus
           slotProps={{
             paper: {
               sx: {
                 pointerEvents: "none",
-                borderRadius: 1,
+                borderRadius: 3,
                 px: 1,
                 py: 0.25,
               },

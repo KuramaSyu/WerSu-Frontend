@@ -11,6 +11,7 @@ import { apiRegistry } from "./api/apiRegistry";
 import { queryClient } from "./api/queryClient";
 import { useUser } from "./api/queries/useUser";
 import { useGlobalModifier } from "./hooks/useGlobalModifier";
+import { useFocusGuardOnModifier } from "./hooks/useFocusGuardOnModifier";
 
 /**
  * Routes under `/public/*` are served by the share JWT only — never by
@@ -222,6 +223,11 @@ export const Bootstrap: React.FC = () => {
   // reads from. Mounted here so the listener lives for the entire
   // app lifetime and never re-registers as routes change.
   useGlobalModifier();
+  // Restore focus to whatever element the user was typing in
+  // before pressing Ctrl/Cmd -- the modifier-driven re-render
+  // of every ShortcutHint can otherwise yank focus to the
+  // wrapper span (or trigger autoFocus re-evaluation).
+  useFocusGuardOnModifier();
 
   return <></>;
 };

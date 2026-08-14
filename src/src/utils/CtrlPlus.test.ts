@@ -7,6 +7,9 @@
 //     in the array is pressed; any non-matching key returns false.
 //   - Without a modifier, even a matching key returns false.
 //   - A non-matching modifier (Alt only) returns false.
+//   - `isCtrlPlus(event, key, { alt: true })` additionally
+//     requires Alt, and rejects plain-ctrl so it can back the
+//     Ctrl+Alt+N / Ctrl+Alt+D / Ctrl+Alt+Q/W/E bindings.
 //
 // Pure helper, no React. Runs under jsdom so `KeyboardEvent` is
 // constructible.
@@ -20,7 +23,11 @@ import { describe, expect, it } from "vitest";
 import { isCtrlPlus } from "./CtrlPlus";
 
 const k = (
-  init: KeyboardEventInit & { ctrlKey?: boolean; metaKey?: boolean },
+  init: KeyboardEventInit & {
+    ctrlKey?: boolean;
+    metaKey?: boolean;
+    altKey?: boolean;
+  },
 ): KeyboardEvent => new KeyboardEvent("keydown", init);
 
 describe("isCtrlPlus (string key)", () => {
@@ -78,5 +85,69 @@ describe("isCtrlPlus (array of keys)", () => {
 
   it("treats an empty array as no match", () => {
     expect(isCtrlPlus(k({ key: "q", ctrlKey: true }), [])).toBe(false);
+  });
+});
+
+describe("isCtrlPlus ({ alt: true })", () => {
+  // The Ctrl+Alt+Q/W/E bindings depend on these guards -- if
+  // any of these silently pass, a plain Ctrl+E press would
+  // also fire the strategy selector and we'd be back to the
+  // collision-with-Ctrl-W / Ctrl-E behaviour we are trying to
+  // avoid.
+
+  it("matches ctrl+alt+key (string form)", () => {
+    expect(
+      isCtrlPlus(k({ key: "n", ctrlKey: true, altKey: true }), "n", {
+        alt: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("matches meta+alt+key on Mac", () => {
+    expect(
+      isCtrlPlus(k({ key: "n", metaKey: true, altKey: true }), "n", {
+        alt: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("rejects plain ctrl when alt is required", () => {
+    // The whole point of the Ctrl+Alt combos: ctrl+n without
+    // alt must NOT match, otherwise Firefox's "new window" key
+    // would still trigger our app handler.
+    expect(isCtrlPlus(k({ key: "n", ctrlKey: true }), "n", { alt: true })).toBe(
+      false,
+    );
+  });
+
+  it("rejects plain meta when alt is required", () => {
+    expect(isCtrlPlus(k({ key: "n", metaKey: true }), "n", { alt: true })).toBe(
+      false,
+    );
+  });
+
+  it("rejects alt only (no ctrl / no meta)", () => {
+    expect(isCtrlPlus(k({ key: "n", altKey: true }), "n", { alt: true })).toBe(
+      false,
+    );
+  });
+
+  it("works with the array form", () => {
+    const targets = ["q", "w", "e"];
+    for (const key of targets) {
+      expect(
+        isCtrlPlus(k({ key, ctrlKey: true, altKey: true }), targets, {
+          alt: true,
+        }),
+      ).toBe(true);
+    }
+  });
+
+  it("rejects the array form when only ctrl is held", () => {
+    expect(
+      isCtrlPlus(k({ key: "q", ctrlKey: true }), ["q", "w", "e"], {
+        alt: true,
+      }),
+    ).toBe(false);
   });
 });
