@@ -6,8 +6,7 @@ import {
 } from "@tabler/icons-react";
 import { useLayout } from "../../LayoutProvider";
 import { M1 } from "../../statics";
-import { IconButton, Tooltip } from "@mui/material";
-import { useThemeStore } from "../../zustand/useThemeStore";
+import { IconButton, Tooltip, useTheme } from "@mui/material";
 
 export const LeftPanelToggle: React.FC = () => {
   const {
@@ -16,7 +15,7 @@ export const LeftPanelToggle: React.FC = () => {
     setLeftPanelOpen,
     setLeftPanelUserOverride,
   } = useLayout();
-  const { theme } = useThemeStore();
+  const theme = useTheme();
   // The toggle only makes sense when something is actually mounted
   // in the left panel. Without this guard the icon shows on every
   // route even when no left panel is wired up, which is confusing
@@ -61,7 +60,7 @@ export const RightPanelToggle: React.FC = () => {
     setRightPanelOpen,
     setRightPanelUserOverride,
   } = useLayout();
-  const { theme } = useThemeStore();
+  const theme = useTheme();
   // Same guard as `LeftPanelToggle`: the right-side collapse icon
   // is only useful when a panel is actually mounted on the right.
   if (rightPanel === null) {

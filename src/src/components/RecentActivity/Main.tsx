@@ -1,4 +1,4 @@
-import { Box, Stack, Typography } from "@mui/material";
+import { Box, Stack, Typography, useTheme } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import {
   useHistoryRows,
@@ -6,7 +6,6 @@ import {
   type HistoryTarget,
 } from "./HistoryRowFeatures";
 
-import { useThemeStore } from "../../zustand/useThemeStore";
 import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
 import { HistoryRowView } from "./HistoryRowView";
 
@@ -44,7 +43,11 @@ export const RecentActivityPanel: React.FC<RecentActivityPanelProps> = ({
   days = 30,
 }) => {
   const { rows, isLoading, hasError } = useHistoryRows(target, limit, days);
-  const { theme } = useThemeStore();
+  // useTheme() picks up the nearest `ThemeProvider`. When this panel
+  // is rendered inside a `PanelSection`, that provider is the
+  // section's dimmed theme (or the global theme on hover). The store
+  // would only ever return the global theme and ignore the swap.
+  const theme = useTheme();
   const navigate = useNavigate();
   const developerMode = useFeatureStore(
     (state) => state.flags[FeatureFlagName.DeveloperMode],

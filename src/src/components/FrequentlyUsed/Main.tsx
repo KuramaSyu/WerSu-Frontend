@@ -1,4 +1,4 @@
-import { Box, Stack, Typography } from "@mui/material";
+import { Box, Stack, Typography, useTheme } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import {
   useFrequentlyUsedRows,
@@ -6,7 +6,6 @@ import {
 } from "./FrequentlyUsedFeatures";
 import type { HistoryRowEntry } from "../RecentActivity/HistoryRowFeatures";
 
-import { useThemeStore } from "../../zustand/useThemeStore";
 import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
 import { HistoryRowView } from "../RecentActivity/HistoryRowView";
 
@@ -45,7 +44,10 @@ export const FrequentlyUsedPanel: React.FC<FrequentlyUsedPanelProps> = ({
   limit = 20,
 }) => {
   const { rows, isLoading, hasError } = useFrequentlyUsedRows(limit);
-  const { theme } = useThemeStore();
+
+  // use theme also allows for a non global <ThemeProvider> theme to be picked
+  // -> and PanelSection passes in a dimmed theme on not hover
+  const theme = useTheme();
   const navigate = useNavigate();
   const developerMode = useFeatureStore(
     (state) => state.flags[FeatureFlagName.DeveloperMode],
@@ -109,7 +111,10 @@ export const LastUsedPanel: React.FC<LastUsedPanelProps> = ({
   days = 30,
 }) => {
   const { rows, isLoading, hasError } = useLastUsedRows(limit, days);
-  const { theme } = useThemeStore();
+
+  // some here: we need to accept a theme from a parent PanelSection which is dimmed
+  // and store only provides global theme
+  const theme = useTheme();
   const navigate = useNavigate();
   const developerMode = useFeatureStore(
     (state) => state.flags[FeatureFlagName.DeveloperMode],
