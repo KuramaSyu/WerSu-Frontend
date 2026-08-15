@@ -10,11 +10,23 @@ import type { MinimalNote } from "../models/search";
 // `Bootstrap` reaches this instance. See `useNoteQueries` for rationale.
 const attachmentApi = getAttachmentApi();
 
+/**
+ * Shape of the per-note attachment cache (`["attachments", noteId]`).
+ *
+ * The array may contain `null` entries - `byNote`'s `queryFn` pushes
+ * the result of `getAttachmentMetadata` as-is, and that API returns
+ * `null` on non-ok responses (e.g. a public share that doesn't grant
+ * access to every attachment on the note). Every consumer of this
+ * cache key must tolerate `null` entries; the cache is NOT guaranteed
+ * to be a pure `AttachmentMetadata[]`.
+ */
+export type AttachmentMetadataList = (AttachmentMetadata | null)[];
+
 export const attachmentQueries = {
   byNote: (noteId: string, attachmentKeys: string[]) => ({
     queryKey: ["attachments", noteId],
-    queryFn: async () => {
-      var metadatas = [];
+    queryFn: async (): Promise<AttachmentMetadataList> => {
+      const metadatas: AttachmentMetadataList = [];
       for (const key of attachmentKeys) {
         try {
           const metadata = await attachmentApi.getAttachmentMetadata(key);
@@ -76,12 +88,12 @@ export function usePatchAttachment(noteId: string) {
 
     onSuccess: (updatedAttachment) => {
       if (!updatedAttachment) return;
-      // Refresh both the per-note array and the per-key entry used by `useAttachmentMetadata`.
-      queryClient.setQueryData(
+      // Refresh both the per-note array and the per-key entry used by `useAttachmentMetadata`. The `?.` keeps null entries in place; the cache shape is `(AttachmentMetadata | null)[]`.
+      queryClient.setQueryData<AttachmentMetadataList>(
         ["attachments", noteId],
-        (old: AttachmentMetadata[] = []) =>
-          old.map((attachment) =>
-            attachment.key === updatedAttachment.key
+        (old) =>
+          (old ?? []).map((attachment) =>
+            attachment?.key === updatedAttachment.key
               ? updatedAttachment
               : attachment,
           ),
@@ -102,11 +114,12 @@ export function useDeleteAttachment(noteId: string) {
 
     onSuccess: (_, attachmentKey) => {
       // instead of invalidate the whole query, we
-      // remove the deleted attachment from cache
-      queryClient.setQueryData(
+      // remove the deleted attachment from cache. `?.` keeps
+      // null entries (cache shape is `(AttachmentMetadata | null)[]`).
+      queryClient.setQueryData<AttachmentMetadataList>(
         ["attachments", noteId],
-        (old: AttachmentMetadata[] = []) =>
-          old.filter((attachment) => attachment.key !== attachmentKey),
+        (old) =>
+          (old ?? []).filter((attachment) => attachment?.key !== attachmentKey),
       );
     },
   });
@@ -153,24 +166,27 @@ export function useAttachmentMetadata(noteId: string | undefined, key: string) {
     staleTime: 60_000,
     initialData: () => {
       if (!noteId) return undefined;
-      const cached = queryClient.getQueryData<AttachmentMetadata[]>([
+      const cached = queryClient.getQueryData<AttachmentMetadataList>([
         "attachments",
         noteId,
       ]);
-      return cached?.find((a) => a.key === key);
+      // `cached` may contain `null` entries (bug which occured for public users accessing a share
+      // because they got JWT, but attechment api returned 403 )
+      return cached?.find((a) => a?.key === key);
     },
     queryFn: async () => {
       const metadata = await attachmentApi.getAttachmentMetadata(key);
       if (!metadata) {
         throw new Error(`Attachment ${key} not found`);
       }
-      // Seed the per-note cache so lookups stay consistent.
+      // Seed the per-note cache so lookups stay consistent. Skip
+      // null entries
       if (noteId) {
-        queryClient.setQueryData<AttachmentMetadata[]>(
+        queryClient.setQueryData<AttachmentMetadataList>(
           ["attachments", noteId],
           (old) => {
             const existing = old ?? [];
-            if (existing.some((a) => a.key === key)) return existing;
+            if (existing.some((a) => a?.key === key)) return existing;
             return [...existing, metadata];
           },
         );
