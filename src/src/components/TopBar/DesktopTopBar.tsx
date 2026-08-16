@@ -1,41 +1,32 @@
-import {
-  Avatar,
-  Badge,
-  Box,
-  IconButton,
-  Menu,
-  Popover,
-  Slide,
-  Stack,
-  Tooltip,
-} from "@mui/material";
-import InboxIcon from "@mui/icons-material/Inbox";
-import { useState } from "react";
+import { Box, Slide } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import { M1, M2, M3, M5 } from "../../statics";
+import { M2, M3, M5 } from "../../statics";
 import { useLayout } from "../../LayoutProvider";
 import { useThemeStore } from "../../zustand/useThemeStore";
-import { useUser } from "../../api/queries/useUser";
-import { useServiceReachability } from "./useServiceReachability";
-import { UserMenu } from "./UserMenu";
-import { NotificationsPanel } from "./NotificationsPanel";
-import { ServiceFailureDialog } from "./ServiceFailureDialog";
 import { SearchBar } from "../search/SearchBar";
 import { LeftPanelToggle, RightPanelToggle } from "../Panels/LeftPanelToggle";
+import { TopBarRightCluster } from "./TopBarRightCluster";
 
 /**
  * Desktop top bar chrome:
  *
  *   - WerSu wordmark (left)
  *   - Centred SearchBar
- *   - Notifications bell + user avatar (right)
+ *   - :class:`TopBarRightCluster` (slots + bell + avatar + popovers)
  *   - Left/right rail collapse toggles at the far edges
  *
  * Sits in a `Slide` whose visibility is driven by
  * `LayoutProvider.showTopPanel` (the AppShell flips that on scroll).
- * The two popovers (user menu, notifications) and the service-failure
- * dialog are owned here so AppShell doesn't need to thread their
- * anchors down.
+ *
+ * The right cluster is its own subcomponent (`TopBarRightCluster`)
+ * so that:
+ *
+ *   - slot registrations only re-render the cluster, never the
+ *     wordmark, search bar or panel toggles here;
+ *   - the cluster's anchor state and service-reachability poll only
+ *     re-render its subtree;
+ *   - `React.memo` on the cluster keeps this top bar's
+ *     scroll-driven re-renders from cascading into the cluster.
  *
  * The wordmark click navigates to "/" via `react-router-dom`.
  */
@@ -43,15 +34,6 @@ export const DesktopTopBar: React.FC = () => {
   const { showTopPanel } = useLayout();
   const { theme } = useThemeStore();
   const navigate = useNavigate();
-  const reachability = useServiceReachability();
-  const { data: user } = useUser();
-
-  // Anchors for the user menu and notifications popover
-  const [userMenuAnchor, setUserMenuAnchor] = useState<HTMLElement | null>(
-    null,
-  );
-  const [notificationsAnchor, setNotificationsAnchor] =
-    useState<HTMLElement | null>(null);
 
   return (
     <Slide
@@ -110,77 +92,14 @@ export const DesktopTopBar: React.FC = () => {
           <SearchBar />
         </Box>
 
-        {/* Right cluster: notifications bell + avatar. Anchors
-            the user menu (theme + settings + pages + logout)
-            and the notifications popover. Service-reachability
-            drives the bell's red dot. */}
-        <Stack direction="row" spacing={M1} sx={{ alignItems: "center" }}>
-          <Tooltip
-            title={
-              reachability.servicesReachable
-                ? "Open notifications"
-                : "Backend services unreachable"
-            }
-          >
-            <IconButton
-              onClick={(e) => setNotificationsAnchor(e.currentTarget)}
-              size="small"
-            >
-              <Badge
-                color="error"
-                variant="dot"
-                invisible={reachability.servicesReachable}
-                overlap="circular"
-              >
-                <InboxIcon />
-              </Badge>
-            </IconButton>
-          </Tooltip>
-          <IconButton
-            onClick={(e) => setUserMenuAnchor(e.currentTarget)}
-            size="small"
-          >
-            <Avatar
-              sx={{ width: 36, height: 36 }}
-              src={user ? user.getAvatarUrl() : undefined}
-              alt={user ? user.username : ""}
-            />
-          </IconButton>
-        </Stack>
+        {/* Right cluster lives in its own component so its
+            store reads (slots, reachability, user) and local
+            anchors (popovers / user menu) only re-render its
+            subtree. See :class:`TopBarRightCluster`. */}
+        <TopBarRightCluster />
 
         {/* Far-right: collapse / expand the right rail */}
         <RightPanelToggle />
-
-        <Menu
-          anchorEl={userMenuAnchor}
-          open={Boolean(userMenuAnchor)}
-          onClose={() => setUserMenuAnchor(null)}
-          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-          transformOrigin={{ vertical: "top", horizontal: "right" }}
-        >
-          <UserMenu onRequestClose={() => setUserMenuAnchor(null)} />
-        </Menu>
-        <Popover
-          anchorEl={notificationsAnchor}
-          open={Boolean(notificationsAnchor)}
-          onClose={() => setNotificationsAnchor(null)}
-          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-          transformOrigin={{ vertical: "top", horizontal: "right" }}
-          slotProps={{
-            paper: {
-              sx: { width: 420, maxWidth: "calc(100vw - 2rem)" },
-            },
-          }}
-        >
-          <NotificationsPanel />
-        </Popover>
-        <ServiceFailureDialog
-          open={reachability.dialogOpen}
-          unreachableServices={reachability.unreachableServices}
-          onClose={reachability.dismissDialog}
-          onIgnore={reachability.dismissDialog}
-          onGoToSettings={reachability.goToSettings}
-        />
       </Box>
     </Slide>
   );

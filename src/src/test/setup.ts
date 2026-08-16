@@ -117,6 +117,10 @@ const storeSpecs: Record<string, StoreSpec> = {
       (mod as { useShortcutModifierStore?: StoreHandle })
         .useShortcutModifierStore,
   },
+  topBar: {
+    module: () => import("../zustand/useTopBarStore"),
+    pick: (mod) => (mod as { useTopBarStore?: StoreHandle }).useTopBarStore,
+  },
   // Intentionally lazy: `useThemeStore.tsx` imports
   // `@mui/material/styles`, which transitively pulls in the deep
   // `material-color-utilities` ESM graph that Vite 8 cannot
@@ -164,6 +168,7 @@ beforeEach(async () => {
         "editorSettings",
         "featureFlags",
         "shortcutModifier",
+        "topBar",
       ] as const
     ).map(loadStore),
   );
