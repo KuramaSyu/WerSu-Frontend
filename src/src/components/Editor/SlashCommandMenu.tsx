@@ -27,6 +27,8 @@ export interface SlashCommand {
   id: string;
   label: string;
   keywords: string[];
+  /** Optional command name that reflects the editor's current state. */
+  getCommandName?: (editor: Editor) => string;
   run: (editor: Editor) => void | Promise<void>;
 }
 
@@ -81,12 +83,6 @@ export const SlashMenuStateExtension = Extension.create({
               return false;
             }
             const slashPos = from + slashIdx;
-            const $slash = view.state.doc.resolve(slashPos);
-            // Don't trigger inside code leaves; let the code-block
-            // input handler deal with it.
-            if ($slash.parent.type.spec.code) {
-              return false;
-            }
             const tr = view.state.tr.setMeta(slashMenuStateKey, {
               type: "set",
               pos: slashPos,
@@ -133,16 +129,58 @@ const getCurrentParagraphRange = (editor: Editor) => {
   return { from, to };
 };
 
+const getSlashCommandRange = (
+  editor: Editor,
+): { from: number; to: number } | null => {
+  const { selection, doc } = editor.state;
+  const slashState = slashMenuStateKey.getState(editor.state);
+  if (slashState) {
+    try {
+      const $slash = doc.resolve(slashState.pos);
+      const $cursor = selection.$from;
+      if (
+        $slash.parent !== $cursor.parent ||
+        selection.from < slashState.pos + 1 ||
+        selection.to < slashState.pos + 1
+      ) {
+        return null;
+      }
+      return { from: slashState.pos, to: selection.from };
+    } catch {
+      return null;
+    }
+  }
+
+  // Fallback for content that already starts with a slash command and has
+  // no recorded slash state, such as pasted content or unit-test fixtures.
+  const { from: paragraphFrom } = getCurrentParagraphRange(editor);
+  const textBeforeCaret = doc.textBetween(paragraphFrom, selection.from);
+  const commandStart = textBeforeCaret.lastIndexOf("/");
+  return commandStart === -1 || !textBeforeCaret.trimStart().startsWith("/")
+    ? null
+    : { from: paragraphFrom + commandStart, to: selection.from };
+};
+
 /**
- * Removes "/..." from the current paragraph before inserting/toggling the
- * selected block command. Exported so dynamically-injected commands can
- * share the same slash-line-clearing behavior as the built-ins.
+ * Removes the entire current paragraph before applying a block command.
+ * Exported so dynamically-injected commands can share this behavior.
  */
 export const clearSlashLine = (editor: Editor) => {
-  // Remove "/..." before inserting/toggling the selected block command.
   const range = getCurrentParagraphRange(editor);
   editor.chain().focus().deleteRange(range).run();
   // Also clear the slash menu state so the floating menu closes.
+  const tr = editor.state.tr.setMeta(slashMenuStateKey, { type: "clear" });
+  editor.view.dispatch(tr);
+};
+
+/** Removes only the typed slash command and preserves surrounding text. */
+export const clearSlashCommand = (editor: Editor) => {
+  const range = getSlashCommandRange(editor);
+  if (!range) {
+    return;
+  }
+
+  editor.chain().focus().deleteRange(range).run();
   const tr = editor.state.tr.setMeta(slashMenuStateKey, { type: "clear" });
   editor.view.dispatch(tr);
 };
@@ -253,69 +291,63 @@ const slashCommands: SlashCommand[] = [
     id: "bold",
     label: "Bold",
     keywords: ["bold", "strong", "**"],
+    getCommandName: (editor) =>
+      editor.isActive("bold") ? "/bold off" : "/bold",
     run: (editor) => {
-      clearSlashLine(editor);
-      insertMarkerPair(editor, "****", 2);
+      const wasActive = editor.isActive("bold");
+      clearSlashCommand(editor);
+      if (wasActive) {
+        editor.chain().focus().unsetBold().run();
+      } else {
+        editor.chain().focus().setBold().run();
+      }
     },
   },
   {
     id: "italic",
     label: "Italic",
     keywords: ["italic", "emphasis", "em", "*"],
+    getCommandName: (editor) =>
+      editor.isActive("italic") ? "/italic off" : "/italic",
     run: (editor) => {
-      clearSlashLine(editor);
-      insertMarkerPair(editor, "**", 1);
+      const wasActive = editor.isActive("italic");
+      clearSlashCommand(editor);
+      if (wasActive) {
+        editor.chain().focus().unsetItalic().run();
+      } else {
+        editor.chain().focus().setItalic().run();
+      }
     },
   },
   {
     id: "strike",
     label: "Strikethrough",
     keywords: ["strike", "strikethrough", "deleted", "~~"],
+    getCommandName: (editor) =>
+      editor.isActive("strike") ? "/strike off" : "/strike",
     run: (editor) => {
-      clearSlashLine(editor);
-      insertMarkerPair(editor, "~~~~", 2);
-    },
-  },
-  {
-    id: "latex",
-    label: "LaTeX",
-    keywords: ["latex", "math", "$$", "formula", "equation"],
-    run: (editor) => {
-      clearSlashLine(editor);
-      insertMarkerPair(editor, "$$$$", 2);
+      const wasActive = editor.isActive("strike");
+      clearSlashCommand(editor);
+      if (wasActive) {
+        editor.chain().focus().unsetStrike().run();
+      } else {
+        editor.chain().focus().setStrike().run();
+      }
     },
   },
 ];
 
-/**
- * Insert a marker pair (e.g. "****" for bold) at the current caret and
- * place the cursor in the middle so the user can start typing the
- * emphasized text immediately. Assumes `clearSlashLine` has already
- * emptied the paragraph and left the caret at its start.
- */
-const insertMarkerPair = (
+/** Returns the command name shown beneath a slash command label. */
+export const getSlashCommandName = (
   editor: Editor,
-  marker: string,
-  cursorOffset: number,
-) => {
-  const insertPos = editor.state.selection.from;
-  editor
-    .chain()
-    .focus()
-    .insertContent(marker)
-    .setTextSelection(insertPos + cursorOffset)
-    .run();
-};
+  command: SlashCommand,
+): string => command.getCommandName?.(editor) ?? `/${command.id}`;
 
 /**
  * @returns what the user has typed after "/"
  */
 const getSlashQuery = (editor: Editor) => {
-  // Slash commands only work for a collapsed caret selection.
-  const { selection } = editor.state;
-  if (!selection.empty) {
-    return "";
-  }
+  const { selection, doc } = editor.state;
 
   // Prefer the slash state set by the SlashMenuStateExtension when
   // the user typed "/" — this allows the menu to open mid-paragraph
@@ -323,35 +355,41 @@ const getSlashQuery = (editor: Editor) => {
   const slashState = slashMenuStateKey.getState(editor.state);
   if (slashState) {
     try {
-      const $slash = editor.state.doc.resolve(slashState.pos);
+      const $slash = doc.resolve(slashState.pos);
       const $cursor = selection.$from;
-      // The slash and the caret must share a parent — otherwise the
-      // query text is meaningless.
+      // The slash and caret must be in the same text block. Structured
+      // editor contexts (lists, tables, and code blocks) remain supported.
       if ($slash.parent !== $cursor.parent) {
         return "";
       }
-      // The caret must be at or past the slash position; otherwise the
-      // user has navigated backwards and the query is gone.
-      if (selection.from < slashState.pos + 1) {
+      // The selection must start at or after the query's first character.
+      // This still prevents a stale menu from appearing after navigating
+      // elsewhere, even when the selection spans text.
+      if (
+        selection.from < slashState.pos + 1 ||
+        selection.to < slashState.pos + 1
+      ) {
         return "";
       }
-      return editor.state.doc
-        .textBetween(slashState.pos + 1, selection.from)
-        .toLowerCase();
+      return doc.textBetween(slashState.pos + 1, selection.from).toLowerCase();
     } catch {
       return "";
     }
   }
 
-  // Fallback: the paragraph's text starts with "/" (after trimming
-  // leading whitespace). Kept for backward compatibility and for
-  // content pasted in from elsewhere that already starts with "/".
-  const text = selection.$from.parent.textContent.trimStart();
-  if (!text.startsWith("/")) {
+  // Fallback for content that already starts with a slash command and has
+  // no recorded slash state, such as pasted content or unit-test fixtures.
+  const { from: paragraphFrom } = getCurrentParagraphRange(editor);
+  const textBeforeCaret = doc.textBetween(paragraphFrom, selection.from);
+  const commandStart = textBeforeCaret.lastIndexOf("/");
+  if (
+    commandStart === -1 ||
+    !textBeforeCaret.trimStart().startsWith("/") ||
+    selection.from < paragraphFrom + commandStart + 1
+  ) {
     return "";
   }
-
-  return text.slice(1).toLowerCase();
+  return textBeforeCaret.slice(commandStart + 1).toLowerCase();
 };
 
 /**
@@ -429,53 +467,29 @@ export function getMatchingSlashCommands(
 }
 
 /**
- * Determines whether the current editor context allows displaying slash commands.
+ * Determines whether a slash command query is currently reachable.
  *
- * Slash commands are shown when:
- * - No text is currently selected
- * - The cursor is not in a structured editing block (table, list, code block)
- * - Either the SlashMenuStateExtension has recorded a "/" the user typed
- *   at a position still reachable from the caret, OR (as a fallback) the
- *   current block's text starts with "/"
+ * Commands are intentionally allowed in tables, lists, code blocks, and
+ * with text selected. The only validity checks are that the slash and
+ * caret/selection are in the same text block and that the query can be
+ * read from the document.
  *
  * @param editor The ProseMirror editor instance to check
- * @returns `true` if the context is valid for showing slash commands, `false` otherwise
+ * @returns `true` if slash commands can be displayed, `false` otherwise
  */
 export function isSlashCommandContext(editor: Editor): boolean {
-  // Do not show slash commands when selecting text.
-  const { selection } = editor.state;
-  if (!selection.empty) {
-    return false;
-  }
-
-  if (
-    // Do not show slash commands in block types with their own structured editing.
-    editor.isActive("table") ||
-    editor.isActive("bulletList") ||
-    editor.isActive("orderedList") ||
-    editor.isActive("taskList") ||
-    editor.isActive("codeBlock")
-  ) {
-    return false;
-  }
-
-  // Primary path: a "/" was typed by the user and the caret is still
-  // in the same block, after the slash. This covers slash typed
-  // mid-paragraph or anywhere else a text block accepts input.
+  const { selection, doc } = editor.state;
   const slashState = slashMenuStateKey.getState(editor.state);
+
   if (slashState) {
     try {
-      const $slash = editor.state.doc.resolve(slashState.pos);
+      const $slash = doc.resolve(slashState.pos);
       const $cursor = selection.$from;
-      // Code leaves are excluded above via isActive("codeBlock"); this
-      // belt-and-suspenders guards against any code-style node.
-      if ($slash.parent.type.spec.code) {
-        return false;
-      }
-      if ($slash.parent !== $cursor.parent) {
-        return false;
-      }
-      if (selection.from < slashState.pos + 1) {
+      if (
+        $slash.parent !== $cursor.parent ||
+        selection.from < slashState.pos + 1 ||
+        selection.to < slashState.pos + 1
+      ) {
         return false;
       }
       return true;
@@ -484,10 +498,11 @@ export function isSlashCommandContext(editor: Editor): boolean {
     }
   }
 
-  // Fallback: the current block's text (after trimming leading
-  // whitespace) starts with "/". Covers content pasted in already
-  // starting with "/" and unit tests that seed content directly.
-  return selection.$from.parent.textContent.trimStart().startsWith("/");
+  // Fallback for content that already starts with a slash command and has
+  // no recorded slash state, such as pasted content or unit-test fixtures.
+  const { from: paragraphFrom } = getCurrentParagraphRange(editor);
+  const textBeforeCaret = doc.textBetween(paragraphFrom, selection.from);
+  return textBeforeCaret.trimStart().startsWith("/");
 }
 
 /**
@@ -521,14 +536,19 @@ export const SlashCommandMenu = ({
     extraCommandsRef.current = extraCommands;
   }, [extraCommands]);
 
-  const { matchingCommands } = useEditorState({
+  const { matchingCommands, displayedCommands } = useEditorState({
     editor,
     selector: (ctx) => {
+      const matchingCommands = getMatchingSlashCommands(
+        ctx.editor,
+        extraCommandsRef.current,
+      );
       return {
-        matchingCommands: getMatchingSlashCommands(
-          ctx.editor,
-          extraCommandsRef.current,
-        ),
+        matchingCommands,
+        displayedCommands: matchingCommands.map((command) => ({
+          command,
+          commandName: getSlashCommandName(ctx.editor, command),
+        })),
       };
     },
   });
@@ -647,7 +667,7 @@ export const SlashCommandMenu = ({
             //   `${theme.palette.action.disabled} ${theme.palette.background.paper}`,
           }}
         >
-          {matchingCommands.map((command, i) => (
+          {displayedCommands.map(({ command, commandName }, i) => (
             <ListItemButton
               key={command.id}
               onMouseDown={(event) => {
@@ -665,7 +685,7 @@ export const SlashCommandMenu = ({
               <ListItemText
                 sx={{ pl: 2, m: 0 }}
                 primary={command.label}
-                secondary={`/${command.id}`}
+                secondary={commandName}
               />
             </ListItemButton>
           ))}

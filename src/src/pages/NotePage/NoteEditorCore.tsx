@@ -24,6 +24,7 @@ import {
 } from "react";
 import { Box, Input, Paper, Stack, TextField, Typography } from "@mui/material";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
+import type { Editor } from "@tiptap/core";
 import { useEditor, EditorContent } from "@tiptap/react";
 import DragHandle from "@tiptap/extension-drag-handle-react";
 import StarterKit from "@tiptap/starter-kit";
@@ -47,6 +48,7 @@ import { TextSelectionBubbleMenu } from "../../components/Editor/TextSelectionBu
 import {
   SlashCommandMenu,
   SlashMenuStateExtension,
+  clearSlashCommand,
   clearSlashLine,
   type SlashCommand,
 } from "../../components/Editor/SlashCommandMenu";
@@ -236,6 +238,35 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
       },
     };
   }, [setLatexDialogProps, latexDialogProps]);
+
+  /** Open the existing LaTeX dialog from a slash command and insert its
+   * result through the Mathematics extension. */
+  const openLatexDialogFromSlash = useCallback(
+    (slashEditor: Editor, latexType: "inline" | "block") => {
+      if (latexType === "inline") {
+        clearSlashCommand(slashEditor);
+      } else {
+        clearSlashLine(slashEditor);
+      }
+
+      setLatexDialogProps({
+        ...getLatexDialogProps(),
+        open: true,
+        initialLatexType: latexType,
+        onClose: (newCalculation, selectedType, _compressed) => {
+          const chain = slashEditor.chain();
+          if (selectedType === "inline") {
+            chain.insertInlineMath({ latex: newCalculation });
+          } else {
+            chain.insertBlockMath({ latex: newCalculation });
+          }
+          chain.focus().run();
+          setLatexDialogProps(getLatexDialogProps());
+        },
+      });
+    },
+    [getLatexDialogProps],
+  );
 
   useEffect(() => {
     setTitle(note?.title ?? "");
@@ -770,6 +801,22 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
     },
   };
 
+  const latexInlineCommand: SlashCommand = {
+    id: "latex-inline",
+    label: "LaTeX inline",
+    keywords: ["latex", "inline", "math", "formula", "equation"],
+    getCommandName: () => "/latex inline",
+    run: (slashEditor) => openLatexDialogFromSlash(slashEditor, "inline"),
+  };
+
+  const latexBlockCommand: SlashCommand = {
+    id: "latex-block",
+    label: "LaTeX block",
+    keywords: ["latex", "block", "display", "math", "formula", "equation"],
+    getCommandName: () => "/latex block",
+    run: (slashEditor) => openLatexDialogFromSlash(slashEditor, "block"),
+  };
+
   return (
     <>
       <Paper
@@ -865,7 +912,11 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
               <SlashCommandMenu
                 editor={editor}
                 enabled={editMode}
-                extraCommands={[imageUploadCommand]}
+                extraCommands={[
+                  imageUploadCommand,
+                  latexInlineCommand,
+                  latexBlockCommand,
+                ]}
               />
 
               <Box className="editor-drag-region">

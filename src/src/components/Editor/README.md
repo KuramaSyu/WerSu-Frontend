@@ -56,9 +56,9 @@ The components here are intentionally split by responsibility: editor shell, for
 ### Slash command controls
 
 - `SlashCommandMenu.tsx`
-	- Floating menu shown when current paragraph starts with `/`.
+	- Floating menu shown when a reachable text block contains a `/` query.
 	- Filters and ranks commands by query score.
-	- `Enter` executes top-ranked command.
+	- `Enter` executes the top-ranked command.
 	- Current command set:
 		- `/table`
 		- `/bullet-point`
@@ -67,6 +67,20 @@ The components here are intentionally split by responsibility: editor shell, for
 		- `/heading-2`
 		- `/heading-3`
 		- `/codeblock`
+		- `/details`
+		- `/bold`
+		- `/italic`
+		- `/strike`
+		- `/latex inline`
+		- `/latex block`
+	- `/bold`, `/italic`, and `/strike` toggle text formatting. When a
+	  format is active, the menu shows `/<command> off`.
+	- `/latex inline` and `/latex block` open the existing LaTeX dialog
+	  with the requested initial type, then insert the result with
+	  `insertInlineMath` or `insertBlockMath`.
+	- Commands can be invoked from any editable editor context, including
+	  lists, tables, code blocks, and selections containing text after the
+	  slash query.
 
 ### Table controls
 
@@ -125,11 +139,17 @@ In `SlashCommandMenu.tsx`, extend the `slashCommands` array with:
 - `id`: stable command identifier (also used in `/id` display)
 - `label`: user-facing name
 - `keywords`: search aliases
+- `getCommandName(editor)`: optional state-aware command name
 - `run(editor)`: command implementation
 
 Guidelines:
 
 - Clear the slash line before applying block commands (`clearSlashLine(editor)`).
+- Use `clearSlashCommand(editor)` for inline toggles so surrounding text is preserved.
+- Use Tiptap mark toggles for formatting commands rather than inserting marker text.
+- Use `getCommandName` to report active state, such as `/bold off`.
+- For LaTeX variants, open the shared LaTeX dialog and insert the
+  confirmed result with the matching Mathematics command.
 - Keep `run` deterministic and side-effect free beyond editor updates.
 - Prefer chainable Tiptap commands with `.focus()`.
 
@@ -144,10 +164,12 @@ Guidelines:
 	- Verify `TableControlls.tsx` is reading `isTextSelectionMenuOpen` from store.
 
 - Slash commands do not appear:
-	- Selection must be collapsed.
-	- Current block must be a paragraph.
-	- Paragraph text must begin with `/`.
-	- Editor must not be in table/list/taskList/codeBlock contexts.
+	- The slash query must belong to the current text block and remain
+	  reachable from the caret or selection.
+	- The command menu is available in table/list/taskList/codeBlock contexts
+	  and with a non-empty text selection after the slash query.
+	- A selection that starts before the slash is treated as an unrelated
+	  navigation and does not open the menu.
 
 ## Notes
 

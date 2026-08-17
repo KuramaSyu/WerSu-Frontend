@@ -57,9 +57,16 @@ vi.mock("@mui/material", () => ({
 import { Editor } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import {
+  Table,
+  TableCell,
+  TableHeader,
+  TableRow,
+} from "@tiptap/extension-table";
+import {
   SlashMenuStateExtension,
   clearSlashLine,
   getMatchingSlashCommands,
+  getSlashCommandName,
   isSlashCommandContext,
   setSlashMenuState,
   slashMenuStateKey,
@@ -75,6 +82,10 @@ function makeEditor(): Editor {
   return new Editor({
     extensions: [
       StarterKit,
+      Table,
+      TableRow,
+      TableHeader,
+      TableCell,
       CustomDetails,
       DetailsSummary,
       DetailsContent,
@@ -181,78 +192,66 @@ describe("SlashCommandMenu — extraCommands", () => {
   });
 });
 
-describe("SlashCommandMenu — inline marker commands", () => {
-  // Each of these tests seeds a slash query at the end of an empty
-  // paragraph, selects the matching built-in command, and asserts on
-  // the inserted marker text + caret position. The fallback path
-  // (paragraph text starts with "/") is enough — we don't need to go
-  // through the SlashMenuStateExtension here, only via the slash state
-  // tests below.
-
+describe("SlashCommandMenu — inline formatting commands", () => {
   const inlineCases: Array<{
     query: string;
-    expectedMarker: string;
-    expectedCaretOffset: number;
-    expectedCommandId: string;
+    mark: "bold" | "italic" | "strike";
   }> = [
-    {
-      query: "bold",
-      expectedMarker: "****",
-      expectedCaretOffset: 2,
-      expectedCommandId: "bold",
-    },
-    {
-      query: "italic",
-      expectedMarker: "**",
-      expectedCaretOffset: 1,
-      expectedCommandId: "italic",
-    },
-    {
-      query: "strike",
-      expectedMarker: "~~~~",
-      expectedCaretOffset: 2,
-      expectedCommandId: "strike",
-    },
-    {
-      query: "latex",
-      expectedMarker: "$$$$",
-      expectedCaretOffset: 2,
-      expectedCommandId: "latex",
-    },
+    { query: "bold", mark: "bold" },
+    { query: "italic", mark: "italic" },
+    { query: "strike", mark: "strike" },
   ];
 
-  for (const tc of inlineCases) {
-    it(`/${tc.query} inserts the marker pair and lands the caret in the middle`, () => {
+  for (const { query, mark } of inlineCases) {
+    it(`/${query} toggles ${mark} and reports its current state`, () => {
       const editor = makeEditor();
       try {
-        editor.commands.setContent(`<p>/${tc.query}</p>`);
+        editor.commands.setContent(`<p>/${query}</p>`);
         editor.commands.focus("end");
 
         const matches = getMatchingSlashCommands(editor);
-        const top = matches.find((m) => m.id === tc.expectedCommandId);
-        expect(top).toBeDefined();
+        const command = matches.find((item) => item.id === query);
+        expect(command).toBeDefined();
+        expect(getSlashCommandName(editor, command!)).toBe(`/${query}`);
 
-        top!.run(editor);
+        command!.run(editor);
 
-        // The paragraph text should be exactly the marker — no slash
-        // query should leak through.
-        const text = editor.state.doc.textContent;
-        expect(text).toBe(tc.expectedMarker);
+        expect(editor.state.doc.textContent).toBe("");
+        expect(editor.isActive(mark)).toBe(true);
+        expect(getSlashCommandName(editor, command!)).toBe(`/${query} off`);
 
-        // The caret should land between the two halves of the marker.
-        // We don't assert the absolute position (which depends on
-        // document offsets) — instead, compare relative to the inserted
-        // marker: from inside the doc, the marker starts at offset 1
-        // (the opening `<p>` is at 0, the closing at 1 + marker.length).
-        // The caret should be 1 + expectedCaretOffset inside the doc.
-        const caretOffset = editor.state.selection.from;
-        const expected = 1 + tc.expectedCaretOffset;
-        expect(caretOffset).toBe(expected);
+        command!.run(editor);
+
+        expect(editor.isActive(mark)).toBe(false);
+        expect(getSlashCommandName(editor, command!)).toBe(`/${query}`);
       } finally {
         editor.destroy();
       }
     });
   }
+
+  it("/bold off preserves the paragraph and toggles the active mark", () => {
+    const editor = makeEditor();
+    try {
+      editor.commands.setContent("<p>already <strong>bold/bold</strong></p>");
+      editor.commands.focus("end");
+      const slashPos = editor.state.selection.from - "/bold".length;
+      setSlashMenuState(editor, slashPos);
+
+      const matches = getMatchingSlashCommands(editor);
+      const command = matches.find((item) => item.id === "bold");
+      expect(command).toBeDefined();
+      expect(getSlashCommandName(editor, command!)).toBe("/bold off");
+
+      command!.run(editor);
+
+      expect(editor.state.doc.textContent).toBe("already bold");
+      expect(editor.isActive("bold")).toBe(false);
+      expect(slashMenuStateKey.getState(editor.state)).toBeNull();
+    } finally {
+      editor.destroy();
+    }
+  });
 });
 
 describe("SlashCommandMenu — slash state tracking", () => {
@@ -317,6 +316,83 @@ describe("SlashCommandMenu — slash state tracking", () => {
       // empty here, so all built-ins match with score 0.
       const matches = getMatchingSlashCommands(editor);
       expect(matches.length).toBeGreaterThan(0);
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("opens the menu inside a list, code block, and table cell", () => {
+    const editor = makeEditor();
+    try {
+      const cases: Array<{
+        setup: (candidate: Editor) => void;
+        label: string;
+      }> = [
+        {
+          label: "bullet list",
+          setup: (candidate) => {
+            candidate.commands.toggleBulletList();
+            candidate.commands.focus("end");
+          },
+        },
+        {
+          label: "code block",
+          setup: (candidate) => {
+            candidate.commands.setCodeBlock();
+            candidate.commands.focus("end");
+          },
+        },
+        {
+          label: "table cell",
+          setup: (candidate) => {
+            candidate.commands.insertTable({
+              rows: 2,
+              cols: 2,
+              withHeaderRow: false,
+            });
+            candidate.commands.focus("start");
+          },
+        },
+      ];
+
+      for (const { setup, label } of cases) {
+        const candidate = makeEditor();
+        try {
+          setup(candidate);
+          candidate.commands.insertContent("/bold");
+          const slashPos = candidate.state.selection.from - "/bold".length;
+          setSlashMenuState(candidate, slashPos);
+
+          expect(isSlashCommandContext(candidate), label).toBe(true);
+          expect(
+            getMatchingSlashCommands(candidate).some(
+              (command) => command.id === "bold",
+            ),
+            label,
+          ).toBe(true);
+        } finally {
+          candidate.destroy();
+        }
+      }
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("opens the menu with a text selection after the slash query", () => {
+    const editor = makeEditor();
+    try {
+      editor.commands.setContent("<p>/bold selected</p>");
+      editor.commands.focus("end");
+      editor.commands.setTextSelection({ from: 6, to: 14 });
+      setSlashMenuState(editor, 1);
+
+      expect(isSlashCommandContext(editor)).toBe(true);
+      expect(
+        getMatchingSlashCommands(editor).some(
+          (command) => command.id === "bold",
+        ),
+      ).toBe(true);
     } finally {
       editor.destroy();
     }
