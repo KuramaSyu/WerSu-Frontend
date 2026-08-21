@@ -11,6 +11,7 @@ import {
   IconRowRemove,
   IconArrowUp,
   IconArrowDown,
+  IconTableOff,
 } from "@tabler/icons-react";
 import { useThemeStore } from "../../../zustand/useThemeStore";
 
@@ -52,6 +53,11 @@ export function TableActionRow({
   /** Delete the current row. */
   function deleteRow(): void {
     editor.chain().focus().deleteRow().run();
+  }
+
+  /** Delete the whole table. */
+  function deleteTable(): void {
+    editor.chain().focus().deleteTable().run();
   }
 
   /**
@@ -265,6 +271,20 @@ export function TableActionRow({
               disabled={!canMoveDown}
             >
               <IconArrowDown size={18} />
+            </IconButton>
+          </span>
+        </Tooltip>
+
+        {/* Delete table */}
+        <Tooltip title="Delete table">
+          <span>
+            <IconButton
+              size="small"
+              color="error"
+              onClick={deleteTable}
+              disabled={!editor.can().chain().focus().deleteTable().run()}
+            >
+              <IconTableOff size={18} />
             </IconButton>
           </span>
         </Tooltip>
