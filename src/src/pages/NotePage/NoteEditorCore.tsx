@@ -80,6 +80,7 @@ import { CustomHardBreak } from "../../components/Editor/CustomHardBreak";
 import { CustomDetails } from "../../components/Editor/CustomDetails";
 import { DetailsContent, DetailsSummary } from "@tiptap/extension-details";
 import { useUser } from "../../api/queries/useUser";
+import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { useLiveUsersStore } from "../../zustand/useLiveUsersStore";
 import { useLayout } from "../../LayoutProvider";
 import {
@@ -178,6 +179,14 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
   // Cap the editor body to an A4-paper width by default; the action
   // row's 3-dot menu lets the viewer flip this off via `useViewConfig`.
   const a4Width = useViewConfig((s) => s.config.a4Width);
+  // Mobile gets a different layout: drop the outer Paper's padding
+  // and ignore `a4Width` so the editor fills the screen edge-to-edge.
+  // Without this the A4 clamp leaves a strip of unused width on the
+  // right, and the page is still horizontally scrollable inside that
+  // strip, which feels broken on a phone.
+  const { isMobile } = useBreakpoint();
+  const forceFullWidth = isMobile;
+  const editorWidth = a4Width && !forceFullWidth ? NOTE_EDITOR_A4_WIDTH : "100%";
 
   // Read-mode fallback: the Collaboration extension needs *some* Y.Doc
   // to attach to, even when there's no live collab session. The note's
@@ -829,15 +838,22 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
         sx={{
           backgroundColor: "transparent",
           borderRadius: 2,
-          px: M3,
-          my: M2,
+          // On mobile, the outer Paper has no padding so the editor
+          // fills the screen. The AppShell's `p: M2` and mobile bottom
+          // safe-area padding still apply on the scroll container that
+          // wraps this Paper.
+          px: forceFullWidth ? 0 : M3,
+          my: forceFullWidth ? 0 : M2,
 
           mx: "auto",
           transition: (t) =>
             t.transitions.create("width", {
               duration: t.transitions.duration.complex,
             }),
-          width: a4Width ? `calc(${NOTE_EDITOR_A4_WIDTH} + 1rem)` : "100%",
+          width:
+            a4Width && !forceFullWidth
+              ? `calc(${NOTE_EDITOR_A4_WIDTH} + 1rem)`
+              : "100%",
           display: "flex",
           flexDirection: "column",
         }}
@@ -890,7 +906,10 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
                 disableUnderline
                 sx={{
                   fontSize: theme.typography.h3,
-                  pr: M2,
+                  // On mobile the outer paper has no padding so the
+                  // title hugs the left edge; on larger viewports the
+                  // `pr` keeps the cursor off the Paper's right edge.
+                  pr: forceFullWidth ? 0 : M2,
                 }}
               />
             </Box>
@@ -900,7 +919,7 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
           {editor && editorMode === "rich" && (
             <Box
               sx={{
-                width: a4Width ? NOTE_EDITOR_A4_WIDTH : "100%",
+                width: editorWidth,
                 mx: "auto",
                 transition: (t) =>
                   t.transitions.create("width", {
@@ -940,7 +959,7 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
           {editorMode === "source" && (
             <Box
               sx={{
-                width: a4Width ? NOTE_EDITOR_A4_WIDTH : "100%",
+                width: editorWidth,
                 mx: "auto",
                 transition: (t) =>
                   t.transitions.create("width", {
