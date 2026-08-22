@@ -1,6 +1,27 @@
 .tiptap .ProseMirror {
   /* Reserve a stable left gutter so drag handles stay reachable for wide blocks (tables). */
   padding-left: 1.5rem;
+  /* Prevent wide blocks (long URLs, unwrapped code, oversized
+     images, tables) from exceeding the viewport and triggering
+     horizontal scroll on the page. `overflow-wrap: break-word`
+     breaks mid-token only when no natural break is available, so
+     paragraphs read normally on desktop and long URLs wrap on
+     narrow viewports; `max-width: 100%` stops block-level
+     children (images, tables, iframes) from forcing the document
+     wider than its container. */
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
+/* Block-level children must not exceed the editor box on narrow
+   viewports. Without this, a single oversized image or YouTube
+   embed inside a table cell still grows the entire document width. */
+.tiptap .ProseMirror img,
+.tiptap .ProseMirror iframe,
+.tiptap .ProseMirror video,
+.tiptap .ProseMirror table,
+.tiptap .ProseMirror pre {
+  max-width: 100%;
 }
 
 .tiptap .ProseMirror p.is-empty::before {
