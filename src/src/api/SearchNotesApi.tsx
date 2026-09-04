@@ -3,26 +3,71 @@ import type {
   MinimalNote,
   NotesReply,
   RestNotesSearchType,
+  SearchFilterOptions,
 } from "./models/search";
 import { apiRegistry, type ApiToken } from "./apiRegistry";
 
 export interface ISearchNotesApi {
+  /**
+    Search notes. `options` carries everything that isn't `search_type`
+    + `query` (paging, include/exclude ids, date bounds).
+    */
   search(
     search_type: RestNotesSearchType,
     query: string,
-    limit?: number,
-    offset?: number,
+    options?: SearchFilterOptions,
   ): Promise<NotesReply>;
+}
+
+/** Build the query string from positional args plus the optional filter bag. */
+function buildSearchParams(
+  search_type: RestNotesSearchType,
+  query: string,
+  options: SearchFilterOptions | undefined,
+): URLSearchParams {
+  const params = new URLSearchParams();
+  params.append("search_type", search_type);
+  if (query !== "") {
+    params.append("query", query);
+  }
+  if (options?.limit !== undefined) {
+    params.append("limit", String(options.limit));
+  }
+  if (options?.offset !== undefined) {
+    params.append("offset", String(options.offset));
+  }
+  if (options === undefined) {
+    return params;
+  }
+  // Repeat the key per item so IDs may contain commas.
+  const appendCsv = (key: string, values: string[] | undefined): void => {
+    if (!values || values.length === 0) return;
+    for (const value of values) {
+      params.append(key, value);
+    }
+  };
+  appendCsv("include_directory_ids", options.include_directory_ids);
+  appendCsv("exclude_directory_ids", options.exclude_directory_ids);
+  appendCsv("include_shelf_ids", options.include_shelf_ids);
+  appendCsv("exclude_shelf_ids", options.exclude_shelf_ids);
+  appendCsv("include_tag_ids", options.include_tag_ids);
+  appendCsv("exclude_tag_ids", options.exclude_tag_ids);
+  if (options.date_from) {
+    params.append("date_from", options.date_from);
+  }
+  if (options.date_until) {
+    params.append("date_until", options.date_until);
+  }
+  return params;
 }
 
 export class TestSearchNotesApi implements ISearchNotesApi {
   async search(
     _search_type: RestNotesSearchType,
     _query: string,
-    limit: number = 10,
-    _offset: number = 0,
+    options?: SearchFilterOptions,
   ): Promise<NotesReply> {
-    // Returns 30 dummy notes for testing.
+    const limit = options?.limit ?? 10;
     const notes: MinimalNote[] = [];
     for (let i = 0; i < limit; i++) {
       notes.push({
@@ -39,7 +84,7 @@ export class TestSearchNotesApi implements ISearchNotesApi {
   }
 }
 
-// represents the backend methods, which are needed for user purposes
+// Represents the backend methods needed for user-facing search.
 export class SearchNotesApi implements ISearchNotesApi {
   logError(url_part: string, error: any): void {
     console.error(
@@ -48,22 +93,15 @@ export class SearchNotesApi implements ISearchNotesApi {
     );
   }
 
-  /**
-   * tries to authenticate a user by coockie.
-   * It sets `useUserStore` to the authenticated user
-   * */
+  /** Search notes via the backend search endpoint. */
   async search(
     search_type: RestNotesSearchType,
     query: string,
-    limit: number = 10,
-    offset: number = 0,
+    options?: SearchFilterOptions,
   ): Promise<NotesReply> {
-    // Build URL with query parameters
     const url = new URL(`${BACKEND_BASE}/api/notes/search`);
-    url.searchParams.append("search_type", search_type);
-    url.searchParams.append("query", query);
-    url.searchParams.append("limit", limit.toString());
-    url.searchParams.append("offset", offset.toString());
+    url.search = buildSearchParams(search_type, query, options).toString();
+
     const response = await fetch(url.toString(), {
       method: "GET",
       credentials: "include",
@@ -90,11 +128,7 @@ export class SearchNotesApi implements ISearchNotesApi {
   }
 }
 
-// Register the default singleton + a typed token so consumers can resolve
-// it via `getSearchNotesApi()`.
-//
-// IMPORTANT: broadcast-set + typed-token must be the SAME instance.
-// See NoteApi for the bug history.
+// IMPORTANT: broadcast-set and typed-token must be the SAME instance.
 const searchNotesApiSingleton = new SearchNotesApi();
 apiRegistry.register(searchNotesApiSingleton);
 export const SEARCH_NOTES_API_TOKEN: ApiToken<SearchNotesApi> = Symbol(
@@ -102,11 +136,7 @@ export const SEARCH_NOTES_API_TOKEN: ApiToken<SearchNotesApi> = Symbol(
 ) as ApiToken<SearchNotesApi>;
 apiRegistry.register(searchNotesApiSingleton, SEARCH_NOTES_API_TOKEN);
 
-/**
- * Resolve the registered `SearchNotesApi` singleton.
- *
- * Throws if the API isn't registered — see `getNoteApi` for rationale.
- */
+/** Resolve the registered SearchNotesApi singleton. Throws if missing. */
 export function getSearchNotesApi(): SearchNotesApi {
   return apiRegistry.get<SearchNotesApi>(SEARCH_NOTES_API_TOKEN);
 }

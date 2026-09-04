@@ -77,7 +77,10 @@ export const noteQueries = {
 
     queryFn: async (): Promise<NotesReply> =>
       mergeNotesReplyIntoStores(
-        await searchNotesApi.search(RestNotesSearchType.LATEST, "", 50, 0),
+        await searchNotesApi.search(RestNotesSearchType.LATEST, "", {
+          limit: 50,
+          offset: 0,
+        }),
       ),
   }),
 
@@ -100,7 +103,7 @@ export const noteQueries = {
 
     queryFn: async (): Promise<NotesReply> =>
       mergeNotesReplyIntoStores(
-        await searchNotesApi.search(searchType, query, limit, offset),
+        await searchNotesApi.search(searchType, query, { limit, offset }),
       ),
   }),
 

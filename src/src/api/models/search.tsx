@@ -5,6 +5,28 @@ export enum RestNotesSearchType {
   LATEST = "latest",
 }
 
+/** Filter bag for the notes search endpoint. */
+export interface SearchFilterOptions {
+  limit?: number;
+  offset?: number;
+  /** Restrict to notes in any of these directories. */
+  include_directory_ids?: string[];
+  /** Exclude notes in any of these directories. */
+  exclude_directory_ids?: string[];
+  /** Restrict to notes on any of these shelves. */
+  include_shelf_ids?: string[];
+  /** Exclude notes on any of these shelves. */
+  exclude_shelf_ids?: string[];
+  /** Restrict to notes tagged with any of these tags. */
+  include_tag_ids?: string[];
+  /** Exclude notes tagged with any of these tags. */
+  exclude_tag_ids?: string[];
+  /** RFC3339 lower bound on note updated_at. */
+  date_from?: string;
+  /** RFC3339 upper bound on note updated_at. */
+  date_until?: string;
+}
+
 export interface GetSearchNotesRequest {
   search_type: RestNotesSearchType;
   query: string;
@@ -18,28 +40,19 @@ export interface MinimalNote {
   author_id: string;
   updated_at: string; // Or Date, depending on how it's deserialized
   stripped_content: string;
-  /**
-   * Parent directories of this note. Empty when the note lives at the root.
-   */
+  /** Parent directories. Empty when the note lives at the root. */
   directory_ids: string[];
-  /**
-   * Tags assigned to this note.
-   */
+  /** Tags assigned to this note. */
   tag_ids: string[];
 }
 
 export interface NoteData extends MinimalNote {
   content: string;
-  /**
-   * Attachment ids linked to this note. Returned by `GET /api/notes/:id`.
-   */
+  /** Attachment ids linked to this note. Returned by GET /api/notes/:id. */
   attachment_ids?: string[];
-  /**
-   * Optional permission relationships. Kept on the model for legacy
-   * callers; parents are no longer derived from here (use `directory_ids`).
-   */
+  /** Optional permission relationships (legacy callers). */
   permissions?: PermissionRelationshipReply[];
-  // Optional attachment ID to JWT mapping, that public users can access images
+  // Optional attachment ID to JWT mapping for public image access.
   tokens?: Record<string, string>;
 }
 
@@ -52,13 +65,9 @@ export class Note implements NoteData {
   updated_at: string;
   directory_ids: string[];
   tag_ids: string[];
-  /**
-   * Attachment ids linked to this note, as returned by the backend.
-   */
+  /** Attachment ids linked to this note. */
   attachment_ids: string[];
-  /**
-   * Optional permission relationships for callers that still need them.
-   */
+  /** Optional permission relationships. */
   permissions: PermissionRelationshipReply[];
   tokens?: Record<string, string> | undefined;
 
@@ -80,20 +89,12 @@ export class Note implements NoteData {
     return new Note(data);
   }
 
-  /**
-   * Returns the first parent directory id, mirroring the legacy
-   * `get_dir()` contract used by single-parent flows (drag-and-drop,
-   * search overlay, breadcrumb).
-   */
+  /** Returns the first parent directory id (legacy single-parent flows). */
   get_dir(): string | undefined {
     return this.directory_ids[0];
   }
 
-  /**
-   * Returns the attachment ids linked to this note. Prefer
-   * `note.attachment_ids` directly at the call site — this getter
-   * stays for backward compatibility.
-   */
+  /** Returns attachment ids. Prefer the field directly at call sites. */
   get_attachment_ids(): string[] {
     return this.attachment_ids;
   }
@@ -111,12 +112,7 @@ export interface MinimalTag {
   slug?: string;
 }
 
-/**
- * Wire shape for `GET /api/notes/search` and the directory-scoped
- * `GET /api/directories/:id/notes`. The backend embeds every
- * directory/tag referenced by the returned notes so the client can
- * resolve labels without further round-trips.
- */
+/** Wire shape for notes search and directory-scoped notes endpoints. */
 export interface NotesReply {
   notes: MinimalNote[];
   directories: MinimalDirectory[];
