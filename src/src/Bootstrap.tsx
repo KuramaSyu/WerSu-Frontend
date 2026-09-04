@@ -167,7 +167,10 @@ export const Bootstrap: React.FC = () => {
   // useQuery({
   //   queryKey: ["search-notes-latest", user?.id],
   //   queryFn: async () =>
-  //     searchNotesApi.search(RestNotesSearchType.LATEST, "", 100, 0),
+  //     searchNotesApi.search(RestNotesSearchType.LATEST, "", {
+  //       limit: 100,
+  //       offset: 0,
+  //     }),
   //   enabled: !!user?.id, // don't run when user is not loaded yet
   //   staleTime: Infinity, // cache forever
   // });
