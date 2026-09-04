@@ -9,6 +9,13 @@ import { createJSONStorage, persist } from "zustand/middleware";
  */
 export enum FeatureFlagName {
   DeveloperMode = "DeveloperMode",
+  /**
+   * When true, the MSW worker intercepts every `/api/*` request and
+   * returns fixture data instead of hitting the real backend. Only
+   * surfaced in the Settings UI when `DeveloperMode` is also on, so
+   * end users cannot accidentally enable it.
+   */
+  UseFakeApi = "UseFakeApi",
 }
 
 const FEATURE_FLAG_NAMES = Object.values(FeatureFlagName);
@@ -20,6 +27,7 @@ const FEATURE_FLAG_NAMES = Object.values(FeatureFlagName);
  */
 const DEFAULT_FEATURE_FLAGS: Record<FeatureFlagName, boolean> = {
   [FeatureFlagName.DeveloperMode]: false,
+  [FeatureFlagName.UseFakeApi]: false,
 };
 
 const isBooleanRecord = (
