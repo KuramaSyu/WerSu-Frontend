@@ -72,7 +72,10 @@ export function FileGraphPage(): React.ReactElement {
       try {
         const [directoriesResult, notesResult] = await Promise.all([
           directoryApi.list(),
-          searchNotesApi.search(RestNotesSearchType.LATEST, "", 2000, 0),
+          searchNotesApi.search(RestNotesSearchType.LATEST, "", {
+            limit: 2000,
+            offset: 0,
+          }),
         ]);
 
         if (!isActive) {
