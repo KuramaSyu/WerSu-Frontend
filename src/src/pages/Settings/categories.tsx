@@ -1,12 +1,14 @@
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
+import CodeIcon from "@mui/icons-material/Code";
 import PaletteIcon from "@mui/icons-material/Palette";
 import type { SettingsCategory } from "./types";
 import { BookstackImportSection } from "./BookstackImportSection";
 import { CacheSection } from "./CacheSection";
 import { AdministrationSection } from "./AdministrationSection";
 import { AppearanceSection } from "./AppearanceSection";
+import { DeveloperSection } from "./DeveloperSection";
 import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
 import { useAppearanceSettings } from "../../zustand/useAppearanceSettings";
 
@@ -48,5 +50,11 @@ export const settingsCategories: SettingsCategory[] = [
       // so "Reset Appearance settings" returns to the shipped defaults.
       useFeatureStore.getState().setFlag(FeatureFlagName.DeveloperMode, false);
     },
+  },
+  {
+    id: "developer",
+    label: "Developer",
+    icon: <CodeIcon />,
+    settingsContent: <DeveloperSection />,
   },
 ];
