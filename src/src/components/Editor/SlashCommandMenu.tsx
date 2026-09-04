@@ -377,6 +377,9 @@ const getSlashQuery = (editor: Editor) => {
     }
   }
 
+  console.warn(
+    "[slash-query] no slash state found, falling back to text search (this is expected for pasted content and unit tests)",
+  );
   // Fallback for content that already starts with a slash command and has
   // no recorded slash state, such as pasted content or unit-test fixtures.
   const { from: paragraphFrom } = getCurrentParagraphRange(editor);
