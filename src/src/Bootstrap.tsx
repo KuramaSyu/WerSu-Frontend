@@ -12,6 +12,7 @@ import { queryClient } from "./api/queryClient";
 import { useUser } from "./api/queries/useUser";
 import { useGlobalModifier } from "./hooks/useGlobalModifier";
 import { useFocusGuardOnModifier } from "./hooks/useFocusGuardOnModifier";
+import { FeatureFlagName, useFeatureStore } from "./zustand/FeatureStore";
 
 /**
  * Routes under `/public/*` are served by the share JWT only — never by
@@ -20,6 +21,32 @@ import { useFocusGuardOnModifier } from "./hooks/useFocusGuardOnModifier";
  */
 const isPublicRoute = (pathname: string): boolean =>
   pathname.startsWith("/public/");
+
+/**
+ * Toggles the MSW worker based on the `UseFakeApi` feature flag.
+ *
+ * - In production builds, `import.meta.env.DEV === false`, so the
+ *   `if (DEV)` guard short-circuits and the mocks module is never
+ *   imported — Vite tree-shakes the whole `mocks/` graph out.
+ * - In dev, the first render with the flag on calls
+ *   `setApiMode("test")`, which starts the worker and installs the
+ *   handlers. Flipping the flag back calls `setApiMode("rest")`,
+ *   which `resetHandlers()`s so requests pass through again.
+ */
+function useFakeApiMode() {
+  const useFake = useFeatureStore((s) => s.flags[FeatureFlagName.UseFakeApi]);
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    let cancelled = false;
+    void import("./mocks/browser").then(({ setApiMode }) => {
+      if (cancelled) return;
+      void setApiMode(useFake ? "test" : "rest");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [useFake]);
+}
 
 /**
  * Installs / uninstalls the share-token provider on every registered API.
@@ -148,6 +175,7 @@ function useInvalidateQueriesOnUserChange() {
 export const Bootstrap: React.FC = () => {
   useShareTokenMode();
   useInvalidateQueriesOnUserChange();
+  useFakeApiMode();
   const { pathname } = useLocation();
   const onPublicRoute = isPublicRoute(pathname);
   const shareIdMatch = pathname.match(/^\/public\/n\/([^/?#]+)/);
