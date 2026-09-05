@@ -1,198 +1,133 @@
-import {
-  Fab,
-  SpeedDial,
-  SpeedDialAction,
-  SpeedDialIcon,
-  Stack,
-} from "@mui/material";
-import SaveIcon from "@mui/icons-material/Save";
+// Floating editor actions. After the right rail took over insert /
+// image / latex / version, this corner is left with the
+// read/write toggle (primary FAB) on the left and the
+// source/rich toggle (secondary FAB) on the right. Save lives
+// in the desktop top bar.
+
+import { Box, ButtonBase, Fab, Stack, Tooltip } from "@mui/material";
 import CodeIcon from "@mui/icons-material/Code";
 import EditIcon from "@mui/icons-material/Edit";
 import VisibilityIcon from "@mui/icons-material/Visibility";
-import HistoryIcon from "@mui/icons-material/History";
-import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
-import { useCallback, useState } from "react";
 import type { Editor } from "@tiptap/react";
 import { M4, MOBILE_BOTTOM_BAR_CLEARANCE } from "../../statics";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
-import { useThemeStore } from "../../zustand/useThemeStore";
-import { LatexDialog } from "./LatexDialog";
 import { useActiveNoteStore } from "../../zustand/editorStore";
-import FunctionsIcon from "@mui/icons-material/Functions";
+import { useThemeStore } from "../../zustand/useThemeStore";
 
 export interface InsertSpeedDialProps {
-  editor: Editor;
+  editor: Editor | null;
   sourceMarkdown: string;
   setSourceMarkdown: (markdown: string) => void;
-  handleSave: () => Promise<void>;
-  setVersionsOpen: (open: boolean) => void;
-  setFileUploadDialogOpen: (open: boolean) => void;
 }
+
+// Secondary round 56x56 button: paper background, divider border,
+// hover tint. Used by the source/rich toggle.
+const SecondaryFab: React.FC<{
+  label: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}> = ({ label, onClick, children }) => {
+  const { theme } = useThemeStore();
+  return (
+    <Tooltip title={label}>
+      <ButtonBase
+        aria-label={label}
+        onClick={onClick}
+        sx={{
+          width: 56,
+          height: 56,
+          borderRadius: "50%",
+          border: `1px solid ${theme.palette.divider}`,
+          backgroundColor: theme.palette.background.paper,
+          color: theme.palette.text.primary,
+          transition: theme.transitions.create([
+            "background-color",
+            "transform",
+            "box-shadow",
+          ]),
+          "&:hover": {
+            backgroundColor: theme.palette.action.hover,
+            borderRadius: "50%",
+          },
+        }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "100%",
+            height: "100%",
+          }}
+        >
+          {children}
+        </Box>
+      </ButtonBase>
+    </Tooltip>
+  );
+};
+
 export const InsertSpeedDial: React.FC<InsertSpeedDialProps> = ({
   editor,
   sourceMarkdown,
   setSourceMarkdown,
-  handleSave,
-  setVersionsOpen,
-  setFileUploadDialogOpen,
 }) => {
   const { viewMode, setViewMode, editMode, setWrite } = useEditorSettings();
-  const { theme } = useThemeStore();
   const { isMobile } = useBreakpoint();
   const setContent = useActiveNoteStore((s) => s.setContent);
-  const [latexDialogOpen, setLatexDialogOpen] = useState(false);
 
-  // Same vertical clearance the SpeedDial uses: lift above the
-  // mobile bottom bar, regular `M4` on desktop.
-  const fabPositionSx = {
-    position: "fixed" as const,
-    bottom: isMobile ? `calc(${M4} + ${MOBILE_BOTTOM_BAR_CLEARANCE})` : M4,
-    // Sit to the right of the SpeedDial so the two don't overlap.
-    // SpeedDial's primary fab is ~56px wide; the gap + the
-    // secondary fab's width keep a clear visual separation.
-    right: `calc(${M4} + 56px + ${M4})`,
-    zIndex: 1300,
-  };
+  const isRich = viewMode === "rich";
 
-  // callbacks for the Mathematics extension
-  const onInsertInlineMath = useCallback(() => {
-    const hasSelection = !editor.state.selection.empty;
-
-    if (hasSelection) {
-      return editor.chain().insertInlineMath({ latex: "" }).focus().run();
-    }
-
-    const latex = prompt("Enter inline math expression:", "");
-    if (!latex) {
+  const handleSourceToggle = () => {
+    if (isRich) {
+      const markdown = editor?.getMarkdown() ?? sourceMarkdown;
+      setSourceMarkdown(markdown);
+      setViewMode("source");
       return;
     }
-    return editor.chain().insertInlineMath({ latex }).focus().run();
-  }, [editor]);
+    setContent(sourceMarkdown);
+    setViewMode("rich");
+  };
 
-  const onRemoveInlineMath = useCallback(() => {
-    editor.chain().deleteInlineMath().focus().run();
-  }, [editor]);
+  // Read/write toggle: the icon shows the mode the tap will switch
+  // INTO -- eye when currently writable (tap to read), pencil when
+  // currently read-only (tap to write).
+  const readWriteLabel = editMode
+    ? "Switch to read mode"
+    : "Switch to write mode";
+  const ReadWriteIcon = editMode ? VisibilityIcon : EditIcon;
 
-  const onInsertBlockMath = useCallback(
-    (latex: string, inline: "inline" | "block", compressed: boolean) => {
-      const hasSelection = !editor.state.selection.empty;
+  const bottom = isMobile ? `calc(${M4} + ${MOBILE_BOTTOM_BAR_CLEARANCE})` : M4;
 
-      if (hasSelection) {
-        return editor.chain().insertBlockMath({ latex: "" }).focus().run();
-      }
-
-      const chain = editor.chain();
-
-      if (inline === "inline") {
-        chain.insertInlineMath({ latex: latex });
-      } else {
-        chain.insertBlockMath({ latex: latex });
-      }
-
-      chain.focus().run();
-    },
-    [editor],
-  );
-
-  const onRemoveBlockMath = useCallback(() => {
-    editor.chain().deleteBlockMath().focus().run();
-  }, [editor]);
-
-  {
-    /* Floating editor actions */
-  }
   return (
-    <>
-      <Stack
-        spacing={3}
-        direction="row-reverse"
-        sx={{
-          position: "fixed",
-          alignItems: "flex-end",
-          bottom: isMobile
-            ? `calc(${M4} + ${MOBILE_BOTTOM_BAR_CLEARANCE})`
-            : M4,
-          right: M4,
-          zIndex: 1300,
-        }}
-      >
-        <SpeedDial ariaLabel="Editor actions" icon={<SpeedDialIcon />}>
-          <SpeedDialAction
-            icon={<SaveIcon />}
-            slotProps={{
-              tooltip: { title: "Save" },
-            }}
-            onClick={() => void handleSave()}
-          />
-          {viewMode === "rich" ? (
-            <SpeedDialAction
-              icon={<CodeIcon />}
-              slotProps={{
-                tooltip: { title: "Source view" },
-              }}
-              onClick={() => {
-                const markdown = editor?.getMarkdown() ?? sourceMarkdown;
-                setSourceMarkdown(markdown);
-                setViewMode("source");
-              }}
-            />
-          ) : (
-            <SpeedDialAction
-              icon={<EditIcon />}
-              slotProps={{
-                tooltip: { title: "Rich editor" },
-              }}
-              onClick={() => {
-                setContent(sourceMarkdown);
-                setViewMode("rich");
-              }}
-            />
-          )}
-          <SpeedDialAction
-            icon={<HistoryIcon />}
-            slotProps={{
-              tooltip: { title: "Version history" },
-            }}
-            onClick={() => setVersionsOpen(true)}
-          />
-
-          <SpeedDialAction
-            icon={<AddPhotoAlternateIcon />}
-            slotProps={{
-              tooltip: { title: "Upload Image" },
-            }}
-            onClick={() => setFileUploadDialogOpen(true)}
-          />
-          <SpeedDialAction
-            icon={<FunctionsIcon />}
-            slotProps={{ tooltip: { title: "Insert LaTeX" } }}
-            onClick={() => setLatexDialogOpen(true)}
-          />
-        </SpeedDial>
-        {/* Read/write toggle FAB. Sits to the right of the
-          SpeedDial so the two don't overlap. The icon shows the
-          mode the tap will switch *into* -- eye when currently
-          writable (tap to read), pencil when currently read-only
-          (tap to write). Mirrors the editor's URL deep-link:
-          `?mode=write` is the way to land in write mode from
-          outside; this FAB is the way to flip back. */}
+    <Stack
+      direction="row"
+      spacing={M4}
+      sx={{
+        position: "fixed",
+        alignItems: "center",
+        bottom,
+        right: M4,
+        zIndex: 1300,
+      }}
+    >
+      <Tooltip title={readWriteLabel}>
         <Fab
           size="large"
           color="primary"
-          aria-label={editMode ? "Switch to read mode" : "Switch to write mode"}
+          aria-label={readWriteLabel}
           onClick={() => setWrite(!editMode)}
         >
-          {editMode ? <VisibilityIcon /> : <EditIcon />}
+          <ReadWriteIcon />
         </Fab>
-      </Stack>
-      <LatexDialog
-        open={latexDialogOpen}
-        onClose={(latex, inline, compressed) => {
-          setLatexDialogOpen(false);
-          onInsertBlockMath(latex, inline, compressed);
-        }}
-      />
-    </>
+      </Tooltip>
+      <SecondaryFab
+        label={isRich ? "Source view" : "Rich editor"}
+        onClick={handleSourceToggle}
+      >
+        {isRich ? <CodeIcon /> : <EditIcon />}
+      </SecondaryFab>
+    </Stack>
   );
 };

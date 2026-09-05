@@ -1019,10 +1019,7 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
       {/* Floating editor actions */}
       <InsertSpeedDial
         editor={editor}
-        handleSave={save}
         setSourceMarkdown={setSourceMarkdown}
-        setFileUploadDialogOpen={setFileUploadDialogOpen}
-        setVersionsOpen={() => {}}
         sourceMarkdown={sourceMarkdown}
       />
 
