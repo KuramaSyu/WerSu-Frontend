@@ -8,6 +8,7 @@ import type { HistoryRowEntry } from "../RecentActivity/HistoryRowFeatures";
 
 import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
 import { HistoryRowView } from "../RecentActivity/HistoryRowView";
+import { useMemo } from "react";
 
 /**
  * Props for the FrequentlyUsedPanel component.
@@ -113,7 +114,23 @@ export const LastUsedPanel: React.FC<LastUsedPanelProps> = ({
   limit = 3,
   days = 30,
 }) => {
-  const { rows, isLoading, hasError } = useLastUsedRows(limit, days);
+  // fetch more then limit, since last used often contains duplicates
+  const { rows, isLoading, hasError } = useLastUsedRows(limit * 3, days);
+
+  // dedupe by note_id and trim to limit
+  const rows_filter = useMemo<HistoryRowEntry[]>(() => {
+    const selected = new Array<HistoryRowEntry>();
+    for (const row of rows) {
+      if (selected.find((r) => r.note_id === row.note_id)) {
+        continue;
+      }
+      selected.push(row);
+      if (selected.length >= limit) {
+        break;
+      }
+    }
+    return selected;
+  }, [rows, limit]);
 
   // some here: we need to accept a theme from a parent PanelSection which is dimmed
   // and store only provides global theme
@@ -147,7 +164,7 @@ export const LastUsedPanel: React.FC<LastUsedPanelProps> = ({
           Failed to load last used notes.
         </Typography>
       )}
-      {!isLoading && !hasError && rows.length === 0 && (
+      {!isLoading && !hasError && rows_filter.length === 0 && (
         <Typography variant="body2" color="textSecondary">
           No recently viewed notes yet.
         </Typography>
