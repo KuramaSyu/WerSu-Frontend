@@ -25,38 +25,38 @@ import {
   LastUsedPanel,
 } from "../../components/FrequentlyUsed/Main";
 import { CreateNote } from "../MainPage/CreateNote";
-import { CreateDirectoryModal } from "../MainPage/CreateDirectory";
 import { FavouriteDirectories } from "./FavouriteDirectories";
 import { AllDirectories } from "./AllDirectories";
-import { M3, M4, MOBILE_BOTTOM_BAR_CLEARANCE } from "../../statics";
+import { M3, M4 } from "../../statics";
 import { useRequireAuth } from "../../hooks/useRequireAuth";
 import { useCreateModalsFromUrl } from "../../hooks/useCreateModalsFromUrl";
 import CreateFab from "../../components/CreateFab";
-import { useThemeStore } from "../../zustand/useThemeStore";
+import { FabSlot } from "../../components/FabSlot";
 
 /**
  * Home page.
  *
  * Layout:
- *   - left panel: navigation, actions (new directory / new note), recent
- *     activity, then the directory tree at the bottom
- *   - body: favourite directories section
+ *   - left panel: navigation, recent activity, directory tree
+ *   - body: favourite directories + all directories sections
+ *   - bottom-right FAB: new-note only; new-directory lives on
+ *     DirectoryView (the per-directory create flow there handles
+ *     parent-id correctly).
  */
 export const HomePage: React.FC = () => {
   const [createNoteOpen, setCreateNoteOpen] = useState(false);
-  const [createDirectoryOpen, setCreateDirectoryOpen] = useState(false);
+  // Directory modal isn't mounted on Home; the setter exists
+  // so the create-directory URL branch doesn't TypeError.
+  const [, setCreateDirectoryOpen] = useState(false);
   const {
     rightPanelOpen,
     leftPanelOpen,
     leftPanelUserOverride,
     setLeftPanelOpen,
   } = useLayout();
-  const { theme } = useThemeStore();
   const { isMobile } = useBreakpoint();
   useRequireAuth();
 
-  // `?action=create-note|create-directory` -> open the matching
-  // modal, then strip the param.
   useCreateModalsFromUrl({
     setCreateNoteOpen,
     setCreateDirectoryOpen,
@@ -133,33 +133,10 @@ export const HomePage: React.FC = () => {
           <AllDirectories />
         </Stack>
       </Stack>
-      <Stack
-        direction="row"
-        spacing={2}
-        sx={{
-          position: "fixed",
-          right: theme.spacing(2),
-          // Bottom bar floats at the bottom of the viewport on
-          // mobile; lift the FAB stack above it so the buttons
-          // stay reachable and don't sit under the bar. Desktop
-          // uses the regular `theme.spacing(2)` clearance.
-          bottom: isMobile
-            ? `calc(${theme.spacing(2)} + ${MOBILE_BOTTOM_BAR_CLEARANCE})`
-            : theme.spacing(2),
-          zIndex: (theme) => theme.zIndex.appBar + 2,
-        }}
-      >
-        <CreateFab
-          onCreateNote={() => setCreateNoteOpen(true)}
-          onCreateDirectory={() => setCreateDirectoryOpen(true)}
-        />
-      </Stack>
+      <FabSlot>
+        <CreateFab onCreateNote={() => setCreateNoteOpen(true)} />
+      </FabSlot>
       <CreateNote open={createNoteOpen} onOpenChange={setCreateNoteOpen} />
-      <CreateDirectoryModal
-        open={createDirectoryOpen}
-        onOpenChange={setCreateDirectoryOpen}
-        mode="create"
-      />
     </Box>
   );
 };

@@ -17,7 +17,9 @@ import { DirectorySideView } from "./DirectorySideView";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 
 import { LeftPanel } from "./LeftPanel";
-import NewNoteSpeedDial from "../../components/NewNoteSpeedDial";
+import CreateFab from "../../components/CreateFab";
+import { FabSlot } from "../../components/FabSlot";
+import { CreateNote } from "./CreateNote";
 import { getNoteParentDirectoryIds } from "../../utils/fileGraphUtils";
 import { useLatestNotes, useMoveNote } from "../../api/queries/useNoteQueries";
 import { useLayout, useLeftPanel, usePanelSize } from "../../LayoutProvider";
@@ -33,6 +35,7 @@ export const MainContent: React.FC = () => {
   const { data: latestNotes, isLoading } = useLatestNotes();
   const { setMessage } = useInfoStore();
   const [leftPaneOpen, setLeftPaneOpen] = useState(true);
+  const [createNoteOpen, setCreateNoteOpen] = useState(false);
   const navigate = useNavigate();
 
   type DragEndEvent = Parameters<DragDropEvents["dragend"]>[0];
@@ -214,7 +217,10 @@ export const MainContent: React.FC = () => {
             alignItems: "center",
           }}
         >
-          <NewNoteSpeedDial />
+          <FabSlot>
+            <CreateFab onCreateNote={() => setCreateNoteOpen(true)} />
+          </FabSlot>
+          <CreateNote open={createNoteOpen} onOpenChange={setCreateNoteOpen} />
           <DragDropProvider onDragEnd={(event) => void handleDragEnd(event)}>
             <Stack direction={"row"} sx={{ alignItems: "center" }}>
               <Box sx={{ width: "100%" }}>

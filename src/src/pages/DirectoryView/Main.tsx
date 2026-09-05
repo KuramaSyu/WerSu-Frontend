@@ -3,6 +3,7 @@ import { DragDropProvider } from "@dnd-kit/react";
 import { useState } from "react";
 import { DirectoryLeftPanel } from "./LeftPanel";
 import { DirectoryActions } from "./DirectoryActions";
+import { DirectoryMenu } from "./DirectoryMenu";
 import { useLeftPanel, usePanelSize } from "../../LayoutProvider";
 import { DirectoryBreadCrumbs } from "./DirectoryBreadCrumbs";
 import { DirectoryItem } from "./DirectoryItem";
@@ -77,17 +78,7 @@ export const DirectoryView: React.FC = () => {
   // the left panel reads `currentNode` for the recent-activity target
   // and the description fetch, so re-push on node changes once the
   // store hydrates from the loading fallback.
-  useLeftPanel(
-    <DirectoryLeftPanel
-      currentNode={currentNode}
-      cascadePreview={cascadePreview}
-      handleCreateNote={handleCreateNote}
-      handleCreateSubdirectory={handleCreateSubdirectory}
-      handleRenameDirectory={handleRenameDirectory}
-      handleDeleteDirectory={handleDeleteDirectory}
-    />,
-    [currentNode],
-  );
+  useLeftPanel(<DirectoryLeftPanel currentNode={currentNode} />, [currentNode]);
 
   return (
     <Paper
@@ -123,9 +114,21 @@ export const DirectoryView: React.FC = () => {
                   path={path}
                   onNavigate={(id) => navigate(`/d/${id}`)}
                 />
-                <Typography variant="h4" sx={{ fontWeight: 600 }}>
-                  {title}
-                </Typography>
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{ alignItems: "center" }}
+                >
+                  <Typography variant="h4" sx={{ fontWeight: 600 }}>
+                    {title}
+                  </Typography>
+                  <DirectoryMenu
+                    currentNode={currentNode}
+                    cascadePreview={cascadePreview}
+                    handleRenameDirectory={handleRenameDirectory}
+                    handleDeleteDirectory={handleDeleteDirectory}
+                  />
+                </Stack>
               </Stack>
 
               <Stack spacing={2}>
@@ -197,16 +200,13 @@ export const DirectoryView: React.FC = () => {
         directoryId={editDirectoryId}
         parentId={createDirectoryParentId}
       />
-      {/* FAB + directory settings speed dial. Lives in the main
-          canvas (not the left rail) so it stays reachable on
-          mobile, where the rail is hidden by default. */}
+      {/* Bottom-right create FAB. Lives in the main canvas (not the
+          left rail) so it stays reachable on mobile, where the rail
+          is hidden by default. Directory settings moved to a 3-dot
+          menu next to the title above. */}
       <DirectoryActions
-        currentNode={currentNode}
-        cascadePreview={cascadePreview}
         handleCreateNote={handleCreateNote}
         handleCreateSubdirectory={handleCreateSubdirectory}
-        handleRenameDirectory={handleRenameDirectory}
-        handleDeleteDirectory={handleDeleteDirectory}
       />
     </Paper>
   );

@@ -34,6 +34,7 @@ export const LeftPanelToggle: React.FC = () => {
     <Tooltip title={leftPanelOpen ? "Close left panel" : "Open left panel"}>
       <IconButton
         onClick={handleClick}
+        size="small"
         sx={{
           padding: M1,
           color: theme.palette.text.primary,
@@ -41,11 +42,11 @@ export const LeftPanelToggle: React.FC = () => {
       >
         {leftPanelOpen ? (
           <IconLayoutSidebarLeftCollapseFilled
-            size={theme.typography.h4.fontSize}
+            size={theme.typography.h5.fontSize}
           />
         ) : (
           <IconLayoutSidebarLeftExpandFilled
-            size={theme.typography.h4.fontSize}
+            size={theme.typography.h5.fontSize}
           />
         )}
       </IconButton>
@@ -74,6 +75,7 @@ export const RightPanelToggle: React.FC = () => {
     <Tooltip title={rightPanelOpen ? "Close right panel" : "Open right panel"}>
       <IconButton
         onClick={handleClick}
+        size="small"
         sx={{
           padding: M1,
           color: theme.palette.text.primary,
@@ -81,11 +83,11 @@ export const RightPanelToggle: React.FC = () => {
       >
         {rightPanelOpen ? (
           <IconLayoutSidebarRightCollapseFilled
-            size={theme.typography.h4.fontSize}
+            size={theme.typography.h5.fontSize}
           />
         ) : (
           <IconLayoutSidebarRightExpandFilled
-            size={theme.typography.h4.fontSize}
+            size={theme.typography.h5.fontSize}
           />
         )}
       </IconButton>

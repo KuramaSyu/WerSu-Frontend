@@ -7,15 +7,9 @@ import { PanelSection } from "../../components/Panels/PanelSection";
 import { NavigationSection } from "../../components/Panels/NavigationSection";
 import { UpperPanel } from "../../components/Panels/UpperPanel";
 import { useDirectory } from "../../api/queries/useDirectoryQuery";
-import type { CascadePreview } from "./DirectoryFeatures.hook";
 
-interface DirectoryActionsProps {
+interface DirectoryLeftPanelProps {
   currentNode: HirarchyItem;
-  cascadePreview: CascadePreview;
-  handleCreateNote: () => void;
-  handleCreateSubdirectory: () => void;
-  handleRenameDirectory: () => void;
-  handleDeleteDirectory: () => Promise<boolean>;
 }
 
 /**
@@ -26,7 +20,7 @@ interface DirectoryActionsProps {
  * in `DirectoryView/Main.tsx` so they stay visible regardless of
  * the rail's open / closed state.
  */
-export const DirectoryLeftPanel: React.FC<DirectoryActionsProps> = ({
+export const DirectoryLeftPanel: React.FC<DirectoryLeftPanelProps> = ({
   currentNode,
 }) => {
   const { data: dir } = useDirectory(
