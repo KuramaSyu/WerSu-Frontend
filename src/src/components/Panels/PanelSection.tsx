@@ -34,6 +34,91 @@ export interface PanelSectionProps {
   defaultExpanded?: boolean;
 }
 
+interface PanelSectionTitleProps {
+  /** Title text rendered above the section body. */
+  title?: string;
+  /** Optional icon rendered to the left of the title. */
+  titleIcon?: React.ReactNode;
+  /** Optional content rendered to the right of the title (e.g. action buttons). */
+  titleAction?: React.ReactNode;
+  /** Whether this title is rendered inside an Accordion summary. */
+  inAccordion: boolean;
+}
+
+/**
+ * Title row used by `PanelSection`.
+ *
+ * Renders an optional icon, the title text, and an optional action slot.
+ * The title color lightens/darkens on hover to mirror the section body's
+ * hover treatment.
+ */
+const PanelSectionTitle: React.FC<PanelSectionTitleProps> = ({
+  title,
+  titleIcon,
+  titleAction,
+  inAccordion,
+}) => {
+  const theme = useTheme();
+  const [hovered, setHovered] = useState(false);
+  // `iconTransition` is a static snippet per theme (doesn't change on
+  // hover), so reading it from the global store is fine.
+  const iconTransition = useThemeStore((s) => s.theme.iconTransition);
+
+  // dim function which dimms given color
+  const dim = (color: string) =>
+    theme.palette.mode === "dark"
+      ? theme.darken(color, 0.3)
+      : theme.lighten(color, 0.3);
+
+  const dimmedTextColor = useMemo(
+    () => dim(theme.palette.text.primary),
+    [theme],
+  );
+
+  return (
+    <Box
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: 1,
+        mb: inAccordion ? 0 : M1,
+        minHeight: 24,
+        width: "100%",
+        color: hovered ? theme.palette.text.primary : dimmedTextColor,
+        ...iconTransition.root,
+      }}
+    >
+      {titleIcon !== undefined && (
+        <Box
+          sx={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 24,
+            height: 24,
+            px: M1,
+          }}
+        >
+          {titleIcon}
+        </Box>
+      )}
+      <Typography
+        variant="body1"
+        sx={{
+          textTransform: "uppercase",
+        }}
+      >
+        {title}
+      </Typography>
+      <Box sx={{ ml: "auto", display: "flex", alignItems: "center" }}>
+        {titleAction}
+      </Box>
+    </Box>
+  );
+};
+
 /**
  * A consistent section block used inside side panels.
  *
@@ -58,10 +143,6 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
   const renderDivider = showDivider ?? title !== undefined;
 
   const theme = useTheme();
-  // `iconTransition` is a static snippet per theme (doesn't change on
-  // hover), so reading it from the global store is fine -- no need to
-  // mirror it into the swapped theme.
-  const iconTransition = useThemeStore((s) => s.theme.iconTransition);
 
   // dim function which dimms given color
   const dim = (color: string) =>
@@ -93,47 +174,6 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
   };
 
   const body = <Stack spacing={spacing}>{children}</Stack>;
-
-  const renderTitleRow = (inAccordion: boolean) => (
-    <Box
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        gap: 1,
-        mb: inAccordion ? 0 : M1,
-        minHeight: 24,
-        width: "100%",
-        color: activeTheme.palette.text.primary,
-        ...iconTransition.root,
-      }}
-    >
-      {titleIcon !== undefined && (
-        <Box
-          sx={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 24,
-            height: 24,
-            px: M1,
-          }}
-        >
-          {titleIcon}
-        </Box>
-      )}
-      <Typography
-        variant="body1"
-        sx={{
-          textTransform: "uppercase",
-        }}
-      >
-        {title}
-      </Typography>
-      <Box sx={{ ml: "auto", display: "flex", alignItems: "center" }}>
-        {titleAction}
-      </Box>
-    </Box>
-  );
 
   // No title -> just the body. The divider still renders if the caller
   // explicitly asked for one (e.g. with `showDivider`).
@@ -191,7 +231,12 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
           }}
         >
           <AccordionSummary expandIcon={<ExpandMoreIcon fontSize="small" />}>
-            {renderTitleRow(true)}
+            <PanelSectionTitle
+              inAccordion
+              title={title}
+              titleIcon={titleIcon}
+              titleAction={titleAction}
+            />
           </AccordionSummary>
           {renderDivider && <Divider sx={{ opacity: dividerOpacity }} />}
           <AccordionDetails>
@@ -207,7 +252,12 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
     // px used to allign with padding of accordion
     <ThemeProvider theme={activeTheme}>
       <Box {...hoverHandlers} sx={{ px: M2 }}>
-        {renderTitleRow(false)}
+        <PanelSectionTitle
+          inAccordion={false}
+          title={title}
+          titleIcon={titleIcon}
+          titleAction={titleAction}
+        />
         {children && (
           <>
             {renderDivider && (
