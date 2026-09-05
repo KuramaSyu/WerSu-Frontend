@@ -121,6 +121,11 @@ const storeSpecs: Record<string, StoreSpec> = {
     module: () => import("../zustand/useTopBarStore"),
     pick: (mod) => (mod as { useTopBarStore?: StoreHandle }).useTopBarStore,
   },
+  selectedShelf: {
+    module: () => import("../zustand/useSelectedShelfStore"),
+    pick: (mod) =>
+      (mod as { useSelectedShelfStore?: StoreHandle }).useSelectedShelfStore,
+  },
   // Intentionally lazy: `useThemeStore.tsx` imports
   // `@mui/material/styles`, which transitively pulls in the deep
   // `material-color-utilities` ESM graph that Vite 8 cannot
@@ -169,6 +174,7 @@ beforeEach(async () => {
         "featureFlags",
         "shortcutModifier",
         "topBar",
+        "selectedShelf",
       ] as const
     ).map(loadStore),
   );

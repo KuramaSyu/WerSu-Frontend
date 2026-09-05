@@ -71,6 +71,20 @@ export interface FakeShare {
   created_at: string;
 }
 
+/**
+ * Mirror of the production `ShelfReply` for MSW. Kept narrow on
+ * purpose: handlers only fill the fields the menu and tests read.
+ */
+export interface FakeShelf {
+  id: string;
+  slug: string;
+  display_name: string;
+  description?: string;
+  image_url?: string;
+  readme_note_id?: string;
+  book_ids: string[];
+}
+
 export interface FakeActivity {
   id: string;
   actor_id: string;
@@ -105,6 +119,7 @@ export interface FakeDb {
   tags: FakeTag[];
   services: FakeServiceStatus[];
   shares: FakeShare[];
+  shelves: FakeShelf[];
   activity: FakeActivity[];
   accessToken: string;
 }
@@ -248,7 +263,8 @@ export function createInitialFakeDb(): FakeDb {
   };
 
   // Q4 roadmap: viewed a lot, edited recently
-  for (let i = 0; i < 14; i++) addActivity(15 + i * 45, "note_viewed", "note-2");
+  for (let i = 0; i < 14; i++)
+    addActivity(15 + i * 45, "note_viewed", "note-2");
   addActivity(7, "note_edited", "note-2");
 
   // Hocuspocus retro: viewed once, edited once
@@ -256,7 +272,8 @@ export function createInitialFakeDb(): FakeDb {
   addActivity(35, "note_edited", "note-3");
 
   // Onboarding: viewed a few times
-  for (let i = 0; i < 5; i++) addActivity(180 + i * 60, "note_viewed", "note-4");
+  for (let i = 0; i < 5; i++)
+    addActivity(180 + i * 60, "note_viewed", "note-4");
 
   // BookStack: viewed, edited
   addActivity(910, "note_viewed", "note-5");
@@ -300,9 +317,7 @@ export function createInitialFakeDb(): FakeDb {
         child_note_ids: workNotes.map((n) => n.id),
       },
     ],
-    tags: [
-      { id: "tag-1", display_name: "ideas", slug: "ideas" },
-    ],
+    tags: [{ id: "tag-1", display_name: "ideas", slug: "ideas" }],
     services: [
       {
         address: "msw://fake-backend",
@@ -345,6 +360,22 @@ export function createInitialFakeDb(): FakeDb {
       },
     ],
     shares: [],
+    shelves: [
+      {
+        id: "shelf-research",
+        slug: "research",
+        display_name: "Research",
+        description: "Long-form reading notes and paper summaries.",
+        book_ids: ["note-2", "note-3"],
+      },
+      {
+        id: "shelf-personal",
+        slug: "personal",
+        display_name: "Personal",
+        description: "Travel plans, journals, life admin.",
+        book_ids: ["note-7"],
+      },
+    ],
     activity,
     accessToken: "fake-access-token",
   };

@@ -5,6 +5,7 @@ import type {
   FakeDirectory,
   FakeNote,
   FakeShare,
+  FakeShelf,
 } from "./types";
 import { getFakeDb } from "./types";
 
@@ -31,8 +32,7 @@ let nextDirSeq = 100;
 const json = (body: unknown, init?: ResponseInit) =>
   HttpResponse.json(body, init);
 
-const notFound = (msg: string) =>
-  json({ error: msg }, { status: 404 });
+const notFound = (msg: string) => json({ error: msg }, { status: 404 });
 
 const okNoContent = () => new HttpResponse(null, { status: 204 });
 
@@ -149,9 +149,7 @@ export const handlers = [
   http.get("*/api/notes", async () => {
     await delay(80);
     const db = getFakeDb();
-    return json(
-      db.notes.map((n) => noteWireShape(db, n)),
-    );
+    return json(db.notes.map((n) => noteWireShape(db, n)));
   }),
 
   http.get("*/api/notes/:id", async ({ params }) => {
@@ -203,8 +201,7 @@ export const handlers = [
       ...db.notes[idx],
       ...fields,
       updated_at: nowIso(),
-      stripped_content:
-        fields.content ?? db.notes[idx].stripped_content,
+      stripped_content: fields.content ?? db.notes[idx].stripped_content,
     };
     db.notes[idx] = merged;
     return json(noteWireShape(db, merged));
@@ -215,7 +212,9 @@ export const handlers = [
     const db = getFakeDb();
     const before = db.notes.length;
     db.notes = db.notes.filter((n) => n.id !== params.id);
-    return db.notes.length < before ? okNoContent() : notFound("note not found");
+    return db.notes.length < before
+      ? okNoContent()
+      : notFound("note not found");
   }),
 
   // ───────────────────────── directories ─────────────────────────
@@ -391,6 +390,85 @@ export const handlers = [
     });
   }),
 
+  // ─────────────────────────── shelves ───────────────────────────
+
+  /**
+   * Mirrors `GET /api/shelves`. Reads from the in-memory db and
+   * honours `limit` / `offset` / `include_books` so the production
+   * client gets back the same shape it expects from the real
+   * backend. `include_books=true` already populates `book_ids` on
+   * every row in the fixture, so no extra work is needed here.
+   */
+  http.get("*/api/shelves", async ({ request }) => {
+    await delay(50);
+    const db = getFakeDb();
+    const url = new URL(request.url);
+    const limit = Number(url.searchParams.get("limit") ?? "50");
+    const offset = Number(url.searchParams.get("offset") ?? "0");
+    const page = db.shelves.slice(offset, offset + limit);
+    return json(page);
+  }),
+
+  http.get("*/api/shelves/:id", async ({ params }) => {
+    await delay(50);
+    const db = getFakeDb();
+    const shelf = db.shelves.find((s) => s.id === params.id);
+    return shelf ? json(shelf) : notFound("shelf not found");
+  }),
+
+  http.get("*/api/shelves/:id/books", async ({ params }) => {
+    await delay(50);
+    const db = getFakeDb();
+    const shelf = db.shelves.find((s) => s.id === params.id);
+    return shelf
+      ? json({ book_ids: shelf.book_ids })
+      : notFound("shelf not found");
+  }),
+
+  http.post("*/api/shelves", async ({ request }) => {
+    await delay(80);
+    const db = getFakeDb();
+    const body = (await request.json()) as Partial<FakeShelf>;
+    if (!body.slug) {
+      return json({ error: "slug required" }, { status: 400 });
+    }
+    const shelf: FakeShelf = {
+      id: `shelf-${db.shelves.length + 1}`,
+      slug: body.slug,
+      display_name: body.display_name ?? body.slug,
+      description: body.description,
+      image_url: body.image_url,
+      readme_note_id: body.readme_note_id,
+      book_ids: body.book_ids ?? [],
+    };
+    db.shelves.push(shelf);
+    return json({ shelf }, { status: 201 });
+  }),
+
+  http.patch("*/api/shelves", async ({ request }) => {
+    await delay(80);
+    const db = getFakeDb();
+    const body = (await request.json()) as Partial<FakeShelf> & { id: string };
+    const idx = db.shelves.findIndex((s) => s.id === body.id);
+    if (idx === -1) return notFound("shelf not found");
+    db.shelves[idx] = { ...db.shelves[idx], ...body };
+    return json(db.shelves[idx]);
+  }),
+
+  http.delete("*/api/shelves", async ({ request }) => {
+    await delay(80);
+    const db = getFakeDb();
+    const body = (await request.json()) as { id: string; dry?: boolean };
+    const shelf = db.shelves.find((s) => s.id === body.id);
+    if (!shelf) return notFound("shelf not found");
+    const affected = [...shelf.book_ids];
+    const binding_count = affected.length;
+    if (!body.dry) {
+      db.shelves = db.shelves.filter((s) => s.id !== body.id);
+    }
+    return json({ affected_book_ids: affected, binding_count, dry: body.dry });
+  }),
+
   // ─────────────────────────── shares ───────────────────────────
 
   http.get("*/api/shares", async () => {
@@ -418,7 +496,9 @@ export const handlers = [
     const db = getFakeDb();
     const before = db.shares.length;
     db.shares = db.shares.filter((s) => s.id !== params.id);
-    return db.shares.length < before ? okNoContent() : notFound("share not found");
+    return db.shares.length < before
+      ? okNoContent()
+      : notFound("share not found");
   }),
 
   http.post("*/api/auth/public-access-token", async () => {
@@ -563,9 +643,7 @@ export const handlers = [
     if (!dir) return notFound("directory not found");
 
     const noteIdsInDir = new Set(
-      db.notes
-        .filter((n) => n.directory_ids.includes(dir.id))
-        .map((n) => n.id),
+      db.notes.filter((n) => n.directory_ids.includes(dir.id)).map((n) => n.id),
     );
     const events = db.activity.filter((a) => noteIdsInDir.has(a.note_id));
     const summary = synthesizeNoteVersionSummaries(events);
