@@ -45,12 +45,13 @@ export const SearchBar: React.FC = () => {
       <Button
         variant="outlined"
         onClick={() => setIsDialogOpen(true)}
+        size="small"
         sx={{
           // border: "1px solid",
 
           color: theme.palette.text.primary,
           justifyContent: "space-between",
-          p: 1,
+          p: 0.5,
           width: "clamp(12.5rem, 20vw, 25rem)",
           minWidth: 0,
           minHeight: 0,
