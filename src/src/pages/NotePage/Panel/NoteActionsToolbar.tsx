@@ -35,16 +35,13 @@ const NOTE_ACTIONS_TOOLBAR_ORDER = 100;
 /**
  * Save / Share / overflow toolbar for a single note.
  *
- * Renders the same widget in two places:
- *
- *   - the right rail's "Actions" section (when the rail is open);
- *   - the desktop top bar (when the rail is collapsed).
- *
- * The top-bar copy is wired through :class:`useTopBarStore`. Only the
- * rail copy (`NoteActionsToolbar` below) registers with the store;
- * the top bar just consumes the registered reference. That avoids the
- * "two registrations with the same id" footgun and keeps the slot's
- * lifecycle owned by exactly one mount.
+ * The toolbar lives in the desktop top bar at all times (independent
+ * of whether the right rail is open or closed). This component is a
+ * mount-only registration helper: it publishes
+ * :class:`NoteActionsToolbarInner` into :class:`useTopBarStore` on
+ * mount and tears the registration down on unmount. Mount it once at
+ * the page level (`NotePage`); the top bar reads the registered
+ * reference from there. No DOM output.
  *
  * Modal state (Share / Delete) lives with the toolbar that opened it,
  * so closing the rail doesn't strand an open dialog on the wrong side.
@@ -53,9 +50,9 @@ const NOTE_ACTIONS_TOOLBAR_ORDER = 100;
  */
 export const NoteActionsToolbar: React.FC = () => {
   // Mount-only on purpose: the slot reference is the toolbar body
-  // itself, registered for the lifetime of the rail copy. The
-  // cleanup runs when the rail unmounts (e.g. leaving the note
-  // route) and tears the registration down with it.
+  // itself, registered for the lifetime of the page. The cleanup
+  // runs when the page unmounts (e.g. leaving the note route) and
+  // tears the registration down with it.
   const setSlot = useTopBarStore((s) => s.setSlot);
   const removeSlot = useTopBarStore((s) => s.removeSlot);
   useEffect(() => {
@@ -69,7 +66,7 @@ export const NoteActionsToolbar: React.FC = () => {
     };
   }, [setSlot, removeSlot]);
 
-  return <NoteActionsToolbarInner />;
+  return null;
 };
 
 /**

@@ -5,10 +5,10 @@ import { CollabStatusBadge } from "./CollabStatusBadge";
 
 /**
  * Slim editor header. The Save / Share / overflow controls moved
- * into `NoteRightPanelHeader` (mounted at the top of the right
- * rail) so the editor's title row stays focused on the title +
- * collab status. The `editMode` watcher stays here because the
- * collab badge belongs visually with the editor canvas.
+ * into the desktop top bar (registered via `useTopBarStore` on
+ * `NotePage` mount) so the editor's title row stays focused on
+ * the title + collab status. The `editMode` watcher stays here
+ * because the collab badge belongs visually with the editor canvas.
  */
 export const NoteButtonActionRow: React.FC = () => {
   // Read/write mode is no longer toggled from this row -- it's

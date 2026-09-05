@@ -3,7 +3,6 @@ import { VersionInfo } from "../VersionInfo";
 import { UpperPanel } from "../../../components/Panels/UpperPanel";
 import { FormattingPanel } from "../../../components/Editor/FormattingPanel";
 import { useNote } from "../../../api/queries/useNoteQueries";
-import { NoteRightPanelHeader } from "./NoteRightPanelHeader";
 import { Box } from "@mui/material";
 
 export interface NoteRightPanelProps {
@@ -11,18 +10,16 @@ export interface NoteRightPanelProps {
 }
 
 /**
- * Right-side rail for the note page. Hosts the action header
- * (Save / Share / overflow) at the top, then the per-note blocks
- * that read content (attachments) and history (versions) -- the
- * panes that are most useful when the canvas is wide enough to
- * leave them visible. Mirrors the structure of `NoteLeftPanel`
- * so both rails share the spacing rhythm.
+ * Right-side rail for the note page. The Save/Share/overflow
+ * toolbar lives in the desktop top bar instead (registered via
+ * `useTopBarStore`); this rail only hosts the content panels.
+ * Mirrors the structure of `NoteLeftPanel` so both rails share
+ * the spacing rhythm.
  */
 export const NoteRightPanel: React.FC<NoteRightPanelProps> = ({ noteId }) => {
   const { data: note } = useNote(noteId);
   return (
     <UpperPanel spacing={3} variant="outlined">
-      <NoteRightPanelHeader />
       <Box>
         <FormattingPanel />
       </Box>

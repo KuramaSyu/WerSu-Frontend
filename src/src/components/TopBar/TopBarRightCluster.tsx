@@ -45,7 +45,7 @@ import {
  * chrome.
  */
 const TopBarRightClusterImpl: React.FC = () => {
-  const { rightPanel, rightPanelOpen } = useLayout();
+  const { rightPanel } = useLayout();
   const reachability = useServiceReachability();
   const { data: user } = useUser();
 
@@ -59,13 +59,15 @@ const TopBarRightClusterImpl: React.FC = () => {
   const [notificationsAnchor, setNotificationsAnchor] =
     useState<HTMLElement | null>(null);
 
-  // Slots are gated on a right rail being mounted AND closed -- a
-  // route without a right rail (home, settings, ...) doesn't contribute
-  // anything; when the rail is open the rail copy is the visible one
-  // and the top bar would double up. `useTopBarStore` keeps the
-  // registry, this component only renders.
+  // Slots render whenever a right rail is mounted -- the toolbar
+  // is wired into the top bar at all times, independent of whether
+  // the rail is open or closed. Routes without a right rail
+  // (home, settings, ...) don't contribute anything; the rail's
+  // own toolbar mount has been removed (the rail only hosts the
+  // content panels now), so there is no double-up risk. The
+  // registry itself lives in `useTopBarStore`.
   const slotEntries = useTopBarStore((s) => s.slots);
-  const showSlots = rightPanel !== null && !rightPanelOpen;
+  const showSlots = rightPanel !== null;
   const sortedSlots = showSlots ? selectSortedTopBarSlots(slotEntries) : [];
 
   return (

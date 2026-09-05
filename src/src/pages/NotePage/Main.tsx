@@ -7,6 +7,7 @@ import type { Note } from "../../api/models/search";
 import { NoteEditor } from "./Editor";
 import { NoteLeftPanel } from "./Panel/MainLeft";
 import { NoteRightPanel } from "./Panel/MainRight";
+import { NoteActionsToolbar } from "./Panel/NoteActionsToolbar";
 import {
   useNote,
   useUpdateNote,
@@ -107,6 +108,10 @@ export const NotePage: React.FC = () => {
         height: "100%",
       }}
     >
+      {/* Mount-only registration: publishes the Save/Share toolbar
+          into the desktop top bar for as long as the note page is
+          active. No DOM output. */}
+      <NoteActionsToolbar />
       <Fade
         in={note === undefined}
         timeout={{
