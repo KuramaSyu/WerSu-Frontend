@@ -89,6 +89,7 @@ import {
 } from "../../zustand/useCollabStatusStore";
 import { useActiveNoteStore } from "../../zustand/editorStore";
 import { useOutlineStore } from "../../zustand/outlineStore";
+import { useEditorMenuStore } from "../../zustand/editorMenuStore";
 import { uniqueSlugify } from "../../utils/slugify";
 import { useUpdateNote } from "../../api/queries/useNoteQueries";
 import { AttachmentLinkBuilder } from "../../api/utils/AttachmentLInkBuilder";
@@ -186,7 +187,8 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
   // strip, which feels broken on a phone.
   const { isMobile } = useBreakpoint();
   const forceFullWidth = isMobile;
-  const editorWidth = a4Width && !forceFullWidth ? NOTE_EDITOR_A4_WIDTH : "100%";
+  const editorWidth =
+    a4Width && !forceFullWidth ? NOTE_EDITOR_A4_WIDTH : "100%";
 
   // Read-mode fallback: the Collaboration extension needs *some* Y.Doc
   // to attach to, even when there's no live collab session. The note's
@@ -276,6 +278,31 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
     },
     [getLatexDialogProps],
   );
+
+  // Watch the right-rail command bus: bumping the counter from
+  // anywhere (e.g. the FormattingPanel buttons) opens the matching
+  // dialog. NoteEditorCore owns the dialog state, so external
+  // callers cannot set it directly - they request an open via
+  // the store, and this effect translates the request into a local
+  // setState call.
+  const fileDialogRequest = useEditorMenuStore((s) => s.fileDialogRequest);
+  const latexDialogRequest = useEditorMenuStore((s) => s.latexDialogRequest);
+
+  useEffect(() => {
+    if (fileDialogRequest > 0) {
+      setFileUploadDialogOpen(true);
+    }
+  }, [fileDialogRequest]);
+
+  useEffect(() => {
+    if (latexDialogRequest > 0) {
+      setLatexDialogProps({
+        ...getLatexDialogProps(),
+        open: true,
+        latexCode: "",
+      });
+    }
+  }, [latexDialogRequest, getLatexDialogProps]);
 
   useEffect(() => {
     setTitle(note?.title ?? "");

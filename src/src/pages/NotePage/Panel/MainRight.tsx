@@ -1,6 +1,7 @@
 import { AttachmentPanelSection } from "../AttachmentPanelSection";
 import { VersionInfo } from "../VersionInfo";
 import { UpperPanel } from "../../../components/Panels/UpperPanel";
+import { FormattingPanel } from "../../../components/Editor/FormattingPanel";
 import { useNote } from "../../../api/queries/useNoteQueries";
 import { NoteRightPanelHeader } from "./NoteRightPanelHeader";
 import { Box } from "@mui/material";
@@ -22,6 +23,9 @@ export const NoteRightPanel: React.FC<NoteRightPanelProps> = ({ noteId }) => {
   return (
     <UpperPanel spacing={3} variant="outlined">
       <NoteRightPanelHeader />
+      <Box>
+        <FormattingPanel />
+      </Box>
       <Box>
         <VersionInfo noteId={noteId} />
       </Box>
