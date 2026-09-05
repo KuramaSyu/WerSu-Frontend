@@ -38,6 +38,11 @@ export const M8 = "16rem";
  * means a future tweak happens in one place.
  */
 export const TOP_BAR_ELEVATION = 4;
+
+/**
+ * M5 is too big and M4 is too small
+ */
+export const TOP_BAR_HEIGHT = "3.5rem";
 /**
  * Default max-width for the note editor body, expressed in `rem` so the
  * layout scales with the user's font-size preference. A4 portrait at

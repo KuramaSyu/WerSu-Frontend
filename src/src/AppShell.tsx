@@ -5,6 +5,7 @@ import {
   M2,
   M5,
   MOBILE_BOTTOM_BAR_CLEARANCE,
+  TOP_BAR_HEIGHT,
 } from "./statics";
 import { useLayout } from "./LayoutProvider";
 import { useEffect, useState } from "react";
@@ -164,7 +165,7 @@ export const AppShell: React.FC = () => {
               gridTemplateColumns: `minmax(0, 1fr) ${rightColumnWidth}`,
               transition: `grid-template-columns ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}, margin-top ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
               backgroundColor: theme.palette.background.paper,
-              marginTop: isMobile ? 0 : showTopPanel ? M5 : 0,
+              marginTop: isMobile ? 0 : showTopPanel ? TOP_BAR_HEIGHT : 0,
               // `overflow: hidden` keeps sub-pixel rounding from
               // leaking a horizontal scrollbar during the
               // marginTop transition.

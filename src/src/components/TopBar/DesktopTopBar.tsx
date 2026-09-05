@@ -1,10 +1,11 @@
-import { Box, Slide } from "@mui/material";
+import { Box, Divider, Slide, Stack } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import { M2, M3, M5 } from "../../statics";
+import { M1, M2, M3, M4, M5, TOP_BAR_HEIGHT } from "../../statics";
 import { useLayout } from "../../LayoutProvider";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { SearchBar } from "../search/SearchBar";
 import { LeftPanelToggle, RightPanelToggle } from "../Panels/LeftPanelToggle";
+import { ShelfMenu } from "./ShelfMenu";
 import { TopBarRightCluster } from "./TopBarRightCluster";
 
 /**
@@ -57,7 +58,7 @@ export const DesktopTopBar: React.FC = () => {
           alignItems: "center",
           gap: M2,
           px: M3,
-          height: M5,
+          height: TOP_BAR_HEIGHT,
           backgroundColor: theme.palette.background.default,
           borderBottom: `1px solid ${theme.palette.divider}`,
         }}
@@ -65,21 +66,35 @@ export const DesktopTopBar: React.FC = () => {
         {/* Far-left: collapse / expand the left rail */}
         <LeftPanelToggle />
 
-        {/* Left cluster: WerSu wordmark (clickable -> /) */}
-        <Box
-          onClick={() => navigate("/")}
-          sx={{
-            cursor: "pointer",
-            userSelect: "none",
-            fontFamily: '"Fira Sans", sans-serif',
-            fontWeight: 300,
-            fontSize: theme.typography.h4.fontSize,
-            color: theme.palette.text.primary,
-            whiteSpace: "nowrap",
-          }}
+        {/* Left cluster: WerSu wordmark (clickable -> /) and
+            the shelf selector that lives next to it. Both live
+            in a horizontal Stack so a long shelf name can push
+            rightward without wrapping the wordmark onto a new
+            line; the wordmark itself stays fixed-width via
+            `flexShrink: 0`. */}
+        <Stack
+          direction="row"
+          spacing={M1}
+          sx={{ alignItems: "center", flexShrink: 0 }}
         >
-          WerSu
-        </Box>
+          <Box
+            onClick={() => navigate("/")}
+            sx={{
+              cursor: "pointer",
+              userSelect: "none",
+              fontFamily: '"Fira Sans", sans-serif',
+              fontWeight: 300,
+              fontSize: theme.typography.h5.fontSize,
+              color: theme.palette.text.primary,
+              whiteSpace: "nowrap",
+              px: M2,
+            }}
+          >
+            WerSu
+          </Box>
+          <Divider orientation="vertical" flexItem />
+          <ShelfMenu />
+        </Stack>
 
         {/* Centre: search bar sits centred between the
             auto-width wordmark (left) and the right cluster.
