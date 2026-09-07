@@ -145,7 +145,7 @@ describe("DirectoryApi.list - URL shape", () => {
   // must always be sent (with sensible defaults) so the response
   // carries the parent and child ids the hierarchy builder needs.
 
-  it("sends include_parents=true, include_child_dirs=true, include_child_notes=false by default", async () => {
+  it("sends include_parents=true, include_child_dirs=true, include_child_notes=false, include_shelves=true by default", async () => {
     const api = new DirectoryApi();
     const { calls } = mockFetchOk([]);
 
@@ -156,6 +156,7 @@ describe("DirectoryApi.list - URL shape", () => {
     expect(url.searchParams.get("include_parents")).toBe("true");
     expect(url.searchParams.get("include_child_dirs")).toBe("true");
     expect(url.searchParams.get("include_child_notes")).toBe("false");
+    expect(url.searchParams.get("include_shelves")).toBe("true");
   });
 
   it("forwards caller overrides for the include_* flags", async () => {
@@ -166,11 +167,13 @@ describe("DirectoryApi.list - URL shape", () => {
       include_parents: false,
       include_child_dirs: false,
       include_child_notes: true,
+      include_shelves: false,
     });
     const url = new URL(calls[0].url);
     expect(url.searchParams.get("include_parents")).toBe("false");
     expect(url.searchParams.get("include_child_dirs")).toBe("false");
     expect(url.searchParams.get("include_child_notes")).toBe("true");
+    expect(url.searchParams.get("include_shelves")).toBe("false");
   });
 
   it("appends parent_id alongside the include_* flags", async () => {
@@ -183,5 +186,51 @@ describe("DirectoryApi.list - URL shape", () => {
     expect(url.searchParams.get("include_parents")).toBe("true");
     expect(url.searchParams.get("include_child_dirs")).toBe("true");
     expect(url.searchParams.get("include_child_notes")).toBe("false");
+    expect(url.searchParams.get("include_shelves")).toBe("true");
+  });
+});
+
+describe("DirectoryApi.get - URL shape", () => {
+  // Tier 1 test pinning the wire shape of `GET /api/directories/:id`.
+  // The same `include_*` flags are now part of the single-record
+  // endpoint, so we forward them with the canonical defaults
+  // (parents / child dirs / shelves on, child notes off).
+
+  it("sends include_* flags with canonical defaults", async () => {
+    const api = new DirectoryApi();
+    const { calls } = mockFetchOk({ id: "dir-1", shelf_ids: [] });
+
+    await api.get("dir-1");
+    expect(calls).toHaveLength(1);
+    const url = new URL(calls[0].url);
+    expect(url.pathname).toBe("/api/directories/dir-1");
+    expect(url.searchParams.get("include_parents")).toBe("true");
+    expect(url.searchParams.get("include_child_dirs")).toBe("true");
+    expect(url.searchParams.get("include_child_notes")).toBe("false");
+    expect(url.searchParams.get("include_shelves")).toBe("true");
+  });
+
+  it("forwards caller overrides for the include_* flags", async () => {
+    const api = new DirectoryApi();
+    const { calls } = mockFetchOk({ id: "dir-1", shelf_ids: ["shelf-1"] });
+
+    await api.get("dir-1", {
+      include_parents: false,
+      include_child_notes: true,
+      include_shelves: true,
+    });
+    const url = new URL(calls[0].url);
+    expect(url.searchParams.get("include_parents")).toBe("false");
+    expect(url.searchParams.get("include_child_dirs")).toBe("true");
+    expect(url.searchParams.get("include_child_notes")).toBe("true");
+    expect(url.searchParams.get("include_shelves")).toBe("true");
+  });
+
+  it("encodes directory ids that contain special characters", async () => {
+    const api = new DirectoryApi();
+    const { calls } = mockFetchOk({ id: "dir/x" });
+
+    await api.get("dir/x");
+    expect(calls[0].url).toMatch(/\/api\/directories\/dir%2Fx(\?|$)/);
   });
 });

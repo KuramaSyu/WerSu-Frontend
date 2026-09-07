@@ -35,6 +35,27 @@ export interface ListDirectoriesQuery {
    * shouldn't pull note ids; use `listNotes` for that.
    */
   include_child_notes?: boolean;
+  /**
+   * When `true`, the backend fills `shelf_ids` on each reply so the
+   * client can resolve which shelves a directory is bound to without
+   * a follow-up `/api/shelves/by-book` call. Defaults to `true`.
+   */
+  include_shelves?: boolean;
+}
+
+export interface GetDirectoryQuery {
+  /**
+   * Forwarded as the `include_*` query flags documented on
+   * `GET /api/directories/:id`. Defaults match the backend's own
+   * canonical list call: parents and child directories on, child
+   * notes and shelves off. Pass `include_child_notes: true` to pull
+   * the directory's note ids inline; pass `include_shelves: true`
+   * to fill `shelf_ids`.
+   */
+  include_parents?: boolean;
+  include_child_dirs?: boolean;
+  include_child_notes?: boolean;
+  include_shelves?: boolean;
 }
 
 export interface ListDirectoryNotesQuery {
@@ -44,7 +65,10 @@ export interface ListDirectoryNotesQuery {
 
 export interface IDirectoryApi {
   list(query?: ListDirectoriesQuery): Promise<DirectoryReply[]>;
-  get(id: string): Promise<DirectoryReply | undefined>;
+  get(
+    id: string,
+    query?: GetDirectoryQuery,
+  ): Promise<DirectoryReply | undefined>;
   listNotes(id: string, query?: ListDirectoryNotesQuery): Promise<NotesReply>;
   create(payload: CreateDirectoryBody): Promise<DirectoryReply | undefined>;
   patch(payload: PatchDirectoryBody): Promise<DirectoryReply | undefined>;
@@ -88,10 +112,10 @@ export class DirectoryApi
       url.searchParams.append("offset", query.offset.toString());
     }
     // The client-side defaults match what the backend reports on
-    // `/api/directories`: parents and child directories are filled in,
-    // child notes are not (callers should hit `listNotes` instead).
-    // We forward the flag even when it's the default so the wire
-    // shape stays explicit.
+    // `/api/directories`: parents, child directories, and shelves
+    // are filled in; child notes are not (callers should hit
+    // `listNotes` instead). We forward the flag even when it's the
+    // default so the wire shape stays explicit.
     url.searchParams.append(
       "include_parents",
       (query?.include_parents ?? true).toString(),
@@ -103,6 +127,10 @@ export class DirectoryApi
     url.searchParams.append(
       "include_child_notes",
       (query?.include_child_notes ?? false).toString(),
+    );
+    url.searchParams.append(
+      "include_shelves",
+      (query?.include_shelves ?? true).toString(),
     );
 
     const response = await fetch(url.toString(), {
@@ -130,10 +158,34 @@ export class DirectoryApi
     return (directories ?? []) as DirectoryReply[];
   }
 
-  async get(id: string): Promise<DirectoryReply | undefined> {
-    const urlPart = `${DIRECTORIES_API_PATH}/${id}`;
+  async get(
+    id: string,
+    query?: GetDirectoryQuery,
+  ): Promise<DirectoryReply | undefined> {
+    const urlPart = `${DIRECTORIES_API_PATH}/${encodeURIComponent(id)}`;
 
-    const response = await fetch(`${BACKEND_BASE}${urlPart}`, {
+    const url = new URL(`${BACKEND_BASE}${urlPart}`);
+    // Defaults match the canonical list call: parents, child dirs,
+    // and shelves on; child notes off. Callers that need the note
+    // ids inline should set `include_child_notes: true`.
+    url.searchParams.append(
+      "include_parents",
+      (query?.include_parents ?? true).toString(),
+    );
+    url.searchParams.append(
+      "include_child_dirs",
+      (query?.include_child_dirs ?? true).toString(),
+    );
+    url.searchParams.append(
+      "include_child_notes",
+      (query?.include_child_notes ?? false).toString(),
+    );
+    url.searchParams.append(
+      "include_shelves",
+      (query?.include_shelves ?? true).toString(),
+    );
+
+    const response = await fetch(url.toString(), {
       method: "GET",
       credentials: "include",
       headers: await this.authHeaders(),
@@ -141,7 +193,7 @@ export class DirectoryApi
 
     if (!response.ok) {
       this.logError(
-        urlPart,
+        `${urlPart}?${url.searchParams.toString()}`,
         `Response not ok: ${response.status}; ${response.statusText}`,
       );
       throw new UserError(
@@ -152,7 +204,7 @@ export class DirectoryApi
     }
 
     const directory = await response.json().catch((e) => {
-      this.logError(urlPart, e);
+      this.logError(`${urlPart}?${url.searchParams.toString()}`, e);
       return null;
     });
 
