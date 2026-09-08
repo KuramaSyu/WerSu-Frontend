@@ -33,6 +33,7 @@ const extractReadmeBody = (content: string | undefined): string => {
   return parts.length > 1 ? parts.slice(1).join(sentinel).trim() : "";
 };
 
+/**theoretically, the README is the first element */
 const findReadme = (notes: MinimalNote[] | undefined): MinimalNote | null => {
   if (!notes) {
     return null;
@@ -208,9 +209,11 @@ export function useDirectoryEditForm(
       shell.pendingImagePreviewUrl ? "" : readmeBody,
     );
     try {
-      const created = await noteApi.post(README_NOTE_TITLE, serializedReadme);
-      const moved = await noteApi.patchDirectory(created.id, id);
-      if (!moved) {
+      const created = await noteApi.post(README_NOTE_TITLE, serializedReadme, {
+        directory_ids: [id],
+      });
+      // Backend assigns the README via directory_ids on POST.
+      if (!created) {
         setMessage(
           new SnackbarUpdateImpl(
             "README created, but failed to assign to this directory",
@@ -310,9 +313,15 @@ export function useDirectoryEditForm(
           );
         }
       } else {
-        const created = await noteApi.post(README_NOTE_TITLE, serializedReadme);
-        const moved = await noteApi.patchDirectory(created.id, id);
-        if (!moved) {
+        const created = await noteApi.post(
+          README_NOTE_TITLE,
+          serializedReadme,
+          {
+            directory_ids: [id],
+          },
+        );
+        // Backend assigns the README via directory_ids on POST.
+        if (!created) {
           setMessage(
             new SnackbarUpdateImpl(
               "README created, but failed to assign to this directory",
