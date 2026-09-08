@@ -240,3 +240,84 @@ describe("NoteApi - public mode (registered singleton, share provider installed)
     expect(headers.Authorization).toBe("Bearer share-jwt-abc");
   });
 });
+
+describe("NoteApi.post - wire shape (shelf_id / directory_ids)", () => {
+  // Tier 1 test pinning the POST /api/notes wire shape.
+  const NOTE_POST_PATH = "http://localhost:8080/api/notes";
+
+  const mockPost = (body: unknown = { id: "note-1", title: "Hello" }) => {
+    const calls: Array<{ url: string; init: RequestInit }> = [];
+    const spy = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      calls.push({ url: String(url), init: init ?? {} });
+      return {
+        ok: true,
+        status: 201,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => body,
+        text: async () => JSON.stringify(body),
+      } as Response;
+    });
+    vi.stubGlobal("fetch", spy);
+    return { spy, calls };
+  };
+
+  const readBody = (init: RequestInit): Record<string, unknown> => {
+    const raw = init.body;
+    if (typeof raw !== "string") return {};
+    return JSON.parse(raw) as Record<string, unknown>;
+  };
+
+  it("forwards title + content only when no options are passed", async () => {
+    const api = new NoteApi();
+    const { calls } = mockPost();
+
+    await api.post("Hello", "Body");
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toBe(NOTE_POST_PATH);
+    expect(calls[0].init.method).toBe("POST");
+    const body = readBody(calls[0].init);
+    expect(body.title).toBe("Hello");
+    expect(body.content).toBe("Body");
+    expect(body.shelf_id).toBeUndefined();
+    expect(body.directory_ids).toBeUndefined();
+  });
+
+  it("forwards shelf_id when supplied (no directory_ids)", async () => {
+    const api = new NoteApi();
+    const { calls } = mockPost();
+
+    await api.post("Hello", "Body", { shelf_id: "shelf-1" });
+
+    const body = readBody(calls[0].init);
+    expect(body.shelf_id).toBe("shelf-1");
+    expect(body.directory_ids).toBeUndefined();
+  });
+
+  it("forwards directory_ids when supplied (no shelf_id)", async () => {
+    const api = new NoteApi();
+    const { calls } = mockPost();
+
+    await api.post("Hello", "Body", {
+      directory_ids: ["dir-1", "dir-2"],
+    });
+
+    const body = readBody(calls[0].init);
+    expect(body.directory_ids).toEqual(["dir-1", "dir-2"]);
+    expect(body.shelf_id).toBeUndefined();
+  });
+
+  it("forwards both shelf_id and directory_ids when both supplied", async () => {
+    const api = new NoteApi();
+    const { calls } = mockPost();
+
+    await api.post("Hello", "Body", {
+      shelf_id: "shelf-1",
+      directory_ids: ["dir-1"],
+    });
+
+    const body = readBody(calls[0].init);
+    expect(body.shelf_id).toBe("shelf-1");
+    expect(body.directory_ids).toEqual(["dir-1"]);
+  });
+});
