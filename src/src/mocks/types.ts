@@ -33,6 +33,8 @@ export interface FakeDirectory {
   parent_dir_ids: string[];
   child_dir_ids: string[];
   child_note_ids: string[];
+  /** Shelves this directory is bound to. */
+  shelf_ids: string[];
 }
 
 export interface FakeNote {
@@ -307,6 +309,7 @@ export function createInitialFakeDb(): FakeDb {
         parent_dir_ids: [],
         child_dir_ids: [dirWorkId],
         child_note_ids: ["note-1"],
+        shelf_ids: [],
       },
       {
         id: dirWorkId,
@@ -315,6 +318,7 @@ export function createInitialFakeDb(): FakeDb {
         parent_dir_ids: [dirRootId],
         child_dir_ids: [],
         child_note_ids: workNotes.map((n) => n.id),
+        shelf_ids: ["shelf-research"],
       },
     ],
     tags: [{ id: "tag-1", display_name: "ideas", slug: "ideas" }],

@@ -84,6 +84,7 @@ function directoryWireShape(d: FakeDirectory) {
     parent_dir_ids: d.parent_dir_ids,
     child_dir_ids: d.child_dir_ids,
     child_note_ids: d.child_note_ids,
+    shelf_ids: d.shelf_ids ?? [],
     relationships: [],
   };
 }
@@ -165,8 +166,12 @@ export const handlers = [
     const body = (await request.json()) as {
       title?: string;
       content?: string;
+      shelf_id?: string;
+      directory_ids?: string[];
     };
     const id = `note-${nextNoteSeq++}`;
+    // Don't enforce shelf_id XOR directory_ids here; let the real
+    // backend's 400 surface so MSW mirrors its shape.
     const note: FakeNote = {
       id,
       title: body.title ?? "Untitled",
@@ -174,11 +179,19 @@ export const handlers = [
       stripped_content: body.content ?? "",
       author_id: db.currentUserId,
       updated_at: nowIso(),
-      directory_ids: [],
+      directory_ids: body.directory_ids ?? [],
       tag_ids: [],
       attachment_ids: [],
     };
     db.notes.push(note);
+    // Mirror the production gRPC rule: when a note lands in a
+    // directory, the directory's `child_note_ids` should track it.
+    for (const did of note.directory_ids) {
+      const dir = db.directories.find((d) => d.id === did);
+      if (dir && !dir.child_note_ids.includes(id)) {
+        dir.child_note_ids.push(id);
+      }
+    }
     return json(noteWireShape(db, note), { status: 201 });
   }),
 
@@ -257,6 +270,7 @@ export const handlers = [
       name?: string;
       display_name?: string;
       parent_ids?: string[];
+      shelf_ids?: string[];
     };
     const id = `dir-${nextDirSeq++}`;
     const dir: FakeDirectory = {
@@ -266,6 +280,7 @@ export const handlers = [
       parent_dir_ids: body.parent_ids ?? [],
       child_dir_ids: [],
       child_note_ids: [],
+      shelf_ids: body.shelf_ids ?? [],
     };
     db.directories.push(dir);
     for (const pid of dir.parent_dir_ids) {
@@ -275,13 +290,19 @@ export const handlers = [
     return json(directoryWireShape(dir), { status: 201 });
   }),
 
-  http.patch("*/api/directories/:id", async ({ params, request }) => {
+  http.patch("*/api/directories", async ({ request }) => {
     await delay(80);
     const db = getFakeDb();
-    const idx = db.directories.findIndex((d) => d.id === params.id);
+    // PATCH carries the id in the body per swagger PatchDirectoryBody.
+    const patch = (await request.json()) as Partial<FakeDirectory> & {
+      id?: string;
+    };
+    const id = patch.id;
+    if (!id) return notFound("directory id missing in body");
+    const idx = db.directories.findIndex((d) => d.id === id);
     if (idx < 0) return notFound("directory not found");
-    const patch = (await request.json()) as Partial<FakeDirectory>;
-    db.directories[idx] = { ...db.directories[idx], ...patch };
+    const { id: _ignored, ...fields } = patch;
+    db.directories[idx] = { ...db.directories[idx], ...fields };
     return json(directoryWireShape(db.directories[idx]));
   }),
 
