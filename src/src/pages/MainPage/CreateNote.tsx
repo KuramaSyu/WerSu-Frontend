@@ -12,22 +12,18 @@ import {
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import CreateIcon from "@mui/icons-material/Create";
 import { note_of_date_at_hour } from "../../utils/NoteTitleTemplates";
-import { getNoteApi, NoteApi } from "../../api/NoteApi";
+import { getNoteApi } from "../../api/NoteApi";
 import { UserError } from "../../api/models/UserError";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useUpdateNote } from "../../api/queries/useNoteQueries";
+import { useSelectedShelfStore } from "../../zustand/useSelectedShelfStore";
 import { ModalShell } from "../../components/ModalShell";
 
 export interface CreateNoteProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /**
-   * When set, the freshly created note is moved into this directory
-   * via `patchDirectory` after the create succeeds. `undefined` (and
-   * `"root"`) leave the note at the root, matching the Home page
-   * behaviour.
-   */
+  /** Directory the new note lands in; falls back to the selected shelf. */
   currentDirectoryId?: string;
 }
 
@@ -44,6 +40,8 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
   const [snackbarState, setSnackbarState] = useState({ open: false });
   const [isSaving, setIsSaving] = useState(false);
   const { setMessage } = useInfoStore();
+  // Fall back to the user's selected shelf when no directory is set.
+  const selectedShelfId = useSelectedShelfStore((s) => s.selectedShelfId);
 
   const resetDraft = () => {
     setTitle(note_of_date_at_hour());
@@ -67,32 +65,27 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
 
     setIsSaving(true);
     try {
-      const note = await new NoteApi().post(title, bodyForSave);
+      // Backend wants shelf_id OR directory_ids; use the former
+      // when no directory is set.
+      const hasDirectory =
+        currentDirectoryId !== undefined && currentDirectoryId !== "root";
+      const directoryIdsForCreate = hasDirectory
+        ? [currentDirectoryId as string]
+        : undefined;
+      const shelfIdForCreate = hasDirectory
+        ? undefined
+        : (selectedShelfId ?? undefined);
+
+      const note = await getNoteApi().post(title, bodyForSave, {
+        directory_ids: directoryIdsForCreate,
+        shelf_id: shelfIdForCreate,
+      });
       if (!note) {
         return undefined;
       }
 
       setSnackbarState({ open: true });
       updateNote({ noteId: note.id, title: note.title, content: note.content });
-
-      if (
-        currentDirectoryId &&
-        currentDirectoryId !== "root" &&
-        currentDirectoryId !== note.get_dir()
-      ) {
-        const moved = await getNoteApi().patchDirectory(
-          note.id,
-          currentDirectoryId,
-        );
-        if (!moved) {
-          setMessage(
-            new SnackbarUpdateImpl(
-              "Note created, but failed to assign directory",
-              "warning",
-            ),
-          );
-        }
-      }
 
       return note;
     } catch (error) {

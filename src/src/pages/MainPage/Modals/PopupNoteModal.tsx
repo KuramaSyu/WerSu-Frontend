@@ -20,6 +20,7 @@ import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import CreateIcon from "@mui/icons-material/Create";
 import { useMainPageStore } from "../../../zustand/useMainPageStore";
 import { useThemeStore } from "../../../zustand/useThemeStore";
+import { useSelectedShelfStore } from "../../../zustand/useSelectedShelfStore";
 import { useCreateNote } from "../../../api/queries/useNoteQueries";
 import { NoteEditorModal } from "../../../components/Editor/NoteEditModal";
 import { NoteApi, type INoteApi } from "../../../api/NoteApi";
@@ -29,6 +30,7 @@ export const PopupNoteModal: React.FC = () => {
   const { theme } = useThemeStore();
   const { mutateAsync } = useCreateNote();
   const { setMessage } = useInfoStore();
+  const selectedShelfId = useSelectedShelfStore((s) => s.selectedShelfId);
   const {
     noteModalOpen: open,
     selectedModalNote: note,
@@ -46,7 +48,18 @@ export const PopupNoteModal: React.FC = () => {
       title={note?.title ?? ""}
       content={note?.stripped_content ?? ""}
       onSave={(title: string, content: string) => {
-        mutateAsync({ title, content })
+        // Reuse the source note's parents; fall back to the shelf
+        // when the source is a root-level orphan.
+        const directoryIds = note?.directory_ids ?? [];
+        mutateAsync({
+          title,
+          content,
+          directory_ids: directoryIds.length > 0 ? directoryIds : undefined,
+          shelf_id:
+            directoryIds.length > 0
+              ? undefined
+              : (selectedShelfId ?? undefined),
+        })
           .then((note) => {
             setOpen(false);
             setNote(null);
