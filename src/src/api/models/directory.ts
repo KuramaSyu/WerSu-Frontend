@@ -10,7 +10,7 @@ export interface DirectoryReply {
   parent_dir_ids: string[];
   child_dir_ids: string[];
   child_note_ids: string[];
-  /** Shelves this directory sits on. Filled when the request sends `include_shelves=true`. */
+  /** Shelves this directory sits on; filled when include_shelves=true. */
   shelf_ids: string[];
   relationships?: PermissionRelationshipReply[];
 }
@@ -32,6 +32,6 @@ export interface PatchDirectoryBody {
   description?: string;
   image_url?: string;
   parent_ids?: string[];
-  /** Shelves the directory should be bound to (omit to leave unchanged). */
+  /** Shelves the directory should be bound to. */
   shelf_ids?: string[];
 }

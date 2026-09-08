@@ -15,43 +15,18 @@ export interface ListDirectoriesQuery {
   parent_id?: string;
   limit?: number;
   offset?: number;
-  /**
-   * When `true`, the backend embeds every ancestor directory id into
-   * each reply's `parent_dir_ids` so the client can build the
-   * hierarchy from a single page. Defaults to `true` on the client
-   * side; pass `false` to opt out (e.g. for a single-parent list call
-   * that only needs direct children).
-   */
+  /** Fill parent_dir_ids on each reply. Default true. */
   include_parents?: boolean;
-  /**
-   * When `true`, the backend fills `child_dir_ids` on each reply so
-   * the client can compute the directory children locally.
-   * Defaults to `true`.
-   */
+  /** Fill child_dir_ids on each reply. Default true. */
   include_child_dirs?: boolean;
-  /**
-   * When `true`, the backend fills `child_note_ids` on each reply.
-   * Defaults to `false` on the client side — directory listings
-   * shouldn't pull note ids; use `listNotes` for that.
-   */
+  /** Fill child_note_ids on each reply. Default false. */
   include_child_notes?: boolean;
-  /**
-   * When `true`, the backend fills `shelf_ids` on each reply so the
-   * client can resolve which shelves a directory is bound to without
-   * a follow-up `/api/shelves/by-book` call. Defaults to `true`.
-   */
+  /** Fill shelf_ids on each reply. Default true. */
   include_shelves?: boolean;
 }
 
 export interface GetDirectoryQuery {
-  /**
-   * Forwarded as the `include_*` query flags documented on
-   * `GET /api/directories/:id`. Defaults match the backend's own
-   * canonical list call: parents and child directories on, child
-   * notes and shelves off. Pass `include_child_notes: true` to pull
-   * the directory's note ids inline; pass `include_shelves: true`
-   * to fill `shelf_ids`.
-   */
+  /** include_* flags for GET /api/directories/:id. */
   include_parents?: boolean;
   include_child_dirs?: boolean;
   include_child_notes?: boolean;
@@ -111,11 +86,7 @@ export class DirectoryApi
     if (query?.offset !== undefined) {
       url.searchParams.append("offset", query.offset.toString());
     }
-    // The client-side defaults match what the backend reports on
-    // `/api/directories`: parents, child directories, and shelves
-    // are filled in; child notes are not (callers should hit
-    // `listNotes` instead). We forward the flag even when it's the
-    // default so the wire shape stays explicit.
+    // Defaults: parents + child dirs + shelves on, child notes off.
     url.searchParams.append(
       "include_parents",
       (query?.include_parents ?? true).toString(),
@@ -165,9 +136,7 @@ export class DirectoryApi
     const urlPart = `${DIRECTORIES_API_PATH}/${encodeURIComponent(id)}`;
 
     const url = new URL(`${BACKEND_BASE}${urlPart}`);
-    // Defaults match the canonical list call: parents, child dirs,
-    // and shelves on; child notes off. Callers that need the note
-    // ids inline should set `include_child_notes: true`.
+    // Defaults match the canonical list call.
     url.searchParams.append(
       "include_parents",
       (query?.include_parents ?? true).toString(),

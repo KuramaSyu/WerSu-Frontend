@@ -140,10 +140,7 @@ describe("DirectoryApi.listNotes - URL shape", () => {
 });
 
 describe("DirectoryApi.list - URL shape", () => {
-  // Tier 1 test pinning the wire shape of `GET /api/directories?...`.
-  // The `include_*` query flags are required by the backend now and
-  // must always be sent (with sensible defaults) so the response
-  // carries the parent and child ids the hierarchy builder needs.
+  // Tier 1 test pinning the GET /api/directories wire shape.
 
   it("sends include_parents=true, include_child_dirs=true, include_child_notes=false, include_shelves=true by default", async () => {
     const api = new DirectoryApi();
@@ -191,10 +188,7 @@ describe("DirectoryApi.list - URL shape", () => {
 });
 
 describe("DirectoryApi.get - URL shape", () => {
-  // Tier 1 test pinning the wire shape of `GET /api/directories/:id`.
-  // The same `include_*` flags are now part of the single-record
-  // endpoint, so we forward them with the canonical defaults
-  // (parents / child dirs / shelves on, child notes off).
+  // Tier 1 test pinning the GET /api/directories/:id wire shape.
 
   it("sends include_* flags with canonical defaults", async () => {
     const api = new DirectoryApi();
