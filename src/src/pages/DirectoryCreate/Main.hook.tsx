@@ -3,10 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { AttachmentApi } from "../../api/AttachmentApi";
 import { AttachmentLinkBuilder } from "../../api/utils/AttachmentLInkBuilder";
-import { getNoteApi } from "../../api/NoteApi";
 import { useDirectoryStore } from "../../zustand/useDirectoryStore";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
-import { README_NOTE_TITLE, serializeReadme } from "../../utils/readme";
 import { useUserKey } from "../../api/queries/useUser";
 import { useDirectoryFormShell } from "../DirectoryEdit/directoryFormShell";
 import {
@@ -143,75 +141,57 @@ export function useCreateSubdirectoryForm(
 
       let finalImageUrl: string | undefined = shell.imageUrl || undefined;
 
-      // 2. If a file is pending, upload it, create the directory's
-      //    README so we have a stable target to `linkAttachment` to,
-      //    and patch the directory with the resulting markdown URL.
+      // 2. If a file is pending, upload it and link it to the
+      //    directory's README. The backend creates the README on
+      //    directory create; we read its id from the first entry of
+      //    `created.child_note_ids` instead of POSTing one ourselves.
       if (shell.pendingImageFile) {
         setIsUploadingImage(true);
         try {
-          const noteApi = getNoteApi();
           const attachmentApi = new AttachmentApi();
+          const readmeId = created.child_note_ids[0];
 
-          // 2a. Create the README note with the auto-generated
-          //     header. The image placeholder is omitted from the
-          //     header here; we patch it back in once the upload
-          //     resolves the final URL.
-          const readmePlaceholder = serializeReadme(
-            {
-              name: trimmedName,
-              description: shell.description,
-              imageUrl: undefined,
-            },
-            "",
-          );
-          const readme = await noteApi.post(
-            README_NOTE_TITLE,
-            readmePlaceholder,
-          );
-          const moved = await noteApi.patchDirectory(readme.id, created.id);
-          if (!moved) {
+          if (!readmeId) {
             setMessage(
               new SnackbarUpdateImpl(
-                "Directory created, but failed to attach README",
-                "warning",
-              ),
-            );
-          }
-
-          // 2b. Upload the file to attachment storage.
-          const metadata = await attachmentApi.createAttachment(
-            shell.pendingImageFile,
-          );
-          if (!metadata) {
-            setMessage(
-              new SnackbarUpdateImpl(
-                "Directory created, but image upload failed",
+                "Directory created, but backend did not return a README id",
                 "warning",
               ),
             );
           } else {
-            // 2c. Link the attachment to the README so it shows up
-            //     in the note's attachment list.
-            const linked = await attachmentApi.linkAttachment({
-              attachment_key: metadata.key,
-              note_id: readme.id,
-            });
-            if (linked === null) {
+            // 2a. Upload the file to attachment storage.
+            const metadata = await attachmentApi.createAttachment(
+              shell.pendingImageFile,
+            );
+            if (!metadata) {
               setMessage(
                 new SnackbarUpdateImpl(
-                  "Image uploaded, but failed to link to README",
+                  "Directory created, but image upload failed",
                   "warning",
                 ),
               );
-            }
+            } else {
+              // 2b. Link the attachment to the README.
+              const linked = await attachmentApi.linkAttachment({
+                attachment_key: metadata.key,
+                note_id: readmeId,
+              });
+              if (linked === null) {
+                setMessage(
+                  new SnackbarUpdateImpl(
+                    "Image uploaded, but failed to link to README",
+                    "warning",
+                  ),
+                );
+              }
 
-            // 2d. Build the markdown URL the directory's `image_url`
-            //     field stores.
-            const markdownUrl = new AttachmentLinkBuilder(attachmentApi)
-              .asMarkdown()
-              .setWidth(720)
-              .getLink(metadata.key);
-            finalImageUrl = markdownUrl;
+              // 2c. Build the markdown URL the directory's `image_url`
+              //     field stores.
+              finalImageUrl = new AttachmentLinkBuilder(attachmentApi)
+                .asMarkdown()
+                .setWidth(720)
+                .getLink(metadata.key);
+            }
           }
         } finally {
           setIsUploadingImage(false);
@@ -240,7 +220,12 @@ export function useCreateSubdirectoryForm(
         upsertDirectory(created);
       }
 
-      invalidateDirectoryQueries(queryClient, userKey, created.id, parentIds?.[0]);
+      invalidateDirectoryQueries(
+        queryClient,
+        userKey,
+        created.id,
+        parentIds?.[0],
+      );
 
       setMessage(new SnackbarUpdateImpl("Subdirectory created", "success"));
       navigate(`/d/${created.id}`);
