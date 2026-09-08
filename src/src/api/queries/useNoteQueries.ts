@@ -33,6 +33,15 @@ export interface UpdateNoteVariables {
   tag_ids?: string[];
 }
 
+export interface CreateNoteVariables {
+  title: string;
+  content: string;
+  /** Forwarded as shelf_id on POST /api/notes. */
+  shelf_id?: string;
+  /** Forwarded as directory_ids on POST /api/notes. */
+  directory_ids?: string[];
+}
+
 // Use the registered singletons so the share-token provider installed on
 // `Bootstrap` reaches these instances (a fresh `new NoteApi()` would not
 // receive the provider). `getNoteApi()` throws if not registered — that's
@@ -279,7 +288,13 @@ export function useUpdateNote() {
 /**
  * @usage ```ts
  * const createNote = useCreateNote();
- * const note = await createNote.mutateAsync({title: "hunter x hunter", content: "one of the best animes"})
+ * const note = await createNote.mutateAsync({
+ *   title: "hunter x hunter",
+ *   content: "one of the best animes",
+ *   // at least one of shelf_id / directory_ids is required by the backend:
+ *   shelf_id: "shelf-1",
+ *   // or: directory_ids: ["dir-1", "dir-2"],
+ * })
  * ```
  * @returns factory to create notes
  */
@@ -288,8 +303,13 @@ export function useCreateNote() {
   const userKey = useUserKey();
 
   return useMutation({
-    mutationFn: ({ title, content }: { title: string; content: string }) =>
-      noteApi.post(title, content),
+    mutationFn: ({
+      title,
+      content,
+      shelf_id,
+      directory_ids,
+    }: CreateNoteVariables) =>
+      noteApi.post(title, content, { shelf_id, directory_ids }),
 
     onSuccess: (createdNote) => {
       // update "notes" e.g. latest 50

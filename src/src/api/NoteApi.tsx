@@ -4,11 +4,23 @@ import { UserError } from "./models/UserError";
 import { ShareTokenBearerMixin } from "./shareToken";
 import { apiRegistry, type ApiToken } from "./apiRegistry";
 
+export interface PostNoteOptions {
+  /** Parent shelf; backend auto-selects a directory from it. */
+  shelf_id?: string;
+  /** Parent directories the note should land in. */
+  directory_ids?: string[];
+}
+
 export interface INoteApi {
   get(id: string): Promise<Note | undefined>;
   /** Fetch a specific note version by its monotonic version index. */
   getVersion(id: string, versionIndex: number): Promise<Note | undefined>;
-  post(title: string, content: string): Promise<Note>;
+  /** Create a note; backend requires shelf_id OR directory_ids. */
+  post(
+    title: string,
+    content: string,
+    options?: PostNoteOptions,
+  ): Promise<Note>;
   patch(
     id: string,
     title?: string,
@@ -16,11 +28,7 @@ export interface INoteApi {
     directory_ids?: string[],
     tag_ids?: string[],
   ): Promise<Note>;
-  /**
-   * Reassigns a note's parent directories. Passing `undefined` removes
-   * the note from every directory (root). Passing a single id keeps
-   * backwards compatibility with single-parent flows.
-   */
+  /** Reassigns a note's parent directories. */
   patchDirectory(id: string, directoryId?: string | string[]): Promise<boolean>;
   delete(id: string): Promise<boolean>;
 }
@@ -137,12 +145,30 @@ export class NoteApi extends ShareTokenBearerMixin implements INoteApi {
     return Note.fromJson(noteData);
   }
 
-  async post(title: string, content: string): Promise<Note> {
+  async post(
+    title: string,
+    content: string,
+    options?: PostNoteOptions,
+  ): Promise<Note> {
+    // Forward shelf_id / directory_ids only when supplied; an
+    // empty body surfaces as a backend 400.
+    const body: {
+      title: string;
+      content: string;
+      shelf_id?: string;
+      directory_ids?: string[];
+    } = { title, content };
+    if (options?.shelf_id !== undefined) {
+      body.shelf_id = options.shelf_id;
+    }
+    if (options?.directory_ids !== undefined) {
+      body.directory_ids = options.directory_ids;
+    }
     const response = await fetch(`${BACKEND_BASE}/api/notes`, {
       ...(await this.getFetchParameters("POST", {
         "Content-Type": "application/json",
       })),
-      body: JSON.stringify({ title, content }),
+      body: JSON.stringify(body),
     });
     if (!response.ok) {
       throw await this.buildUserError(response, "Failed to create note");
