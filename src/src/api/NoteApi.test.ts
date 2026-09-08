@@ -247,16 +247,18 @@ describe("NoteApi.post - wire shape (shelf_id / directory_ids)", () => {
 
   const mockPost = (body: unknown = { id: "note-1", title: "Hello" }) => {
     const calls: Array<{ url: string; init: RequestInit }> = [];
-    const spy = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
-      calls.push({ url: String(url), init: init ?? {} });
-      return {
-        ok: true,
-        status: 201,
-        headers: new Headers({ "content-type": "application/json" }),
-        json: async () => body,
-        text: async () => JSON.stringify(body),
-      } as Response;
-    });
+    const spy = vi.fn(
+      async (url: string | URL | Request, init?: RequestInit) => {
+        calls.push({ url: String(url), init: init ?? {} });
+        return {
+          ok: true,
+          status: 201,
+          headers: new Headers({ "content-type": "application/json" }),
+          json: async () => body,
+          text: async () => JSON.stringify(body),
+        } as Response;
+      },
+    );
     vi.stubGlobal("fetch", spy);
     return { spy, calls };
   };
