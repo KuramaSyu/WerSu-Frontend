@@ -75,6 +75,7 @@ vi.mock("./api/queries/useUser", () => ({
     isLoading: false,
     isSuccess: true,
   }),
+  useUserKey: () => null,
 }));
 vi.mock("./api/queries/useShareAccessToken", () => ({
   useShareAccessToken: () => undefined,

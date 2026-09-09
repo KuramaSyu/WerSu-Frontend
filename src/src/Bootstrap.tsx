@@ -13,6 +13,9 @@ import { useUser } from "./api/queries/useUser";
 import { useGlobalModifier } from "./hooks/useGlobalModifier";
 import { useFocusGuardOnModifier } from "./hooks/useFocusGuardOnModifier";
 import { FeatureFlagName, useFeatureStore } from "./zustand/FeatureStore";
+import { useDirectoryTreeStore } from "./zustand/useDirectoryTreeStore";
+import { useSelectedShelfStore } from "./zustand/useSelectedShelfStore";
+import { useAllDirectoriesQuery } from "./api/queries/directoryQueries";
 
 /**
  * Routes under `/public/*` are served by the share JWT only — never by
@@ -250,7 +253,7 @@ export const Bootstrap: React.FC = () => {
     }
   }, [isUserSuccess]);
 
-  // Drive the shared `isModifierPressed` flag every ShortcutHint
+  // Drive the shared isModifierPressed flag every ShortcutHint
   // reads from. Mounted here so the listener lives for the entire
   // app lifetime and never re-registers as routes change.
   useGlobalModifier();
@@ -260,5 +263,27 @@ export const Bootstrap: React.FC = () => {
   // wrapper span (or trigger autoFocus re-evaluation).
   useFocusGuardOnModifier();
 
+  // Keep the shelf-scoped directory tree in sync with the directory cache.
+  useDirectoryTreeSync();
+
   return <></>;
 };
+
+/** Rebuilds the shelf-scoped tree when the directory list or shelf id change. */
+function useDirectoryTreeSync(): void {
+  const { byId } = useAllDirectoriesQuery();
+  const selectedShelfId = useSelectedShelfStore((s) => s.selectedShelfId);
+  const rebuild = useDirectoryTreeStore((s) => s.rebuild);
+  const clear = useDirectoryTreeStore((s) => s.clear);
+
+  // Skip the rebuild until a non-empty cache arrives so the first
+  // shelf-switch doesn't render an empty tree.
+  useEffect(() => {
+    const ids = Object.keys(byId);
+    if (ids.length === 0) {
+      clear();
+      return;
+    }
+    rebuild(byId, null);
+  }, [byId, selectedShelfId, rebuild, clear]);
+}
