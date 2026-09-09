@@ -118,6 +118,16 @@ export class RootHirarchyItem extends CompositeHirarchyItem {
   }
 }
 
+/** Top-level container that becomes the root when a shelf is picked from ShelfMenu. */
+export class ShelfHirarchyItem extends CompositeHirarchyItem {
+  constructor(id: string, name: string) {
+    super(id, name);
+  }
+}
+
+/** Return type of DirectoryHierarchyBuilder.build: legacy root or shelf-scoped root. */
+export type DirectoryHierarchyRoot = RootHirarchyItem | ShelfHirarchyItem;
+
 /**
  * Composite node that wraps a directory API model.
  *
@@ -139,6 +149,7 @@ export class DirectoryHirarchyItem extends CompositeHirarchyItem {
       | "parent_dir_ids"
       | "child_dir_ids"
       | "child_note_ids"
+      | "shelf_ids"
     >,
   ) {
     super(
@@ -166,6 +177,7 @@ export class DirectoryHirarchyItem extends CompositeHirarchyItem {
     | "parent_dir_ids"
     | "child_dir_ids"
     | "child_note_ids"
+    | "shelf_ids"
   > {
     return this.directory;
   }
@@ -278,6 +290,7 @@ export class NoteHierarchyBuilder {
         parent_dir_ids: [],
         child_dir_ids: [],
         child_note_ids: [],
+        shelf_ids: [],
       });
     };
 
@@ -308,6 +321,16 @@ export class NoteHierarchyBuilder {
   }
 }
 
+/** Options for DirectoryHierarchyBuilder.build. */
+export interface DirectoryHierarchyBuildOptions {
+  /** Shelf id to scope the build to; the root becomes a ShelfHirarchyItem when set. */
+  shelfId?: string | null;
+  /** Display name forwarded to the constructed root. */
+  rootName?: string;
+  /** Notes attached to on-shelf directories; unparented notes land at the shelf root. */
+  attachedNotes?: ReadonlyArray<import("../api/models/search").MinimalNote>;
+}
+
 /**
  * Builds a hierarchy tree from directories only.
  *
@@ -324,40 +347,170 @@ export class DirectoryHierarchyBuilder {
   }
 
   /**
-   * Creates a hierarchy rooted at `RootHirarchyItem` from `directoryLookup`.
+   * Builds a hierarchy. Pass options.shelfId to switch the root to a
+   * ShelfHirarchyItem scoped to that shelf.
    */
-  build(rootName = "Root"): RootHirarchyItem {
-    const root = new RootHirarchyItem(rootName);
-    const directoryNodes = new Map<string, DirectoryHirarchyItem>();
+  build(
+    rootName: string = "Root",
+    options: DirectoryHierarchyBuildOptions = {},
+  ): DirectoryHierarchyRoot {
+    const shelfId = options.shelfId ?? null;
+    const attachedNotes = options.attachedNotes ?? [];
 
-    // Convert all directories into a Node, then insert into a map for easy lookup when building the tree.
-    for (const directory of Object.values(this.directoryLookup)) {
-      directoryNodes.set(
-        directory.id,
-        DirectoryHirarchyItem.fromDirectoryReply(directory),
-      );
-    }
+    const root = createRoot(shelfId, rootName);
+    const directoryNodes = buildDirectoryNodes(this.directoryLookup);
+    attachDirectoriesToTree(root, directoryNodes);
 
-    // Build the tree out of the Node-Map.
-    for (const directoryNode of directoryNodes.values()) {
-      const parentId = directoryNode.getParent();
-
-      // Directory has no parent -> root.
-      if (!parentId || parentId === directoryNode.getId()) {
-        root.addChild(directoryNode);
-        continue;
-      }
-
-      // Directory has parent -> get parent, and add it as a child.
-      const parentDirectoryNode = directoryNodes.get(parentId);
-      if (!parentDirectoryNode) {
-        root.addChild(directoryNode);
-        continue;
-      }
-
-      parentDirectoryNode.addChild(directoryNode);
+    if (shelfId !== null) {
+      applyShelfScope(root, directoryNodes, attachedNotes, shelfId);
     }
 
     return root;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Build helpers
+// ---------------------------------------------------------------------------
+
+/** Picks the right root type: ShelfHirarchyItem when scoped, otherwise Root. */
+const createRoot = (
+  shelfId: string | null,
+  rootName: string,
+): DirectoryHierarchyRoot =>
+  shelfId !== null
+    ? new ShelfHirarchyItem(shelfId, rootName)
+    : new RootHirarchyItem(rootName);
+
+/** Converts every `DirectoryReply` into a `DirectoryHirarchyItem` keyed by id. */
+const buildDirectoryNodes = (
+  lookup: Record<string, DirectoryReply>,
+): Map<string, DirectoryHirarchyItem> => {
+  const nodes = new Map<string, DirectoryHirarchyItem>();
+  for (const directory of Object.values(lookup)) {
+    nodes.set(directory.id, DirectoryHirarchyItem.fromDirectoryReply(directory));
+  }
+  return nodes;
+};
+
+/**
+ * Attaches each directory node under its declared parent. Falls back
+ * to the root when the parent is missing or self-referential.
+ */
+const attachDirectoriesToTree = (
+  root: HirarchyItem,
+  directoryNodes: Map<string, DirectoryHirarchyItem>,
+): void => {
+  for (const node of directoryNodes.values()) {
+    const parentId = node.getParent();
+    if (!parentId || parentId === node.getId()) {
+      root.addChild(node);
+      continue;
+    }
+    const parent = directoryNodes.get(parentId);
+    if (!parent) {
+      root.addChild(node);
+      continue;
+    }
+    parent.addChild(node);
+  }
+};
+
+/**
+ * Shelf-scoped build: drop non-shelf branches and attach notes
+ * under their deepest surviving directory. Composed of three small
+ * passes so the high-level intent reads top-to-bottom.
+ */
+const applyShelfScope = (
+  root: HirarchyItem,
+  directoryNodes: Map<string, DirectoryHirarchyItem>,
+  attachedNotes: ReadonlyArray<import("../api/models/search").MinimalNote>,
+  shelfId: string,
+): void => {
+  const onShelf = collectOnShelfDirectories(root, shelfId);
+  stripNonShelfDirectories(root, onShelf);
+  attachNotesOnShelf(root, directoryNodes, attachedNotes, onShelf);
+};
+
+/**
+ * Top-down pass that flags every directory as on-shelf when it or
+ * any ancestor lists the shelf id. Descendants inherit so a
+ * subdirectory of a shelf member stays even when it doesn't list
+ * the shelf itself.
+ */
+const collectOnShelfDirectories = (
+  root: HirarchyItem,
+  shelfId: string,
+): Set<string> => {
+  const onShelf = new Set<string>();
+  const walk = (node: HirarchyItem, ancestorOnShelf: boolean): void => {
+    if (node instanceof NoteHirarchyItem) {
+      return;
+    }
+    if (node instanceof DirectoryHirarchyItem) {
+      const direct = (node.getDirectory().shelf_ids ?? []).includes(shelfId);
+      const here = direct || ancestorOnShelf;
+      if (here) {
+        onShelf.add(node.getId());
+      }
+      for (const child of node.getChildren()) {
+        walk(child, here);
+      }
+      return;
+    }
+    // Root / ShelfHirarchyItem: propagate the flag unchanged.
+    for (const child of node.getChildren()) {
+      walk(child, ancestorOnShelf);
+    }
+  };
+  for (const child of root.getChildren()) {
+    walk(child, false);
+  }
+  return onShelf;
+};
+
+/** Removes every directory branch that isn't on the shelf. */
+const stripNonShelfDirectories = (
+  root: HirarchyItem,
+  onShelf: Set<string>,
+): void => {
+  const strip = (node: HirarchyItem): void => {
+    for (const child of [...node.getChildren()]) {
+      if (child instanceof DirectoryHirarchyItem && !onShelf.has(child.getId())) {
+        node.removeChild(child.getId());
+        continue;
+      }
+      strip(child);
+    }
+  };
+  strip(root);
+};
+
+/**
+ * Attaches each note under the deepest on-shelf parent directory
+ * declared in `parent_ids`. Unparented notes (or notes whose parents
+ * were all stripped) land directly under the root.
+ */
+const attachNotesOnShelf = (
+  root: HirarchyItem,
+  directoryNodes: Map<string, DirectoryHirarchyItem>,
+  attachedNotes: ReadonlyArray<import("../api/models/search").MinimalNote>,
+  onShelf: Set<string>,
+): void => {
+  for (const note of attachedNotes) {
+    const noteNode = NoteHirarchyItem.fromNoteData(note);
+    const parents = noteNode
+      .getParentDirectoryIds()
+      .filter((id) => onShelf.has(id));
+    if (parents.length === 0) {
+      root.addChild(noteNode);
+      continue;
+    }
+    for (const parentId of parents) {
+      const parentNode = directoryNodes.get(parentId);
+      if (parentNode) {
+        parentNode.addChild(noteNode);
+      }
+    }
+  }
+};

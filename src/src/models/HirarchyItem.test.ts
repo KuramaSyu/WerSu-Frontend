@@ -6,6 +6,7 @@ import {
   NoteHierarchyBuilder,
   NoteHirarchyItem,
   RootHirarchyItem,
+  ShelfHirarchyItem,
 } from "./HirarchyItem";
 
 /**
@@ -58,6 +59,7 @@ describe("HirarchyItem", () => {
       parent_dir_ids: ["root"],
       child_dir_ids: [],
       child_note_ids: [],
+      shelf_ids: [],
     });
 
     // Case 2: display_name is absent and slug should be used.
@@ -67,6 +69,7 @@ describe("HirarchyItem", () => {
       parent_dir_ids: [],
       child_dir_ids: [],
       child_note_ids: [],
+      shelf_ids: [],
     });
 
     // Wrapped data and resolved identity should remain intact.
@@ -80,6 +83,7 @@ describe("HirarchyItem", () => {
       parent_dir_ids: ["root"],
       child_dir_ids: [],
       child_note_ids: [],
+      shelf_ids: [],
     });
 
     // Name fallback uses the slug when display_name is missing.
@@ -184,6 +188,7 @@ describe("HirarchyItem", () => {
         parent_dir_ids: [],
         child_dir_ids: [],
         child_note_ids: [],
+        shelf_ids: [],
       },
       "dir-child": {
         id: "dir-child",
@@ -192,6 +197,7 @@ describe("HirarchyItem", () => {
         parent_dir_ids: ["dir-root"],
         child_dir_ids: [],
         child_note_ids: [],
+        shelf_ids: [],
       },
       "dir-grandchild": {
         id: "dir-grandchild",
@@ -200,6 +206,7 @@ describe("HirarchyItem", () => {
         parent_dir_ids: ["dir-child"],
         child_dir_ids: [],
         child_note_ids: [],
+        shelf_ids: [],
       },
       "dir-orphan": {
         id: "dir-orphan",
@@ -208,6 +215,7 @@ describe("HirarchyItem", () => {
         parent_dir_ids: ["missing-parent"],
         child_dir_ids: [],
         child_note_ids: [],
+        shelf_ids: [],
       },
     };
 
@@ -235,5 +243,148 @@ describe("HirarchyItem", () => {
     expect(dirChild?.getChildren().map((child) => child.getId())).toEqual([
       "dir-grandchild",
     ]);
+  });
+
+  it("builds a shelf-scoped tree as a ShelfHirarchyItem containing only shelf members", () => {
+    // Two shelves, three directories; only dir-on-shelf lives directly
+    // on `shelf-1`. dir-shared sits on both shelves and dir-other
+    // belongs to `shelf-2`. dir-on-shelf has a grandchild that does
+    // not declare `shelf_ids`, so it must still appear under shelf-1
+    // via transitive descent.
+    const lookup = {
+      "dir-on-shelf": {
+        id: "dir-on-shelf",
+        name: "on-shelf",
+        display_name: "On Shelf",
+        parent_dir_ids: [],
+        child_dir_ids: ["dir-grandchild"],
+        child_note_ids: [],
+        shelf_ids: ["shelf-1"],
+      },
+      "dir-grandchild": {
+        id: "dir-grandchild",
+        name: "grandchild",
+        display_name: "Grandchild",
+        parent_dir_ids: ["dir-on-shelf"],
+        child_dir_ids: [],
+        child_note_ids: [],
+        shelf_ids: [],
+      },
+      "dir-shared": {
+        id: "dir-shared",
+        name: "shared",
+        display_name: "Shared",
+        parent_dir_ids: [],
+        child_dir_ids: [],
+        child_note_ids: [],
+        shelf_ids: ["shelf-1", "shelf-2"],
+      },
+      "dir-other": {
+        id: "dir-other",
+        name: "other",
+        display_name: "Other",
+        parent_dir_ids: [],
+        child_dir_ids: [],
+        child_note_ids: [],
+        shelf_ids: ["shelf-2"],
+      },
+    };
+
+    const root = new DirectoryHierarchyBuilder(lookup).build("Shelf 1", {
+      shelfId: "shelf-1",
+      rootName: "Shelf 1",
+    });
+
+    // Root must be a ShelfHirarchyItem with the shelf id, not the
+    // synthetic `root` id used by the global hierarchy.
+    expect(root).toBeInstanceOf(ShelfHirarchyItem);
+    expect(root.getId()).toBe("shelf-1");
+    expect(root.getName()).toBe("Shelf 1");
+
+    // Only shelf-1 members and their transitive descendants are kept.
+    const kept = root
+      .getChildren()
+      .map((c) => c.getId())
+      .sort();
+    expect(kept).toEqual(["dir-on-shelf", "dir-shared"]);
+
+    // dir-on-shelf must still carry its grandchild even though the
+    // grandchild itself doesn't list shelf-1 in `shelf_ids`.
+    const dirOnShelf = root
+      .getChildren()
+      .find((c) => c.getId() === "dir-on-shelf");
+    expect(dirOnShelf?.getChildren().map((c) => c.getId())).toEqual([
+      "dir-grandchild",
+    ]);
+  });
+
+  it("attaches notes to the deepest on-shelf parent directory", () => {
+    // Single shelf, two directories; one note lives under both
+    // directories (multi-parent). Both parents are on the shelf, so
+    // the note should be attached to both.
+    const lookup = {
+      "dir-a": {
+        id: "dir-a",
+        name: "a",
+        display_name: "A",
+        parent_dir_ids: [],
+        child_dir_ids: [],
+        child_note_ids: [],
+        shelf_ids: ["shelf-1"],
+      },
+      "dir-b": {
+        id: "dir-b",
+        name: "b",
+        display_name: "B",
+        parent_dir_ids: [],
+        child_dir_ids: [],
+        child_note_ids: [],
+        shelf_ids: ["shelf-1"],
+      },
+    };
+
+    const root = new DirectoryHierarchyBuilder(lookup).build("Shelf 1", {
+      shelfId: "shelf-1",
+      rootName: "Shelf 1",
+      attachedNotes: [makeNote("n-multi", "Multi", ["dir-a", "dir-b"])],
+    });
+
+    const dirA = root.getChildren().find((c) => c.getId() === "dir-a");
+    const dirB = root.getChildren().find((c) => c.getId() === "dir-b");
+    expect(dirA?.getChildren().map((c) => c.getId())).toEqual(["n-multi"]);
+    expect(dirB?.getChildren().map((c) => c.getId())).toEqual(["n-multi"]);
+  });
+
+  it("does not filter when shelfId is null (legacy behavior)", () => {
+    // Sanity check: passing `null` keeps the synthetic-root shape.
+    const lookup = {
+      "dir-a": {
+        id: "dir-a",
+        name: "a",
+        display_name: "A",
+        parent_dir_ids: [],
+        child_dir_ids: [],
+        child_note_ids: [],
+        shelf_ids: ["shelf-1"],
+      },
+      "dir-b": {
+        id: "dir-b",
+        name: "b",
+        display_name: "B",
+        parent_dir_ids: [],
+        child_dir_ids: [],
+        child_note_ids: [],
+        shelf_ids: ["shelf-2"],
+      },
+    };
+
+    const root = new DirectoryHierarchyBuilder(lookup).build("Stacks");
+    expect(root).toBeInstanceOf(RootHirarchyItem);
+    expect(
+      root
+        .getChildren()
+        .map((c) => c.getId())
+        .sort(),
+    ).toEqual(["dir-a", "dir-b"]);
   });
 });
