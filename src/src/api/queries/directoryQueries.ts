@@ -1,4 +1,6 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import type { DirectoryReply } from "../models/directory";
 import { getDirectoryApi, type ListDirectoriesQuery } from "../DirectoryApi";
 import { useAuthStore } from "../../zustand/useAuthStore";
 import { useUserKey } from "./useUser";
@@ -89,3 +91,36 @@ export const useDirectoryByIdQuery = (id: string | undefined) => {
     enabled: !!id,
   });
 };
+
+/**
+ * Convenience hook which wraps
+ * useDirectoriesQuery({ limit: 500, offset: 0 }) and returns a memoised
+ * lookup table
+ */
+export interface AllDirectoriesQueryResult {
+  /** Raw list payload from `GET /api/directories`. Undefined while loading. */
+  list: DirectoryReply[] | undefined;
+  /** Memoised lookup table built from `list`. Empty object while loading. */
+  byId: Record<string, DirectoryReply>;
+  /** True while the underlying query is in flight. */
+  isLoading: boolean;
+}
+
+export function useAllDirectoriesQuery(
+  enabled = true,
+): AllDirectoriesQueryResult {
+  const { data, isLoading } = useDirectoriesQuery(
+    { limit: 500, offset: 0 },
+    enabled,
+  );
+  const byId = useMemo<Record<string, DirectoryReply>>(() => {
+    const map: Record<string, DirectoryReply> = {};
+    if (data) {
+      for (const directory of data) {
+        map[directory.id] = directory;
+      }
+    }
+    return map;
+  }, [data]);
+  return { list: data, byId, isLoading };
+}
