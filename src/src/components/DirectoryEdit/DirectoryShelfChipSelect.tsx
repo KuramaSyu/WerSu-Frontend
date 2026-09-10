@@ -23,11 +23,7 @@ export interface DirectoryShelfChipSelectProps {
 export const DirectoryShelfChipSelect: React.FC<
   DirectoryShelfChipSelectProps
 > = ({ shelves, value, onChange, helperText, error }) => {
-  const labels = disambiguateLabels(
-    shelves,
-    labelOf,
-    (shelf) => shelf.id,
-  );
+  const labels = disambiguateLabels(shelves, labelOf, (shelf) => shelf.id);
   const getOptionLabel = (shelf: ShelfReply): string =>
     labels.get(shelf) ?? labelOf(shelf);
 
