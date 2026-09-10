@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { getDirectoryApi, type ListDirectoryNotesQuery } from "../DirectoryApi";
 import type { NotesReply } from "../models/search";
-import { useDirectoryStore } from "../../zustand/useDirectoryStore";
 import { useTagStore } from "../../zustand/useTagStore";
 import { useUserKey } from "./useUser";
 
@@ -19,19 +18,15 @@ export const directoryNotesQueryKeys = {
 };
 
 /**
- * Mirrors the embedded `MinimalDirectory` / `MinimalTag` entries into
- * the directory and tag stores. Same store-mutation pattern as the
- * search query — the backend now bundles them inline.
+ * Forwards `MinimalTag` rows from the reply into the tag store so
+ * callers that subscribe to `useTagStore` see fresh labels without
+ * an extra fetch. The inline `MinimalDirectory` entries are ignored
+ * here — directory metadata is sourced from `useAllDirectoriesQuery`,
+ * not from these note-reply payloads.
  */
 const mergeNotesReplyIntoStores = (reply: NotesReply): NotesReply => {
-  const upsertMinimalDirectory =
-    useDirectoryStore.getState().upsertMinimalDirectory;
-  const upsertTags = useTagStore.getState().upsertTags;
-  for (const directory of reply.directories) {
-    upsertMinimalDirectory(directory);
-  }
   if (reply.tags.length > 0) {
-    upsertTags(reply.tags);
+    useTagStore.getState().upsertTags(reply.tags);
   }
   return reply;
 };
@@ -46,8 +41,8 @@ const mergeNotesReplyIntoStores = (reply: NotesReply): NotesReply => {
  *
  * Returns a `NotesReply` so consumers that need the note list directly
  * can read `data.notes`; consumers that want a flat array can use the
- * `.notes` field via `select`. The full reply is also mirrored into the
- * directory and tag stores so the rest of the app picks up referenced
+ * `.notes` field via `select`. Inline `MinimalTag` rows are mirrored
+ * into the tag store so the rest of the app picks up referenced
  * labels without an extra fetch.
  */
 export function useDirectoryNotesQuery(
