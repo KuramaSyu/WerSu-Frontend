@@ -1,5 +1,9 @@
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import {
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from "@tanstack/react-query";
 import type { DirectoryReply } from "../models/directory";
 import { getDirectoryApi, type ListDirectoriesQuery } from "../DirectoryApi";
 import { useAuthStore } from "../../zustand/useAuthStore";
@@ -124,3 +128,42 @@ export function useAllDirectoriesQuery(
   }, [data]);
   return { list: data, byId, isLoading };
 }
+
+/**
+ * Mirrors a freshly-created / patched `DirectoryReply` into every
+ * cached list-query payload.
+ */
+export const upsertDirectory = (
+  queryClient: QueryClient,
+  directory: DirectoryReply,
+): void => {
+  queryClient.setQueriesData<DirectoryReply[] | undefined>(
+    { queryKey: ["directories", "list"] },
+    (prev) => {
+      if (!prev) {
+        return prev;
+      }
+      // filter out old one (if present)
+      const next = prev.filter((d) => d.id !== directory.id);
+
+      // add created/updated version
+      next.push(directory);
+      return next;
+    },
+  );
+};
+
+/**
+ * Removes a directory from every cached list-query payload.
+ * (list query = [directories, list])
+ */
+export const removeDirectory = (
+  queryClient: QueryClient,
+  directoryId: string,
+): void => {
+  queryClient.setQueriesData<DirectoryReply[] | undefined>(
+    { queryKey: ["directories", "list"] },
+    // filter out the deleted directory from every cached list
+    (prev) => (prev ? prev.filter((d) => d.id !== directoryId) : prev),
+  );
+};
