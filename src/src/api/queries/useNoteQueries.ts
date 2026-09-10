@@ -20,7 +20,7 @@ import {
 } from "../models/search";
 import { getNoteApi, type INoteApi } from "../NoteApi";
 import { updateNoteParentDirectory } from "../../utils/updateNoteParentDirectory";
-import { useTagStore } from "../../zustand/useTagStore";
+import { mergeTagsFromNotesReply } from "../../zustand/useTagStore";
 import { WersuUserImpl } from "../../components/DiscordLogin";
 import { useUserKey } from "./useUser";
 
@@ -50,16 +50,16 @@ const searchNotesApi: ISearchNotesApi = getSearchNotesApi();
 const noteApi: INoteApi = getNoteApi();
 
 /**
- * Forwards `MinimalTag` rows from the reply into the tag store so
- * callers that subscribe to `useTagStore` see fresh labels without
- * an extra fetch. The inline `MinimalDirectory` entries are ignored
- * here — directory metadata is sourced from `useAllDirectoriesQuery`,
- * not from these note-reply payloads.
+ * Wraps a `NotesReply`-returning fetch with the side-effect that
+ * keeps `useTagStore` in sync with the inline `tags` payload. The
+ * fetched reply is returned untouched so callers can still read the
+ * full payload.
  */
-const mergeNotesReplyIntoStores = (reply: NotesReply): NotesReply => {
-  if (reply.tags.length > 0) {
-    useTagStore.getState().upsertTags(reply.tags);
-  }
+const fetchAndForwardTags = async (
+  fetcher: () => Promise<NotesReply>,
+): Promise<NotesReply> => {
+  const reply = await fetcher();
+  mergeTagsFromNotesReply(reply);
   return reply;
 };
 
@@ -74,8 +74,8 @@ export const noteQueries = {
     queryKey: ["notes", userKey],
 
     queryFn: async (): Promise<NotesReply> =>
-      mergeNotesReplyIntoStores(
-        await searchNotesApi.search(RestNotesSearchType.LATEST, "", {
+      fetchAndForwardTags(() =>
+        searchNotesApi.search(RestNotesSearchType.LATEST, "", {
           limit: 50,
           offset: 0,
         }),
@@ -100,8 +100,8 @@ export const noteQueries = {
     queryKey: ["notes", "search", searchType, query, userKey],
 
     queryFn: async (): Promise<NotesReply> =>
-      mergeNotesReplyIntoStores(
-        await searchNotesApi.search(searchType, query, { limit, offset }),
+      fetchAndForwardTags(() =>
+        searchNotesApi.search(searchType, query, { limit, offset }),
       ),
   }),
 
