@@ -4,18 +4,8 @@ import { persist } from "zustand/middleware";
 /**
  * Holds the shelf the user picked from the top bar's shelf menu.
  *
- * Lives independently of the `useShelves` query cache so consumers
- * can subscribe to "the current shelf" without re-running on every
- * shelf-list refresh.
- *
- * Persisted to `localStorage` under `selected-shelf-storage` so the
- * pick survives a page reload. On boot every request can read the
- * id via `useSelectedShelfStore.getState().selectedShelfId` and
- * scope its query (e.g. `include_shelf_ids` on `/api/notes/search`).
- *
- * `selectedShelfId === null` means "no shelf selected" -- the menu
- * falls back to a placeholder label and shelf-scoped routes should
- * treat it as "all shelves".
+ * Its persisted with localStorage, so that we have the last used shelf after
+ * reload
  */
 
 const STORAGE_KEY = "selected-shelf-storage";
