@@ -5,8 +5,7 @@ import {
   type ListDirectoriesQuery,
 } from "../../api/DirectoryApi";
 import type { DirectoryReply } from "../../api/models/directory";
-import { useDirectoriesQuery } from "../../api/queries/directoryQueries";
-import { useDirectoryStore } from "../../zustand/useDirectoryStore";
+import { useAllDirectoriesQuery } from "../../api/queries/directoryQueries";
 
 /**
  * Shared building blocks for the `DirectoryEdit` and
@@ -31,10 +30,10 @@ import { useDirectoryStore } from "../../zustand/useDirectoryStore";
 export const ROOT_PARENT_ID = "root";
 
 /**
- * Sentinel id for "no parent selected". We surface this as an explicit
- * option so the user can clear the autoselected parent before saving —
- * the `parent_ids` field on the create payload is then omitted
- * entirely.
+ * Sentinel id for "no parent selected". Kept for backward
+ * compatibility with code that still reads the single-parent hook;
+ * the chip picker no longer surfaces it as a dropdown row, treating
+ * the empty selection as top-level instead.
  */
 export const NO_PARENT_ID = "__none__";
 
@@ -55,19 +54,22 @@ export const NO_PARENT_LABEL = "(none — top level)";
 // ---------------------------------------------------------------------------
 
 /**
- * Resolves a `parentId` selector value (one of the sentinels, or a
- * real directory id) into the `parent_ids` payload the
+ * Resolves a parent id list into the `parent_ids` payload the
  * `DirectoryApi.setParent` and `CreateDirectoryBody` expect: `null`
- * for root / no parent, an array of one id otherwise. `null` is the
- * wire shape the API uses; the Create endpoint omits the field
- * entirely when callers pass `undefined`, but `setParent` rejects
- * `undefined` so we normalize to `null`.
+ * for top-level (empty list), an array of ids otherwise. Sentinels
+ * (`ROOT_PARENT_ID`, `NO_PARENT_ID`) are filtered out so the wire
+ * payload stays a clean list of real directory ids.
  */
-export const resolveParentIds = (parentId: string): string[] | null => {
-  if (parentId === ROOT_PARENT_ID || parentId === NO_PARENT_ID) {
+export const resolveParentIds = (
+  parentIds: readonly string[] | null,
+): string[] | null => {
+  if (parentIds === null || parentIds.length === 0) {
     return null;
   }
-  return [parentId];
+  const real = parentIds.filter(
+    (id) => id !== ROOT_PARENT_ID && id !== NO_PARENT_ID,
+  );
+  return real.length > 0 ? real : null;
 };
 
 /**
@@ -91,301 +93,136 @@ export interface UseDirectoryListHydrationResult {
 }
 
 /**
- * Runs the canonical `GET /api/directories` list query and keeps the
- * directory store in sync. Both `DirectoryEdit` and `DirectoryCreate`
- * use the same call so the parent picker can render directory names
- * immediately on mount.
+ * Runs the canonical `GET /api/directories` list query and exposes
+ * the result as a sorted array plus a lookup map. Both `DirectoryEdit`
+ * and `DirectoryCreate` use the same call so the parent picker can
+ * render directory names immediately on mount.
  */
 export function useDirectoryListHydration(): UseDirectoryListHydrationResult {
-  const { directoriesById, setDirectories } = useDirectoryStore();
-
-  const directoryListQuery = useMemo<ListDirectoriesQuery>(
-    () => ({ limit: 500, offset: 0 }),
-    [],
-  );
-  const { data: directories } = useDirectoriesQuery(directoryListQuery, true);
-
-  useEffect(() => {
-    if (directories) {
-      setDirectories(directories);
-    }
-  }, [directories, setDirectories]);
+  const { list: directories, byId: directoriesById } = useAllDirectoriesQuery();
 
   const sortedDirectories = useMemo(
     () =>
-      Object.values(directoriesById).sort((a, b) =>
-        labelOf(a).localeCompare(labelOf(b)),
-      ),
-    [directoriesById],
+      directories
+        ? [...directories].sort((a, b) => labelOf(a).localeCompare(labelOf(b)))
+        : [],
+    [directories],
   );
 
   return { directoriesById, sortedDirectories };
 }
 
-export interface UseParentSelectorOptions {
+export interface UseParentIdsOptions {
+  /** Initial id list to seed the selector with. */
+  initialIds?: readonly string[];
   /**
-   * Initial id to seed the selector with. Pass `undefined` to default
-   * to the root sentinel; pass a real directory id to autoselect that
-   * directory. The selector resolves the visible label from the
-   * directory store once it hydrates.
+   * Optional callback fired whenever the user changes the selection.
+   * Callers use it to react to parent changes (e.g. invalidating a
+   * parent-specific cache).
    */
-  initialId?: string;
-  /**
-   * Optional callback fired whenever the selector's id changes after
-   * the user picks or types a value. Used by callers that need to
-   * react to parent changes (e.g. invalidating a parent-specific
-   * cache).
-   */
-  onChange?: (id: string) => void;
+  onChange?: (ids: string[]) => void;
 }
 
-export interface UseParentSelectorResult {
-  /** The resolved id (a sentinel or a real directory id). */
-  parentId: string;
+export interface UseParentIdsResult {
+  /** Currently selected directory ids. Empty array means top-level. */
+  parentIds: string[];
+  /** Replace the selection. */
+  setParentIds: (ids: string[]) => void;
   /**
-   * The raw text currently shown in the input. The user has full
-   * control over this value: the hook never rewrites it after the
-   * initial seed, so the input always shows exactly what was typed.
-   */
-  parentLabel: string;
-  /**
-   * Pure text setter. Stores `value` as both the label and the id;
-   * the sentinel labels (`Root`, `(none — top level)`) are detected
-   * and resolved to their sentinels, but the hook otherwise does
-   * NOT try to match the typed text against the directory list.
-   * The dropdown view is responsible for showing a "Use '<text>'"
-   * option that the user clicks to confirm a custom value.
-   */
-  setParent: (value: string) => void;
-  /**
-   * True when the current label resolves to either:
-   * - a sentinel (`Root`, `(none — top level)`), or
-   * - a real directory id that's in the store, or
-   * - a label that case-insensitively matches a known directory's
-   *   display name.
-   *
-   * False when the user typed text that doesn't match anything
-   * known. The view should render an error state on the input and
-   * disable Save until the user either picks a valid option or
-   * types text that resolves.
+   * True when every id in parentIds resolves to a known directory.
+   * Top-level (empty array) is valid by definition.
    */
   parentIsValid: boolean;
   /**
-   * Returns the parent id to send to the API:
-   * - `ROOT_PARENT_ID` for the Root sentinel,
-   * - `NO_PARENT_ID` for the (none) sentinel,
-   * - the real directory id when `parentIsValid` is true,
-   * - the raw typed text when the value doesn't resolve.
-   *
-   * Callers should check `parentIsValid` first and refuse to save
-   * when false; the raw text in the last branch is the surface area
-   * for a clearer error message ("Parent '<text>' does not exist").
+   * Returns the parent id list to send to the API. null means
+   * top-level; an array of ids means "live under those parents".
+   * Callers should check parentIsValid first.
    */
-  resolveForPayload: () => string;
+  resolveForPayload: () => string[] | null;
 }
 
 /**
- * Owns the writable parent selector state shared by the Edit and
- * Create directory pages. The label is the raw text the user sees
- * in the input; the id is the same text (or a sentinel) used to
- * resolve the parent at save time.
- *
- * `setParent` is a pure text setter: it accepts whatever the user
- * typed and stores it. The hook does NOT try to silently match
- * typed text against the directory list — that's the caller's job
- * via the dropdown's "Use '<text>'" option. Validation is the
- * caller's responsibility: check `parentIsValid` before saving.
- *
- * The hook still recognises the two sentinel labels (`Root` and
- * `(none — top level)`) by name so picking them from the dropdown
- * or typing the literal label resolves to the right sentinel id.
- *
- * Use this hook together with the `Autocomplete` from MUI's
- * `freeSolo` mode. The page wires `value` and `inputValue` to
- * `parentLabel`, `onInputChange` and `onChange` to `setParent`,
- * and uses `filterOptions` to add a "Use '<text>'" option at the
- * top of the dropdown when the typed text doesn't match any
- * existing option.
+ * Owns the writable parent-id list shared by the Edit and Create
+ * directory pages. The list is the source of truth for save; the
+ * chip picker is the only UI surface that touches it. The hook
+ * keeps a stable seed-on-mount pattern so navigating from editing
+ * directory A to editing directory B re-initialises with B's
+ * data (the view keys the form body on the route id).
  */
-export function useParentSelector(
+export function useParentIds(
   sortedDirectories: DirectoryReply[],
-  options: UseParentSelectorOptions = {},
-): UseParentSelectorResult {
-  const { initialId, onChange } = options;
-  const { directoriesById } = useDirectoryStore();
+  options: UseParentIdsOptions = {},
+): UseParentIdsResult {
+  const { initialIds, onChange } = options;
 
-  // One-time mount-time seed. The label is the directory's
-  // display name (when the store has it) or empty when the
-  // store hasn't hydrated yet. The hook does NOT keep a
-  // reactive effect to re-resolve the label after mount — the
-  // remount-on-route-change pattern in the views guarantees
-  // that a fresh hook instance is created per directory.
-  const seedFromStore = (id: string): string => {
-    const record = directoriesById[id];
-    return record ? labelOf(record) : "";
-  };
-
-  const initialLabel = (() => {
-    if (!initialId) {
-      return "";
+  // Local lookup derived from the passed-in sorted list. The hook
+  // intentionally does not subscribe to any global store here so
+  // callers control when the directory pool refreshes.
+  const directoriesById = useMemo<Record<string, DirectoryReply>>(() => {
+    const map: Record<string, DirectoryReply> = {};
+    for (const directory of sortedDirectories) {
+      map[directory.id] = directory;
     }
-    if (initialId === ROOT_PARENT_ID) {
-      return ROOT_PARENT_LABEL;
-    }
-    if (initialId === NO_PARENT_ID) {
-      return NO_PARENT_LABEL;
-    }
-    // The directory may not be in the store yet; if not, the
-    // label is empty and the user can type to replace it.
-    return seedFromStore(initialId);
-  })();
+    return map;
+  }, [sortedDirectories]);
 
-  const [parentId, setParentIdState] = useState<string>(
-    initialId ?? ROOT_PARENT_ID,
-  );
-  const [parentLabel, setParentLabel] = useState<string>(initialLabel);
-  // The last `initialId` we actually applied to the selector's
-  // state. Used to detect when the caller passes a new seed
-  // (e.g. the user navigated from editing directory A to
-  // editing directory B and the route param changed) so we can
-  // re-seed the selector. Without this the selector would
-  // carry A's selection into the B dialog, which is exactly
-  // the bug the reset behavior is meant to fix.
-  const [appliedInitialId, setAppliedInitialId] = useState<string | undefined>(
-    initialId,
-  );
+  // Capture the seed once on mount: re-deriving it every render
+  // would re-evaluate `initialIds` (a fresh array every time the
+  // shell recomputes its inline IIFE) and re-run the effect below,
+  // looping forever.
+  const [seedIds] = useState<string[]>(() => {
+    if (!initialIds || initialIds.length === 0) {
+      return [];
+    }
+    return initialIds.filter(
+      (id) =>
+        id === ROOT_PARENT_ID ||
+        directoriesById[id] !== undefined ||
+        sortedDirectories.some((d) => d.id === id),
+    );
+  });
 
-  // Re-seed the selector when the caller's `initialId` changes.
-  // This happens when the route param changes and the parent
-  // component passes a new seed (e.g. Edit page for A → Edit
-  // page for B). We treat the new `initialId` as authoritative:
-  // any prior user edit is discarded, matching the
-  // route-is-source-of-truth pattern.
+  const [parentIds, setParentIdsState] = useState<string[]>(seedIds);
+  // Track the most recently observed `initialIds` reference so a
+  // route change (or any other caller-driven seed update) can
+  // re-seed the picker without colliding with the mount-time seed.
+  const [appliedSeed, setAppliedSeed] = useState<unknown>(initialIds);
+
+  // Re-seed only when `initialIds` changes by reference. Comparing
+  // by value isn't an option because the shell currently hands us
+  // a fresh array on every render; the hook layer is the one place
+  // that needs to gate the re-seed.
   useEffect(() => {
-    if (initialId === appliedInitialId) {
+    if (initialIds === appliedSeed) {
       return;
     }
-    setParentIdState(initialId ?? ROOT_PARENT_ID);
-    setParentLabel(
-      initialId === ROOT_PARENT_ID
-        ? ROOT_PARENT_LABEL
-        : initialId === NO_PARENT_ID
-          ? NO_PARENT_LABEL
-          : initialId
-            ? seedFromStore(initialId)
-            : "",
+    setParentIdsState(
+      initialIds ? [...initialIds.filter((id) => id !== ROOT_PARENT_ID)] : [],
     );
-    setAppliedInitialId(initialId);
-  }, [initialId, appliedInitialId, directoriesById]);
+    setAppliedSeed(initialIds);
+  }, [initialIds, appliedSeed]);
 
-  // Pure text setter. Detects the two sentinels (by id or by
-  // label, case-insensitive) and resolves them; everything else
-  // is stored as-is so the user always sees exactly what they
-  // typed. The view is responsible for showing a "Use '<text>'"
-  // option in the dropdown when the typed text doesn't match
-  // any existing directory.
-  const setParent = (value: string): void => {
-    const trimmed = value.trim();
-    if (trimmed === "") {
-      // Empty input maps to "(none — top level)" so the id
-      // isn't a garbage value. The user can still clear the
-      // input — the label stays empty.
-      setParentIdState(NO_PARENT_ID);
-      setParentLabel("");
-      onChange?.(NO_PARENT_ID);
-      return;
-    }
-    if (trimmed === ROOT_PARENT_ID) {
-      setParentIdState(ROOT_PARENT_ID);
-      setParentLabel(ROOT_PARENT_LABEL);
-      onChange?.(ROOT_PARENT_ID);
-      return;
-    }
-    if (trimmed === NO_PARENT_ID) {
-      setParentIdState(NO_PARENT_ID);
-      setParentLabel(NO_PARENT_LABEL);
-      onChange?.(NO_PARENT_ID);
-      return;
-    }
-    const lower = trimmed.toLowerCase();
-    if (lower === ROOT_PARENT_LABEL.toLowerCase()) {
-      setParentIdState(ROOT_PARENT_ID);
-      setParentLabel(ROOT_PARENT_LABEL);
-      onChange?.(ROOT_PARENT_ID);
-      return;
-    }
-    if (lower === NO_PARENT_LABEL.toLowerCase()) {
-      setParentIdState(NO_PARENT_ID);
-      setParentLabel(NO_PARENT_LABEL);
-      onChange?.(NO_PARENT_ID);
-      return;
-    }
-    // Otherwise: store the typed text as-is. The hook makes no
-    // attempt to match against the directory list — the user
-    // is in full control, and validation is deferred to save
-    // time.
-    setParentIdState(trimmed);
-    setParentLabel(trimmed);
-    onChange?.(trimmed);
+  const setParentIds = (ids: string[]): void => {
+    setParentIdsState(ids);
+    onChange?.(ids);
   };
 
-  // Validates the current label against the directory store
-  // and the two sentinels. The label is valid if it matches a
-  // known directory's id (which would only happen after a
-  // remount with `initialId`), a known directory's display
-  // name (case-insensitive exact match), or one of the two
-  // sentinel labels. The empty label is treated as the
-  // `(none — top level)` choice and is valid.
-  const parentIsValid = (() => {
-    if (parentLabel === "") {
-      return true;
-    }
-    if (parentId === ROOT_PARENT_ID || parentId === NO_PARENT_ID) {
-      return true;
-    }
-    if (directoriesById[parentId]) {
-      return true;
-    }
-    const lower = parentLabel.toLowerCase();
-    if (lower === ROOT_PARENT_LABEL.toLowerCase()) {
-      return true;
-    }
-    if (lower === NO_PARENT_LABEL.toLowerCase()) {
-      return true;
-    }
-    return sortedDirectories.some((d) => labelOf(d).toLowerCase() === lower);
-  })();
+  const parentIsValid = parentIds.every(
+    (id) => id === ROOT_PARENT_ID || directoriesById[id] !== undefined,
+  );
 
-  // Returns the parent id to send to the API, or the raw typed
-  // text when the value doesn't resolve. Callers should check
-  // `parentIsValid` first and refuse to save when false.
-  const resolveForPayload = (): string => {
-    if (parentId === ROOT_PARENT_ID || parentId === NO_PARENT_ID) {
-      return parentId;
+  const resolveForPayload = (): string[] | null => {
+    if (parentIds.length === 0) {
+      return null;
     }
-    if (directoriesById[parentId]) {
-      return parentId;
-    }
-    if (parentLabel === "") {
-      return NO_PARENT_ID;
-    }
-    const lower = parentLabel.toLowerCase();
-    if (lower === ROOT_PARENT_LABEL.toLowerCase()) {
-      return ROOT_PARENT_ID;
-    }
-    if (lower === NO_PARENT_LABEL.toLowerCase()) {
-      return NO_PARENT_ID;
-    }
-    const match = sortedDirectories.find(
-      (d) => labelOf(d).toLowerCase() === lower,
-    );
-    return match ? match.id : parentLabel;
+    // Filter out any stray sentinel ids so the wire payload stays
+    // a clean list of real directory ids.
+    return parentIds.filter((id) => id !== ROOT_PARENT_ID);
   };
 
   return {
-    parentId,
-    parentLabel,
-    setParent,
+    parentIds,
+    setParentIds,
     parentIsValid,
     resolveForPayload,
   };

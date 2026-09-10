@@ -1,21 +1,15 @@
-import { useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   Alert,
   Box,
   Button,
   CircularProgress,
-  IconButton,
   Paper,
   Stack,
-  TextField,
-  Tooltip,
   Typography,
 } from "@mui/material";
-import EditIcon from "@mui/icons-material/Edit";
 import { M3, M4 } from "../../statics";
-import { ImageUploadModal } from "../../components/DirectoryEdit/ImageUploadModal";
-import { DirectoryParentAutocomplete } from "../../components/DirectoryEdit/DirectoryParentAutocomplete";
+import { DirectoryFormFields } from "../DirectoryEdit/DirectoryFormFields";
 import { useCreateSubdirectoryForm } from "./Main.hook";
 
 /**
@@ -23,8 +17,8 @@ import { useCreateSubdirectoryForm } from "./Main.hook";
  * `key` it on the route `:id`; navigating from the right panel of
  * directory A's view to directory B's Create page forces a full
  * remount, which re-initializes `useCreateSubdirectoryForm` (and the
- * `useDirectoryFormShell` / `useParentSelector` hooks it composes)
- * from the new route's data.
+ * `useDirectoryFormShell` / `useParentIds` hooks it composes) from
+ * the new route's data.
  *
  * See `DirectoryEditForm` for the full rationale.
  */
@@ -35,9 +29,12 @@ const CreateSubdirectoryForm: React.FC = () => {
     setName,
     setDescription,
     sortedDirectories,
-    parentLabel,
-    setParent,
+    parentIds,
+    setParentIds,
     parentIsValid,
+    shelves,
+    shelfIds,
+    setShelfIds,
     hasPendingImage,
     imagePreviewUrl,
     setPendingImageFile,
@@ -46,11 +43,6 @@ const CreateSubdirectoryForm: React.FC = () => {
     handleSave,
     handleCancel,
   } = useCreateSubdirectoryForm();
-
-  // Local UI state — the modal's open flag is purely a presentation
-  // concern. The picked `File` flows back to the hook via
-  // `setPendingImageFile`.
-  const [imageModalOpen, setImageModalOpen] = useState(false);
 
   return (
     <Box
@@ -82,77 +74,26 @@ const CreateSubdirectoryForm: React.FC = () => {
           </Typography>
         </Stack>
 
-        <Stack spacing={M3}>
-          <TextField
-            label="Name"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            autoFocus
-            fullWidth
-          />
-          <TextField
-            label="Description"
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            multiline
-            minRows={3}
-            fullWidth
-          />
-          <DirectoryParentAutocomplete
-            directories={sortedDirectories}
-            value={parentLabel}
-            onChange={setParent}
-            isValid={parentIsValid}
-            helperText={
-              parentIsValid
-                ? undefined
-                : `Parent directory "${parentLabel}" does not exist. Pick an option from the list or clear the field for top level.`
-            }
-            placeholder="Type a directory name or leave empty for top level"
-          />
-          <Stack direction="row" spacing={1} sx={{ alignItems: "flex-start" }}>
-            {/* Local preview of the picked file. Once a file is
-                selected, we keep the URL string out of the visible UI
-                (no text input) — the upload modal owns the final URL
-                and writes it onto the directory on save. */}
-            <TextField
-              label="Directory image"
-              value={
-                hasPendingImage ? "Image selected (preview on the right)" : ""
-              }
-              placeholder="No image selected"
-              fullWidth
-              slotProps={{ input: { readOnly: true } }}
-            />
-            {imagePreviewUrl && (
-              <Box
-                component="img"
-                src={imagePreviewUrl}
-                alt="selected directory image preview"
-                sx={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 1,
-                  objectFit: "cover",
-                  mt: 0.5,
-                  border: (theme) => `1px solid ${theme.palette.divider}`,
-                }}
-              />
-            )}
-            <Tooltip title="Upload an image. WerSu uploads it, links it to the new directory's README, and writes the URL into the directory on save.">
-              <span>
-                <IconButton
-                  color="primary"
-                  onClick={() => setImageModalOpen(true)}
-                  sx={{ mt: 0.5 }}
-                  aria-label="upload directory image"
-                >
-                  <EditIcon />
-                </IconButton>
-              </span>
-            </Tooltip>
-          </Stack>
-        </Stack>
+        <DirectoryFormFields
+          title="Directory details"
+          subtitle="Configure the new directory. The parent is pre-selected with the directory you came from."
+          name={name}
+          description={description}
+          imageUrl=""
+          onNameChange={setName}
+          onDescriptionChange={setDescription}
+          onImageUrlChange={() => undefined}
+          hasPendingImage={hasPendingImage}
+          imagePreviewUrl={imagePreviewUrl}
+          onPendingImageFile={setPendingImageFile}
+          sortedDirectories={sortedDirectories}
+          parentIds={parentIds}
+          onParentChange={setParentIds}
+          parentIsValid={parentIsValid}
+          shelves={shelves}
+          shelfIds={shelfIds}
+          onShelfChange={setShelfIds}
+        />
 
         <Alert severity="info">
           After creation the directory opens immediately. You can edit the
@@ -176,25 +117,11 @@ const CreateSubdirectoryForm: React.FC = () => {
           <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
             <CircularProgress size={16} />
             <Typography variant="body2" color="textSecondary">
-              {isUploadingImage ? "Uploading image…" : "Creating…"}
+              {isUploadingImage ? "Uploading image..." : "Creating..."}
             </Typography>
           </Stack>
         )}
       </Stack>
-
-      <ImageUploadModal
-        open={imageModalOpen}
-        onClose={() => setImageModalOpen(false)}
-        // `deferUpload` skips the modal's own upload step and just
-        // hands the picked `File` back to us. We hold it in the hook
-        // until the user presses Save, then upload + link + patch the
-        // directory in `handleSave`.
-        deferUpload
-        onFilePicked={(file) => setPendingImageFile(file)}
-        // The README doesn't exist yet; the modal only needs this
-        // when it's running its own upload, which we disabled.
-        getReadmeNoteId={async () => null}
-      />
     </Box>
   );
 };

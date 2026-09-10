@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { AttachmentApi } from "../../api/AttachmentApi";
 import { AttachmentLinkBuilder } from "../../api/utils/AttachmentLInkBuilder";
-import { useDirectoryStore } from "../../zustand/useDirectoryStore";
+import type { DirectoryReply } from "../../api/models/directory";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { useUserKey } from "../../api/queries/useUser";
 import { useDirectoryFormShell } from "../DirectoryEdit/directoryFormShell";
@@ -12,6 +12,7 @@ import {
   invalidateDirectoryQueries,
   resolveParentIds,
 } from "../DirectoryEdit/directoryFormShared";
+import { upsertDirectory } from "../../api/queries/directoryQueries";
 
 export interface UseCreateSubdirectoryFormOptions {
   /**
@@ -40,10 +41,15 @@ export interface UseCreateSubdirectoryForm {
     typeof useDirectoryFormShell
   >["sortedDirectories"];
 
-  // Parent selector
-  parentLabel: string;
-  setParent: (value: string) => void;
+  // Parent selector (multi-id chips)
+  parentIds: string[];
+  setParentIds: (ids: string[]) => void;
   parentIsValid: boolean;
+
+  // Shelf selector
+  shelves: ReturnType<typeof useDirectoryFormShell>["shelves"];
+  shelfIds: string[];
+  setShelfIds: (ids: string[]) => void;
 
   // Local pending image
   hasPendingImage: boolean;
@@ -76,7 +82,6 @@ export function useCreateSubdirectoryForm(
 ): UseCreateSubdirectoryForm {
   const { id: routeId } = useParams();
   const navigate = useNavigate();
-  const { upsertDirectory } = useDirectoryStore();
   const { setMessage } = useInfoStore();
   const queryClient = useQueryClient();
   const userKey = useUserKey();
@@ -102,21 +107,20 @@ export function useCreateSubdirectoryForm(
       return;
     }
 
-    // The parent field is free-text: the user can type any value,
-    // even one that doesn't match a known directory. We refuse to
-    // create when the value is unresolved so we don't silently
-    // assign a non-existent parent.
+    // The parent list is chip-based: every selected id must resolve
+    // to a known directory. We refuse to create otherwise so we
+    // don't silently assign a non-existent parent.
     if (!shell.parent.parentIsValid) {
       setMessage(
         new SnackbarUpdateImpl(
-          `Parent directory "${shell.parent.parentLabel}" does not exist. Pick a directory from the list, or clear the field for top level.`,
+          "One or more selected parents are unknown. Pick from the list or clear the chips.",
           "error",
         ),
       );
       return;
     }
 
-    const parentIds = resolveParentIds(shell.parent.resolveForPayload());
+    const parentIds = shell.parent.resolveForPayload();
 
     setIsSaving(true);
     try {
@@ -130,6 +134,9 @@ export function useCreateSubdirectoryForm(
         display_name: trimmedName,
         description: shell.description || undefined,
         parent_ids: parentIds ?? undefined,
+        // Forward shelf memberships on create so a single round-trip
+        // carries the full directory record.
+        shelf_ids: shell.shelfIds.length > 0 ? shell.shelfIds : undefined,
       });
 
       if (!created) {
@@ -199,7 +206,7 @@ export function useCreateSubdirectoryForm(
       }
 
       // 3. If we ended up with a different image URL than the user
-      //    typed (or no `imageUrl` was typed but we uploaded a file),
+      //    typed (or no imageUrl was typed but we uploaded a file),
       //    patch the directory so the final URL is persisted.
       const originalImageUrl = shell.imageUrl || undefined;
       const originalDescription = created.description ?? "";
@@ -214,10 +221,10 @@ export function useCreateSubdirectoryForm(
           image_url: finalImageUrl,
         });
         if (updated) {
-          upsertDirectory(updated);
+          upsertDirectory(queryClient, updated);
         }
       } else {
-        upsertDirectory(created);
+        upsertDirectory(queryClient, created);
       }
 
       invalidateDirectoryQueries(
@@ -226,6 +233,9 @@ export function useCreateSubdirectoryForm(
         created.id,
         parentIds?.[0],
       );
+      // Invalidate shelf queries so the new directory shows up
+      // (or disappears from) every shelf's book list.
+      queryClient.invalidateQueries({ queryKey: ["shelves"] });
 
       setMessage(new SnackbarUpdateImpl("Subdirectory created", "success"));
       navigate(`/d/${created.id}`);
@@ -248,9 +258,12 @@ export function useCreateSubdirectoryForm(
     setName: shell.setName,
     setDescription: shell.setDescription,
     sortedDirectories: shell.sortedDirectories,
-    parentLabel: shell.parent.parentLabel,
-    setParent: shell.parent.setParent,
+    parentIds: shell.parent.parentIds,
+    setParentIds: shell.parent.setParentIds,
     parentIsValid: shell.parent.parentIsValid,
+    shelves: shell.shelves,
+    shelfIds: shell.shelfIds,
+    setShelfIds: shell.setShelfIds,
     hasPendingImage: shell.hasPendingImage,
     imagePreviewUrl: shell.pendingImagePreviewUrl,
     setPendingImageFile: shell.setPendingImageFile,

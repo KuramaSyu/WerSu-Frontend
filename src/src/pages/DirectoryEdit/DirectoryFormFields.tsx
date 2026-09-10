@@ -9,7 +9,9 @@ import {
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import type { DirectoryReply } from "../../api/models/directory";
-import { DirectoryParentAutocomplete } from "../../components/DirectoryEdit/DirectoryParentAutocomplete";
+import type { ShelfReply } from "../../api/models/shelf";
+import { DirectoryParentChipSelect } from "../../components/DirectoryEdit/DirectoryParentChipSelect";
+import { DirectoryShelfChipSelect } from "../../components/DirectoryEdit/DirectoryShelfChipSelect";
 import { ImageUploadModal } from "../../components/DirectoryEdit/ImageUploadModal";
 import { serializeReadme } from "../../utils/readme";
 
@@ -31,9 +33,14 @@ export interface DirectoryFormFieldsProps {
   onPendingImageFile: (file: File | null) => void;
 
   sortedDirectories: DirectoryReply[];
-  parentLabel: string;
-  onParentChange: (value: string) => void;
+  parentIds: string[];
+  onParentChange: (ids: string[]) => void;
   parentIsValid: boolean;
+
+  /** Shelves surfaced in the shelf chip picker. */
+  shelves: ShelfReply[];
+  shelfIds: string[];
+  onShelfChange: (ids: string[]) => void;
 
   /** When true, the directory image field is editable (Edit mode). */
   showImageUrlField?: boolean;
@@ -46,10 +53,11 @@ export interface DirectoryFormFieldsProps {
 }
 
 /**
- * The shared directory form body: name, description, image, parent.
+ * The shared directory form body: name, description, image, parent,
+ * shelves.
  *
  * Used by the standalone Create / Edit pages and by the
- * `CreateDirectoryModal`. Centralising the fields here keeps the two
+ * CreateDirectoryModal. Centralising the fields here keeps the two
  * surfaces from drifting in their inputs, validation, and layout.
  */
 export const DirectoryFormFields: React.FC<DirectoryFormFieldsProps> = ({
@@ -65,9 +73,12 @@ export const DirectoryFormFields: React.FC<DirectoryFormFieldsProps> = ({
   imagePreviewUrl,
   onPendingImageFile,
   sortedDirectories,
-  parentLabel,
+  parentIds,
   onParentChange,
   parentIsValid,
+  shelves,
+  shelfIds,
+  onShelfChange,
   showImageUrlField = false,
   readmeBody = "",
   getReadmeNoteId,
@@ -154,17 +165,16 @@ export const DirectoryFormFields: React.FC<DirectoryFormFieldsProps> = ({
           </span>
         </Tooltip>
       </Stack>
-      <DirectoryParentAutocomplete
+      <DirectoryParentChipSelect
         directories={sortedDirectories}
-        value={parentLabel}
+        value={parentIds}
         onChange={onParentChange}
         isValid={parentIsValid}
-        helperText={
-          parentIsValid
-            ? undefined
-            : `Parent directory "${parentLabel}" does not exist. Pick an option from the list or clear the field for top level.`
-        }
-        placeholder="Type a directory name or leave empty for top level"
+      />
+      <DirectoryShelfChipSelect
+        shelves={shelves}
+        value={shelfIds}
+        onChange={onShelfChange}
       />
       {showImageUrlField ? (
         <ImageUploadModal
