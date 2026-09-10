@@ -117,7 +117,10 @@ export const NoteLeftPanel: React.FC<NoteLeftPanelProps> = ({
 
   // Build directory tree for resolving parent paths in the metadata panel.
   const directoryHierarchy = useMemo(
-    () => new DirectoryHierarchyBuilder(directoriesById).build("Stacks"),
+    () =>
+      new DirectoryHierarchyBuilder(directoriesById).build("Stacks", {
+        rootName: "Stacks",
+      }),
     [directoriesById],
   );
 
