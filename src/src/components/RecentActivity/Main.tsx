@@ -8,6 +8,9 @@ import {
 
 import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
 import { HistoryRowView } from "./HistoryRowView";
+import { useMemo } from "react";
+import { useDirectoryTreeStore } from "../../zustand/useDirectoryTreeStore";
+import { useSelectedShelfStore } from "../../zustand/useSelectedShelfStore";
 
 /**
  * Props for the RecentActivityPanel component.
@@ -21,8 +24,8 @@ export interface RecentActivityPanelProps {
   limit?: number;
   /**
    * Time window the backend uses to scope the activity log
-   * (`days` parameter on `/api/history`). Mirrors the previous
-   * `maxDepth` knob at the panel level but lives one layer down.
+   * (days parameter on /api/history). Mirrors the previous
+   * maxDepth knob at the panel level but lives one layer down.
    */
   days?: number;
 }
@@ -30,11 +33,11 @@ export interface RecentActivityPanelProps {
 /**
  * Generic panel that shows recent activity for a note/directory.
  *
- * Data loading is owned by `useHistoryRows` (which wraps the
- * `/api/history` `mode=history` TanStack Query hook); each row is
- * rendered by `HistoryRowView`. The same component will power the
+ * Data loading is owned by useHistoryRows (which wraps the
+ * /api/history mode=history TanStack Query hook); each row is
+ * rendered by HistoryRowView. The same component will power the
  * upcoming Frequently Used panel -- there it will be fed from the
- * `mode=most_used` sibling hook instead.
+ * mode=most_used sibling hook instead.
  */
 export const RecentActivityPanel: React.FC<RecentActivityPanelProps> = ({
   target,
@@ -43,8 +46,9 @@ export const RecentActivityPanel: React.FC<RecentActivityPanelProps> = ({
   days = 30,
 }) => {
   const { rows, isLoading, hasError } = useHistoryRows(target, limit, days);
-  // useTheme() picks up the nearest `ThemeProvider`. When this panel
-  // is rendered inside a `PanelSection`, that provider is the
+  const selectedShelfId = useSelectedShelfStore((s) => s.selectedShelfId);
+  // useTheme() picks up the nearest ThemeProvider. When this panel
+  // is rendered inside a PanelSection, that provider is the
   // section's dimmed theme (or the global theme on hover). The store
   // would only ever return the global theme and ignore the swap.
   const theme = useTheme();
@@ -52,14 +56,28 @@ export const RecentActivityPanel: React.FC<RecentActivityPanelProps> = ({
   const developerMode = useFeatureStore(
     (state) => state.flags[FeatureFlagName.DeveloperMode],
   );
+  const shelfNoteIdsSelector = useDirectoryTreeStore((s) => s.shelfNoteIds);
 
-  // Hide rows that carry a `score` here -- those are the
-  // most-used variant and belong to the upcoming Frequently Used
-  // panel. The `score` field still exists on `HistoryRowEntry`,
-  // and the chip / flame icon branch in `HistoryRowView` is still
-  // reachable for callers that build rows from `mode=most_used`
-  // themselves.
-  const recentRows = rows.filter((r) => r.score === undefined);
+  // Drop score-bearing rows (those belong to the Frequently Used panel)
+  // and, when a shelf is selected, drop note events whose note isn't
+  // on the shelf. Directory events are always kept.
+  const recentRows = useMemo<HistoryRowEntry[]>(() => {
+    const withoutScore = rows.filter((r) => r.score === undefined);
+    const allowed = shelfNoteIdsSelector();
+    if (allowed === null) {
+      return withoutScore;
+    }
+    return withoutScore.filter((r) => {
+      if (!r.action?.startsWith("note_")) {
+        return true;
+      }
+      // No notes on the shelf -> drop every note event but keep directory events.
+      if (allowed.size === 0) {
+        return false;
+      }
+      return allowed.has(r.note_id);
+    });
+  }, [rows, shelfNoteIdsSelector]);
 
   // when clicking, reroute to /n/<note_id>
   const handleItemClick = (entry: HistoryRowEntry) => {
@@ -88,7 +106,9 @@ export const RecentActivityPanel: React.FC<RecentActivityPanelProps> = ({
       )}
       {!isLoading && !hasError && recentRows.length === 0 && (
         <Typography variant="body2" color="textSecondary">
-          No recent activity.
+          {selectedShelfId !== null
+            ? "No recent activity on this shelf."
+            : "No recent activity."}
         </Typography>
       )}
       <Stack spacing={1}>
