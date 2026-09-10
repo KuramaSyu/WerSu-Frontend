@@ -145,10 +145,10 @@ export function passesFilter(
  * In `subtree` mode we additionally walk the descendant tree of each
  * selected (and root-expanded) directory.
  *
- * `directoriesById` is the directory lookup table from
- * `useDirectoryStore` (id -> `DirectoryReply`). Each entry's
- * `child_dir_ids` provides the immediate children; we walk the tree
- * depth-first and accumulate.
+ * `directoriesById` is the directory lookup table passed by the
+ * caller (typically derived from `useAllDirectoriesQuery`). Each
+ * entry's `child_dir_ids` provides the immediate children; we walk the
+ * tree depth-first and accumulate.
  */
 export function expandToSubtree(
   selectedDirs: string[],
