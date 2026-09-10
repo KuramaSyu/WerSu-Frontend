@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { useDirectoryStore } from "../../zustand/useDirectoryStore";
+import { useAllDirectoriesQuery } from "../../api/queries/directoryQueries";
 import { useFavouritesStore } from "../../zustand/useFavouritesStore";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { getActivityApi } from "../../api/ActivityApi";
@@ -21,35 +21,26 @@ const activityApi = getActivityApi();
 
 /**
  * Feature wrapper for a favourite directory card.
- * which fetches it using `useDirectory` if it's not in cache (`useDirectoryStore`).
+ * Reads metadata from the shared directory list query, falling back to
+ * `useDirectory` for records the list hasn't covered yet.
  */
 export const FolderCard: React.FC<FolderCardProps> = ({
   directoryId,
   size = "medium",
 }) => {
   const navigate = useNavigate();
-  const cachedDirectory = useDirectoryStore(
-    (s) => s.directoriesById[directoryId],
-  );
-  const upsertDirectory = useDirectoryStore((s) => s.upsertDirectory);
+  const { byId: directoriesById } = useAllDirectoriesQuery();
+  const cachedDirectory = directoriesById[directoryId];
 
   const isRoot = directoryId === "root";
 
-  // Skip the fetch when we already have a cached record - the store is
-  // kept fresh by `useDirectoriesQuery` on DirectoryView / MainContent.
+  // Skip the fetch when we already have a cached record from the
+  // shared list query.
   const {
     data: fetchedDirectory,
     isPending: isDirectoryPending,
     error,
   } = useDirectory(cachedDirectory || isRoot ? undefined : directoryId);
-
-  // Mirror fetched records back into the store so other consumers (the
-  // breadcrumb, the parent selector, etc.) see the metadata immediately.
-  useEffect(() => {
-    if (fetchedDirectory) {
-      upsertDirectory(fetchedDirectory);
-    }
-  }, [fetchedDirectory, upsertDirectory]);
 
   // On a 403, drop this directory from favourites and surface a one-shot
   // info snackbar. The ref guards against re-running the side effect when

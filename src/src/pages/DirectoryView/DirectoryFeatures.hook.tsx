@@ -1,14 +1,12 @@
 import { useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { useDirectoriesQuery } from "../../api/queries/directoryQueries";
+import { useAllDirectoriesQuery } from "../../api/queries/directoryQueries";
 import { useDirectoryNotesQuery } from "../../api/queries/useDirectoryNotesQuery";
 import {
   DirectoryApi,
-  type ListDirectoriesQuery,
   type ListDirectoryNotesQuery,
 } from "../../api/DirectoryApi";
-import { useDirectoryStore } from "../../zustand/useDirectoryStore";
 import {
   DirectoryHierarchyBuilder,
   DirectoryHirarchyItem,
@@ -18,6 +16,7 @@ import type { MinimalNote } from "../../api/models/search";
 import { getNoteParentDirectoryIds } from "../../utils/fileGraphUtils";
 import { useLatestNotes } from "../../api/queries/useNoteQueries";
 import { useUserKey } from "../../api/queries/useUser";
+import { removeDirectory } from "../../api/queries/directoryQueries";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 
 export interface UseDirectoryFeaturesOptions {
@@ -162,8 +161,6 @@ export function useDirectoryFeatures(
   const { id } = useParams();
   const navigate = useNavigate();
   const directoryId = id ?? "root";
-  const { directoriesById, setDirectories, upsertDirectory, removeDirectory } =
-    useDirectoryStore();
   const { data: notes } = useLatestNotes();
   const { setMessage } = useInfoStore();
   const queryClient = useQueryClient();
@@ -173,28 +170,14 @@ export function useDirectoryFeatures(
     console.log("DirectoryView: notes updated: ", notes);
   }, [notes]);
 
-  // Stable query object so the directory list fetch is memoized across rerenders.
-  const directoryListQuery = useMemo<ListDirectoriesQuery>(
-    () => ({
-      limit: 500,
-      offset: 0,
-      include_child_dirs: true,
-      include_child_notes: true,
-    }),
-    [],
-  );
-
-  const { data: directories } = useDirectoriesQuery(directoryListQuery, true);
-
-  useEffect(() => {
-    if (directories) {
-      setDirectories(directories);
-    }
-  }, [directories, setDirectories]);
+  const { byId: directoriesById } = useAllDirectoriesQuery();
 
   // Build the hierarchy once per `directoriesById` snapshot.
   const directoryHierarchy = useMemo(
-    () => new DirectoryHierarchyBuilder(directoriesById).build("Stacks"),
+    () =>
+      new DirectoryHierarchyBuilder(directoriesById).build("Stacks", {
+        rootName: "Stacks",
+      }),
     [directoriesById],
   );
 
@@ -353,7 +336,7 @@ export function useDirectoryFeatures(
       return false;
     }
 
-    removeDirectory(targetId);
+    removeDirectory(queryClient, targetId);
     queryClient.invalidateQueries({ queryKey: ["directories"] });
     queryClient.invalidateQueries({
       queryKey: ["directory", targetId, userKey],

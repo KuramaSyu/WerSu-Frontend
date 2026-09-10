@@ -10,7 +10,7 @@ import {
 } from "@mui/material";
 import { formatDistanceToNowStrict } from "date-fns";
 import { useThemeStore } from "../../../zustand/useThemeStore";
-import { useDirectoryStore } from "../../../zustand/useDirectoryStore";
+import { useAllDirectoriesQuery } from "../../../api/queries/directoryQueries";
 import { colorFromString } from "../../../utils/blendWithContrast";
 import { M2, M3 } from "../../../statics";
 import { highlightSearchMatch } from "../SearchResultHighlights";
@@ -75,7 +75,7 @@ export const SearchResultRow: React.FC<Props> = memo(
     onNavigate,
   }) => {
     const theme = useThemeStore((s) => s.theme);
-    const directoriesById = useDirectoryStore((s) => s.directoriesById);
+    const { byId: directoriesById } = useAllDirectoriesQuery();
 
     // root-level orphan note: no parent dirs, no path to walk
     const dirId = note.get_dir() ?? "root";

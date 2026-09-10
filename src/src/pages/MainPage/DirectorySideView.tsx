@@ -16,7 +16,7 @@ import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useDirectoryStore } from "../../zustand/useDirectoryStore";
+import { useAllDirectoriesQuery } from "../../api/queries/directoryQueries";
 import {
   DirectoryHierarchyBuilder,
   type HirarchyItem,
@@ -223,7 +223,7 @@ const DirectoryTreeNode: React.FC<DirectoryTreeNodeProps> = ({ item }) => {
 export const DirectorySideView: React.FC<{ isLoading?: boolean }> = ({
   isLoading = false,
 }) => {
-  const { directoriesById } = useDirectoryStore();
+  const { byId: directoriesById } = useAllDirectoriesQuery();
   const location = useLocation();
 
   // Pull the active directory id from the URL so the tree highlights the
@@ -234,7 +234,10 @@ export const DirectorySideView: React.FC<{ isLoading?: boolean }> = ({
   );
 
   const directoryHirarchy = React.useMemo(
-    () => new DirectoryHierarchyBuilder(directoriesById).build("Stacks"),
+    () =>
+      new DirectoryHierarchyBuilder(directoriesById).build("Stacks", {
+        rootName: "Stacks",
+      }),
     [directoriesById],
   );
 

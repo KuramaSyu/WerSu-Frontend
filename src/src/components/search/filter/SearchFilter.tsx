@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useMemo } from "react";
 import {
   Box,
   Chip,
@@ -16,8 +16,7 @@ import {
   type SearchFilterScope,
   ROOT_SENTINEL_ID,
 } from "../../../zustand/useSearchFilterStore";
-import { useDirectoryStore } from "../../../zustand/useDirectoryStore";
-import { useDirectoriesQuery } from "../../../api/queries/directoryQueries";
+import { useAllDirectoriesQuery } from "../../../api/queries/directoryQueries";
 import { useThemeStore } from "../../../zustand/useThemeStore";
 import { colorFromString } from "../../../utils/blendWithContrast";
 import { M3 } from "../../../statics";
@@ -25,18 +24,12 @@ import { M3 } from "../../../statics";
 // directory mode/scope filter for the search overlay
 export const SearchFilter: React.FC = () => {
   const theme = useThemeStore((s) => s.theme);
-  const { directoriesById, setDirectories } = useDirectoryStore();
 
   // fetch every directory up front so the user can pick a filter
-  // scope before results resolve; mirrors into the store so chip
-  // labels resolve via `directoriesById`
-  const { data: directoriesData } = useDirectoriesQuery(
-    { limit: 500, offset: 0 },
-    true,
-  );
-  useEffect(() => {
-    if (directoriesData) setDirectories(directoriesData);
-  }, [directoriesData, setDirectories]);
+  // scope before results resolve; chip labels resolve via the byId
+  // map the hook already returns.
+  const { list: directoriesData, byId: directoriesById } =
+    useAllDirectoriesQuery();
 
   const sortedDirectories = useMemo(() => {
     if (!directoriesData) return [];

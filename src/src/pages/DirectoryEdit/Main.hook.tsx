@@ -3,12 +3,14 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { DirectoryApi } from "../../api/DirectoryApi";
 import type { DirectoryReply } from "../../api/models/directory";
+import type { ShelfReply } from "../../api/models/shelf";
 import type { MinimalNote } from "../../api/models/search";
 import { getNoteApi, type INoteApi } from "../../api/NoteApi";
 import { useDirectory } from "../../api/queries/useDirectoryQuery";
+import { directoryQueryKeys as singleDirectoryQueryKeys } from "../../api/queries/useDirectoryQuery";
+import { useAllDirectoriesQuery } from "../../api/queries/directoryQueries";
 import { useDirectoryNotesQuery } from "../../api/queries/useDirectoryNotesQuery";
 import { useUserKey } from "../../api/queries/useUser";
-import { useDirectoryStore } from "../../zustand/useDirectoryStore";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { README_NOTE_TITLE, serializeReadme } from "../../utils/readme";
 import { useDirectoryFormShell } from "./directoryFormShell";
@@ -19,6 +21,10 @@ import {
   labelOf,
   resolveParentIds,
 } from "./directoryFormShared";
+import {
+  removeDirectory,
+  upsertDirectory,
+} from "../../api/queries/directoryQueries";
 
 const extractReadmeBody = (content: string | undefined): string => {
   if (!content) {
@@ -72,11 +78,16 @@ export interface UseDirectoryEditFormResult {
   setImageUrl: (value: string) => void;
   sortedDirectories: DirectoryReply[];
 
-  // Parent selector
-  parentLabel: string;
-  setParent: (value: string) => void;
+  // Parent selector (multi-id chips)
+  parentIds: string[];
+  setParentIds: (ids: string[]) => void;
   parentIsValid: boolean;
-  resolveParentForPayload: () => string;
+  resolveParentForPayload: () => string[] | null;
+
+  // Shelf selector
+  shelves: ShelfReply[];
+  shelfIds: string[];
+  setShelfIds: (ids: string[]) => void;
 
   // README state (Edit-only)
   readmeNoteId: string | null;
@@ -118,8 +129,6 @@ export function useDirectoryEditForm(
 ): UseDirectoryEditFormResult {
   const { id: routeId } = useParams();
   const navigate = useNavigate();
-  const { directoriesById, upsertDirectory, removeDirectory } =
-    useDirectoryStore();
   const { setMessage } = useInfoStore();
   const queryClient = useQueryClient();
   const userKey = useUserKey();
@@ -138,18 +147,13 @@ export function useDirectoryEditForm(
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // 1. Directory metadata: prefer the cached store record (kept fresh
-  //    by the parent list query), fall back to a single-record fetch
-  //    via the TanStack query hook.
+  // 1. Directory metadata: prefer the cached record from the shared
+  //    list query, fall back to a single-record fetch via the
+  //    TanStack query hook.
+  const { byId: directoriesById } = useAllDirectoriesQuery();
   const cachedDirectory = id ? directoriesById[id] : undefined;
   const { data: fetchedDirectory, isPending: isDirectoryPending } =
     useDirectory(cachedDirectory ? undefined : id);
-
-  useEffect(() => {
-    if (fetchedDirectory) {
-      upsertDirectory(fetchedDirectory);
-    }
-  }, [fetchedDirectory, upsertDirectory]);
 
   const directory: DirectoryReply | null =
     cachedDirectory ?? fetchedDirectory ?? null;
@@ -267,22 +271,21 @@ export function useDirectoryEditForm(
       return;
     }
 
-    // The parent field is a free-text input: the user can type
-    // any value, even one that doesn't match a known directory.
-    // We refuse to save when the value is unresolved so we don't
+    // The parent list is chip-based: every selected id must resolve to
+    // a known directory. We refuse to save otherwise so we don't
     // silently move the directory to a non-existent parent.
     if (!shell.parent.parentIsValid) {
       setMessage(
         new SnackbarUpdateImpl(
-          `Parent directory "${shell.parent.parentLabel}" does not exist. Pick a directory from the list, or clear the field for top level.`,
+          "One or more selected parents are unknown. Pick from the list or clear the chips.",
           "error",
         ),
       );
       return;
     }
 
-    const current = directoriesById[id];
-    const nextParentIds = resolveParentIds(shell.parent.resolveForPayload());
+    const current = directory;
+    const nextParentIds = shell.parent.resolveForPayload();
 
     const serializedReadme = serializeReadme(
       {
@@ -332,12 +335,28 @@ export function useDirectoryEditForm(
         nextReadmeId = created.id;
       }
 
-      // 2. Sync directory metadata (name / description / image_url).
+      // 2. Sync directory metadata (name / description / image_url /
+      //    parent / shelves). All fields are forwarded in one patch so
+      //    a single round-trip carries the whole change.
+      const currentParentIds = current?.parent_dir_ids ?? [];
+      const parentsChanged =
+        (currentParentIds.length === 0 && nextParentIds !== null) ||
+        (currentParentIds.length > 0 && nextParentIds === null) ||
+        (nextParentIds !== null &&
+          (currentParentIds.length !== nextParentIds.length ||
+            currentParentIds.some((id, idx) => id !== nextParentIds[idx])));
+      const currentShelfIds = current?.shelf_ids ?? [];
+      const shelvesChanged =
+        currentShelfIds.length !== shell.shelfIds.length ||
+        currentShelfIds.some((id, idx) => id !== shell.shelfIds[idx]);
+
       const shouldPatchDetails =
         !current ||
         trimmedName !== labelOf(current) ||
         shell.description !== (current.description ?? "") ||
-        shell.imageUrl !== (current.image_url ?? "");
+        shell.imageUrl !== (current.image_url ?? "") ||
+        parentsChanged ||
+        shelvesChanged;
 
       if (shouldPatchDetails) {
         const updated = await createDirectoryApi().patch({
@@ -345,6 +364,8 @@ export function useDirectoryEditForm(
           display_name: trimmedName,
           description: shell.description || undefined,
           image_url: shell.imageUrl || undefined,
+          parent_ids: nextParentIds ?? undefined,
+          shelf_ids: shell.shelfIds.length > 0 ? shell.shelfIds : undefined,
         });
         if (!updated) {
           setMessage(
@@ -352,35 +373,20 @@ export function useDirectoryEditForm(
           );
           return;
         }
-        upsertDirectory(updated);
-      }
-
-      // 3. Move the directory if the parent changed.
-      const currentParentId = current?.parent_dir_ids?.[0] ?? ROOT_PARENT_ID;
-      const nextParentId =
-        nextParentIds === null ? ROOT_PARENT_ID : nextParentIds[0];
-      const parentChanged = currentParentId !== nextParentId;
-
-      if (parentChanged) {
-        const updatedParent = await createDirectoryApi().setParent(
-          id,
-          nextParentIds,
+        upsertDirectory(queryClient, updated);
+        queryClient.setQueryData<DirectoryReply | null | undefined>(
+          singleDirectoryQueryKeys.detail(userKey, id),
+          updated,
         );
-        if (!updatedParent) {
-          setMessage(
-            new SnackbarUpdateImpl(
-              "Directory updated, but failed to move directory",
-              "warning",
-            ),
-          );
-          return;
-        }
-        upsertDirectory(updatedParent);
       }
 
       setReadmeNoteId(nextReadmeId);
 
-      invalidateDirectoryQueries(queryClient, userKey, id, nextParentId);
+      // Invalidate every cache that depends on the directory tree.
+      // The new parent (if any) and the new shelves both affect
+      // downstream views (DirectoryView, shelf-scoped panels).
+      invalidateDirectoryQueries(queryClient, userKey, id, nextParentIds?.[0]);
+      queryClient.invalidateQueries({ queryKey: ["shelves"] });
       if (nextReadmeId) {
         queryClient.invalidateQueries({
           queryKey: ["notes", nextReadmeId, userKey],
@@ -413,7 +419,12 @@ export function useDirectoryEditForm(
         );
         return;
       }
-      removeDirectory(id);
+      // Drop the deleted record from every cached list query so
+      // downstream views stop showing it immediately.
+      removeDirectory(queryClient, id);
+      queryClient.removeQueries({
+        queryKey: singleDirectoryQueryKeys.detail(userKey, id),
+      });
       setMessage(new SnackbarUpdateImpl("Directory deleted", "success"));
       navigate("/");
     } finally {
@@ -439,10 +450,13 @@ export function useDirectoryEditForm(
     setDescription: shell.setDescription,
     setImageUrl: shell.setImageUrl,
     sortedDirectories: shell.sortedDirectories,
-    parentLabel: shell.parent.parentLabel,
-    setParent: shell.parent.setParent,
+    parentIds: shell.parent.parentIds,
+    setParentIds: shell.parent.setParentIds,
     parentIsValid: shell.parent.parentIsValid,
     resolveParentForPayload: shell.parent.resolveForPayload,
+    shelves: shell.shelves,
+    shelfIds: shell.shelfIds,
+    setShelfIds: shell.setShelfIds,
     readmeNoteId,
     readmeBody,
     setReadmeBody,

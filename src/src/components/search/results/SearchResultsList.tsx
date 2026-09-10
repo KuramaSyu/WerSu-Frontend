@@ -12,7 +12,7 @@ import {
   passesFilter,
   useSearchFilterStore,
 } from "../../../zustand/useSearchFilterStore";
-import { useDirectoryStore } from "../../../zustand/useDirectoryStore";
+import { useAllDirectoriesQuery } from "../../../api/queries/directoryQueries";
 import { useSearchNotesStore } from "../../../zustand/useSearchNotesStore";
 import { M3 } from "../../../statics";
 import { useSearchResults } from "./SearchResultsList.hook";
@@ -30,7 +30,7 @@ const STRIP_CHUNK = 100;
 // scrollable list of results with arrow-key navigation
 export const SearchResultsList: React.FC = () => {
   const navigate = useNavigate();
-  const directoriesById = useDirectoryStore((s) => s.directoriesById);
+  const { byId: directoriesById } = useAllDirectoriesQuery();
   const setIsDialogOpen = useSearchNotesStore((s) => s.setIsDialogOpen);
 
   const {

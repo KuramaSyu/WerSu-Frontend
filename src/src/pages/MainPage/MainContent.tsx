@@ -1,7 +1,8 @@
 import { DragDropProvider, type DragDropEvents } from "@dnd-kit/react";
 import { Box, IconButton, Stack } from "@mui/material";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import CreateIcon from "@mui/icons-material/Create";
 import AddIcon from "@mui/icons-material/Add";
 import { M1, M2, M3, M4, M5, M6 } from "../../statics";
@@ -9,10 +10,11 @@ import { NoteApi } from "../../api/NoteApi";
 import { CardGrid } from "./CardGrid";
 import { Note, type NoteData } from "../../api/models/search";
 import {} from "../../zustand/useSearchNotesStore";
-import type { ListDirectoriesQuery } from "../../api/DirectoryApi";
 import { DirectoryApi } from "../../api/DirectoryApi";
-import { useDirectoriesQuery } from "../../api/queries/directoryQueries";
-import { useDirectoryStore } from "../../zustand/useDirectoryStore";
+import {
+  useAllDirectoriesQuery,
+  upsertDirectory,
+} from "../../api/queries/directoryQueries";
 import { DirectorySideView } from "./DirectorySideView";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 
@@ -29,14 +31,13 @@ import { set } from "zod";
 import { EmptyLandingPage } from "./EmptyLandingPage";
 
 export const MainContent: React.FC = () => {
-  const { directoriesById, setDirectories, clearDirectories, upsertDirectory } =
-    useDirectoryStore();
   const { mutate: moveNote } = useMoveNote();
   const { data: latestNotes, isLoading } = useLatestNotes();
   const { setMessage } = useInfoStore();
   const [leftPaneOpen, setLeftPaneOpen] = useState(true);
   const [createNoteOpen, setCreateNoteOpen] = useState(false);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   type DragEndEvent = Parameters<DragDropEvents["dragend"]>[0];
 
@@ -104,7 +105,7 @@ export const MainContent: React.FC = () => {
       return;
     }
 
-    upsertDirectory(created);
+    upsertDirectory(queryClient, created);
     setMessage(new SnackbarUpdateImpl("Directory created", "success"));
     navigate(`/d/${created.id}`);
   };
@@ -138,25 +139,8 @@ export const MainContent: React.FC = () => {
     return dict;
   }, [latestNotes]);
 
-  // Only fetch directory metadata if at least one note points to a non-root
-  // directory. This avoids unnecessary network traffic on root-only views.
-  const hasDirectoryReferences = useMemo(
-    () =>
-      Object.keys(notesByDirectory).some(
-        (directoryId) => directoryId !== "root",
-      ),
-    [notesByDirectory],
-  );
-
-  // Keep a stable query object so TanStack Query can reliably reuse the same
-  // cache key and deduplicate requests across rerenders.
-  const directoryListQuery = useMemo<ListDirectoriesQuery>(
-    () => ({ limit: 500, offset: 0 }),
-    [],
-  );
-
-  const { data: directories, isLoading: directoriesLoading } =
-    useDirectoriesQuery(directoryListQuery, hasDirectoryReferences);
+  const { byId: directoriesById, isLoading: directoriesLoading } =
+    useAllDirectoriesQuery();
 
   usePanelSize({ left: "clamp(20rem, 25vw, 30rem)" });
   useLeftPanel(
@@ -173,20 +157,6 @@ export const MainContent: React.FC = () => {
       <DirectorySideView isLoading={directoriesLoading} />
     </LeftPanel>,
   );
-
-  // Mirror the server-state cache into the local entity map store used by the
-  // UI. This gives components O(1) ID lookups and a single shared source for
-  // directory labels.
-  useEffect(() => {
-    if (!hasDirectoryReferences) {
-      clearDirectories();
-      return;
-    }
-
-    if (directories) {
-      setDirectories(directories);
-    }
-  }, [hasDirectoryReferences, directories, clearDirectories, setDirectories]);
 
   // Temporary debug logging for grouped notes; safe to remove once directory
   // grouping behavior is validated.
