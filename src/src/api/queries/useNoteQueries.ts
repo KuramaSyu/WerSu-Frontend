@@ -20,7 +20,6 @@ import {
 } from "../models/search";
 import { getNoteApi, type INoteApi } from "../NoteApi";
 import { updateNoteParentDirectory } from "../../utils/updateNoteParentDirectory";
-import { useDirectoryStore } from "../../zustand/useDirectoryStore";
 import { useTagStore } from "../../zustand/useTagStore";
 import { WersuUserImpl } from "../../components/DiscordLogin";
 import { useUserKey } from "./useUser";
@@ -51,26 +50,16 @@ const searchNotesApi: ISearchNotesApi = getSearchNotesApi();
 const noteApi: INoteApi = getNoteApi();
 
 /**
- * Mirrors a search/list call's `NotesReply` into the directory and tag
- * stores so callers that subscribe to those stores see fresh labels.
- *
- * The backend now returns the directories and tags referenced by the
- * notes inline, so the same fetch is enough to populate them — no extra
- * round-trips. Existing entries are preserved so we don't drop fields
- * like `parent_dir_ids` that the minimal shape doesn't carry.
+ * Forwards `MinimalTag` rows from the reply into the tag store so
+ * callers that subscribe to `useTagStore` see fresh labels without
+ * an extra fetch. The inline `MinimalDirectory` entries are ignored
+ * here — directory metadata is sourced from `useAllDirectoriesQuery`,
+ * not from these note-reply payloads.
  */
 const mergeNotesReplyIntoStores = (reply: NotesReply): NotesReply => {
-  const upsertMinimalDirectory =
-    useDirectoryStore.getState().upsertMinimalDirectory;
-  const upsertTags = useTagStore.getState().upsertTags;
-
-  for (const directory of reply.directories) {
-    upsertMinimalDirectory(directory);
-  }
   if (reply.tags.length > 0) {
-    upsertTags(reply.tags);
+    useTagStore.getState().upsertTags(reply.tags);
   }
-
   return reply;
 };
 
@@ -78,8 +67,8 @@ export const noteQueries = {
   /**
    * Default list shown in main screen with the latest 50 entries.
    *
-   * Returns a `NotesReply` (notes + referenced directories + tags) so
-   * the directory and tag stores stay in sync.
+   * Returns a `NotesReply` (notes + referenced tags) so the tag store
+   * stays in sync.
    */
   list: (userKey: string | null) => ({
     queryKey: ["notes", userKey],
@@ -95,7 +84,7 @@ export const noteQueries = {
 
   /**
    * Search notes. Returns the full `NotesReply` so callers can show
-   * directory labels without an extra fetch.
+   * tag labels without an extra fetch.
    *
    * The `queryKey` mirrors `useInfiniteNoteSearch`'s cache key
    * (searchType + query) so callers can pin either one without the
