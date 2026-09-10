@@ -54,6 +54,12 @@ export const queryCacheGroups: readonly QueryCacheGroup[] = [
     roots: ["publicShares"],
   },
   {
+    id: "shelves",
+    label: "Shelves",
+    description: "Shelf list, per-shelf detail, and book bindings.",
+    roots: ["shelves"],
+  },
+  {
     id: "users",
     label: "Users",
     description:

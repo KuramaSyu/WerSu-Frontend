@@ -32,13 +32,12 @@ export interface CreateDirectoryModalProps {
 /**
  * Single modal surface for both creating and editing a directory.
  *
- * Mirrors `CreateNote`'s contract: empty trimmed name cancels, save
- * otherwise. Save targets the bottom row now (moved out of the
- * header). `ModalShell` owns the icon / X / blur / round look.
+ * Cancel / X / overlay click discards the form. ModalShell owns the
+ * icon / X / blur / round look.
  *
  * Mounting points:
- * - Home page FAB and left-panel "New directory" button — `mode === "create"`.
- * - Directory view "Edit directory" action — `mode === "edit"`.
+ * - Home page FAB and left-panel "New directory" button — mode === "create".
+ * - Directory view "Edit directory" action — mode === "edit".
  */
 export const CreateDirectoryModal: React.FC<CreateDirectoryModalProps> = ({
   open,
@@ -68,12 +67,16 @@ export const CreateDirectoryModal: React.FC<CreateDirectoryModalProps> = ({
     mode === "create"
       ? createForm.sortedDirectories
       : editForm.sortedDirectories;
-  const parentLabel =
-    mode === "create" ? createForm.parentLabel : editForm.parentLabel;
-  const setParent =
-    mode === "create" ? createForm.setParent : editForm.setParent;
+  const parentIds =
+    mode === "create" ? createForm.parentIds : editForm.parentIds;
+  const setParentIds =
+    mode === "create" ? createForm.setParentIds : editForm.setParentIds;
   const parentIsValid =
     mode === "create" ? createForm.parentIsValid : editForm.parentIsValid;
+  const shelves = mode === "create" ? createForm.shelves : editForm.shelves;
+  const shelfIds = mode === "create" ? createForm.shelfIds : editForm.shelfIds;
+  const setShelfIds =
+    mode === "create" ? createForm.setShelfIds : editForm.setShelfIds;
   const isSaving = mode === "create" ? createForm.isSaving : editForm.isSaving;
   const handleSave =
     mode === "create" ? createForm.handleSave : editForm.handleSave;
@@ -96,16 +99,14 @@ export const CreateDirectoryModal: React.FC<CreateDirectoryModalProps> = ({
   const isNameEmpty = name.trim() === "";
   const isBusy = isSaving || isDeleting;
 
-  const closeDialog = async () => {
-    if (isNameEmpty) {
-      onOpenChange(false);
-      return;
-    }
-    await handleSave();
-    setSnackbarState({ open: true });
+  // Cancel / dismiss without saving. Used by both the explicit
+  // Cancel button and the X / overlay click.
+  const cancel = () => {
     onOpenChange(false);
   };
 
+  // Save and close. The Save & open button uses the same save flow
+  // but navigates into the directory on top.
   const saveAndView = async () => {
     await handleSave();
     setSnackbarState({ open: true });
@@ -122,7 +123,7 @@ export const CreateDirectoryModal: React.FC<CreateDirectoryModalProps> = ({
     <>
       <ModalShell
         open={open}
-        onClose={() => void closeDialog()}
+        onClose={cancel}
         icon={<CreateNewFolderIcon fontSize="small" />}
         title={title}
         subtitle={subtitle}
@@ -143,11 +144,7 @@ export const CreateDirectoryModal: React.FC<CreateDirectoryModalProps> = ({
                 </span>
               </Tooltip>
             )}
-            <Button
-              variant="outlined"
-              onClick={() => void closeDialog()}
-              disabled={isBusy || isNameEmpty}
-            >
+            <Button variant="outlined" onClick={cancel} disabled={isBusy}>
               Cancel
             </Button>
             <Button
@@ -176,14 +173,17 @@ export const CreateDirectoryModal: React.FC<CreateDirectoryModalProps> = ({
             imagePreviewUrl={imagePreviewUrl}
             onPendingImageFile={setPendingImageFile}
             sortedDirectories={sortedDirectories}
-            parentLabel={parentLabel}
-            onParentChange={setParent}
+            parentIds={parentIds}
+            onParentChange={setParentIds}
             parentIsValid={parentIsValid}
+            shelves={shelves}
+            shelfIds={shelfIds}
+            onShelfChange={setShelfIds}
           />
         ) : (
           <DirectoryFormFields
             title="Directory details"
-            subtitle="Update name, description, image, and parent directory."
+            subtitle="Update name, description, image, parent, and shelves."
             name={name}
             description={description}
             imageUrl={imageUrl}
@@ -194,9 +194,12 @@ export const CreateDirectoryModal: React.FC<CreateDirectoryModalProps> = ({
             imagePreviewUrl={null}
             onPendingImageFile={() => undefined}
             sortedDirectories={sortedDirectories}
-            parentLabel={parentLabel}
-            onParentChange={setParent}
+            parentIds={parentIds}
+            onParentChange={setParentIds}
             parentIsValid={parentIsValid}
+            shelves={shelves}
+            shelfIds={shelfIds}
+            onShelfChange={setShelfIds}
             showImageUrlField
             readmeBody={readmeBody}
             getReadmeNoteId={getReadmeNoteId}

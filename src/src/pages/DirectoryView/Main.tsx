@@ -148,6 +148,7 @@ export const DirectoryView: React.FC = () => {
                               : [],
                             child_dir_ids: [],
                             child_note_ids: [],
+                            shelf_ids: [],
                           }
                     }
                     // Fetch the full DirectoryReply on mount so the

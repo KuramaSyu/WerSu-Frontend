@@ -1,6 +1,8 @@
 import { Box, Stack, Typography } from "@mui/material";
 import StarIcon from "@mui/icons-material/Star";
 import { useFavouritesStore } from "../../zustand/useFavouritesStore";
+import { useDirectoryTreeStore } from "../../zustand/useDirectoryTreeStore";
+import { useSelectedShelfStore } from "../../zustand/useSelectedShelfStore";
 import { M3, M4, M5 } from "../../statics";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { FolderCard } from "./FolderCard";
@@ -8,7 +10,7 @@ import { useMemo } from "react";
 import type { CardSize } from "./FolderCardView";
 
 export interface FavouriteDirectoriesProps {
-  /** Visual size preset forwarded to each `FolderCard`. */
+  /** Visual size preset forwarded to each FolderCard. */
   size?: CardSize;
 }
 
@@ -21,8 +23,8 @@ const SIZE_TO_GAP: Record<CardSize, string> = {
 /**
  * Lists every directory the user has marked as favourite.
  *
- * Reads the persisted favourite IDs from `useFavouritesStore` and renders
- * one `FolderCard` per ID. Card width is owned by `FolderCard`; this
+ * Reads the persisted favourite IDs from useFavouritesStore and renders
+ * one FolderCard per ID. Card width is owned by FolderCard; this
  * component only owns the wrapping grid and the empty-state copy.
  *
  * The internal "root" id (used for the synthetic top-level hierarchy node)
@@ -34,12 +36,20 @@ export const FavouriteDirectories: React.FC<FavouriteDirectoriesProps> = ({
 }) => {
   // Drop the synthetic root id; everything else is a real directory.
   const favouriteIds = useFavouritesStore((s) => s.directories);
+  const selectedShelfId = useSelectedShelfStore((s) => s.selectedShelfId);
+  const tree = useDirectoryTreeStore((s) => s.tree);
+  const isDirectoryOnShelf = useDirectoryTreeStore((s) => s.isDirectoryOnShelf);
 
   const filteredFavouriteIds = useMemo(() => {
     return Object.entries(favouriteIds)
-      .filter(([id, isFav]) => isFav && id !== "root")
+      .filter(
+        ([id, isFav]) =>
+          isFav &&
+          id !== "root" &&
+          isDirectoryOnShelf(id, selectedShelfId ?? ""),
+      )
       .map(([id]) => id);
-  }, [favouriteIds]);
+  }, [favouriteIds, selectedShelfId, isDirectoryOnShelf, tree]);
 
   const { theme } = useThemeStore();
 

@@ -78,6 +78,7 @@ export const useDirectoryStore = create<DirectoryState>((set) => ({
             parent_dir_ids: [],
             child_dir_ids: [],
             child_note_ids: [],
+            shelf_ids: [],
           },
         },
       };

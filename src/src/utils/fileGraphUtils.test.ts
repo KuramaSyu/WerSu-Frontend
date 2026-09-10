@@ -35,6 +35,7 @@ function makeDirectory(id: string, parentIds: string[] = []): DirectoryReply {
     parent_dir_ids: parentIds,
     child_dir_ids: [],
     child_note_ids: [],
+    shelf_ids: [],
   };
 }
 
@@ -64,6 +65,7 @@ describe("getDirectoryLabel", () => {
       parent_dir_ids: [],
       child_dir_ids: [],
       child_note_ids: [],
+      shelf_ids: [],
     };
     expect(getDirectoryLabel(directory)).toBe("Display");
   });

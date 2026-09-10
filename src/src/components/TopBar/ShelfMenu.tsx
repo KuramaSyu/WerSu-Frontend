@@ -50,6 +50,8 @@ const ShelfMenuImpl: React.FC = () => {
     ? activeShelf.display_name || activeShelf.slug || "Shelf"
     : "Shelf";
 
+  console.log("active shelf: ", activeShelf);
+
   return (
     <>
       <Button

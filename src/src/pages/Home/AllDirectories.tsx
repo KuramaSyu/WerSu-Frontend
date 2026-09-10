@@ -1,17 +1,17 @@
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { Box, Stack, Typography } from "@mui/material";
 import FolderIcon from "@mui/icons-material/Folder";
-import { useDirectoriesQuery } from "../../api/queries/directoryQueries";
-import type { ListDirectoriesQuery } from "../../api/DirectoryApi";
-import { useDirectoryStore } from "../../zustand/useDirectoryStore";
+import { useAllDirectoriesQuery } from "../../api/queries/directoryQueries";
 import { useFavouritesStore } from "../../zustand/useFavouritesStore";
+import { useDirectoryTreeStore } from "../../zustand/useDirectoryTreeStore";
+import { useSelectedShelfStore } from "../../zustand/useSelectedShelfStore";
 import { M3, M4, M5 } from "../../statics";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { FolderCard } from "./FolderCard";
 import { FolderCardView, type CardSize } from "./FolderCardView";
 
 export interface AllDirectoriesProps {
-  /** Visual size preset for the rendered cards. Defaults to `small`. */
+  /** Visual size preset for the rendered cards. Defaults to small. */
   size?: CardSize;
 }
 
@@ -25,36 +25,28 @@ const SIZE_TO_GAP: Record<CardSize, string> = {
 
 /**
  * Lists every root-level directory the user can see, except the ones
- * already pinned as favourites in `FavouriteDirectories`.
+ * already pinned as favourites in FavouriteDirectories.
  *
  * Fetches the full directory list (the request is shared with the rest
- * of the app via react-query) and filters to entries whose `parent_id`
- * is unset. Mirrors the result into `useDirectoryStore` so other
- * consumers (the breadcrumb, the parent selector, `FolderCard`) see the
- * metadata immediately.
+ * of the app via react-query) and filters to entries whose parent_id
+ * is unset.
  */
 export const AllDirectories: React.FC<AllDirectoriesProps> = ({
   size = "small",
 }) => {
-  const directoryListQuery = useMemo<ListDirectoriesQuery>(
-    () => ({ limit: 500, offset: 0 }),
-    [],
-  );
-  const { data: directories, isLoading } = useDirectoriesQuery(
-    directoryListQuery,
-    true,
-  );
-  const setDirectories = useDirectoryStore((s) => s.setDirectories);
+  const { list: directories, isLoading } = useAllDirectoriesQuery();
   const favouriteIds = useFavouritesStore((s) => s.directories);
+  const selectedShelfId = useSelectedShelfStore((s) => s.selectedShelfId);
+  // tree is rebuilt by useDirectoryTreeSync whenever the directory
+  // list or the active shelf id change; consumers read it here to
+  // decide whether a directory belongs on the active shelf.
+  const tree = useDirectoryTreeStore((s) => s.tree);
+  const isDirectoryOnShelf = useDirectoryTreeStore((s) => s.isDirectoryOnShelf);
   const { theme } = useThemeStore();
 
-  useEffect(() => {
-    if (directories) {
-      setDirectories(directories);
-    }
-  }, [directories, setDirectories]);
-
-  // Root-level directories that are not pinned as favourites.
+  // Root-level directories that are not pinned as favourites and, when
+  // a shelf is selected, sit on (or transitively descend from) it.
+  // Reading from the precomputed tree keeps this filter O(1) per row.
   const visibleDirectories = useMemo(() => {
     if (!directories) {
       return [];
@@ -62,9 +54,10 @@ export const AllDirectories: React.FC<AllDirectoriesProps> = ({
     return directories.filter(
       (d) =>
         (d.parent_dir_ids === undefined || d.parent_dir_ids.length === 0) &&
-        !favouriteIds[d.id],
+        !favouriteIds[d.id] &&
+        isDirectoryOnShelf(d.id, selectedShelfId ?? ""),
     );
-  }, [directories, favouriteIds]);
+  }, [directories, favouriteIds, selectedShelfId, isDirectoryOnShelf, tree]);
 
   if (isLoading) {
     return (

@@ -27,6 +27,8 @@ interface DirectoryTreeState {
   isDirectoryOnShelf: (directoryId: string, shelfId: string) => boolean;
   /** True when the note has at least one parent directory on the shelf. */
   isNoteOnShelf: (note: MinimalNote, shelfId: string) => boolean;
+  /** Every note id reachable from the active shelf; null when no shelf is selected. */
+  shelfNoteIds: () => Set<string> | null;
 }
 
 /** Walks the tree and returns every directory id reachable from the shelf root. */
@@ -52,7 +54,10 @@ const collectShelfDirectoryIds = (
   return out;
 };
 
-export const useDirectoryTreeStore = create<DirectoryTreeState>()((set, get) => {
+export const useDirectoryTreeStore = create<DirectoryTreeState>()((
+  set,
+  get,
+) => {
   /** Rebuild the tree for shelfId; null falls back to the global root. */
   const buildTree = (
     directoryLookup: Record<string, DirectoryReply>,
@@ -97,8 +102,7 @@ export const useDirectoryTreeStore = create<DirectoryTreeState>()((set, get) => 
               .getChildren()
               .find(
                 (c) =>
-                  c instanceof ShelfHirarchyItem &&
-                  c.getId() === activeShelfId,
+                  c instanceof ShelfHirarchyItem && c.getId() === activeShelfId,
               );
       if (!(shelfRoot instanceof ShelfHirarchyItem)) {
         // Tree was built without shelf scoping; fall back to global view.
@@ -125,8 +129,7 @@ export const useDirectoryTreeStore = create<DirectoryTreeState>()((set, get) => 
               .getChildren()
               .find(
                 (c) =>
-                  c instanceof ShelfHirarchyItem &&
-                  c.getId() === activeShelfId,
+                  c instanceof ShelfHirarchyItem && c.getId() === activeShelfId,
               );
       if (!(shelfRoot instanceof ShelfHirarchyItem)) {
         return true;
@@ -135,53 +138,41 @@ export const useDirectoryTreeStore = create<DirectoryTreeState>()((set, get) => 
       const parents = note.directory_ids ?? [];
       return parents.some((p) => ids.has(p));
     },
-  };
-});
 
-/** Returns every note id attached under the given shelf root. */
-export const collectNoteIdsUnder = (
-  tree: RootHirarchyItem | ShelfHirarchyItem | null,
-  shelfId: string | null,
-): Set<string> => {
-  if (tree === null) {
-    return new Set();
-  }
-  if (shelfId === null) {
-    // No shelf scope: every note in the tree counts.
-    const out = new Set<string>();
-    const visit = (node: HirarchyItem): void => {
-      if (node instanceof NoteHirarchyItem) {
-        out.add(node.getNoteId());
+    shelfNoteIds: () => {
+      const tree = get().tree;
+      const activeShelfId = useSelectedShelfStore.getState().selectedShelfId;
+      if (activeShelfId === null) {
+        return null;
       }
-      for (const child of node.getChildren()) {
+      if (!tree) {
+        return new Set();
+      }
+      const shelfRoot =
+        tree instanceof ShelfHirarchyItem && tree.getId() === activeShelfId
+          ? tree
+          : tree
+              .getChildren()
+              .find(
+                (c) =>
+                  c instanceof ShelfHirarchyItem && c.getId() === activeShelfId,
+              );
+      if (!(shelfRoot instanceof ShelfHirarchyItem)) {
+        return new Set();
+      }
+      const out = new Set<string>();
+      const visit = (node: HirarchyItem): void => {
+        if (node instanceof NoteHirarchyItem) {
+          out.add(node.getNoteId());
+        }
+        for (const child of node.getChildren()) {
+          visit(child);
+        }
+      };
+      for (const child of shelfRoot.getChildren()) {
         visit(child);
       }
-    };
-    for (const child of tree.getChildren()) {
-      visit(child);
-    }
-    return out;
-  }
-  const shelfRoot =
-    tree instanceof ShelfHirarchyItem && tree.getId() === shelfId
-      ? tree
-      : tree
-          .getChildren()
-          .find((c) => c instanceof ShelfHirarchyItem && c.getId() === shelfId);
-  if (!(shelfRoot instanceof ShelfHirarchyItem)) {
-    return new Set();
-  }
-  const out = new Set<string>();
-  const visit = (node: HirarchyItem): void => {
-    if (node instanceof NoteHirarchyItem) {
-      out.add(node.getNoteId());
-    }
-    for (const child of node.getChildren()) {
-      visit(child);
-    }
+      return out;
+    },
   };
-  for (const child of shelfRoot.getChildren()) {
-    visit(child);
-  }
-  return out;
-};
+});

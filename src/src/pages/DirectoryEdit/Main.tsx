@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   Alert,
@@ -6,29 +5,13 @@ import {
   Button,
   CircularProgress,
   Divider,
-  IconButton,
   Paper,
   Stack,
-  TextField,
-  Tooltip,
   Typography,
 } from "@mui/material";
-import EditIcon from "@mui/icons-material/Edit";
 import { M3, M4 } from "../../statics";
-import { ImageUploadModal } from "../../components/DirectoryEdit/ImageUploadModal";
-import { DirectoryParentAutocomplete } from "../../components/DirectoryEdit/DirectoryParentAutocomplete";
-import { serializeReadme } from "../../utils/readme";
+import { DirectoryFormFields } from "./DirectoryFormFields";
 import { useDirectoryEditForm } from "./Main.hook";
-
-/**
- * `AttachmentLinkBuilder.asMarkdown()` returns `![...](url)`. The form
- * stores the URL itself (no markdown wrapper) so it round-trips
- * through `DirectoryReply.image_url`.
- */
-const extractImageUrl = (markdownUrl: string): string => {
-  const match = markdownUrl.match(/!\[[^\]]*\]\(([^)]+)\)/);
-  return match ? match[1] : markdownUrl;
-};
 
 /**
  * The form body. Lives in its own component so the parent page can
@@ -57,9 +40,12 @@ const DirectoryEditForm: React.FC = () => {
     setDescription,
     setImageUrl,
     sortedDirectories,
-    parentLabel,
-    setParent,
+    parentIds,
+    setParentIds,
     parentIsValid,
+    shelves,
+    shelfIds,
+    setShelfIds,
     readmeBody,
     getReadmeNoteId,
     isSaving,
@@ -69,10 +55,6 @@ const DirectoryEditForm: React.FC = () => {
     handleCancel,
     hasDirectoryId,
   } = useDirectoryEditForm();
-
-  // Local UI state — the modal's open flag is purely a presentation
-  // concern. The picked `File` flow is owned by the modal.
-  const [imageModalOpen, setImageModalOpen] = useState(false);
 
   if (isLoadingDirectory) {
     return (
@@ -114,68 +96,42 @@ const DirectoryEditForm: React.FC = () => {
           <Typography variant="h4" sx={{ fontWeight: 600 }}>
             Edit directory
           </Typography>
-          <Typography variant="body2" color="textSecondary">
-            Update name, description, image, and parent directory.
-          </Typography>
+          {/* <Typography variant="body2" color="textSecondary">
+            Update name, description, image, parent, and shelves.
+          </Typography> */}
         </Stack>
 
-        <Stack spacing={M3}>
-          <TextField
-            label="Name"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            fullWidth
-          />
-          <TextField
-            label="Description"
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            multiline
-            minRows={3}
-            fullWidth
-          />
-          <Stack direction="row" spacing={1} sx={{ alignItems: "flex-start" }}>
-            <TextField
-              label="Directory image"
-              value={imageUrl}
-              onChange={(event) => setImageUrl(event.target.value)}
-              placeholder="https://..."
-              fullWidth
-            />
-            <Tooltip title="Upload an image. WerSu writes the URL into the README header.">
-              <span>
-                <IconButton
-                  color="primary"
-                  onClick={() => setImageModalOpen(true)}
-                  sx={{ mt: 0.5 }}
-                  aria-label="upload directory image"
-                >
-                  <EditIcon />
-                </IconButton>
-              </span>
-            </Tooltip>
-          </Stack>
-          <DirectoryParentAutocomplete
-            directories={sortedDirectories}
-            value={parentLabel}
-            onChange={setParent}
-            isValid={parentIsValid}
-            helperText={
-              parentIsValid
-                ? undefined
-                : `Parent directory "${parentLabel}" does not exist. Pick an option from the list or clear the field for top level.`
-            }
-            placeholder="Type a directory name or leave empty for top level"
-          />
-        </Stack>
+        <DirectoryFormFields
+          title="Directory details"
+          subtitle=""
+          name={name}
+          description={description}
+          imageUrl={imageUrl}
+          onNameChange={setName}
+          onDescriptionChange={setDescription}
+          onImageUrlChange={setImageUrl}
+          hasPendingImage={false}
+          imagePreviewUrl={null}
+          onPendingImageFile={() => undefined}
+          sortedDirectories={sortedDirectories}
+          parentIds={parentIds}
+          onParentChange={setParentIds}
+          parentIsValid={parentIsValid}
+          shelves={shelves}
+          shelfIds={shelfIds}
+          onShelfChange={setShelfIds}
+          showImageUrlField
+          readmeBody={readmeBody}
+          getReadmeNoteId={getReadmeNoteId}
+        />
 
         <Divider />
 
-        <Alert severity="info">
+        {/* <Alert severity="info">
           WerSu stores the directory's description and image as a README.md note
           inside this directory. The header is regenerated on every save from
           these fields.
-        </Alert>
+        </Alert> */}
 
         <Stack direction="row" spacing={2}>
           <Button
@@ -199,22 +155,6 @@ const DirectoryEditForm: React.FC = () => {
           </Button>
         </Stack>
       </Stack>
-
-      <ImageUploadModal
-        open={imageModalOpen}
-        onClose={() => setImageModalOpen(false)}
-        onUploaded={(markdownUrl) => setImageUrl(extractImageUrl(markdownUrl))}
-        getReadmeNoteId={getReadmeNoteId}
-        currentImageUrl={imageUrl}
-        readmeContent={serializeReadme(
-          {
-            name: name.trim() || "Untitled",
-            description,
-            imageUrl,
-          },
-          readmeBody,
-        )}
-      />
     </Box>
   );
 };
