@@ -32,7 +32,8 @@ export const directoryQueryKeys = {
  * surfaces the underlying `UserError` (with `status`) on a non-OK
  * response. Consumers should fall back to cached data on `error` rather
  * than rendering the loading state — the page renders from the
- * `useDirectoryStore` cache while this query is in flight.
+ * shared `useAllDirectoriesQuery` cache while this query is in
+ * flight.
  */
 export function useDirectory(directoryId?: string) {
   const userKey = useUserKey();
