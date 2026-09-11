@@ -1,4 +1,5 @@
 import { http, HttpResponse, delay } from "msw";
+import type { JsonBodyType } from "msw";
 import type {
   FakeActivity,
   FakeDb,
@@ -29,7 +30,7 @@ import { getFakeDb } from "./types";
 let nextNoteSeq = 100;
 let nextDirSeq = 100;
 
-const json = (body: unknown, init?: ResponseInit) =>
+const json = (body: JsonBodyType, init?: ResponseInit) =>
   HttpResponse.json(body, init);
 
 const notFound = (msg: string) => json({ error: msg }, { status: 404 });

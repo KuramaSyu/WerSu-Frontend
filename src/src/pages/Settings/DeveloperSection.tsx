@@ -45,13 +45,17 @@ export const DeveloperSection: React.FC = () => {
         </Typography>
       </Stack>
 
-      <Stack direction="row" alignItems="center" spacing={2}>
+      <Stack
+        direction="row"
+        spacing={2}
+        sx={{ alignItems: "center" }}
+      >
         <Switch
           checked={useFakeApi}
           onChange={(e) =>
             setFlag(FeatureFlagName.UseFakeApi, e.target.checked)
           }
-          inputProps={{ "aria-label": "Use fake API (MSW)" }}
+          slotProps={{ input: { "aria-label": "Use fake API (MSW)" } }}
         />
         <Typography>
           {useFakeApi ? "Fake API is on" : "Fake API is off"}
