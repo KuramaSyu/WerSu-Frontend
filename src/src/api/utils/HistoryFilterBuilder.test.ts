@@ -169,6 +169,23 @@ describe("HistoryFilterBuilder - scalar setters", () => {
     expect(f.role_id).toBe("r-1");
   });
 
+  it("setShelfId maps to shelf_id", () => {
+    const f = new HistoryFilterBuilder()
+      .useHistory()
+      .setShelfId("s-1")
+      .build();
+    expect(f.shelf_id).toBe("s-1");
+  });
+
+  it("setShelfId replaces prior shelf id", () => {
+    const f = new HistoryFilterBuilder()
+      .useHistory()
+      .setShelfId("s-1")
+      .setShelfId("s-2")
+      .build();
+    expect(f.shelf_id).toBe("s-2");
+  });
+
   it("setLimit / setOffset propagate as numbers", () => {
     const f = new HistoryFilterBuilder()
       .useHistory()
@@ -190,6 +207,7 @@ describe("HistoryFilterBuilder - chaining", () => {
     expect(builder.setUser("u-1")).toBe(builder);
     expect(builder.setAccessedAs("ACCESSED_AS_USER")).toBe(builder);
     expect(builder.setRoleId("r-1")).toBe(builder);
+    expect(builder.setShelfId("s-1")).toBe(builder);
     expect(builder.setAction("note_viewed")).toBe(builder);
     expect(builder.setActionSet("note_viewed")).toBe(builder);
     expect(builder.setDays(7)).toBe(builder);

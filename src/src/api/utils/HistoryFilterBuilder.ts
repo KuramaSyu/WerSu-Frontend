@@ -104,6 +104,16 @@ export class HistoryFilterBuilder {
     return this;
   }
 
+  /**
+   * Restrict to events whose target lives on `shelfId`. Not yet
+   * honoured server-side; concrete callers should keep it wired
+   * through but skip invoking it until the backend supports it.
+   */
+  setShelfId(shelfId: string): HistoryFilterBuilder {
+    this._filter = { ...this._filter, shelf_id: shelfId };
+    return this;
+  }
+
   /** Restrict to a single action kind. Replaces any prior actions. */
   setAction(action: ActivityKind): HistoryFilterBuilder {
     this._filter = { ...this._filter, actions: [action] };

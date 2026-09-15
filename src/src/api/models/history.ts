@@ -70,6 +70,8 @@ export interface HistoryFilter {
   directory_id?: string;
   actor_id?: string;
   role_id?: string;
+  /** Shelf id to scope the query to; not yet honoured server-side, so callers should drop it until the backend supports it. */
+  shelf_id?: string;
   accessed_as?: AccessedAs;
   actions?: ActivityKind[];
   days?: number;
