@@ -9,8 +9,6 @@ import type { HistoryRowEntry } from "../RecentActivity/HistoryRowFeatures";
 import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
 import { HistoryRowView } from "../RecentActivity/HistoryRowView";
 import { useMemo } from "react";
-import { useDirectoryTreeStore } from "../../zustand/useDirectoryTreeStore";
-import { useSelectedShelfStore } from "../../zustand/useSelectedShelfStore";
 
 /**
  * Props for the FrequentlyUsedPanel component.
@@ -47,19 +45,6 @@ export const FrequentlyUsedPanel: React.FC<FrequentlyUsedPanelProps> = ({
   limit = 20,
 }) => {
   const { rows, isLoading, hasError } = useFrequentlyUsedRows(limit);
-  const shelfNoteIdsSelector = useDirectoryTreeStore((s) => s.shelfNoteIds);
-  const selectedShelfId = useSelectedShelfStore((s) => s.selectedShelfId);
-  // When a shelf is selected, drop rows whose note isn't on the shelf.
-  const scopedRows = useMemo<HistoryRowEntry[]>(() => {
-    const allowed = shelfNoteIdsSelector();
-    if (allowed === null) {
-      return rows;
-    }
-    if (allowed.size === 0) {
-      return [];
-    }
-    return rows.filter((r) => allowed.has(r.note_id));
-  }, [rows, shelfNoteIdsSelector]);
 
   // use theme also allows for a non global <ThemeProvider> theme to be picked
   // -> and PanelSection passes in a dimmed theme on not hover
@@ -94,15 +79,13 @@ export const FrequentlyUsedPanel: React.FC<FrequentlyUsedPanelProps> = ({
           Failed to load frequently used notes.
         </Typography>
       )}
-      {!isLoading && !hasError && scopedRows.length === 0 && (
+      {!isLoading && !hasError && rows.length === 0 && (
         <Typography variant="body2" color="textSecondary">
-          {selectedShelfId !== null
-            ? "No frequently used notes on this shelf yet."
-            : "No frequently used notes yet."}
+          No frequently used notes yet.
         </Typography>
       )}
       <Stack spacing={1}>
-        {scopedRows.map((entry) => (
+        {rows.map((entry) => (
           <HistoryRowView
             key={entry.note_id}
             entry={entry}
@@ -133,24 +116,11 @@ export const LastUsedPanel: React.FC<LastUsedPanelProps> = ({
 }) => {
   // fetch more then limit, since last used often contains duplicates
   const { rows, isLoading, hasError } = useLastUsedRows(limit * 3, days);
-  const selectedShelfId = useSelectedShelfStore((s) => s.selectedShelfId);
-  const shelfNoteIdsSelector = useDirectoryTreeStore((s) => s.shelfNoteIds);
-  // Drop off-shelf rows before dedupe so the visible list stays at limit.
-  const shelfScopedRows = useMemo<HistoryRowEntry[]>(() => {
-    const allowed = shelfNoteIdsSelector();
-    if (allowed === null) {
-      return rows;
-    }
-    if (allowed.size === 0) {
-      return [];
-    }
-    return rows.filter((r) => allowed.has(r.note_id));
-  }, [rows, shelfNoteIdsSelector]);
 
   // dedupe by note_id and trim to limit
   const rows_filter = useMemo<HistoryRowEntry[]>(() => {
     const selected = new Array<HistoryRowEntry>();
-    for (const row of shelfScopedRows) {
+    for (const row of rows) {
       if (selected.find((r) => r.note_id === row.note_id)) {
         continue;
       }
@@ -160,7 +130,7 @@ export const LastUsedPanel: React.FC<LastUsedPanelProps> = ({
       }
     }
     return selected;
-  }, [shelfScopedRows, limit]);
+  }, [rows, limit]);
 
   // some here: we need to accept a theme from a parent PanelSection which is dimmed
   // and store only provides global theme
@@ -196,9 +166,7 @@ export const LastUsedPanel: React.FC<LastUsedPanelProps> = ({
       )}
       {!isLoading && !hasError && rows_filter.length === 0 && (
         <Typography variant="body2" color="textSecondary">
-          {selectedShelfId !== null
-            ? "No recently viewed notes on this shelf yet."
-            : "No recently viewed notes yet."}
+          No recently viewed notes yet.
         </Typography>
       )}
       <Stack spacing={1}>
