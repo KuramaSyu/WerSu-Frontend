@@ -16,10 +16,10 @@ import { ImageUploadModal } from "../../components/DirectoryEdit/ImageUploadModa
 import { serializeReadme } from "../../utils/readme";
 
 export interface DirectoryFormFieldsProps {
-  /** Section title shown above the fields. */
-  title: string;
-  /** Short helper line under the title. */
-  subtitle: string;
+  /** Section title shown above the fields. `undefined` hides the heading block. */
+  title?: string | undefined;
+  /** Short helper line under the title. `undefined` (or empty) hides it. */
+  subtitle?: string | undefined;
 
   name: string;
   description: string;
@@ -87,14 +87,20 @@ export const DirectoryFormFields: React.FC<DirectoryFormFieldsProps> = ({
 
   return (
     <Stack spacing={2}>
-      <Stack spacing={0.5}>
-        <Typography variant="h6" sx={{ fontWeight: 600 }}>
-          {title}
-        </Typography>
-        <Typography variant="body2" color="textSecondary">
-          {subtitle}
-        </Typography>
-      </Stack>
+      {(title || subtitle) && (
+        <Stack spacing={0.5}>
+          {title && (
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              {title}
+            </Typography>
+          )}
+          {subtitle && (
+            <Typography variant="body2" color="textSecondary">
+              {subtitle}
+            </Typography>
+          )}
+        </Stack>
+      )}
 
       <TextField
         label="Name"
