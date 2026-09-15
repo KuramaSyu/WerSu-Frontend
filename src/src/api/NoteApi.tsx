@@ -150,19 +150,23 @@ export class NoteApi extends ShareTokenBearerMixin implements INoteApi {
     content: string,
     options?: PostNoteOptions,
   ): Promise<Note> {
-    // Forward shelf_id / directory_ids only when supplied; an
-    // empty body surfaces as a backend 400.
+    // Backend wants shelf_id OR directory_ids, never both. Forward
+    // directory_ids whenever they resolve to a non-empty list;
+    // otherwise fall back to shelf_id. An empty body surfaces as a
+    // backend 400.
     const body: {
       title: string;
       content: string;
       shelf_id?: string;
       directory_ids?: string[];
     } = { title, content };
-    if (options?.shelf_id !== undefined) {
+    const directoryIds = options?.directory_ids;
+    const hasDirectories =
+      directoryIds !== undefined && directoryIds.length > 0;
+    if (hasDirectories) {
+      body.directory_ids = directoryIds;
+    } else if (options?.shelf_id !== undefined) {
       body.shelf_id = options.shelf_id;
-    }
-    if (options?.directory_ids !== undefined) {
-      body.directory_ids = options.directory_ids;
     }
     const response = await fetch(`${BACKEND_BASE}/api/notes`, {
       ...(await this.getFetchParameters("POST", {

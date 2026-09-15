@@ -309,7 +309,7 @@ describe("NoteApi.post - wire shape (shelf_id / directory_ids)", () => {
     expect(body.shelf_id).toBeUndefined();
   });
 
-  it("forwards both shelf_id and directory_ids when both supplied", async () => {
+  it("drops shelf_id when directory_ids are also supplied", async () => {
     const api = new NoteApi();
     const { calls } = mockPost();
 
@@ -319,7 +319,21 @@ describe("NoteApi.post - wire shape (shelf_id / directory_ids)", () => {
     });
 
     const body = readBody(calls[0].init);
-    expect(body.shelf_id).toBe("shelf-1");
     expect(body.directory_ids).toEqual(["dir-1"]);
+    expect(body.shelf_id).toBeUndefined();
+  });
+
+  it("falls back to shelf_id when directory_ids is empty", async () => {
+    const api = new NoteApi();
+    const { calls } = mockPost();
+
+    await api.post("Hello", "Body", {
+      shelf_id: "shelf-1",
+      directory_ids: [],
+    });
+
+    const body = readBody(calls[0].init);
+    expect(body.shelf_id).toBe("shelf-1");
+    expect(body.directory_ids).toBeUndefined();
   });
 });
