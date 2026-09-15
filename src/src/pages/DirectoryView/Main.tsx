@@ -46,7 +46,7 @@ export const DirectoryView: React.FC = () => {
     cascadePreview,
     handleCreateNote,
     handleCreateSubdirectory,
-    handleRenameDirectory,
+    handleEditDirectory,
     handleDeleteDirectory,
   } = useDirectoryFeatures({
     onOpenCreateNote: () => setCreateNoteOpen(true),
@@ -125,7 +125,7 @@ export const DirectoryView: React.FC = () => {
                   <DirectoryMenu
                     currentNode={currentNode}
                     cascadePreview={cascadePreview}
-                    handleRenameDirectory={handleRenameDirectory}
+                    handleEditDirectory={handleEditDirectory}
                     handleDeleteDirectory={handleDeleteDirectory}
                   />
                 </Stack>

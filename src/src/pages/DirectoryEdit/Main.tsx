@@ -1,6 +1,5 @@
 import { useParams } from "react-router-dom";
 import {
-  Alert,
   Box,
   Button,
   CircularProgress,
@@ -96,14 +95,9 @@ const DirectoryEditForm: React.FC = () => {
           <Typography variant="h4" sx={{ fontWeight: 600 }}>
             Edit directory
           </Typography>
-          {/* <Typography variant="body2" color="textSecondary">
-            Update name, description, image, parent, and shelves.
-          </Typography> */}
         </Stack>
 
         <DirectoryFormFields
-          title="Directory details"
-          subtitle=""
           name={name}
           description={description}
           imageUrl={imageUrl}
@@ -126,12 +120,6 @@ const DirectoryEditForm: React.FC = () => {
         />
 
         <Divider />
-
-        {/* <Alert severity="info">
-          WerSu stores the directory's description and image as a README.md note
-          inside this directory. The header is regenerated on every save from
-          these fields.
-        </Alert> */}
 
         <Stack direction="row" spacing={2}>
           <Button

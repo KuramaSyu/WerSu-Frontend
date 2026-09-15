@@ -75,8 +75,6 @@ const CreateSubdirectoryForm: React.FC = () => {
         </Stack>
 
         <DirectoryFormFields
-          title="Directory details"
-          subtitle="Configure the new directory. The parent is pre-selected with the directory you came from."
           name={name}
           description={description}
           imageUrl=""

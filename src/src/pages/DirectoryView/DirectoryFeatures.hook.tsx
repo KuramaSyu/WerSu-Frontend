@@ -33,8 +33,8 @@ export interface UseDirectoryFeaturesOptions {
    */
   onOpenCreateDirectory?: (parentId: string) => void;
   /**
-   * Invoked when the user picks "Edit directory" from the right-panel
-   * actions. The host component owns the modal state and mounts the
+   * Invoked when the user picks "Edit" from the directory's 3-dot
+   * menu. The host component owns the modal state and mounts the
    * shared `CreateDirectoryModal` in `edit` mode, targeting the
    * current directory.
    */
@@ -134,7 +134,13 @@ export interface DirectoryFeatures {
   title: string;
   handleCreateNote: () => void;
   handleCreateSubdirectory: () => void;
-  handleRenameDirectory: () => void;
+  /**
+   * Opens the shared `CreateDirectoryModal` in edit mode, targeting
+   * the current directory. Routing goes through the host's
+   * `onOpenEditDirectory` callback (with a `/d/:id/edit` URL
+   * fallback) so the modal lifecycle stays in the host.
+   */
+  handleEditDirectory: () => void;
   /**
    * Deletes the current directory via the REST API, drops it from
    * the in-memory store, and invalidates the cached directory queries
@@ -299,7 +305,7 @@ export function useDirectoryFeatures(
    * edit mode, targeting the current directory. The modal owns the
    * form, validation, and the actual `PATCH /api/directories` call.
    */
-  const handleRenameDirectory = () => {
+  const handleEditDirectory = () => {
     if (currentNode.getId() === "root") {
       setMessage(
         new SnackbarUpdateImpl("Root directory cannot be edited", "info"),
@@ -355,7 +361,7 @@ export function useDirectoryFeatures(
     title,
     handleCreateNote,
     handleCreateSubdirectory,
-    handleRenameDirectory,
+    handleEditDirectory,
     handleDeleteDirectory,
     navigate,
   };

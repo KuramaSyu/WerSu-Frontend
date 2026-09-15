@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  Alert,
   Button,
   CircularProgress,
   Slide,
@@ -154,15 +153,13 @@ export const CreateDirectoryModal: React.FC<CreateDirectoryModalProps> = ({
               onClick={() => void saveAndView()}
               disabled={isBusy || isNameEmpty}
             >
-              Save &amp; open
+              Save
             </Button>
           </>
         }
       >
         {mode === "create" ? (
           <DirectoryFormFields
-            title="Directory details"
-            subtitle="Configure the new directory. The parent is pre-selected with the directory you came from."
             name={name}
             description={description}
             imageUrl=""
@@ -182,8 +179,6 @@ export const CreateDirectoryModal: React.FC<CreateDirectoryModalProps> = ({
           />
         ) : (
           <DirectoryFormFields
-            title="Directory details"
-            subtitle="Update name, description, image, parent, and shelves."
             name={name}
             description={description}
             imageUrl={imageUrl}
@@ -217,14 +212,6 @@ export const CreateDirectoryModal: React.FC<CreateDirectoryModalProps> = ({
               {isDeleting ? "Deleting..." : "Saving..."}
             </Typography>
           </Stack>
-        )}
-
-        {mode === "edit" && (
-          <Alert severity="info" sx={{ mt: 2 }}>
-            WerSu stores the directory's description and image as a README.md
-            note inside this directory. The header is regenerated on every save
-            from these fields.
-          </Alert>
         )}
       </ModalShell>
 

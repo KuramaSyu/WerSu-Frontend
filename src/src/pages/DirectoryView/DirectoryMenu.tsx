@@ -22,7 +22,8 @@ import type { CascadePreview } from "./DirectoryFeatures.hook";
 export interface DirectoryMenuProps {
   currentNode: HirarchyItem;
   cascadePreview: CascadePreview;
-  handleRenameDirectory: () => void;
+  /** Opens the edit modal for the current directory. */
+  handleEditDirectory: () => void;
   handleDeleteDirectory: () => Promise<boolean>;
 }
 
@@ -85,15 +86,15 @@ const DeletePreviewMessage: React.FC<{
 /**
  * 3-dot menu attached to the directory title.
  *
- * Houses the three non-create directory actions: rename, toggle
- * favourite, delete. The menu is disabled (items greyed) for the
- * root directory so the existing root-protective behaviour is
- * preserved after the speed-dial move.
+ * Houses the three non-create directory actions: open the edit
+ * modal, toggle favourite, delete. The menu is disabled (items
+ * greyed) for the root directory so the existing root-protective
+ * behaviour is preserved after the speed-dial move.
  */
 export const DirectoryMenu: React.FC<DirectoryMenuProps> = ({
   currentNode,
   cascadePreview,
-  handleRenameDirectory,
+  handleEditDirectory,
   handleDeleteDirectory,
 }) => {
   const { id: directoryId } = useParams();
@@ -162,13 +163,13 @@ export const DirectoryMenu: React.FC<DirectoryMenuProps> = ({
           disabled={isRoot}
           onClick={() => {
             closeMenu();
-            handleRenameDirectory();
+            handleEditDirectory();
           }}
         >
           <ListItemIcon>
             <EditIcon fontSize="small" />
           </ListItemIcon>
-          <ListItemText>Rename</ListItemText>
+          <ListItemText>Edit</ListItemText>
         </MenuItem>
         <MenuItem
           disabled={isRoot}
