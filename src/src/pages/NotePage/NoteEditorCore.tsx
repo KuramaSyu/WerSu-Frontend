@@ -1064,8 +1064,9 @@ export const NoteEditorCore: React.FC<NoteEditorCoreProps> = (props) => {
  * when inserting an image, we need to check if the tiptap editor or source mode is used. The tiptap editor
  * gets an HTML img block, where as the source editor gets the markdown image link.
  *
- * `imageLinkToBlock` and `markdownToProsemirror` are defined in
- * `./editorFormatUtils.ts` and imported at the top of this file
+ * imageLinkToBlock lives in this file's sibling editorFormatUtils.ts.
+ * markdownToProsemirror is imported from
+ * src/utils/converters/toProsemirror/markdownToProsemirror
  * (so the component body can call them). They are also re-exported
  * from `./Editor.tsx` for backwards-compat with consumers that
  * imported them from the old barrel.

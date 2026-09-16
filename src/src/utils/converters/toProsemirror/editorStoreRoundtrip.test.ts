@@ -11,7 +11,7 @@
 
 // @vitest-environment jsdom
 
-import "../../test/setup";
+import "../../../test/setup";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Editor } from "@tiptap/core";
@@ -25,9 +25,9 @@ import {
 } from "@tiptap/extension-table";
 import { Markdown } from "@tiptap/markdown";
 
-import { useActiveNoteStore } from "../../zustand/editorStore";
-import { useEditorSettings } from "../../zustand/useEditorSettings";
-import { markdownToProsemirror } from "./editorFormatUtils";
+import { useActiveNoteStore } from "../../../zustand/editorStore";
+import { useEditorSettings } from "../../../zustand/useEditorSettings";
+import { markdownToProsemirror } from "./markdownToProsemirror";
 
 const md = [
   "| ![a](http://x/a.png) | 9/10 |",
