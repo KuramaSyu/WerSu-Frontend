@@ -13,6 +13,7 @@ import {
   useOutlineStore,
   useScrollElementStore,
 } from "../../../zustand/outlineStore";
+import { useEditorSettings } from "../../../zustand/useEditorSettings";
 import { timelineItemClasses } from "@mui/lab/TimelineItem";
 
 /** Side-panel section listing every heading. Click scrolls; scroll-spy tints. */
@@ -104,10 +105,13 @@ export const TableOfContentsPanel: React.FC = () => {
   // Skip the first primaryId change so we don't overwrite a freshly
   // stripped invalid `?section` from `useScrollToSectionOnLoad`.
   const skipNextSyncRef = useRef(true);
+  const { editMode } = useEditorSettings();
 
   // Sync `?section=<primaryId>` via replaceState so the URL tracks the
   // active heading (scroll-spy on scroll, setPrimaryId on click).
+  // Disabled in edit mode;
   useEffect(() => {
+    if (editMode) return;
     if (!primaryId) return;
     if (skipNextSyncRef.current) {
       skipNextSyncRef.current = false;
@@ -117,7 +121,7 @@ export const TableOfContentsPanel: React.FC = () => {
     if (url.searchParams.get("section") === primaryId) return;
     url.searchParams.set("section", primaryId);
     window.history.replaceState(null, "", url.toString());
-  }, [primaryId]);
+  }, [primaryId, editMode]);
 
   if (items.length === 0) {
     return (
