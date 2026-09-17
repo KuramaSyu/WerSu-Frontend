@@ -165,6 +165,8 @@ export const SearchResultsList: React.FC = () => {
         overflowY: "auto",
         scrollbarGutter: "stable",
         position: "relative",
+        overflowX: "hidden",
+        scrollbarWidth: "none",
       }}
     >
       <Box sx={{ width: "98%" }}>
