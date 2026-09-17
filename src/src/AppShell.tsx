@@ -1,5 +1,5 @@
 import { Box, Stack } from "@mui/material";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import {
   COLLAPSED_PANEL_SIZE,
   M2,
@@ -15,9 +15,23 @@ import { LeftRail } from "./components/Rail/LeftRail";
 import { RightRail } from "./components/Rail/RightRail";
 import { TopBar } from "./components/TopBar/TopBar";
 import { useBreakpoint } from "./hooks/useBreakpoint";
-import { useTopPanelScrollVisibility } from "./components/Rail/useTopPanelScrollVisibility";
+import {
+  useTopPanelHoverShow,
+  useTopPanelScrollVisibility,
+} from "./components/Rail/useTopPanelScrollVisibility";
 import { useThemeStore } from "./zustand/useThemeStore";
 import { useScrollElementStore } from "./zustand/outlineStore";
+
+// Path patterns that gate the auto-hide topbar behaviour. The topbar
+// only collapses on scroll, and only re-reveals via cursor, while
+// the user is on a note page (private or public).
+const NOTES_PATH_PATTERN = /^\/(?:public\/)?n\/[^/]+$/;
+
+/** True when the current route is a note page (private or public). */
+function useIsNotesPage(): boolean {
+  const { pathname } = useLocation();
+  return NOTES_PATH_PATTERN.test(pathname);
+}
 
 export const AppShell: React.FC = () => {
   const {
@@ -39,6 +53,7 @@ export const AppShell: React.FC = () => {
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(
     null,
   );
+  const isNotesPage = useIsNotesPage();
 
   // Mirror the scroll container into a shared store so deep-link
   // handlers and the outline panel can read it without prop-drilling.
@@ -47,8 +62,13 @@ export const AppShell: React.FC = () => {
     return () => useScrollElementStore.getState().setElement(null);
   }, [scrollElement]);
 
-  // Hide-on-scroll for the top panel, sourced from the main contents box
-  useTopPanelScrollVisibility(scrollElement, setShowTopPanel);
+  // Hide-on-scroll for the top panel, sourced from the main contents
+  // box. Only enabled on note pages; elsewhere the panel stays put.
+  useTopPanelScrollVisibility(scrollElement, setShowTopPanel, isNotesPage);
+
+  // Re-reveal a hidden top panel when the cursor enters the top strip.
+  // Only active on note pages, matching the scroll-hide gate above.
+  useTopPanelHoverShow(setShowTopPanel, isNotesPage);
 
   // splash screen starts from a random direction because i like it
   const oneOrZero = Math.round(exitPercentage / 100) * 100;
