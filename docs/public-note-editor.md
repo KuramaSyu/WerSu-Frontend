@@ -42,6 +42,13 @@ flowchart TD
 | `SHARE_PERMISSION_WRITE` | `true` | `false` | toggle + save visible | opened via `usePublicNoteCollaboration` |
 | `SHARE_PERMISSION_READ` (and anything else) | `false` | `true` | toggle + save hidden, share button stays | never opened, empty Y.Doc + dummy provider |
 
+## Topbar auto-hide
+
+The same hide-on-scroll / cursor-reveal behaviour that the private
+note editor opts into is also active on `/public/n/:share_id`. The
+topbar only collapses while a viewer is on a note page, and only
+re-reveals when the cursor moves into the top strip of the viewport.
+
 ## Auth
 
 | Source | Path |

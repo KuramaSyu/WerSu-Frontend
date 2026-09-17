@@ -32,6 +32,14 @@ flowchart TD
 - **Toggle**: `NoteButtonActionRow` flips `useEditorSettings.editMode`. Toggling from write → read disconnects the provider; toggling back reconnects it.
 - **Save**: persists title + content via `NoteApi.patch`, refreshes note + activity caches on success.
 
+## Topbar auto-hide
+
+While the user is on `/n/:id`, the desktop topbar collapses on scroll
+down and re-reveals itself when the cursor enters the top strip of the
+viewport. The behaviour is gated to note pages only; on every other
+route the topbar stays put. See `useTopPanelScrollVisibility` and
+`useTopPanelHoverShow` in the AppShell for the wiring.
+
 ## Auth
 
 | Source | Path |
