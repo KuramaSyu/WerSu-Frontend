@@ -112,23 +112,27 @@ export const SearchResultsList: React.FC = () => {
 
   // arrow keys move selection, Enter opens the note + clears the query
   useEffect(() => {
+    /** set selection to keybaord and disable hover if user used keyboard */
+    const upOrDown = () => {
+      setSelectedWith("keyboard");
+      setHoverEnabled(false);
+    };
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "ArrowDown") {
-        setSelectedWith("keyboard");
+        upOrDown();
         setSelectedIndex((prev) =>
           Math.min(prev + 1, filteredNotes.length - 1),
         );
-        setHoverEnabled(false);
       } else if (e.key === "ArrowUp") {
-        setSelectedWith("keyboard");
+        upOrDown();
         setSelectedIndex((prev) => Math.max(prev - 1, 0));
-        setHoverEnabled(false);
       } else if (e.key === "Enter") {
         const selected = filteredNotes[selectedIndex];
         if (selected) handleNavigate(selected.id);
         setSearch("");
       }
     };
+
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [filteredNotes, selectedIndex, setSearch, handleNavigate]);
