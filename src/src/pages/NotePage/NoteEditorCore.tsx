@@ -613,11 +613,13 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
     };
   }, [editor]);
 
-  // set content when node id or editor changes. dont set on mode change
+  // Seed the editor with the note content whenever it (re)mounts, in both
+  // read and write mode.
   useEffect(() => {
-    if (!editMode && note && editor && !editor.isDestroyed) {
-      setContent(note.content);
+    if (!note || !editor || editor.isDestroyed) {
+      return;
     }
+    setContent(note.content);
   }, [editor, note]);
 
   // sync read <--> write: editMode is a zustand value. here we sync it with the editor's own state.
