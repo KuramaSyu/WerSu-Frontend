@@ -10,7 +10,15 @@
 
 import "../../test/setup";
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+  type Mock,
+} from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import {
   computeNextShowPanel,
@@ -61,7 +69,7 @@ describe("computeNextShowPanel", () => {
 
 describe("useTopPanelScrollVisibility", () => {
   let element: HTMLElement;
-  let setShowPanel: ReturnType<typeof vi.fn>;
+  let setShowPanel: Mock<(show: boolean) => void>;
 
   beforeEach(() => {
     element = makeScrollElement();
@@ -98,7 +106,7 @@ describe("useTopPanelScrollVisibility", () => {
 });
 
 describe("useTopPanelHoverShow", () => {
-  let setShowPanel: ReturnType<typeof vi.fn>;
+  let setShowPanel: Mock<(show: boolean) => void>;
 
   beforeEach(() => {
     setShowPanel = vi.fn();
