@@ -1,5 +1,18 @@
 import { BACKEND_BASE } from "../statics";
 import { apiRegistry, type ApiToken } from "./apiRegistry";
+import {
+  CONFIG_ERROR_REASONS,
+  EXAMPLE_ENV_BODY,
+  EXAMPLE_ENV_FILE,
+  StatusApiConfigError,
+} from "./StatusApiConfigError";
+
+export {
+  CONFIG_ERROR_REASONS,
+  EXAMPLE_ENV_BODY,
+  EXAMPLE_ENV_FILE,
+  StatusApiConfigError,
+};
 
 export interface CheckResult {
   reachable: boolean;
@@ -34,6 +47,14 @@ export interface IStatusApi {
 
 export class StatusApi implements IStatusApi {
   async getStatus(): Promise<StatusResponse> {
+    if (!BACKEND_BASE) {
+      throw new StatusApiConfigError(
+        EXAMPLE_ENV_FILE,
+        EXAMPLE_ENV_BODY,
+        CONFIG_ERROR_REASONS.missingUrl,
+      );
+    }
+
     const response = await fetch(`${BACKEND_BASE}/api/status`, {
       method: "GET",
       credentials: "include",
@@ -43,7 +64,34 @@ export class StatusApi implements IStatusApi {
       throw new Error(`Failed to load status (${response.status})`);
     }
 
-    return (await response.json()) as StatusResponse;
+    // Same-origin fallback: when BACKEND_BASE is misconfigured (or
+    // the SPA is opened without a backend running) the request
+    // resolves with 200 + the served index.html. `response.json()`
+    // would then throw `JSON.parse: unexpected character at line 1 ...`,
+    // which surfaces as a cryptic console error in Settings. Detect
+    // the HTML response up front and re-throw as a config error.
+    const contentType = response.headers.get("content-type") ?? "";
+    if (!contentType.toLowerCase().includes("application/json")) {
+      throw new StatusApiConfigError(
+        EXAMPLE_ENV_FILE,
+        EXAMPLE_ENV_BODY,
+        CONFIG_ERROR_REASONS.wrongHost(BACKEND_BASE),
+      );
+    }
+
+    try {
+      return (await response.json()) as StatusResponse;
+    } catch (error) {
+      // Belt-and-braces: if the headers lied and the body still
+      // isn't JSON, replace the cryptic SyntaxError with the same
+      // actionable config hint.
+      const detail = error instanceof Error ? error.message : String(error);
+      throw new StatusApiConfigError(
+        EXAMPLE_ENV_FILE,
+        EXAMPLE_ENV_BODY,
+        CONFIG_ERROR_REASONS.parseFailed(detail),
+      );
+    }
   }
 }
 
