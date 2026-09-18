@@ -79,6 +79,7 @@ beforeEach(() => {
   useActiveNoteStore.setState({
     noteId: undefined,
     editor: null,
+    ydoc: null,
     title: "",
     sourceMarkdown: "",
     isSaving: false,

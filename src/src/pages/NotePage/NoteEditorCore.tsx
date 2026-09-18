@@ -169,6 +169,7 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
     save,
     setUpdateNoteFn,
     setEditor,
+    setYDoc,
     registerNote,
   } = useActiveNoteStore();
 
@@ -579,6 +580,13 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
     setEditor(editor ?? null);
     return () => useActiveNoteStore.getState().setEditor(null);
   }, [editor]);
+
+  // Mirror the active Y.Doc into the store so setContent can write
+  // directly into the XmlFragment instead of editor.commands.setContent.
+  useEffect(() => {
+    setYDoc(ydoc ?? null);
+    return () => setYDoc(null);
+  }, [ydoc]);
 
   // Mirror the editor's live outline into `useOutlineStore` on every
   // `editor.on("update")` (post-transaction, off the edit hot path).
