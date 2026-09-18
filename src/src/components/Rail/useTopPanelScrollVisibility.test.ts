@@ -32,7 +32,10 @@ const dispatchScroll = (element: HTMLElement, top: number): void => {
 const makeScrollElement = (): HTMLElement => {
   const el = document.createElement("div");
   Object.defineProperty(el, "scrollTop", { configurable: true, value: 0 });
-  Object.defineProperty(el, "scrollHeight", { configurable: true, value: 1000 });
+  Object.defineProperty(el, "scrollHeight", {
+    configurable: true,
+    value: 1000,
+  });
   Object.defineProperty(el, "clientHeight", { configurable: true, value: 500 });
   document.body.appendChild(el);
   return el;
@@ -77,9 +80,7 @@ describe("useTopPanelScrollVisibility", () => {
 
   it("ignores `enabled=false`: never attaches a listener", () => {
     const addSpy = vi.spyOn(element, "addEventListener");
-    renderHook(() =>
-      useTopPanelScrollVisibility(element, setShowPanel, false),
-    );
+    renderHook(() => useTopPanelScrollVisibility(element, setShowPanel, false));
     expect(addSpy).not.toHaveBeenCalledWith("scroll", expect.anything());
     addSpy.mockRestore();
   });
