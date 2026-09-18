@@ -73,13 +73,23 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => ({
     // Update the rich editor AND the source buffer regardless of
     // the current view mode. Otherwise changeing back the ydoc would
     // just wipe out the markdown changes.
+    const stack = new Error().stack;
+    console.log(
+      `[editor-debug] store:setContent called markdownLen=${markdown?.length ?? 0} hasEditor=${!!get().editor}`,
+      stack?.split("\n").slice(1, 5).join(" | "),
+    );
     const editor = get().editor;
     set({ sourceMarkdown: markdown });
     if (!editor) return;
     // normalize doc to prevent table errors
     const normalizedDoc = markdownToProsemirror(editor, markdown);
     // start microtask to prevent flush error
-    queueMicrotask(() => editor.commands.setContent(normalizedDoc));
+    queueMicrotask(() => {
+      console.log(
+        `[editor-debug] store:setContent -> editor.commands.setContent firing`,
+      );
+      editor.commands.setContent(normalizedDoc);
+    });
   },
 
   save: async (titleOverride, contentOverride) => {

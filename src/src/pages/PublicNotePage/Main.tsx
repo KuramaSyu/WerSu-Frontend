@@ -116,10 +116,15 @@ export const PublicNotePage: React.FC = () => {
 
   const noteReady = note !== undefined && shareAttachmentTokensLoaded;
 
+  // Sync the per-attachment JWTs into the auth store. Keyed on the
+  // tokens map itself, not on `note`: `useNote`'s `select` returns
+  // a fresh `Note` instance per render and Tanstack's deep-equal
+  // memoization doesn't always catch class instances with nested
+  // records
+  const tokens = note?.tokens;
   useEffect(() => {
-    console.log("PublicNotePage - note", note);
-    useAuthStore.getState().setShareAttachmentTokens(note?.tokens ?? {});
-  }, [note]);
+    useAuthStore.getState().setShareAttachmentTokens(tokens ?? {});
+  }, [tokens]);
 
   if (isError) {
     return <PublicShareUnavailable error={error} />;

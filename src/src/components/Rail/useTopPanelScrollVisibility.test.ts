@@ -134,4 +134,21 @@ describe("useTopPanelHoverShow", () => {
     dispatchMouseMove(80);
     expect(setShowPanel).toHaveBeenCalledWith(true);
   });
+
+  it("only fires once per outside-to-inside crossing", () => {
+    // Without the edge-crossing gate, every mousemove inside the top
+    // strip calls setShowPanel(true), which produces a fresh
+    // LayoutContext value object even when the value didn't change and
+    // re-renders every useLayout() consumer (e.g. the note editor) per
+    // frame. The hook should reveal on entry and stay silent until the
+    // cursor leaves and re-enters the strip.
+    renderHook(() => useTopPanelHoverShow(setShowPanel, true));
+    dispatchMouseMove(TOP_PANEL_HOVER_REVEAL_PX - 1);
+    dispatchMouseMove(TOP_PANEL_HOVER_REVEAL_PX - 2);
+    dispatchMouseMove(TOP_PANEL_HOVER_REVEAL_PX - 3);
+    expect(setShowPanel).toHaveBeenCalledTimes(1);
+    dispatchMouseMove(TOP_PANEL_HOVER_REVEAL_PX + 100);
+    dispatchMouseMove(TOP_PANEL_HOVER_REVEAL_PX - 1);
+    expect(setShowPanel).toHaveBeenCalledTimes(2);
+  });
 });

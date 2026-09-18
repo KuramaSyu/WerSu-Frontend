@@ -72,6 +72,8 @@ import { useViewConfig } from "../../zustand/useViewConfig";
 import { InsertSpeedDial } from "./SpeedDial";
 import { LatexDialog, type LatexDialogProps } from "./LatexDialog";
 import { DialogProvider, useDialog } from "./InputDialog";
+import { LiveUsersBridge } from "./LiveUsersBridge";
+import { CollabStatusBridge } from "./CollabStatusBridge";
 import { CustomImage } from "../../components/Editor/View/CustomImage";
 import { CustomLink } from "../../components/Editor/View/CustomLink";
 import { CustomSvgLink } from "../../components/Editor/View/CustomSvgLink";
@@ -81,12 +83,7 @@ import { CustomDetails } from "../../components/Editor/CustomDetails";
 import { DetailsContent, DetailsSummary } from "@tiptap/extension-details";
 import { useUser } from "../../api/queries/useUser";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
-import { useLiveUsersStore } from "../../zustand/useLiveUsersStore";
 import { useLayout } from "../../LayoutProvider";
-import {
-  collabStatusStore,
-  type CollabStatus,
-} from "../../zustand/useCollabStatusStore";
 import { useActiveNoteStore } from "../../zustand/editorStore";
 import { useOutlineStore } from "../../zustand/outlineStore";
 import { useEditorMenuStore } from "../../zustand/editorMenuStore";
@@ -177,6 +174,7 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
 
   // Tracks which editor surface is active and if write/read is used
   const { viewMode: editorMode, editMode } = useEditorSettings();
+
   // Cap the editor body to an A4-paper width by default; the action
   // row's 3-dot menu lets the viewer flip this off via `useViewConfig`.
   const a4Width = useViewConfig((s) => s.config.a4Width);
@@ -544,15 +542,41 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
     [noteId, ydoc], // recreate editor when noteId changes to reconnect to a correct Yjs document
   );
 
-  // register editor to useActiveNoteStore for global access and cleanup on unmount
+  // DEBUG: per-effect fire counters so we can see which effects drive
+  // the re-render storm. Bump once per fire, print on every fire.
+  const dbgRef = useRef({
+    render: 0,
+    mirror: 0,
+    seed: 0,
+    editable: 0,
+    sync: 0,
+  });
+  dbgRef.current.render += 1;
+  console.log(
+    `[editor-debug] render #${dbgRef.current.render} editMode=${editMode} hasEditor=${!!editor} hasNote=${!!note}`,
+  );
+
+  // Wire the per-note callbacks (note id, save handler) into the store
+  // exactly once per note. The editor itself is registered separately
+  // so the editor recreating (e.g. when `ydoc` flips on entering
+  // edit mode) doesn't tear down and re-wire the note bindings.
   useEffect(() => {
-    console.log("Rebuild Editor Zustand");
     registerNote(noteId, onNoteUpdated);
-    setEditor(editor ?? null);
     setUpdateNoteFn((title: string, content: string) => {
       return updateNote({ noteId: noteId!, title, content });
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [noteId]);
 
+  // Mirror the editor reference into the store. Re-runs on editor
+  // recreation (expected) and clears on unmount so a stale editor
+  // never lingers in the store after the page goes away.
+  useEffect(() => {
+    dbgRef.current.mirror += 1;
+    console.log(
+      `[editor-debug] effect:mirror-editor fires #${dbgRef.current.mirror} hasEditor=${!!editor} destroyed=${editor?.isDestroyed}`,
+    );
+    setEditor(editor ?? null);
     return () => useActiveNoteStore.getState().setEditor(null);
   }, [editor]);
 
@@ -616,108 +640,31 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
   // Seed the editor with the note content whenever it (re)mounts, in both
   // read and write mode.
   useEffect(() => {
+    dbgRef.current.seed += 1;
+    console.log(
+      `[editor-debug] effect:seed fires #${dbgRef.current.seed} hasEditor=${!!editor} destroyed=${editor?.isDestroyed} hasNote=${!!note} contentLen=${note?.content?.length ?? 0} editMode=${editMode}`,
+    );
     if (!note || !editor || editor.isDestroyed) {
       return;
     }
     setContent(note.content);
-  }, [editor, note]);
+  }, [editor, note?.content]);
 
   // sync read <--> write: editMode is a zustand value. here we sync it with the editor's own state.
   useEffect(() => {
+    dbgRef.current.editable += 1;
+    console.log(
+      `[editor-debug] effect:set-editable fires #${dbgRef.current.editable} editMode=${editMode} hasEditor=${!!editor} destroyed=${editor?.isDestroyed}`,
+    );
     editor?.setEditable(editMode);
   }, [editMode, editor]);
 
-  // if editmode: update live users from provider to zustand store
-  useEffect(() => {
-    if (!provider?.awareness || !noteId || !editMode) {
-      return;
-    }
-    const awareness = provider.awareness;
-
-    const updateUsers = () => {
-      if (!awareness || !noteId) return;
-      var users = [];
-      for (const state of awareness.getStates().values()) {
-        if (state.user) {
-          users.push({
-            userId: state.user.id,
-            color: state.user.color,
-          });
-        }
-      }
-      useLiveUsersStore.getState().setUsers(noteId, users);
-      console.log("Updated live users from awareness states:", users);
-    };
-
-    awareness!.on("change", updateUsers);
-    updateUsers();
-
-    return () => {
-      awareness!.off("change", updateUsers);
-      useLiveUsersStore.getState().clearUsers(noteId);
-    };
-  }, [noteId, provider, editMode]);
-
-  // Mirror the provider's connection state into a zustand store so the
-  // toolbar badge can render without prop-drilling the provider instance.
-  useEffect(() => {
-    if (!noteId || !editMode) {
-      if (noteId) collabStatusStore.getState().setStatus(noteId, "idle");
-      return;
-    }
-    if (!provider) return; // hook is waiting on the JWT — leave its diagnostic alone
-
-    const setStatus = (status: CollabStatus, message?: string) =>
-      collabStatusStore.getState().setStatus(noteId, status, message);
-
-    const onStatus = (event: { status: string }) => {
-      switch (event.status) {
-        case "connecting":
-          setStatus(
-            "connecting",
-            "Opening WebSocket to the collaboration server…",
-          );
-          break;
-        case "connected":
-          setStatus("connected");
-          break;
-        case "disconnected":
-          setStatus(
-            "disconnected",
-            "WebSocket closed. The provider will retry automatically.",
-          );
-          break;
-      }
-    };
-    const onAuthenticated = () => setStatus("connected");
-    const onAuthenticationFailed = (event?: { reason?: string }) =>
-      collabStatusStore
-        .getState()
-        .setAuthFailed(noteId, event?.reason ?? "unknown reason");
-
-    provider.on("status", onStatus);
-    provider.on("authenticated", onAuthenticated);
-    provider.on("authenticationFailed", onAuthenticationFailed);
-
-    // Seed the status from the current provider state — needed because we
-    // may subscribe *after* the socket has already opened. The actual
-    // status lives on the inner `HocuspocusProviderWebsocket` (the
-    // `HocuspocusProvider` itself has no `status` field), so reach
-    // through `provider.configuration.websocketProvider` to read it.
-    const wsStatus = provider.configuration.websocketProvider.status;
-    if (wsStatus === "connected") setStatus("connected");
-    else if (wsStatus === "connecting") setStatus("connecting");
-    else setStatus("disconnected");
-
-    return () => {
-      provider.off("status", onStatus);
-      provider.off("authenticated", onAuthenticated);
-      provider.off("authenticationFailed", onAuthenticationFailed);
-    };
-  }, [noteId, editMode, provider]);
-
   // load ydoc and collaboration content into editor if edit mode
   useEffect(() => {
+    dbgRef.current.sync += 1;
+    console.log(
+      `[editor-debug] effect:collab-sync fires #${dbgRef.current.sync} hasEditor=${!!editor} hasYdoc=${!!ydoc} hasProvider=${!!provider} editMode=${editMode}`,
+    );
     if (!editor || !ydoc || !provider) {
       return;
     }
@@ -731,6 +678,7 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
     // call when hocuspocus returned the note state
     const onSynced = () => {
       const isEmpty = ydoc!.getXmlFragment("default").length === 0;
+      console.log(`[editor-debug] onSynced fires ydocEmpty=${isEmpty}`);
 
       // if ydoc is not empty, then use this ydoc instead
       if (!isEmpty) return;
@@ -1044,6 +992,18 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
         initialLatexType={latexDialogProps.initialLatexType}
       />
       <AttachmentPreviewModal />
+      {/*
+        Awareness -> live-users and provider -> collab-status bridges.
+        Rendered as siblings so neither subscription re-runs on editor
+        transactions (the editor itself only depends on `provider`,
+        `noteId`, and `editMode` for whether to mount them).
+      */}
+      <LiveUsersBridge noteId={noteId} provider={provider} enabled={editMode} />
+      <CollabStatusBridge
+        noteId={noteId}
+        provider={provider}
+        enabled={editMode}
+      />
     </>
   );
 };

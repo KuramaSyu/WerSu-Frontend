@@ -9,10 +9,7 @@ export const TOP_PANEL_TOP_THRESHOLD_PX = 24;
 // top strip of the viewport where cursor movement re-reveals the panel
 export const TOP_PANEL_HOVER_REVEAL_PX = 64;
 
-function logTopPanel(
-  reason: string,
-  detail: Record<string, unknown>,
-): void {
+function logTopPanel(reason: string, detail: Record<string, unknown>): void {
   console.log("[topbar]", reason, detail);
 }
 
@@ -51,7 +48,10 @@ export function useTopPanelScrollVisibility(
 
   useEffect(() => {
     if (!enabled || !element) {
-      logTopPanel("scroll-watchdog:skipped", { enabled, hasElement: !!element });
+      logTopPanel("scroll-watchdog:skipped", {
+        enabled,
+        hasElement: !!element,
+      });
       return;
     }
     lastYRef.current = element.scrollTop;
@@ -118,8 +118,24 @@ export function useTopPanelHoverShow(
       return;
     }
     logTopPanel("hover-watchdog:armed", { enabled, revealPx });
+    // Track the last "above the strip" reading so we only fire the
+    // reveal on the OUTSIDE -> INSIDE crossing. Without this, every
+    // mousemove inside the strip calls setShowPanel(true), which
+    // produces a fresh LayoutContext value object even when the value
+    // didn't change. That re-renders every useLayout() consumer
+    // (including the note editor) per frame and tears down its
+    // nodeviews. Starting the cursor below the strip means the
+    // first inside-strip movement fires the reveal and subsequent
+    // ones are no-ops until the cursor leaves and re-enters.
+    let cursorAboveStrip = true;
     const handleMove = (e: MouseEvent) => {
-      if (e.clientY <= revealPx) {
+      const inside = e.clientY <= revealPx;
+      if (!inside) {
+        cursorAboveStrip = true;
+        return;
+      }
+      if (cursorAboveStrip) {
+        cursorAboveStrip = false;
         logTopPanel("hover:reveal", { clientY: e.clientY, revealPx });
         setShowPanel(true);
       }

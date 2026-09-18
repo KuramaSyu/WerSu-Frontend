@@ -44,6 +44,10 @@ export const AppShell: React.FC = () => {
     showTopPanel,
     setShowTopPanel,
   } = useLayout();
+  // DEBUG: count AppShell renders to see if the storm is at this level.
+  console.log(
+    `[editor-debug] AppShell render showTopPanel=${showTopPanel} hasLeftPanel=${!!leftPanel} hasRightPanel=${!!rightPanel}`,
+  );
   const [showSplashScreen, setShowSplashScreen] = useState(false);
   const [exitPercentage, setExitPercentage] = useState(
     Math.round(Math.random() * 100),

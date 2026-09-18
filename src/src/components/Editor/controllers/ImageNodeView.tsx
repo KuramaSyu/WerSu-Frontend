@@ -1,5 +1,6 @@
 import { Box } from "@mui/material";
 import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
+import { useEffect } from "react";
 import { useThemeStore } from "../../../zustand/useThemeStore";
 import { M2 } from "../../../statics";
 import { useEditorSettings } from "../../../zustand/useEditorSettings";
@@ -30,28 +31,37 @@ function parseInlineStyle(style: string): Record<string, string | number> {
 
 export function ImageNodeView({ node, selected, getPos }: NodeViewProps) {
   const { theme } = useThemeStore();
-  const { editMode } = useEditorSettings();
+
+  // use zustand selectors to increase performance by reducing rerenders
+  const editMode = useEditorSettings((s) => s.editMode);
   const openPreview = useAttachmentPreviewStore((s) => s.open);
-  const { shareAttachmentTokens } = useAuthStore();
+  const shareAttachmentTokens = useAuthStore((s) => s.shareAttachmentTokens);
 
-  // Append the share JWT so public users can load backend images; warn when the token is missing.
-  const resolvedSrc = (src: string) => {
-    src = prepareBackendLink(src);
-    const attachmentKey = extractAttachmentKeyFromUrl(src);
-    if (!attachmentKey) return src;
-    const jwt = shareAttachmentTokens[attachmentKey];
-    if (!jwt) {
-      console.warn(
-        `No share-attachment JWT found for attachment key ${attachmentKey}. The image WILL not load for public users.`,
-      );
-      return src;
-    }
-    return new AttachmentLinkBuilder(new AttachmentApi())
-      .setJwt(jwt)
-      .getLink(attachmentKey);
-  };
+  const rawSrc = node.attrs.src ?? "";
+  const preparedSrc = prepareBackendLink(rawSrc);
+  const attachmentKey = extractAttachmentKeyFromUrl(preparedSrc);
+  const jwt = attachmentKey ? shareAttachmentTokens[attachmentKey] : undefined;
 
-  const src: string = resolvedSrc(node.attrs.src ?? "");
+  // Warn once per attachment key while the JWT is missing. Without
+  // this, every nodeview re-render re-fires the warning
+  useEffect(() => {
+    console.log(
+      `[editor-debug] image-nodeview:effect fires key=${attachmentKey} hasJwt=${!!jwt} tokensLoaded=${useAuthStore.getState().shareAttachmentTokensLoaded}`,
+    );
+    if (!attachmentKey || jwt) return;
+    console.warn(
+      `No share-attachment JWT found for attachment key ${attachmentKey}. The image WILL not load for public users.`,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attachmentKey]);
+
+  // Append the share JWT so public users can load backend images.
+  const src =
+    !attachmentKey || !jwt
+      ? preparedSrc
+      : new AttachmentLinkBuilder(new AttachmentApi())
+          .setJwt(jwt)
+          .getLink(attachmentKey);
 
   // Click opens the preview modal for our own attachments; external URLs keep browser default.
   const handleClick = () => {

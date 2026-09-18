@@ -58,6 +58,11 @@ export function useUser(): UseQueryResult<WersuUserImpl, Error> {
   });
 }
 
+// Cache usersById by raw query-data identity. Tanstack preserves the
+// data ref across renders when nothing changed, so the cache hit
+// returns the same Record ref and stops frequent useless updates
+const usersByIdCache = new WeakMap<object, Record<string, WersuUser>>();
+
 /**
  * Hook to fetch all users the current user has access to, including their friends
  * @returns
@@ -76,11 +81,14 @@ export function useUsers(
 
     // the cached entry is plain JSON -> recreate class
     select: (data) => {
-      var users: Record<string, WersuUser> = {};
+      const cached = usersByIdCache.get(data);
+      if (cached) return cached;
+      const next: Record<string, WersuUser> = {};
       for (const user of data) {
-        users[user.id] = new WersuUserImpl(user);
+        next[user.id] = new WersuUserImpl(user);
       }
-      return users;
+      usersByIdCache.set(data, next);
+      return next;
     },
   });
 }
