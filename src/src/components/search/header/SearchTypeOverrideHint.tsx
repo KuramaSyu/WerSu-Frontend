@@ -1,11 +1,5 @@
 import React from "react";
-import {
-  Box,
-  Button,
-  Stack,
-  Tooltip,
-  Typography,
-} from "@mui/material";
+import { Box, Button, Stack, Tooltip, Typography } from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { useNavigate } from "react-router-dom";
 import {
@@ -26,9 +20,9 @@ const TYPE_LABEL: Record<RestNotesSearchType, string> = {
 
 // (i) indicator shown when the current mode matches the user's
 // chosen default; tooltip links out to Settings.
-export const SearchTypeOverrideHint: React.FC<{ current: RestNotesSearchType }> = ({
-  current,
-}) => {
+export const SearchTypeOverrideHint: React.FC<{
+  current: RestNotesSearchType;
+}> = ({ current }) => {
   const defaultSearchType = useSearchSettings((s) => s.defaultSearchType);
   const navigate = useNavigate();
 
