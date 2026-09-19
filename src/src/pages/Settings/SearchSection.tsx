@@ -13,20 +13,14 @@ import {
   type SearchTypeDefault,
 } from "../../zustand/useSearchSettings";
 
-type PickableType =
-  | RestNotesSearchType.KEYWORD
-  | RestNotesSearchType.TYPO_TOLERANT
-  | RestNotesSearchType.CONTEXT;
-
-const PICKABLE: PickableType[] = [
+const PICKABLE = [
   RestNotesSearchType.KEYWORD,
   RestNotesSearchType.TYPO_TOLERANT,
   RestNotesSearchType.CONTEXT,
-];
+] as const satisfies readonly RestNotesSearchType[];
 
-// Match the labels rendered inside SearchStrategySelect so every
-// surface names a mode the same way.
-const TYPE_LABEL: Record<PickableType, string> = {
+// Label per mode; mirrors the labels used inside SearchStrategySelect.
+const TYPE_LABEL: { [K in (typeof PICKABLE)[number]]: string } = {
   [RestNotesSearchType.KEYWORD]: "Keyword",
   [RestNotesSearchType.TYPO_TOLERANT]: "Fuzzy",
   [RestNotesSearchType.CONTEXT]: "Context",
