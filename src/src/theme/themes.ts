@@ -152,6 +152,50 @@ export const midnightTheme = createTheme({
   },
 } as CustomTheme);
 
+export const everforestHardDark = createTheme({
+  palette: {
+    mode: "dark",
+    primary: { main: "#a7c080" },
+    secondary: { main: "#e69875" },
+    text: { primary: "#d3c6aa", secondary: "#9E9580" },
+    background: {
+      default: "#2d353b",
+      paper: "#343f44",
+    },
+    error: { main: "#e67e80", dark: "#514054" },
+    warning: { main: "#dbbc7f", dark: "#4d4c43" },
+    success: { main: "#a7c080", dark: "#425047" },
+  },
+  custom: {
+    backgroundImage: "https://i.postimg.cc/prhxrMh8/thumb-1920-553471.jpg",
+    themeName: "everforest-hard-dark",
+    longName: "Everforest Dark",
+  },
+} as CustomTheme);
+
+export const everforestSoftLight = createTheme({
+  palette: {
+    mode: "light",
+    primary: { main: "#8DA101" }, // green
+    secondary: { main: "#3A94C5" }, // blue
+    vibrant: { main: "#DF69BA", light: "#F1DDD4", dark: "#B85A9E" }, // purple / bg_purple
+    muted: { main: "#E5DFC5", light: "#F3EAD3", dark: "#DDD8BE" }, // bg2 / bg0 / bg3
+    text: { primary: "#5C6A72", secondary: "#829181" }, // fg / grey2
+    background: {
+      default: "#F3EAD3", // bg0
+      paper: "#EAE4CA", // bg1
+    },
+    error: { main: "#F85552", light: "#E66868", dark: "#C44340" }, // red / statusline3
+    warning: { main: "#DFA000", light: "#F1E4C5", dark: "#B58A00" }, // yellow / bg_yellow
+    success: { main: "#8DA101", light: "#93B259", dark: "#6F8400" }, // green / statusline1
+  },
+  custom: {
+    backgroundImage: "https://i.postimg.cc/prhxrMh8/thumb-1920-553471.jpg",
+    themeName: "everforest-soft-light",
+    longName: "Everforest Soft Light",
+  },
+} as CustomTheme);
+
 export const customThemes = [
   new CustomThemeImpl(
     createTheme({
@@ -169,4 +213,6 @@ export const customThemes = [
   new CustomThemeImpl(githubTheme),
   new CustomThemeImpl(midnightTheme),
   new CustomThemeImpl(defaultTheme),
+  new CustomThemeImpl(everforestHardDark),
+  new CustomThemeImpl(everforestSoftLight),
 ];
