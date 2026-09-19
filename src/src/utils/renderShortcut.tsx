@@ -3,26 +3,7 @@ import { useThemeStore } from "../zustand/useThemeStore";
 import type React from "react";
 import { topbarContrastText } from "../theme/topbarContrastText";
 
-/**
- * Renders a keyboard shortcut string into styled React components.
- *
- * @param shortcut - A keyboard shortcut string with keys separated by `+` or `,`
- *                   Examples: "ctrl+c", "cmd+shift+s", "alt,ctrl,del"
- * @returns A React node containing the rendered shortcut with styled components
- *
- * @example
- * ```tsx
- * renderShortcut("ctrl+c") // Renders: [ctrl symbol] + [c key]
- * renderShortcut("cmd+shift+s") // Renders: [cmd symbol] + [shift key] + [s key]
- * ```
- *
- * @remarks
- * - The `+` separator is rendered as a styled separator element
- * - The `,` separator acts as a silent separator (no visual representation)
- * - Special keys like "super", "cmd", and "ctrl" are rendered using the `superKey()` function
- * - Regular keys are rendered as `<kbd>` elements with secondary text color
- * - All components are wrapped in a flexbox container with centered alignment
- */
+/** Render a keyboard shortcut string into styled chips; "+" is shown, "," is silent. */
 export function renderShortcut(
   shortcut: string,
   onlyText: boolean = false,
@@ -80,11 +61,9 @@ function Key({
   return (
     <Paper
       // component="kbd"
-      elevation={onlyText ? 0 : 15}
+      elevation={onlyText ? 0 : 4}
       sx={{
-        fontSize: "inherit", // Use the AppBar-aware contrast color so chips stay readable
-        // when the parent passes an arbitrary color (e.g. the SearchBar
-        // button sits on a `primary.main` AppBar in light mode).
+        fontSize: "inherit",
         // color: theme.palette.background.paper,
         border: onlyText ? undefined : `1px solid`,
         px: 1,
