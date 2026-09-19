@@ -33,20 +33,10 @@ import { useCreateModalsFromUrl } from "../../hooks/useCreateModalsFromUrl";
 import CreateFab from "../../components/CreateFab";
 import { FabSlot } from "../../components/FabSlot";
 
-/**
- * Home page.
- *
- * Layout:
- *   - left panel: navigation, recent activity, directory tree
- *   - body: favourite directories + all directories sections
- *   - bottom-right FAB: new-note only; new-directory lives on
- *     DirectoryView (the per-directory create flow there handles
- *     parent-id correctly).
- */
+/** Home page: nav + recent activity on the left, favourites + all dirs in the body. */
 export const HomePage: React.FC = () => {
   const [createNoteOpen, setCreateNoteOpen] = useState(false);
-  // Directory modal isn't mounted on Home; the setter exists
-  // so the create-directory URL branch doesn't TypeError.
+  // Directory modal isn't mounted here; setter exists for the URL branch.
   const [, setCreateDirectoryOpen] = useState(false);
   const {
     rightPanelOpen,
@@ -90,10 +80,7 @@ export const HomePage: React.FC = () => {
   );
 
   // Mobile: hide the left rail by default. The user can still open
-  // it via the bottom-bar swipe-right gesture (which sets the
-  // override) — see `MobileBottomBar`. Without the override, the
-  // rail stays closed and the bottom-bar shortcuts / FABs reach
-  // the user without competing for screen real estate.
+  // it via the bottom-bar swipe-right gesture (sets the override).
   useEffect(() => {
     if (!isMobile) {
       return;
@@ -120,7 +107,9 @@ export const HomePage: React.FC = () => {
         <Stack direction="column" spacing={2}>
           <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
             <StarIcon color="primary" fontSize="small" />
-            <Typography variant="h5">Favourite directories</Typography>
+            <Typography variant="h5" color="textPrimary">
+              Favourite directories
+            </Typography>
           </Stack>
           <FavouriteDirectories />
         </Stack>
@@ -128,7 +117,9 @@ export const HomePage: React.FC = () => {
         <Stack direction="column" spacing={2}>
           <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
             <FolderIcon color="primary" fontSize="small" />
-            <Typography variant="h5">All directories</Typography>
+            <Typography variant="h5" color="textPrimary">
+              All directories
+            </Typography>
           </Stack>
           <AllDirectories />
         </Stack>
