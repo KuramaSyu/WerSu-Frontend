@@ -1,28 +1,15 @@
 import { create } from "zustand";
 import { RestNotesSearchType } from "../api/models/search";
+import {
+  FALLBACK_SEARCH_TYPE,
+  SEARCH_TYPE_NO_OVERRIDE,
+  useSearchSettings,
+} from "./useSearchSettings";
 
-/**
- * How the directory filter is applied to note results.
- *
- * `all` is the default and disables filtering: every note passes
- * through regardless of which directories are selected.
- *
- * `include` keeps only notes whose `directory_ids` intersect the
- * selected set.
- *
- * `exclude` drops notes whose `directory_ids` intersect the selected
- * set.
- */
+/** Directory filter mode: all = no filter; include/exclude intersect against note directories. */
 export type SearchFilterMode = "all" | "include" | "exclude";
 
-/**
- * How the directory selection expands before the include/exclude check.
- *
- * `direct` keeps only the user-selected directory ids. `subtree`
- * expands them to include every transitive descendant directory
- * (children, grandchildren, ...). The "root" sentinel stays a single
- * id — it has no descendants either way.
- */
+/** Scope of directory selection: direct = selected ids only; subtree = descendants too. */
 export type SearchFilterScope = "direct" | "subtree";
 
 export interface SearchFilter {
@@ -30,11 +17,7 @@ export interface SearchFilter {
   selectedDirs: string[];
   /** How the selected dirs are applied. */
   mode: SearchFilterMode;
-  /**
-   * Whether the selection expands to all transitive descendants.
-   * Only takes effect when `mode !== "all"` and at least one
-   * directory is selected.
-   */
+  /** Whether the selection expands to all transitive descendants. */
   scope: SearchFilterScope;
 }
 
@@ -70,50 +53,42 @@ const defaultFilter = (): SearchFilter => ({
   scope: "direct",
 });
 
-export const useSearchFilterStore = create<SearchFilterState>((set) => ({
-  searchType: RestNotesSearchType.CONTEXT,
-  search: "",
-  debouncedSearch: "",
-  filter: defaultFilter(),
+export const useSearchFilterStore = create<SearchFilterState>((set) => {
+  // Seeded from the persisted search-settings store so the
+  // user-chosen default is in place on the very first render.
+  const settingsDefault = useSearchSettings.getState().defaultSearchType;
+  const initialSearchType =
+    settingsDefault === SEARCH_TYPE_NO_OVERRIDE
+      ? FALLBACK_SEARCH_TYPE
+      : settingsDefault;
+  return {
+    searchType: initialSearchType,
+    search: "",
+    debouncedSearch: "",
+    filter: defaultFilter(),
 
-  setSearchType: (t) => set({ searchType: t }),
-  setSearch: (q) => set({ search: q }),
-  setDebouncedSearch: (q) => set({ debouncedSearch: q }),
-  setFilterMode: (m) =>
-    set((state) => ({ filter: { ...state.filter, mode: m } })),
-  setSelectedDirs: (ids) =>
-    set((state) => ({ filter: { ...state.filter, selectedDirs: ids } })),
-  setFilterScope: (s) =>
-    set((state) => ({ filter: { ...state.filter, scope: s } })),
-  setFilter: (partial) =>
-    set((state) => ({ filter: { ...state.filter, ...partial } })),
-  resetFilter: () => set({ filter: defaultFilter() }),
-  resetAll: () =>
-    set({
-      search: "",
-      debouncedSearch: "",
-      filter: defaultFilter(),
-    }),
-}));
+    setSearchType: (t) => set({ searchType: t }),
+    setSearch: (q) => set({ search: q }),
+    setDebouncedSearch: (q) => set({ debouncedSearch: q }),
+    setFilterMode: (m) =>
+      set((state) => ({ filter: { ...state.filter, mode: m } })),
+    setSelectedDirs: (ids) =>
+      set((state) => ({ filter: { ...state.filter, selectedDirs: ids } })),
+    setFilterScope: (s) =>
+      set((state) => ({ filter: { ...state.filter, scope: s } })),
+    setFilter: (partial) =>
+      set((state) => ({ filter: { ...state.filter, ...partial } })),
+    resetFilter: () => set({ filter: defaultFilter() }),
+    resetAll: () =>
+      set({
+        search: "",
+        debouncedSearch: "",
+        filter: defaultFilter(),
+      }),
+  };
+});
 
-/**
- * Returns true when the given note's parent directories pass the
- * configured filter.
- *
- * `effectiveDirs` is the *expanded* set of directory ids to compare
- * against — the raw `selectedDirs` for `scope: "direct"`, or the
- * full transitive subtree for `scope: "subtree"`. Expansion lives in
- * the caller (see `expandToSubtree`) so this function stays O(1) per
- * note.
- *
- * - `mode: "all"` always returns true.
- * - `mode: "include"` keeps only notes whose `directory_ids` intersect
- *   `effectiveDirs`; an empty `effectiveDirs` shows nothing. Notes
- *   with no parent directories are treated as living under the
- *   synthetic "root" sentinel.
- * - `mode: "exclude"` drops notes whose `directory_ids` intersect
- *   `effectiveDirs`; an empty `effectiveDirs` shows everything.
- */
+/** True when the note's directories pass the filter; effectiveDirs is already expanded by caller. */
 export function passesFilter(
   directoryIds: string[],
   filter: SearchFilter,
@@ -128,28 +103,7 @@ export function passesFilter(
   return filter.mode === "include" ? intersects : !intersects;
 }
 
-/**
- * Expands `selectedDirs` to include every transitive descendant
- * directory id. Returns the input as-is when `scope === "direct"` or
- * no directories are provided.
- *
- * The synthetic `ROOT_SENTINEL_ID` is special: it's not a real
- * directory id, it doesn't appear in `directoriesById`, and
- * conventionally represents "the workspace root" — i.e. "any note
- * with no parent directory, plus any note in a top-level directory".
- * Without this expansion, picking `root` would silently match only
- * orphan notes (notes with `directory_ids.length === 0`), which is
- * almost never what the user wants when they click the obvious
- * "root" entry in the dropdown.
- *
- * In `subtree` mode we additionally walk the descendant tree of each
- * selected (and root-expanded) directory.
- *
- * `directoriesById` is the directory lookup table passed by the
- * caller (typically derived from `useAllDirectoriesQuery`). Each
- * entry's `child_dir_ids` provides the immediate children; we walk the
- * tree depth-first and accumulate.
- */
+/** Expand selectedDirs to transitive descendants; root sentinel maps to every top-level dir. */
 export function expandToSubtree(
   selectedDirs: string[],
   scope: SearchFilterScope,
@@ -162,9 +116,8 @@ export function expandToSubtree(
     return selectedDirs;
   }
 
-  // Expand the synthetic `root` sentinel to "every top-level
-  // directory" regardless of scope. `passesFilter` separately treats
-  // orphan notes as living under `root`, so this catches the rest.
+  // Expand the synthetic root sentinel to every top-level directory;
+  // passesFilter treats orphan notes as living under root too.
   const seedIds = selectedDirs.includes(ROOT_SENTINEL_ID)
     ? [
         ...new Set([
