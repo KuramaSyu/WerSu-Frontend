@@ -36,11 +36,11 @@ export const SearchSection: React.FC = () => {
       <Stack>
         <Typography variant="subtitle1">Default search mode</Typography>
         <Typography variant="body2" color="text.secondary">
-          Which mode the global search overlay opens with. `Default` leaves
-          the choice un-set, so the overlay falls back to the app-wide
-          default. Switching modes inside the overlay still overrides this
-          for the current session; the choice here only takes effect on the
-          next fresh page load.
+          Which mode the global search overlay opens with. `Default` leaves the
+          choice un-set, so the overlay falls back to the app-wide default.
+          Switching modes inside the overlay still overrides this for the
+          current session; the choice here only takes effect on the next fresh
+          page load.
         </Typography>
       </Stack>
 
