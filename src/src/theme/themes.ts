@@ -159,8 +159,8 @@ export const everforestHardDark = createTheme({
     secondary: { main: "#e69875" },
     text: { primary: "#d3c6aa", secondary: "#9E9580" },
     background: {
-      default: "#2d353b",
-      paper: "#343f44",
+      default: "#232a2e",
+      paper: "#2d353b",
     },
     error: { main: "#e67e80", dark: "#514054" },
     warning: { main: "#dbbc7f", dark: "#4d4c43" },
