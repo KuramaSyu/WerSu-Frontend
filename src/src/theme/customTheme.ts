@@ -8,6 +8,7 @@ import {
 } from "@mui/material/styles";
 import {
   blendColors,
+  getRelativeLuminance,
   hexToHsl,
   hexToRgb,
   hslToHex,
@@ -32,21 +33,11 @@ export type ColorInput =
   | "secondaryLight"
   | "secondaryDark";
 
-/**
- * Alias of MUI's `Theme`. The interface is augmented with the project's
- * extra palette fields and helper methods in `customTheme.ts` and
- * `interfaces.ts`, so `Theme` already carries everything `CustomTheme`
- * used to add. Kept as an alias for callers that still import it.
- */
+/** Alias of MUI Theme; the augmenting module below adds the project's extra fields. */
 export type CustomTheme = Theme;
 
-// Augment MUI's `Theme`, `Palette`, and `ThemeOptions` interfaces with
-// every field and method that `CustomTheme` adds. With this block in
-// place, `useTheme()` already returns the augmented type, so any caller
-// that reads `theme.elevate(...)`, `theme.iconTransition`, etc. no
-// longer needs a cast. `CustomTheme` is now an alias of `Theme` (kept
-// for callers that still import the name), but the augmenting
-// declarations here are what actually drive the runtime typing.
+// Augment MUI's Theme/Palette so useTheme() returns our extended type.
+// CustomTheme is now an alias of Theme; these declarations drive runtime typing.
 declare module "@mui/material/styles" {
   interface Palette {
     poppyColors: string[];
@@ -58,88 +49,40 @@ declare module "@mui/material/styles" {
     colorTransition: {
       root: { transition: string; "&:hover"?: { transition: string } };
     };
-    /**
-     * Transition snippets scoped to a `color` change only. Use these on
-     * wrappers whose descendants paint via `currentColor` (icons, plain
-     * text in plain DOM, etc.) so the color shift fades in instead of
-     * snapping. The root variant is the default; the `&:hover` variant
-     * is intended to be spread onto the same wrapper's hover state.
-     */
+    /** Color-only transition snippets for wrappers whose children paint via currentColor. */
     iconTransition: {
       root: { transition: string; "&:hover"?: { transition: string } };
     };
 
-    /**
-     * mixes the mainColor with the contrast color from the theme
-     * to a specified amount. Like a dynamic brigthen() or darken()
-     * depending theme.
-     * @param mainColor the color to mix
-     * @param theme the theme to use to get the contrast color
-     * @param amount the amount to mix, 0.0 = mainColor, 1.0 = contrastColor
-     * @returns the blended color in hex format
-     */
+    /** Mix color with theme contrast at amount (0..1). */
     blendWithContrast(
       color: ColorInput,
       amount: number,
       useTextAsContrast: undefined | "primary" | "secondary",
     ): string;
 
-    /**
-     * mixes the mainColor with its calculated contrast color
-     * to a specified amount. Like a dynamic brighten() or darken()
-     * depending on the color's luminance.
-     * @param mainColor the color which gets mixed with the inverted contrast color (dark color -> lighter, light color --> darker)
-     * @param amount the amount to mix, 0.0 = mainColor, 1.0 = contrastColor
-     * @param useTextAsContrast what to use as contrast. undefined: mainColor's contrast color (default), primary and secondary refers to text.primary and text.secondary from the theme
-     * @returns the blended color in hex format
-     */
+    /** Mix color with its own inverted contrast at amount (0..1). */
     blendAgainstContrast(
       color: ColorInput,
       amount: number,
       useTextAsContrast: undefined | "primary" | "secondary",
     ): string;
 
-    /**
-     * Change Saturation of a color by converting it to HSL
-     *
-     * @param color the color to change saturation of
-     * @param ChangeAmount (-1 to 1) the relative amount to change saturation depending on the current saturation. 0 = no change, -1 = desaturate to gray, 1 = fully saturate.
-     * @returns the color with changed saturation in hex format
-     */
+    /** Shift saturation (-1 desaturate to gray, +1 fully saturate). */
     changeSaturation(color: ColorInput, ChangeAmount: number): string;
 
-    /**
-     * Apply a MUI-style elevation overlay to a color: mixes the source
-     * against `palette.background.default` at a level-dependent opacity.
-     * Direction (toward lighter or darker) follows the theme mode.
-     *
-     * @param color the surface color to elevate (hex or named palette role)
-     * @param level elevation level 0-24 (clamped); 0 returns the color unchanged
-     * @returns the elevated color in hex format
-     */
+    /** Apply MUI-style elevation overlay; direction follows palette mode. */
     elevate(color: ColorInput, level: number): string;
 
-    /**
-     * Updates `transitions.duration.complex` in-place and refreshes derived
-     * transition style snippets that depend on that duration.
-     */
+    /** Update transitions.duration.complex and refresh derived snippets. */
     setComplexDuration(durationMs: number): void;
-
-    /**
-     * Multiplies all transition duration values in-place.
-     */
+    /** Multiply all transition durations in-place. */
     setDurationMultiplier(multiplier: number): void;
-
-    /**
-     * Replaces transition duration values in-place.
-     */
+    /** Replace transition durations in-place. */
     setTransitionDurations(durations: Theme["transitions"]["duration"]): void;
   }
 }
-/**
- * Config to extend theme.
- * Multiple backgrounds. actual theme gets one of them.
- */
+/** Theme extension config; one background is picked from the list at runtime. */
 export interface CustomThemeConfig {
   name: string; // Short identifier, e.g. 'ocean'
   longName: string; // Descriptive name, e.g. 'Ocean Breeze'
@@ -158,12 +101,7 @@ export interface RecalculateOpions {
   recalculateSuccessInfoWarningErrorColors?: boolean; // Whether to recalculate success, info, warning, and error colors based on contrast
 }
 
-/**
- * Implementation of CustomTheme with following features:
- * - blendWithContrast and blendAgainstContrast methods
- * - adjusted text colors
- * - adjusted background colors
- */
+/** Theme wrapper adding blend helpers and adjusted text/background colors. */
 export class CustomThemeImpl implements CustomTheme {
   // Declare all Theme properties
   palette!: CustomTheme["palette"];
@@ -214,6 +152,29 @@ export class CustomThemeImpl implements CustomTheme {
   ) {
     Object.assign(this, theme);
 
+    // Map MUI white/black return values to theme tokens so they flip with palette mode.
+    const baseContrastText = this.palette.getContrastText.bind(this.palette);
+    const parseRgb = (raw: string): { r: number; g: number; b: number } => {
+      const rgba = raw.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+      if (rgba) {
+        return { r: +rgba[1], g: +rgba[2], b: +rgba[3] };
+      }
+      return hexToRgb(raw);
+    };
+    this.palette.getContrastText = (background: string): string => {
+      const result = baseContrastText(background);
+      const rgb = parseRgb(result);
+      const luminance = getRelativeLuminance(rgb.r, rgb.g, rgb.b);
+      if (luminance > 0.5) {
+        return this.palette.mode === "dark"
+          ? this.palette.text.primary
+          : this.palette.background.default;
+      }
+      return this.palette.mode === "dark"
+        ? this.palette.background.default
+        : this.palette.text.primary;
+    };
+
     // If config is provided, use it; otherwise use theme's custom property
     if (config) {
       this.custom = config;
@@ -231,14 +192,8 @@ export class CustomThemeImpl implements CustomTheme {
       hslToHex((h + 200) % 360, s, l),
       hslToHex((h + 240) % 360, s, l),
     ];
-    // Side-rail surface. If the source theme didn't define one
-    // (e.g. the empty `material-mark` theme passes only
-    // `palette: { mode: "dark" }`), nudge `background.default`
-    // slightly: lighter in dark mode, darker in light mode, so
-    // the rail lifts off the canvas without competing with cards.
-    // Uses the directly-imported MUI helpers because `this.lighten`
-    // and `this.darken` aren't bound until further down in the
-    // constructor.
+    // Side-rail surface: nudge background.default so the rail lifts
+    // off the canvas. Uses imported helpers (this.lighten/darken unbound yet).
     const basePanel = this.palette.background.default;
     const computedPanel =
       this.palette.mode === "dark"
@@ -339,7 +294,7 @@ export class CustomThemeImpl implements CustomTheme {
       };
     }
     if (recalculateColors?.recalculateTextColors === true) {
-      // blend text colors with contrast color
+      // Blend text colors toward contrast color.
       this.palette.text = {
         primary: rgbToHex(
           blendColors(
@@ -439,7 +394,7 @@ export class CustomThemeImpl implements CustomTheme {
 
     console.log("custom props", RootColorAndRadius);
 
-    // Merge custom component overrides
+    // Compute once, then merge into component overrides below.
     const tooltipBbackground = this.elevate(this.palette.background.paper, 24);
     this.components = {
       ...this.components, // Spread existing component overrides
@@ -447,8 +402,7 @@ export class CustomThemeImpl implements CustomTheme {
         styleOverrides: {
           tooltip: {
             backgroundColor: tooltipBbackground,
-            // Derive the contrast colour from the tooltip's own
-            // background
+            // Derive contrast color from the tooltip's own background.
             color: this.palette.getContrastText(tooltipBbackground),
             fontSize: this.typography.caption.fontSize,
             borderRadius: 8,
@@ -547,11 +501,8 @@ export class CustomThemeImpl implements CustomTheme {
           },
         },
       },
-      // MuiListItemButton extends MuiButtonBase, which inherits the
-      // RootColorAndRadius pill -> 8px transition on hover. Pin the
-      // hover radius to the default-no-hover value so the background
-      // swap on selection/hover doesn't reshape the row (slash command
-      // menu, note versions, settings panels, table of contents, ...).
+      // MuiListItemButton inherits RootColorAndRadius pill->8px hover.
+      // Pin hover radius to 8 so the row shape stays steady on selection.
       MuiListItemButton: {
         styleOverrides: {
           root: {
@@ -559,6 +510,14 @@ export class CustomThemeImpl implements CustomTheme {
             "&:hover": {
               borderRadius: 8,
             },
+          },
+        },
+      },
+
+      MuiSvgIcon: {
+        styleOverrides: {
+          root: {
+            color: this.palette.text.primary,
           },
         },
       },
@@ -629,9 +588,7 @@ export class CustomThemeImpl implements CustomTheme {
   elevate(color: ColorInput, level: number): string {
     const resolved = this.resolveColor(color);
     // MUI Paper applies the elevation overlay only in dark mode (light mode
-    // relies on box-shadow alone). In dark mode the overlay is plain white
-    // at the alpha returned by `getOverlayAlpha` (the same curve MUI uses
-    // for `Paper elevation={n}`).
+    // relies on box-shadow alone); reuse getOverlayAlpha's curve.
     if (this.palette.mode !== "dark") return resolved;
     return blendWithAlpha(resolved, "#ffffff", getOverlayAlpha(level));
   }
@@ -672,18 +629,16 @@ export class CustomThemeImpl implements CustomTheme {
   }
 
   setTransitionDurations(durations: Theme["transitions"]["duration"]): void {
-    // Merge allows partial updates while preserving untouched duration tokens.
+    // Merge for partial updates; refresh derived snippets after.
     this.transitions.duration = {
       ...this.transitions.duration,
       ...durations,
     };
-
-    // Some style snippets are precomputed and must be rebuilt after duration changes.
     this.refreshColorTransition();
   }
 
   refreshColorTransition(): void {
-    // Rebuild reusable transition definitions that depend on `transitions.duration`.
+    // Rebuild snippets that depend on transitions.duration.
     this.colorTransition = {
       root: {
         transition: this.transitions.create(
@@ -728,12 +683,7 @@ export class CustomThemeImpl implements CustomTheme {
     };
   }
 
-  /**
-   * returns hex color for given ColorInput
-   *
-   * @param color the hex itself, or the name (primary, secondary, ...)
-   * @returns a hex color string
-   */
+  /** Resolve a hex or palette role to a hex string. */
   resolveColor(color: ColorInput): string {
     switch (color) {
       case "primary":
@@ -761,13 +711,8 @@ export class CustomThemeImpl implements CustomTheme {
   }
 }
 
-// Returns the overlay opacity for a given elevation level, matching the
-// curve MUI's `<Paper>` uses to tint the surface with `rgba(255,255,255,a)`.
-// Source: `packages/mui-material/src/styles/getOverlayAlpha.ts`.
-//
-// Kept module-level (same rationale as the rgb/hsl helpers below): it
-// must not become a (private) member on `CustomThemeImpl`, since that
-// would break assignability to `Partial<Theme>`.
+// Overlay opacity for MUI's Paper elevation curve (dark mode only).
+// Module-level because it must not become a private CustomThemeImpl member.
 function getOverlayAlpha(elevation: number): number {
   let alphaValue;
   if (elevation < 1) {
@@ -790,9 +735,8 @@ function blendWithAlpha(base: string, overlay: string, alpha: number): string {
   });
 }
 
-// Module-level color helpers. Kept out of the class so that they don't appear
-// as (private) members on `CustomThemeImpl`'s type, which would otherwise
-// break assignability to `Partial<Theme>` (TS structural privacy check).
+// Module-level color helpers kept out of the class so CustomThemeImpl stays
+// assignable to Partial<Theme> (TS structural privacy check on private members).
 function rgbToHsl(
   r: number,
   g: number,
