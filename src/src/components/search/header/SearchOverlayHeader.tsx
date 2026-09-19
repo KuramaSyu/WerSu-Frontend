@@ -1,27 +1,21 @@
 import React, { useEffect, useRef } from "react";
-import { Box, InputAdornment, Stack, TextField } from "@mui/material";
+import { InputAdornment, Stack, TextField } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import { useSearchFilterStore } from "../../../zustand/useSearchFilterStore";
 import SearchStrategySelect from "../../SearchStrategySelect";
-import { M3, M4 } from "../../../statics";
+import { M2, M3, M4 } from "../../../statics";
 import { useDebouncedSearchSync } from "./SearchOverlayHeader.hook";
 import { isCtrlPlus } from "../../../utils/CtrlPlus";
+import { SearchTypeOverrideHint } from "./SearchTypeOverrideHint";
 
 interface Props {
-  // Kept on the interface so callers don't break when they still
-  // pass an `onClose`. The close affordance itself lives on the
-  // mobile drawer's swipe handle / backdrop tap, and on the
-  // desktop backdrop click / ESC keyboard handler.
+  // Kept so callers still passing onClose don't break; the actual
+  // close affordance lives on the drawer's swipe handle / backdrop.
   onClose: () => void;
 }
 
-// Search input with the strategy picker (keyword / typo-tolerant
-// / context) sitting right next to it. Two siblings in a row
-// instead of nesting the picker inside the input's adornment --
-// keeps both controls at their natural widths and avoids the
-// toggle group stealing vertical space from the input.
-// subscribes only to `search` + `searchType` so keystrokes don't
-// ripple into the filter or results list
+// Search input with strategy picker as a sibling, not an adornment.
+// Subscribes to search + searchType only so keystrokes don't ripple.
 export const SearchOverlayHeader: React.FC<Props> = () => {
   const search = useSearchFilterStore((s) => s.search);
   const searchType = useSearchFilterStore((s) => s.searchType);
@@ -32,11 +26,8 @@ export const SearchOverlayHeader: React.FC<Props> = () => {
 
   useDebouncedSearchSync(search);
 
-  // When the overlay is already open, Ctrl+K re-focuses the
-  // search input instead of toggling the overlay (the open
-  // half of the shortcut is owned by `SearchBar`). The handler
-  // is mounted only while this header is in the tree, so the
-  // focus branch only fires when the overlay is open.
+  // When the overlay is open, Ctrl+K re-focuses the input; the open
+  // half is owned by SearchBar. Mounted only while header is mounted.
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!isCtrlPlus(event, "k")) return;
@@ -81,13 +72,21 @@ export const SearchOverlayHeader: React.FC<Props> = () => {
           },
         }}
       />
-      <Box sx={{ flexShrink: 0, width: 5 / 13 }}>
+      <Stack
+        direction="row"
+        sx={{
+          flexShrink: 0,
+          alignItems: "center",
+          gap: M2,
+        }}
+      >
         <SearchStrategySelect
           searchType={searchType}
           setSearchType={setSearchType}
           color="primary"
         />
-      </Box>
+        <SearchTypeOverrideHint current={searchType} />
+      </Stack>
     </Stack>
   );
 };

@@ -3,20 +3,19 @@ import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import CodeIcon from "@mui/icons-material/Code";
 import PaletteIcon from "@mui/icons-material/Palette";
+import SearchIcon from "@mui/icons-material/Search";
 import type { SettingsCategory } from "./types";
 import { BookstackImportSection } from "./BookstackImportSection";
 import { CacheSection } from "./CacheSection";
 import { AdministrationSection } from "./AdministrationSection";
 import { AppearanceSection } from "./AppearanceSection";
 import { DeveloperSection } from "./DeveloperSection";
+import { SearchSection } from "./SearchSection";
 import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
 import { useAppearanceSettings } from "../../zustand/useAppearanceSettings";
+import { SEARCH_TYPE_NO_OVERRIDE, useSearchSettings } from "../../zustand/useSearchSettings";
 
-/**
- * Add new categories here; both the left rail and the right-column
- * body read this list, so a new entry shows up in both places
- * automatically.
- */
+/** Add new categories here; both the rail and the body read this list. */
 export const settingsCategories: SettingsCategory[] = [
   {
     id: "administration",
@@ -46,8 +45,7 @@ export const settingsCategories: SettingsCategory[] = [
         useAppearanceSettings.getState();
       setCodeBlockThemeLight("tokyo-night-light");
       setCodeBlockThemeDark("material-palenight");
-      // Developer mode is part of appearance preferences; reset it too
-      // so "Reset Appearance settings" returns to the shipped defaults.
+      // Developer mode is part of appearance prefs; reset alongside.
       useFeatureStore.getState().setFlag(FeatureFlagName.DeveloperMode, false);
     },
   },
@@ -56,5 +54,16 @@ export const settingsCategories: SettingsCategory[] = [
     label: "Developer",
     icon: <CodeIcon />,
     settingsContent: <DeveloperSection />,
+  },
+  {
+    id: "search",
+    label: "Search",
+    icon: <SearchIcon />,
+    settingsContent: <SearchSection />,
+    resetLogic: () => {
+      useSearchSettings
+        .getState()
+        .setDefaultSearchType(SEARCH_TYPE_NO_OVERRIDE);
+    },
   },
 ];
