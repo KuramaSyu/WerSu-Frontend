@@ -152,6 +152,29 @@ export const midnightTheme = createTheme({
   },
 } as CustomTheme);
 
+export const tokyoNightStorm = createTheme({
+  palette: {
+    mode: "dark",
+    primary: { main: "#7aa2f7" }, // Terminal Blue
+    secondary: { main: "#bb9af7" }, // Terminal Magenta
+    vibrant: { main: "#7dcfff", light: "#b4f9f8", dark: "#2ac3de" }, // Terminal Cyan / Regex strings / Lang support
+    muted: { main: "#565f89", light: "#414868", dark: "#1a1b26" }, // Comments / Terminal Black / Editor bg (Night)
+    text: { primary: "#a9b1d6", secondary: "#9aa5ce" }, // Editor Foreground / Markdown Text
+    background: {
+      default: "#1a1b26", // Slightly lifted off Storm bg
+      paper: "#24283b", // // Editor Background (Storm)
+    },
+    error: { main: "#f7768e" }, // Terminal Red
+    warning: { main: "#e0af68" }, // Terminal Yellow
+    success: { main: "#9ece6a" }, // Strings / CSS class names (closest green)
+  },
+  custom: {
+    backgroundImage: "https://i.postimg.cc/prhxrMh8/thumb-1920-553471.jpg",
+    themeName: "tokyo-night-storm",
+    longName: "Tokyo Night Storm",
+  },
+} as CustomTheme);
+
 export const everforestHardDark = createTheme({
   palette: {
     mode: "dark",
@@ -215,4 +238,5 @@ export const customThemes = [
   new CustomThemeImpl(defaultTheme),
   new CustomThemeImpl(everforestHardDark),
   new CustomThemeImpl(everforestSoftLight),
+  new CustomThemeImpl(tokyoNightStorm),
 ];
