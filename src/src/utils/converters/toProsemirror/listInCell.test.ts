@@ -17,6 +17,7 @@ import {
 } from "@tiptap/extension-table";
 import { BulletList, ListItem, OrderedList } from "@tiptap/extension-list";
 
+import { CustomHardBreak } from "../../../components/Editor/CustomHardBreak";
 import { renderWerSuTable } from "../toMarkdown/renderTableToMarkdown";
 import { markdownToProsemirror } from "./markdownToProsemirror";
 
@@ -39,6 +40,9 @@ function makeEditor(): Editor {
         orderedList: false,
         listItem: false,
       }),
+      // CustomHardBreak is required so the Markdown parser recognises
+      // `<br/>` as a hardBreak node when round-tripping cell content.
+      CustomHardBreak,
       BulletList,
       ListItem,
       OrderedList,
