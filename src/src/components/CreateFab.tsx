@@ -4,6 +4,7 @@ import CreateNewFolderIcon from "@mui/icons-material/CreateNewFolder";
 import NoteAddIcon from "@mui/icons-material/NoteAdd";
 import { ShortcutHint } from "./ShortcutHint";
 import { isCtrlPlus } from "../utils/CtrlPlus";
+import { useThemeStore } from "../zustand/useThemeStore";
 
 export interface CreateFabProps {
   onCreateNote: () => void;
@@ -25,6 +26,7 @@ const CreateFab: React.FC<CreateFabProps> = ({
   onCreateNote,
   onCreateDirectory,
 }) => {
+  const { theme } = useThemeStore();
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (isCtrlPlus(event, "n", { alt: true })) {
@@ -60,7 +62,12 @@ const CreateFab: React.FC<CreateFabProps> = ({
             },
           }}
         >
-          <NoteAddIcon sx={{ mr: 1 }} />
+          <NoteAddIcon
+            sx={{
+              mr: 1,
+              color: theme.palette.getContrastText(theme.palette.primary.main),
+            }}
+          />
           <Typography>Note</Typography>
         </Fab>
       </ShortcutHint>
@@ -79,7 +86,14 @@ const CreateFab: React.FC<CreateFabProps> = ({
               },
             }}
           >
-            <CreateNewFolderIcon sx={{ mr: 1 }} />
+            <CreateNewFolderIcon
+              sx={{
+                mr: 1,
+                color: theme.palette.getContrastText(
+                  theme.palette.primary.main,
+                ),
+              }}
+            />
             <Typography>Folder</Typography>
           </Fab>
         </ShortcutHint>

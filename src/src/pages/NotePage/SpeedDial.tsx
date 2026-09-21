@@ -1,8 +1,5 @@
-// Floating editor actions. After the right rail took over insert /
-// image / latex / version, this corner is left with the
-// read/write toggle (primary FAB) on the left and the
-// source/rich toggle (secondary FAB) on the right. Save lives
-// in the desktop top bar.
+// Floating editor actions: read/write FAB and source/rich FAB.
+// Save lives in the desktop top bar.
 
 import { Box, ButtonBase, Fab, Stack, Tooltip } from "@mui/material";
 import CodeIcon from "@mui/icons-material/Code";
@@ -21,8 +18,7 @@ export interface InsertSpeedDialProps {
   setSourceMarkdown: (markdown: string) => void;
 }
 
-// Secondary round 56x56 button: paper background, divider border,
-// hover tint. Used by the source/rich toggle.
+// Round 56x56 secondary FAB: paper bg, divider border, hover tint.
 const SecondaryFab: React.FC<{
   label: string;
   onClick: () => void;
@@ -73,6 +69,7 @@ export const InsertSpeedDial: React.FC<InsertSpeedDialProps> = ({
   sourceMarkdown,
   setSourceMarkdown,
 }) => {
+  const { theme } = useThemeStore();
   const { viewMode, setViewMode, editMode, setWrite } = useEditorSettings();
   const { isMobile } = useBreakpoint();
   const setContent = useActiveNoteStore((s) => s.setContent);
@@ -90,16 +87,18 @@ export const InsertSpeedDial: React.FC<InsertSpeedDialProps> = ({
     setViewMode("rich");
   };
 
-  // Read/write toggle: the icon shows the mode the tap will switch
-  // INTO -- eye when currently writable (tap to read), pencil when
-  // currently read-only (tap to write).
+  // Read/write FAB icon shows the mode the tap switches INTO,
+  // not the current mode.
   const readWriteLabel = editMode
     ? "Switch to read mode"
     : "Switch to write mode";
   const ReadWriteIcon = editMode ? VisibilityIcon : EditIcon;
 
   const bottom = isMobile ? `calc(${M4} + ${MOBILE_BOTTOM_BAR_CLEARANCE})` : M4;
-
+  const paperFg = theme.palette.getContrastText(
+    theme.palette.background.default,
+  );
+  const primaryFg = theme.palette.getContrastText(theme.palette.primary.main);
   return (
     <Stack
       direction="row"
@@ -119,14 +118,18 @@ export const InsertSpeedDial: React.FC<InsertSpeedDialProps> = ({
           aria-label={readWriteLabel}
           onClick={() => setWrite(!editMode)}
         >
-          <ReadWriteIcon />
+          <ReadWriteIcon sx={{ color: primaryFg }} />
         </Fab>
       </Tooltip>
       <SecondaryFab
         label={isRich ? "Source view" : "Rich editor"}
         onClick={handleSourceToggle}
       >
-        {isRich ? <CodeIcon /> : <EditIcon />}
+        {isRich ? (
+          <CodeIcon sx={{ color: paperFg }} />
+        ) : (
+          <EditIcon sx={{ color: paperFg }} />
+        )}
       </SecondaryFab>
     </Stack>
   );
