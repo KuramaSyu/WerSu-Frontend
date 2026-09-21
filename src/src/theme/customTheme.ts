@@ -6,6 +6,7 @@ import {
   type Theme,
   type Motion,
 } from "@mui/material/styles";
+import { getContrastRatio } from "@mui/system/colorManipulator";
 import {
   blendColors,
   getRelativeLuminance,
@@ -152,27 +153,17 @@ export class CustomThemeImpl implements CustomTheme {
   ) {
     Object.assign(this, theme);
 
-    // Map MUI white/black return values to theme tokens so they flip with palette mode.
-    const baseContrastText = this.palette.getContrastText.bind(this.palette);
-    const parseRgb = (raw: string): { r: number; g: number; b: number } => {
-      const rgba = raw.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
-      if (rgba) {
-        return { r: +rgba[1], g: +rgba[2], b: +rgba[3] };
-      }
-      return hexToRgb(raw);
-    };
+    // Reuse MUI contrast math: pick the readable palette token.
+    const threshold = this.palette.contrastThreshold ?? 3;
     this.palette.getContrastText = (background: string): string => {
-      const result = baseContrastText(background);
-      const rgb = parseRgb(result);
-      const luminance = getRelativeLuminance(rgb.r, rgb.g, rgb.b);
-      if (luminance > 0.5) {
-        return this.palette.mode === "dark"
-          ? this.palette.text.primary
-          : this.palette.background.default;
+      const textContrast = getContrastRatio(
+        background,
+        this.palette.text.primary,
+      );
+      if (textContrast >= threshold) {
+        return this.palette.text.primary;
       }
-      return this.palette.mode === "dark"
-        ? this.palette.background.default
-        : this.palette.text.primary;
+      return this.palette.background.default;
     };
 
     // If config is provided, use it; otherwise use theme's custom property
