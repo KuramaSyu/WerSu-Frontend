@@ -269,11 +269,9 @@ const LiveUserCard: React.FC<{
   awarenessColor: string | undefined;
 }> = ({ userId, username, avatarUrl, awarenessColor }) => {
   const display = username ?? userId;
-  // Without a profile lookup, the userId IS the display (not a
-  // separate handle we want under it). The caption only added value
-  // when the display was the username; rendering it twice reads as
-  // a duplicated label, especially for public viewers whose userId
-  // is the generated handle from the awareness state.
+  // Without a profile lookup, the userId IS the display
+  // for public users, there is no caption and the id is used instead
+  // (or if the id was not found)
   const showIdCaption = Boolean(username) && display !== userId;
   return (
     <Paper
