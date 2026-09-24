@@ -37,12 +37,10 @@ export default defineConfig({
     devSourcemap: false,
   },
   plugins: [react(), devMswWorkerPlugin()],
-  // `@tiptap/y-tiptap@3.0.9` (the latest available) ships with a different
-  // prosemirror peer set than `@tiptap/extension-collaboration@3.31.x`, so
-  // Vite splits yjs into two pre-bundled chunks (e.g. `yjs-K2RM7Hp8.js`
-  // and `yjs-DxprN0N1.js`). Constructor checks across the two copies then
+  // prosemirror of `@tiptap/y-tiptap@3.0.9` collides with `@tiptap/extension-collaboration@3.31.x`.
+  // Constructor checks across the two copies then
   // throw "Unexpected content type in insert operation" when y-tiptap's
-  // binding tries to write a `Y.XmlElement` into our app-owned fragment.
+  // binding tries to write a `Y.XmlElement`.
   // Force a single resolution path so all `yjs` imports share one module.
   resolve: {
     dedupe: ["yjs"],
