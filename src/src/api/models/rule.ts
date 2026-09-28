@@ -1,15 +1,18 @@
-/**
- * Rule types - request/response shapes for the authenticated
- * rule-management REST endpoints mounted under `/api/rules`
- * (CRUD). Rules drive the automation attached to a shelf or
- * directory; the wire format carries the full event/condition
- * payload even though the swagger leaves `CreateRuleBody` empty
- * (the backend reads the same field set the reply echoes back).
- */
+// Rule types. Mirrors WerSu-Rest/src/controllers/rule_controller.go:
+// POST /api/rules, GET /api/rules, GET /api/rules/:id,
+// PATCH /api/rules/:id, DELETE /api/rules/:id.
+// Scoping to a shelf uses the list filter
+// attached_entity_type=shelf and attached_entity_id=:id.
 
-/** Reply shape for a single rule row returned by
- *  `GET /api/rules`, `GET /api/rules/:id`, `POST /api/rules`,
- *  and `PATCH /api/rules/:id`. */
+export type AttachedEntityType = "directory" | "note" | "shelf";
+
+export type RuleConditionType =
+  | "always_true"
+  | "note_content_contains"
+  | "note_title_contains";
+
+export type RuleActionType = "add_to_directory" | "add_tag";
+
 export interface RuleReply {
   id: string;
   event_type?: string;
@@ -24,9 +27,6 @@ export interface RuleReply {
   updated_at?: string;
 }
 
-/** Query for `GET /api/rules`. Every field is optional and
- *  combines with AND. `enabled_only` filters the list down to
- *  enabled rules. */
 export interface ListRulesQuery {
   event_type?: string;
   attached_entity_type?: string;
@@ -35,27 +35,27 @@ export interface ListRulesQuery {
   creator_id?: string;
 }
 
-/** Body for `POST /api/rules`. All fields are optional from the
- *  REST contract; the backend will reject the row if the
- *  resulting rule is incomplete. */
+// Body for POST /api/rules. The backend marks the first six fields
+// as required and returns 400 when any are missing.
 export interface CreateRuleBody {
-  event_type?: string;
-  attached_entity_type?: string;
-  attached_entity_id?: string;
-  condition?: Record<string, unknown>;
-  action_type?: string;
-  action_context?: Record<string, unknown>;
+  event_type: string;
+  attached_entity_type: AttachedEntityType;
+  attached_entity_id: string;
+  condition: Record<string, unknown>;
+  action_type: RuleActionType;
+  action_context: Record<string, unknown>;
   enabled?: boolean;
+  creator_id?: string;
 }
 
-/** Body for `PATCH /api/rules/:id`. Every field is optional;
- *  only the supplied fields are forwarded. */
+// Body for PATCH /api/rules/:id. Every field optional; only supplied
+// keys are forwarded.
 export interface UpdateRuleBody {
   event_type?: string;
-  attached_entity_type?: string;
+  attached_entity_type?: AttachedEntityType;
   attached_entity_id?: string;
   condition?: Record<string, unknown>;
-  action_type?: string;
+  action_type?: RuleActionType;
   action_context?: Record<string, unknown>;
   enabled?: boolean;
 }
