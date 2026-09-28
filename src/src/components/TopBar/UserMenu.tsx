@@ -18,6 +18,7 @@ import DarkModeIcon from "@mui/icons-material/DarkMode";
 import HomeIcon from "@mui/icons-material/Home";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import Logout from "@mui/icons-material/Logout";
+import RuleFolderIcon from "@mui/icons-material/RuleFolder";
 import SettingsIcon from "@mui/icons-material/Settings";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
@@ -25,6 +26,7 @@ import { useThemeStore } from "../../zustand/useThemeStore";
 import { useUser } from "../../api/queries/useUser";
 import { M1, M2, M4 } from "../../statics";
 import { Pages } from "./Pages";
+import { useSelectedShelfStore } from "../../zustand/useSelectedShelfStore";
 
 export interface UserMenuProps {
   /** Fired after the user picks a row; parent closes the surrounding Menu. */
@@ -32,16 +34,17 @@ export interface UserMenuProps {
 }
 
 /**
- * Avatar Menu body: profile header, theme selector, Pages (Graph),
- * Settings, Logout. Theme switching keeps the menu open so the
- * user can see the theme update live; the other rows close it.
- * Notifications live on a dedicated bell button.
+ * Avatar Menu body: profile header, theme selector, Pages (Home,
+ * Graph, Rules), Settings, Logout. Theme switching keeps the menu
+ * open so the user can see the theme update live; the other rows
+ * close it. Notifications live on a dedicated bell button.
  */
 export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
   const { theme, themeName, setTheme, customThemes } = useThemeStore();
   const { data: user } = useUser();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const selectedShelfId = useSelectedShelfStore((s) => s.selectedShelfId);
 
   // Clear the query cache so the previous user's data doesn't flash
   // on the next session.
@@ -64,6 +67,18 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
     navigate(Pages.HOME);
     onRequestClose();
   };
+
+  // Rules live at /shelves/:id/rules, so we need a shelf id.
+  // Falls back to home when none is selected.
+  const handleOpenRules = () => {
+    if (selectedShelfId !== null) {
+      navigate(`/shelves/${selectedShelfId}/rules`);
+    } else {
+      navigate(Pages.HOME);
+    }
+    onRequestClose();
+  };
+  const rulesDisabled = selectedShelfId === null;
 
   // Active theme -> "dark" | "light". The store exposes the live
   // MUI theme on `theme.palette.mode`; "dark" is the fallback so
@@ -196,6 +211,21 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
           <AccountTreeIcon fontSize="small" />
         </ListItemIcon>
         <ListItemText primary="Graph" />
+      </MenuItem>
+      <MenuItem
+        onClick={handleOpenRules}
+        disabled={rulesDisabled}
+        sx={{ "&:hover": { backgroundColor: theme.palette.action.hover } }}
+      >
+        <ListItemIcon>
+          <RuleFolderIcon fontSize="small" />
+        </ListItemIcon>
+        <ListItemText
+          primary="Rules"
+          secondary={
+            rulesDisabled ? "Pick a shelf first" : undefined
+          }
+        />
       </MenuItem>
 
       <Divider />
