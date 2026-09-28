@@ -22,6 +22,7 @@ import type {
 import {
   ACTION_CONTEXT_FIELDS,
   ACTION_TYPE_LABEL,
+  ACTION_TYPE_OPTIONS,
   CONDITION_FIELDS,
   CONDITION_TYPE_LABEL,
   CONDITION_TYPE_OPTIONS,
@@ -32,7 +33,11 @@ import {
   stringifyRecord,
   whenLabelFor,
 } from "./ruleFormShared";
-import { RuleEntityPicker, type RuleEntityKind } from "./RuleEntityPicker";
+import {
+  RuleEntityPicker,
+  useEntityDisplayLabel,
+  type RuleEntityKind,
+} from "./RuleEntityPicker";
 
 // Map from action context field name to a friendly picker kind so
 // `directory_id` becomes a directory picker and `tag_id` becomes a
@@ -152,7 +157,6 @@ export const RuleFormFields: React.FC<RuleFormFieldsProps> = ({
 
       <Section
         label="When"
-        title="When"
         right={
           showRawJsonToggle ? (
             <RawJsonToggle
@@ -188,9 +192,9 @@ export const RuleFormFields: React.FC<RuleFormFieldsProps> = ({
                 onChange({ ...initial, event_type: next });
               }}
             >
-              {Object.keys(EVENT_TYPE_WHEN_LABEL).map((opt) => (
-                <MenuItem key={opt} value={opt}>
-                  {opt}
+              {Object.entries(EVENT_TYPE_WHEN_LABEL).map(([value, label]) => (
+                <MenuItem key={value} value={value}>
+                  {label}
                 </MenuItem>
               ))}
             </Select>
@@ -232,7 +236,7 @@ export const RuleFormFields: React.FC<RuleFormFieldsProps> = ({
         </Stack>
       </Section>
 
-      <Section label="If" title="If">
+      <Section label="If">
         {rawJson ? (
           <RawConditionField
             value={initial.condition}
@@ -282,7 +286,7 @@ export const RuleFormFields: React.FC<RuleFormFieldsProps> = ({
         )}
       </Section>
 
-      <Section label="Then" title="Then">
+      <Section label="Then">
         {rawJson ? (
           <RawJsonField
             label="Action context JSON"
@@ -292,12 +296,36 @@ export const RuleFormFields: React.FC<RuleFormFieldsProps> = ({
         ) : (
           <Stack spacing={2}>
             <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-              <Chip
-                size="small"
-                variant="outlined"
-                color="primary"
-                label={ACTION_TYPE_LABEL[initial.action_type]}
-              />
+              <FormControl size="small" sx={{ minWidth: 200 }}>
+                <Select
+                  value={initial.action_type}
+                  onChange={(e) => {
+                    const next = e.target.value as RuleActionType;
+                    const allowedKeys = new Set(ACTION_CONTEXT_FIELDS[next]);
+                    const filtered: Record<string, unknown> = {};
+                    for (const [k, v] of Object.entries(
+                      initial.action_context ?? {},
+                    )) {
+                      if (allowedKeys.has(k)) {
+                        filtered[k] = v;
+                      }
+                    }
+                    onChange({
+                      ...initial,
+                      action_type: next,
+                      action_context: filtered,
+                    });
+                  }}
+                  size="small"
+                  inputProps={{ "aria-label": "action type" }}
+                >
+                  {ACTION_TYPE_OPTIONS.map((opt) => (
+                    <MenuItem key={opt} value={opt}>
+                      {ACTION_TYPE_LABEL[opt]}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
               <Typography variant="body2" color="text.secondary">
                 targeting
               </Typography>
@@ -337,7 +365,7 @@ export const RuleFormFields: React.FC<RuleFormFieldsProps> = ({
         )}
       </Section>
 
-      <Section label="State" title="State">
+      <Section label="State">
         <Stack direction="row" sx={{ alignItems: "center" }} spacing={1}>
           <Switch
             checked={initial.enabled}
@@ -365,7 +393,12 @@ const RulePreview: React.FC<{
 }> = ({ initial }) => {
   const whenLabel = whenLabelFor(initial.event_type);
   const andLabel = conditionAndLabelFor(initial.condition);
-  const actionTarget = readActionTarget(initial);
+  const attachedLabel = useAttachedLabel(initial);
+  const { kind: actionKind, id: actionId } = actionTargetFrom(initial);
+  const actionLabel = useEntityDisplayLabel(actionKind, actionId);
+  const targetKindForChip: RuleEntityKind | null =
+    actionId === "" ? null : actionKind;
+  const actionTarget = actionLabel ?? actionId;
 
   return (
     <Box
@@ -403,11 +436,7 @@ const RulePreview: React.FC<{
           variant="outlined"
           color="primary"
           icon={scopeIconFor(initial.attached_entity_type)}
-          label={
-            initial.attached_entity_id === ""
-              ? `pick ${initial.attached_entity_type}`
-              : initial.attached_entity_id
-          }
+          label={attachedLabel}
         />
         {andLabel !== null && (
           <Chip size="small" variant="outlined" label={`and ${andLabel}`} />
@@ -421,7 +450,7 @@ const RulePreview: React.FC<{
           color="primary"
           icon={targetIconFor(initial.action_context)}
           label={
-            actionTarget === ""
+            targetKindForChip === null
               ? ACTION_TYPE_LABEL[initial.action_type]
               : actionTarget
           }
@@ -435,10 +464,9 @@ const RulePreview: React.FC<{
 // State rows visually identical (label gutter + bordered card).
 const Section: React.FC<{
   label: string;
-  title: string;
   right?: React.ReactNode;
   children: React.ReactNode;
-}> = ({ label, title, right, children }) => (
+}> = ({ label, right, children }) => (
   <Box
     sx={{
       border: "1px solid",
@@ -451,16 +479,13 @@ const Section: React.FC<{
       direction="row"
       sx={{ alignItems: "center", justifyContent: "space-between", mb: 1.5 }}
     >
-      <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-        <Typography
-          variant="overline"
-          color="text.secondary"
-          sx={{ minWidth: "3.25rem" }}
-        >
-          {label}
-        </Typography>
-        <Typography variant="subtitle1">{title}</Typography>
-      </Stack>
+      <Typography
+        variant="overline"
+        color="text.secondary"
+        sx={{ minWidth: "3.25rem" }}
+      >
+        {label}
+      </Typography>
       {right}
     </Stack>
     {children}
@@ -540,15 +565,37 @@ function contextLabelFor(field: string): string {
   }
 }
 
-// Reads the action target id out of the action context for the
-// preview. Returns the raw id when the entity isn't loaded yet so
-// the chip still has something to show.
-function readActionTarget(form: RuleFormState): string {
+// Resolves the action target id together with its picker kind so
+// the preview can ask `useEntityDisplayLabel` for the display name.
+function actionTargetFrom(form: RuleFormState): {
+  kind: RuleEntityKind;
+  id: string;
+} {
   const context = form.action_context ?? {};
-  return (
+  const shelfId = readStringField(context, "shelf_id");
+  if (shelfId !== "") {
+    return { kind: "shelf", id: shelfId };
+  }
+  const tagId = readStringField(context, "tag_id");
+  if (tagId !== "") {
+    return { kind: "tag", id: tagId };
+  }
+  const directoryId =
     readStringField(context, "directory_id") ||
-    readStringField(context, "tag_id") ||
-    readStringField(context, "shelf_id") ||
-    readStringField(context, "directoryId")
-  );
+    readStringField(context, "directoryId");
+  return { kind: "directory", id: directoryId };
+}
+
+// Resolves the attached entity id to a display label so the
+// preview chip shows the shelf / directory / note / tag name
+// instead of its id.
+function useAttachedLabel(form: RuleFormState): string {
+  const id = form.attached_entity_id;
+  const type = form.attached_entity_type;
+  const kind: RuleEntityKind = type;
+  const label = useEntityDisplayLabel(kind, id);
+  if (id === "") {
+    return `pick ${type}`;
+  }
+  return label ?? id;
 }

@@ -11,7 +11,13 @@
 // id so the existing selection is still visible while data loads.
 
 import { useMemo } from "react";
-import { Autocomplete, Stack, TextField } from "@mui/material";
+import {
+  Autocomplete,
+  Stack,
+  TextField,
+  type SxProps,
+  type Theme,
+} from "@mui/material";
 import type { DirectoryReply } from "../../api/models/directory";
 import type { ShelfReply } from "../../api/models/shelf";
 import type { MinimalNote, MinimalTag } from "../../api/models/search";
@@ -96,7 +102,14 @@ export interface RuleEntityPickerProps {
   error?: boolean;
   /** Forwarded to the underlying TextField so it can shrink. */
   size?: "small" | "medium";
+  /** sx applied to the wrapper so callers can size the picker. */
+  sx?: SxProps<Theme>;
 }
+
+const DEFAULT_PICKER_SX: SxProps<Theme> = {
+  flexGrow: 1,
+  minWidth: 240,
+};
 
 // Picker used by RuleFormFields so the user picks shelf /
 // directory / note / tag by name. The component never lets the
@@ -111,6 +124,7 @@ export const RuleEntityPicker: React.FC<RuleEntityPickerProps> = ({
   helperText,
   error,
   size = "small",
+  sx,
 }) => {
   const options = useEntityOptions(kind);
 
@@ -140,7 +154,7 @@ export const RuleEntityPicker: React.FC<RuleEntityPickerProps> = ({
   }, [options, value, kind]);
 
   return (
-    <Stack>
+    <Stack sx={{ ...DEFAULT_PICKER_SX, ...sx }}>
       <Autocomplete<RuleEntityOption, false, false, false>
         options={options}
         value={selected}
@@ -190,6 +204,54 @@ function useEntityOptions(kind: RuleEntityKind): RuleEntityOption[] {
       return tags.map((record) => ({ kind, record, id: record.id }));
     }
   }
+}
+
+// Resolves a stored id back to a human-readable label using the
+// same data sources as `useEntityOptions`. Returns null when the
+// id has no match yet so the caller can decide how to render the
+// gap. Always invoked hooks guarantee stable order even when the
+// kind argument flips between renders.
+export function useEntityDisplayLabel(
+  kind: RuleEntityKind,
+  id: string,
+): string | null {
+  const shelvesQuery = useShelves({}, { enabled: kind === "shelf" });
+  const directoriesQuery = useAllDirectoriesQuery(kind === "directory");
+  const notesQuery = useLatestNotes();
+  const tagsById = useTagStore((s) => s.tagsById);
+
+  return useMemo(() => {
+    if (id === "") {
+      return null;
+    }
+    switch (kind) {
+      case "shelf": {
+        const hit = (shelvesQuery.data ?? []).find((record) => record.id === id);
+        return hit ? (labelOfShelf(hit)) : null;
+      }
+      case "directory": {
+        const hit = (directoriesQuery.list ?? []).find(
+          (record) => record.id === id,
+        );
+        return hit ? labelOfDirectory(hit) : null;
+      }
+      case "note": {
+        const hit = (notesQuery.data ?? []).find((record) => record.id === id);
+        return hit ? labelOfNote(hit) : null;
+      }
+      case "tag": {
+        const hit = tagsById[id];
+        return hit ? labelOfTag(hit) : null;
+      }
+    }
+  }, [
+    kind,
+    id,
+    shelvesQuery.data,
+    directoriesQuery.list,
+    notesQuery.data,
+    tagsById,
+  ]);
 }
 
 // Synthesises a stub option for ids the picker can't resolve yet
