@@ -51,25 +51,9 @@ function App() {
   const { theme } = useThemeStore();
 
   // QueryClientProvider lives in main.tsx; do not add a second one here
-  // or imperative `queryClient` invalidations target the wrong cache.
-  // `<Bootstrap />` lives INSIDE the Router on purpose: its
-  // `useShareTokenMode` reads `useLocation()` to decide whether the
-  // current route is `/public/*` and switch the auth-header provider
-  // accordingly. Render it before `<NavigationRecorder />` so the
-  // pathname is known by the time anything else observes it.
   return (
     <ThemeProvider theme={theme}>
-      {/* <CssBaseline /> */}
       <Router>
-        {/* <Box
-          sx={{
-            width: "100vw",
-            height: "100vh",
-            display: "flex",
-            flexDirection: "column",
-            overflow: "hidden", // Prevents content from growing beyond 100vh
-          }}
-        > */}
         <Bootstrap />
         <NavigationRecorder />
         <LayoutProvider>
@@ -90,7 +74,6 @@ function App() {
           </Routes>
         </LayoutProvider>
         <InfoDisplay />
-        {/* </Box> */}
       </Router>
     </ThemeProvider>
   );

@@ -161,7 +161,7 @@ export const RuleCard: React.FC<RuleCardProps> = ({
                 checked={rule.enabled ?? false}
                 onChange={(_, checked) => onToggleEnabled(rule, checked)}
                 disabled={isToggling}
-                inputProps={{ "aria-label": "toggle rule enabled" }}
+                slotProps={{ input: { "aria-label": "toggle rule enabled" } }}
               />
             </span>
           </Tooltip>
@@ -204,10 +204,10 @@ export const RuleCard: React.FC<RuleCardProps> = ({
 interface ActionLine {
   verb: string;
   detail: string | null;
-  iconNode: React.ReactNode;
+  iconNode: React.ReactElement;
 }
 
-function actionIconFor(rule: RuleReply): React.ReactNode {
+function actionIconFor(rule: RuleReply): React.ReactElement {
   const context = rule.action_context ?? {};
   const hasShelfId = readStringField(context, "shelf_id") !== "";
   if (rule.action_type === "add_tag") {
@@ -306,7 +306,7 @@ const RuleSummaryRow: React.FC<{
 
 // Pick the icon that matches the attached resource kind so the
 // "in <chip>" line reads visually like the action target chip.
-function attachedIconNode(rule: RuleReply): React.ReactNode {
+function attachedIconNode(rule: RuleReply): React.ReactElement {
   switch (rule.attached_entity_type) {
     case "shelf":
       return <ShelvesIcon fontSize="small" />;

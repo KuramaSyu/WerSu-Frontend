@@ -32,10 +32,7 @@ import {
   stringifyRecord,
   whenLabelFor,
 } from "./ruleFormShared";
-import {
-  RuleEntityPicker,
-  type RuleEntityKind,
-} from "./RuleEntityPicker";
+import { RuleEntityPicker, type RuleEntityKind } from "./RuleEntityPicker";
 
 // Map from action context field name to a friendly picker kind so
 // `directory_id` becomes a directory picker and `tag_id` becomes a
@@ -54,7 +51,7 @@ const ENTITY_TYPE_TO_PICKER_KIND: Record<AttachedEntityType, RuleEntityKind> = {
 };
 
 // Icon for the attached-scope chip in the live preview.
-function scopeIconFor(type: AttachedEntityType): React.ReactNode {
+function scopeIconFor(type: AttachedEntityType): React.ReactElement {
   switch (type) {
     case "shelf":
       return <ShelvesIcon fontSize="small" />;
@@ -66,7 +63,7 @@ function scopeIconFor(type: AttachedEntityType): React.ReactNode {
 }
 
 // Icon for the action-target chip in the live preview.
-function targetIconFor(context: Record<string, unknown>): React.ReactNode {
+function targetIconFor(context: Record<string, unknown>): React.ReactElement {
   if (readStringField(context, "shelf_id") !== "") {
     return <ShelvesIcon fontSize="small" />;
   }
@@ -244,11 +241,7 @@ export const RuleFormFields: React.FC<RuleFormFieldsProps> = ({
         ) : (
           <Stack spacing={2}>
             <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-              <Chip
-                size="small"
-                variant="outlined"
-                label="condition"
-              />
+              <Chip size="small" variant="outlined" label="condition" />
               <FormControl size="small" sx={{ minWidth: 200 }}>
                 <Select
                   value={conditionType}
@@ -318,7 +311,9 @@ export const RuleFormFields: React.FC<RuleFormFieldsProps> = ({
                       value={readStringField(initial.action_context, field)}
                       onChange={(id) => setActionContextField(field, id)}
                       label={contextLabelFor(field)}
-                      error={readStringField(initial.action_context, field) === ""}
+                      error={
+                        readStringField(initial.action_context, field) === ""
+                      }
                       size="small"
                     />
                   );
@@ -329,7 +324,9 @@ export const RuleFormFields: React.FC<RuleFormFieldsProps> = ({
                     label={field}
                     size="small"
                     value={readStringField(initial.action_context, field)}
-                    onChange={(e) => setActionContextField(field, e.target.value)}
+                    onChange={(e) =>
+                      setActionContextField(field, e.target.value)
+                    }
                     slotProps={{ htmlInput: { spellCheck: "false" } }}
                     sx={{ flexGrow: 1, minWidth: 200 }}
                   />
@@ -344,8 +341,10 @@ export const RuleFormFields: React.FC<RuleFormFieldsProps> = ({
         <Stack direction="row" sx={{ alignItems: "center" }} spacing={1}>
           <Switch
             checked={initial.enabled}
-            onChange={(_, checked) => onChange({ ...initial, enabled: checked })}
-            inputProps={{ "aria-label": "rule enabled" }}
+            onChange={(_, checked) =>
+              onChange({ ...initial, enabled: checked })
+            }
+            slotProps={{ input: { "aria-label": "rule enabled" } }}
           />
           <Typography variant="body2">
             {initial.enabled
@@ -480,7 +479,7 @@ const RawJsonToggle: React.FC<{
       size="small"
       checked={checked}
       onChange={(_, c) => onChange(c)}
-      inputProps={{ "aria-label": "toggle raw JSON" }}
+      slotProps={{ input: { "aria-label": "toggle raw JSON" } }}
     />
   </Stack>
 );
@@ -553,40 +552,3 @@ function readActionTarget(form: RuleFormState): string {
     readStringField(context, "directoryId")
   );
 }
-
-// JSON textarea control for one of the rule payload objects.
-const RawJsonField: React.FC<{
-  value: Record<string, unknown> | undefined;
-  onChange: (next: Record<string, unknown>) => void;
-  label: string;
-}> = ({ value, onChange, label }) => {
-  const [text, setText] = useState(stringifyRecord(value));
-  const [error, setError] = useState<string | null>(null);
-
-  return (
-    <TextField
-      label={label}
-      multiline
-      minRows={3}
-      maxRows={10}
-      size="small"
-      fullWidth
-      value={text}
-      onChange={(e) => {
-        const next = e.target.value;
-        setText(next);
-        const parsed = parseConditionOrContext(next);
-        if (next.trim() === "" || parsed !== null) {
-          setError(null);
-          onChange(parsed ?? {});
-        } else {
-          setError("Invalid JSON object");
-        }
-      }}
-      error={error !== null}
-      helperText={error ?? undefined}
-      slotProps={{ htmlInput: { spellCheck: "false" } }}
-      sx={{ mt: 1, fontFamily: "monospace" }}
-    />
-  );
-};
