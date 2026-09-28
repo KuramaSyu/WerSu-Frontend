@@ -12,6 +12,7 @@ import type {
 } from "../../api/models/rule";
 import { RuleFormFields, type RuleFormState } from "./RuleFormFields";
 import { useCreateRule, useUpdateRule } from "../../api/queries/rulesQueries";
+import { normalizeEventType } from "./ruleFormShared";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 
 export interface RuleFormModalProps {
@@ -27,7 +28,7 @@ export interface RuleFormModalProps {
 type Mode = "create" | "edit";
 
 const defaultForm = (): RuleFormState => ({
-  event_type: "note_created",
+  event_type: "NoteCreated",
   attached_entity_type: "shelf",
   attached_entity_id: "",
   condition: { type: "always_true" },
@@ -42,7 +43,7 @@ const buildEditInitialState = (
 ): RuleFormState => {
   const conditionType = readConditionType(rule.condition);
   return {
-    event_type: rule.event_type ?? "note_created",
+    event_type: normalizeEventType(rule.event_type),
     attached_entity_type:
       (rule.attached_entity_type as AttachedEntityType) ?? attachedEntityType,
     attached_entity_id: rule.attached_entity_id ?? "",

@@ -33,15 +33,21 @@ export const ACTION_TYPE_LABEL: Record<RuleActionType, string> = {
 };
 
 // "When" clause per event_type - the opening sentence of the
-// rule's trigger description. Backend treats event_type as opaque,
-// so unknown values fall back to the raw token wrapped in
-// backticks so the user still sees what fires the rule.
+// rule's trigger description. Backend rejects anything outside
+// its supported event set, so the dropdown only offers the four
+// values the rules service accepts.
 export const EVENT_TYPE_WHEN_LABEL: Record<string, string> = {
-  note_created: "a note was created",
-  note_updated: "a note was updated",
-  note_deleted: "a note was deleted",
-  note_viewed: "a note was viewed",
+  NoteCreated: "a note was created",
+  NoteUpdated: "a note was updated",
+  DirectoryCreated: "a directory was created",
+  DirectoryUpdated: "a directory was updated",
 };
+
+// Returns the canonical event_type for the dropdown default.
+// Unknown values pass through untouched so the UI can flag them.
+export function normalizeEventType(eventType: string | undefined): string {
+  return eventType ?? "NoteCreated";
+}
 
 // Resolve an event_type into its "When" sentence. Returns null
 // when the event_type is empty so callers can omit the row
