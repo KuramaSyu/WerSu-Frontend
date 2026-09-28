@@ -13,7 +13,10 @@ import { DeveloperSection } from "./DeveloperSection";
 import { SearchSection } from "./SearchSection";
 import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
 import { useAppearanceSettings } from "../../zustand/useAppearanceSettings";
-import { SEARCH_TYPE_NO_OVERRIDE, useSearchSettings } from "../../zustand/useSearchSettings";
+import {
+  SEARCH_TYPE_NO_OVERRIDE,
+  useSearchSettings,
+} from "../../zustand/useSearchSettings";
 
 /** Add new categories here; both the rail and the body read this list. */
 export const settingsCategories: SettingsCategory[] = [
