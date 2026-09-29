@@ -101,7 +101,11 @@ export const RuleFormModal: React.FC<RuleFormModalProps> = ({
 
   const [form, setForm] = useState<RuleFormState>(() =>
     mode === "create"
-      ? { ...defaultForm(), attached_entity_id: shelfId, attached_entity_type: attachedEntityType }
+      ? {
+          ...defaultForm(),
+          attached_entity_id: shelfId,
+          attached_entity_type: attachedEntityType,
+        }
       : buildEditInitialState(editingRule!, attachedEntityType),
   );
 

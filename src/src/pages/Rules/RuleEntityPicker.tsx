@@ -132,8 +132,7 @@ export const RuleEntityPicker: React.FC<RuleEntityPickerProps> = ({
   // records and stub options; stubs share the disambiguator so an
   // id-only label can be promoted to "label (id)" when needed.
   const disambiguated = useMemo(
-    () =>
-      disambiguateLabels(options, baseLabelOf, firstIdOf, secondIdOf),
+    () => disambiguateLabels(options, baseLabelOf, firstIdOf, secondIdOf),
     [options],
   );
   const getOptionLabel = (option: RuleEntityOption): string =>
@@ -226,8 +225,10 @@ export function useEntityDisplayLabel(
     }
     switch (kind) {
       case "shelf": {
-        const hit = (shelvesQuery.data ?? []).find((record) => record.id === id);
-        return hit ? (labelOfShelf(hit)) : null;
+        const hit = (shelvesQuery.data ?? []).find(
+          (record) => record.id === id,
+        );
+        return hit ? labelOfShelf(hit) : null;
       }
       case "directory": {
         const hit = (directoriesQuery.list ?? []).find(

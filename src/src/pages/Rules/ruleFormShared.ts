@@ -1,10 +1,7 @@
 // ruleFormShared.ts -- constants and small helpers shared by the
 // rule create and edit forms.
 
-import type {
-  RuleActionType,
-  RuleConditionType,
-} from "../../api/models/rule";
+import type { RuleActionType, RuleConditionType } from "../../api/models/rule";
 
 // Selectable values for the condition.type dropdown.
 export const CONDITION_TYPE_OPTIONS: ReadonlyArray<RuleConditionType> = [
@@ -80,14 +77,20 @@ export function conditionAndLabelFor(
 }
 
 // Companion field names per condition type.
-export const CONDITION_FIELDS: Record<RuleConditionType, ReadonlyArray<string>> = {
+export const CONDITION_FIELDS: Record<
+  RuleConditionType,
+  ReadonlyArray<string>
+> = {
   always_true: [],
   note_content_contains: ["substring"],
   note_title_contains: ["substring"],
 };
 
 // Companion field names per action type.
-export const ACTION_CONTEXT_FIELDS: Record<RuleActionType, ReadonlyArray<string>> = {
+export const ACTION_CONTEXT_FIELDS: Record<
+  RuleActionType,
+  ReadonlyArray<string>
+> = {
   add_to_directory: ["directory_id"],
   add_tag: ["tag_id"],
 };
@@ -102,7 +105,11 @@ export function parseConditionOrContext(
   }
   try {
     const parsed: unknown = JSON.parse(trimmed);
-    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    if (
+      parsed === null ||
+      typeof parsed !== "object" ||
+      Array.isArray(parsed)
+    ) {
       return null;
     }
     return parsed as Record<string, unknown>;
@@ -112,7 +119,9 @@ export function parseConditionOrContext(
 }
 
 // Pretty-print a JSON object for the raw view textarea.
-export function stringifyRecord(value: Record<string, unknown> | undefined): string {
+export function stringifyRecord(
+  value: Record<string, unknown> | undefined,
+): string {
   if (!value || Object.keys(value).length === 0) {
     return "{}";
   }
