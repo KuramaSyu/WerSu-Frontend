@@ -159,7 +159,7 @@ export const tokyoNightStorm = createTheme({
     secondary: { main: "#bb9af7" }, // Terminal Magenta
     vibrant: { main: "#7dcfff", light: "#b4f9f8", dark: "#2ac3de" }, // Terminal Cyan / Regex strings / Lang support
     muted: { main: "#565f89", light: "#414868", dark: "#1a1b26" }, // Comments / Terminal Black / Editor bg (Night)
-    text: { primary: "#a9b1d6", secondary: "#9aa5ce" }, // Editor Foreground / Markdown Text
+    text: { primary: "#CED7FF", secondary: "#a9b1d6" }, // Editor Foreground / Markdown Text
     background: {
       default: "#1a1b26", // Slightly lifted off Storm bg
       paper: "#24283b", // // Editor Background (Storm)
@@ -172,6 +172,52 @@ export const tokyoNightStorm = createTheme({
     backgroundImage: "https://i.postimg.cc/prhxrMh8/thumb-1920-553471.jpg",
     themeName: "tokyo-night-storm",
     longName: "Tokyo Night Storm",
+  },
+} as CustomTheme);
+
+export const tokyoNightLight = createTheme({
+  palette: {
+    mode: "light",
+    primary: { main: "#2959aa" }, // Terminal Blue
+    secondary: { main: "#5a3e8e" }, // Terminal Magenta
+    vibrant: { main: "#0f4b6e", light: "#006c86", dark: "#343B58" }, // Terminal Cyan / CSS HTML / Terminal Black
+    muted: { main: "#6c6e75", light: "#343B58", dark: "#e6e7ed" }, // Comments / Terminal Black / Editor bg (Light)
+    text: { primary: "#343b58", secondary: "#40434f" }, // Editor Foreground / Markdown Text
+    background: {
+      default: "#e6e7ed", // Editor Background
+      paper: "#d4d6dd", // Slightly lifted off default for cards/surfaces
+    },
+    error: { main: "#8c4351" }, // Terminal Red
+    warning: { main: "#8f5e15" }, // Terminal Yellow
+    success: { main: "#33635c" }, // Terminal Green
+  },
+  custom: {
+    backgroundImage: "https://i.postimg.cc/prhxrMh8/thumb-1920-553471.jpg",
+    themeName: "tokyo-night-light",
+    longName: "Tokyo Night Light",
+  },
+} as CustomTheme);
+
+export const tokyoNight = createTheme({
+  palette: {
+    mode: "dark",
+    primary: { main: "#7aa2f7" }, // Terminal Blue
+    secondary: { main: "#bb9af7" }, // Terminal Magenta
+    vibrant: { main: "#7dcfff", light: "#b4f9f8", dark: "#2ac3de" }, // Terminal Cyan / Regex strings / Lang support
+    muted: { main: "#565f89", light: "#414868", dark: "#1a1b26" }, // Comments / Terminal Black / Editor bg (Night)
+    text: { primary: "#CED7FF", secondary: "#a9b1d6" }, // Editor Foreground / Markdown Text
+    background: {
+      default: "#1a1b26", // Editor Background (Night) -- darker than Storm's #24283b
+      paper: "#1f2335", // Side-rail surface, lifted off the canvas
+    },
+    error: { main: "#f7768e" }, // Terminal Red
+    warning: { main: "#e0af68" }, // Terminal Yellow
+    success: { main: "#9ece6a" }, // Strings / CSS class names (closest green)
+  },
+  custom: {
+    backgroundImage: "https://i.postimg.cc/prhxrMh8/thumb-1920-553471.jpg",
+    themeName: "tokyo-night",
+    longName: "Tokyo Night",
   },
 } as CustomTheme);
 
@@ -239,4 +285,6 @@ export const customThemes = [
   new CustomThemeImpl(everforestHardDark),
   new CustomThemeImpl(everforestSoftLight),
   new CustomThemeImpl(tokyoNightStorm),
+  new CustomThemeImpl(tokyoNightLight),
+  new CustomThemeImpl(tokyoNight),
 ];
