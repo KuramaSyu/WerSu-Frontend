@@ -383,8 +383,6 @@ export class CustomThemeImpl implements CustomTheme {
       this.borderRadius,
     );
 
-    console.log("custom props", RootColorAndRadius);
-
     // Compute once, then merge into component overrides below.
     const tooltipBbackground = this.elevate(this.palette.background.paper, 24);
     this.components = {

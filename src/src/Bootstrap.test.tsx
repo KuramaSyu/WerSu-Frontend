@@ -81,6 +81,15 @@ vi.mock("./api/queries/useShareAccessToken", () => ({
   useShareAccessToken: () => undefined,
 }));
 
+// `useFakeApiMode` in `Bootstrap` does a dynamic `import("./mocks/browser")`
+// from inside a useEffect. In tests, the worker tears down before that
+// import settles, surfacing `msw/browser` as a post-teardown error. The
+// mock short-circuits the dynamic import so it resolves to a no-op
+// `setApiMode` and never touches the real `msw/browser` graph.
+vi.mock("./mocks/browser", () => ({
+  setApiMode: () => Promise.resolve(),
+}));
+
 // `globalUser` is read by the mocked `useUserStore` selector. Each test
 // sets it before rendering so the hook sees the right slice.
 let globalUser: { id: string } | null = null;
