@@ -265,6 +265,69 @@ export const everforestSoftLight = createTheme({
   },
 } as CustomTheme);
 
+// Esports arena dark: deep slate canvas, slightly elevated cards,
+// white text, blue accent (chart line + live indicators),
+// gold for highlighted text.
+export const esportsArena = createTheme({
+  palette: {
+    mode: "dark",
+    // Bright blue accent that pops on the slate canvas.
+    primary: { main: "#3b82f6", light: "#60a5fa", dark: "#1d4ed8" },
+    secondary: { main: "#fbbf24" }, // gold used for highlighted text
+    // Blue accent family with brighter/darker siblings.
+    vibrant: { main: "#3b82f6", light: "#60a5fa", dark: "#1e3a8a" },
+    muted: { main: "#374151", light: "#4b5563", dark: "#1f2937" },
+    text: { primary: "#f1f5f9", secondary: "#94a3b8" },
+    background: {
+      default: "#1a1f2c", // canvas: dark slate
+      paper: "#252b38", // cards/dialogs: slightly elevated
+    },
+    surfaces: {
+      // Side rails sit just above the canvas, behind the cards.
+      panel: "#1e2330",
+    },
+    warning: { main: "#fbbf24", light: "#fcd34d", dark: "#d97706" },
+    error: { main: "#f87171", light: "#fca5a5", dark: "#dc2626" },
+    success: { main: "#3b82f6", light: "#60a5fa", dark: "#1d4ed8" },
+  },
+  custom: {
+    backgroundImage: "https://i.postimg.cc/prhxrMh8/thumb-1920-553471.jpg",
+    themeName: "esports-arena",
+    longName: "Esports Arena",
+  },
+} as CustomTheme);
+
+// Cauldron chaos dark: deep indigo canvas, slightly lifted cards,
+// white text, lime-green magic accent, magenta highlight.
+export const cauldronChaos = createTheme({
+  palette: {
+    mode: "dark",
+    // Lime-green accent for the mystical smoke / live indicators.
+    secondary: { main: "#a3e635", light: "#bef264", dark: "#65a30d" },
+    // Magenta accent for highlights and the witch's hat.
+    primary: { main: "#ec4899", light: "#f472b6", dark: "#be185d" },
+    vibrant: { main: "#a3e635", light: "#bef264", dark: "#4d7c0f" },
+    muted: { main: "#312e81", light: "#4338ca", dark: "#1e1b4b" },
+    text: { primary: "#f5f3ff", secondary: "#a5b4fc" },
+    background: {
+      default: "#16162e", // deep indigo canvas
+      paper: "#1f1f3d", // cards/dialogs: lifted off canvas
+    },
+    surfaces: {
+      // Side rails sit just above the canvas, behind the cards.
+      panel: "#191937",
+    },
+    warning: { main: "#ec4899", light: "#f472b6", dark: "#be185d" },
+    error: { main: "#f87171", light: "#fca5a5", dark: "#dc2626" },
+    success: { main: "#a3e635", light: "#bef264", dark: "#65a30d" },
+  },
+  custom: {
+    backgroundImage: "https://i.postimg.cc/prhxrMh8/thumb-1920-553471.jpg",
+    themeName: "cauldron-chaos",
+    longName: "Cauldron Chaos",
+  },
+} as CustomTheme);
+
 export const customThemes = [
   new CustomThemeImpl(
     createTheme({
@@ -287,4 +350,6 @@ export const customThemes = [
   new CustomThemeImpl(tokyoNightStorm),
   new CustomThemeImpl(tokyoNightLight),
   new CustomThemeImpl(tokyoNight),
+  new CustomThemeImpl(esportsArena),
+  new CustomThemeImpl(cauldronChaos),
 ];
