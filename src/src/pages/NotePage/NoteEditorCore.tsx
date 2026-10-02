@@ -889,12 +889,18 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
                 onChange={(event) => setTitle(event.target.value)}
                 placeholder="Note title"
                 disableUnderline
+                disabled={!editMode}
                 sx={{
                   fontSize: theme.typography.h3,
                   // On mobile the outer paper has no padding so the
                   // title hugs the left edge; on larger viewports the
                   // `pr` keeps the cursor off the Paper's right edge.
                   pr: forceFullWidth ? 0 : M2,
+                  // disabled=true makes text grayed out.
+                  // -> Keep the title looking like normal text in read
+                  "& .MuiInputBase-input.Mui-disabled": {
+                    WebkitTextFillColor: theme.palette.text.primary,
+                  },
                 }}
               />
             </Box>
