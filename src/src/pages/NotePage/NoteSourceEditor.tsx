@@ -8,6 +8,10 @@
 import { forwardRef, memo, useImperativeHandle, useState } from "react";
 import { Box, TextField } from "@mui/material";
 import { logRerender } from "./editorRenderLog";
+import { useEditorSettings } from "../../zustand/useEditorSettings";
+import { useThemeStore } from "../../zustand/useThemeStore";
+import { useViewConfig } from "../../zustand/useViewConfig";
+import { M2 } from "../../statics";
 
 export interface NoteSourceEditorProps {
   sourceMarkdown: string;
@@ -26,6 +30,9 @@ const NoteSourceEditorImpl = forwardRef<
 >(({ sourceMarkdown, setSourceMarkdown, editorWidth }, ref) => {
   logRerender("NoteSourceEditor", { sourceLen: sourceMarkdown.length });
   const [textarea, setTextarea] = useState<HTMLTextAreaElement | null>(null);
+  const editMode = useEditorSettings((s) => s.editMode);
+  const forceFullWidth = useViewConfig((s) => !s.config.a4Width);
+  const { theme } = useThemeStore();
 
   useImperativeHandle(
     ref,
@@ -60,9 +67,15 @@ const NoteSourceEditorImpl = forwardRef<
         placeholder="Markdown source"
         fullWidth
         inputRef={setTextarea}
+        disabled={!editMode}
         sx={{
           fontFamily: "monospace",
           "& .MuiInputBase-input": { fontFamily: "monospace" },
+          // disabled=true makes text grayed out.
+          // -> Keep the title looking like normal text in read
+          "& .MuiInputBase-input.Mui-disabled": {
+            WebkitTextFillColor: theme.palette.text.primary,
+          },
         }}
       />
     </Box>
