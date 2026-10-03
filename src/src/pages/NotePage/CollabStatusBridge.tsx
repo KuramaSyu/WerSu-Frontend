@@ -1,18 +1,17 @@
 // ---------------------------------------------------------------------------
 // CollabStatusBridge
-//
-// Owns the provider -> collab-status store subscription. Same rationale
-// as LiveUsersBridge: keep it outside the editor body so editor
-// transactions don't re-subscribe or re-run status work. The toolbar
-// badge reads from `collabStatusStore` directly.
+// Owns the provider -> collab-status store subscription. Lives outside
+// the editor body so editor transactions don't re-subscribe. The toolbar
+// badge reads from collabStatusStore directly.
 // ---------------------------------------------------------------------------
 
-import { useEffect } from "react";
+import { memo, useEffect } from "react";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
 import {
   collabStatusStore,
   type CollabStatus,
 } from "../../zustand/useCollabStatusStore";
+import { logRerender } from "./editorRenderLog";
 
 export interface CollabStatusBridgeProps {
   noteId: string | undefined;
@@ -21,11 +20,12 @@ export interface CollabStatusBridgeProps {
   enabled: boolean;
 }
 
-export const CollabStatusBridge: React.FC<CollabStatusBridgeProps> = ({
+const CollabStatusBridgeImpl: React.FC<CollabStatusBridgeProps> = ({
   noteId,
   provider,
   enabled,
 }) => {
+  logRerender("CollabStatusBridge", { hasProvider: !!provider, enabled });
   useEffect(() => {
     if (!noteId) {
       return;
@@ -35,7 +35,7 @@ export const CollabStatusBridge: React.FC<CollabStatusBridgeProps> = ({
       return;
     }
     if (!provider) {
-      return; // hook is waiting on the JWT — leave its diagnostic alone
+      return; // hook is waiting on the JWT, leave its diagnostic alone
     }
 
     const setStatus = (status: CollabStatus, message?: string) =>
@@ -70,11 +70,10 @@ export const CollabStatusBridge: React.FC<CollabStatusBridgeProps> = ({
     provider.on("authenticated", onAuthenticated);
     provider.on("authenticationFailed", onAuthenticationFailed);
 
-    // Seed the status from the current provider state — needed because we
-    // may subscribe *after* the socket has already opened. The actual
-    // status lives on the inner `HocuspocusProviderWebsocket` (the
-    // `HocuspocusProvider` itself has no `status` field), so reach
-    // through `provider.configuration.websocketProvider` to read it.
+    // Seed the status from the current provider state, in case we
+    // subscribe after the socket has already opened. The status lives
+    // on the inner HocuspocusProviderWebsocket (HocuspocusProvider has
+    // no status field), so reach through provider.configuration.websocketProvider.
     const wsStatus = provider.configuration.websocketProvider.status;
     if (wsStatus === "connected") setStatus("connected");
     else if (wsStatus === "connecting") setStatus("connecting");
@@ -89,3 +88,5 @@ export const CollabStatusBridge: React.FC<CollabStatusBridgeProps> = ({
 
   return null;
 };
+
+export const CollabStatusBridge = memo(CollabStatusBridgeImpl);

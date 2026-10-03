@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { memo, useEffect } from "react";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
 import { useLiveUsersStore } from "../../zustand/useLiveUsersStore";
+import { logRerender } from "./editorRenderLog";
 
 export interface LiveUsersBridgeProps {
   noteId: string | undefined;
@@ -9,15 +10,13 @@ export interface LiveUsersBridgeProps {
   enabled: boolean;
 }
 
-/**
- * owns awareness of live-users and receives its updates. its separated to
- * resuce editor-rerenders
- */
-export const LiveUsersBridge: React.FC<LiveUsersBridgeProps> = ({
+/** Owns awareness of live users and its updates; separated to reduce editor rerenders. */
+const LiveUsersBridgeImpl: React.FC<LiveUsersBridgeProps> = ({
   noteId,
   provider,
   enabled,
 }) => {
+  logRerender("LiveUsersBridge", { hasProvider: !!provider, enabled });
   useEffect(() => {
     const awareness = provider?.awareness;
     if (!awareness || !noteId || !enabled) {
@@ -48,3 +47,5 @@ export const LiveUsersBridge: React.FC<LiveUsersBridgeProps> = ({
 
   return null;
 };
+
+export const LiveUsersBridge = memo(LiveUsersBridgeImpl);

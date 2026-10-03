@@ -1,7 +1,7 @@
 import type { Editor } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
-import { useEffect } from "react";
+import { useCallback } from "react";
 import {
   Paper,
   Stack,
@@ -16,48 +16,19 @@ import CodeIcon from "@mui/icons-material/Code";
 import BorderColorIcon from "@mui/icons-material/BorderColor";
 import FormatClearIcon from "@mui/icons-material/FormatClear";
 import { useThemeStore } from "../../zustand/useThemeStore";
-import { useEditorMenuStore } from "../../zustand/editorMenuStore";
 
 interface TextSelectionBubbleMenuProps {
   editor: Editor;
   enabled?: boolean;
 }
 
-/**
- * Determines whether the text selection bubble menu should be visible.
- *
- * @param editor - The editor instance to check the selection state from
- * @param enabled - Whether the text selection menu feature is globally enabled
- * @returns `true` if the menu should be visible, `false` otherwise
- *
- * @remarks
- * The menu will be hidden if:
- * - The menu is disabled globally or the editor is read-only
- * - No text is selected (collapsed caret selection)
- * - Only whitespace is selected
- *
- * The menu will only be shown when a non-empty text selection containing at least one non-whitespace character exists.
- */
+// O(1) shouldShow. Must stay cheap: invoked on every transaction.
 const isTextSelectionMenuVisibleNow = (editor: Editor, enabled: boolean) => {
-  // Menu is disabled globally or editor is read-only.
-  if (!enabled || !editor.isEditable) {
-    return false;
-  }
-
-  // Keep menu hidden until the editor actually has focus.
-  if (!editor.isFocused) {
-    return false;
-  }
-
+  if (!enabled || !editor.isEditable) return false;
+  if (!editor.isFocused) return false;
   const { from, to, empty } = editor.state.selection;
-  // Hide menu for collapsed caret selections.
-  if (empty || from === to) {
-    return false;
-  }
-
-  // Only show when real text is selected (not pure whitespace).
-  const selectedText = editor.state.doc.textBetween(from, to).trim();
-  return selectedText.length > 0;
+  if (empty || from === to) return false;
+  return true;
 };
 
 export const TextSelectionBubbleMenu = ({
@@ -65,59 +36,26 @@ export const TextSelectionBubbleMenu = ({
   enabled = true,
 }: TextSelectionBubbleMenuProps) => {
   const { theme } = useThemeStore();
-  const setTextSelectionMenuOpen = useEditorMenuStore(
-    (state) => state.setTextSelectionMenuOpen,
+
+  // Formatting flags only; visibility lives in MenuVisibilityBridge.
+  const { isBold, isItalic, isStrikethrough, isCode, isHighlight } =
+    useEditorState({
+      editor,
+      selector: (ctx) => ({
+        isBold: ctx.editor.isActive("bold"),
+        isItalic: ctx.editor.isActive("italic"),
+        isStrikethrough: ctx.editor.isActive("strike"),
+        isCode: ctx.editor.isActive("code"),
+        isHighlight: ctx.editor.isActive("highlight"),
+      }),
+    });
+
+  // Stable identity so the BubbleMenu plugin doesn't tear down on every render.
+  const shouldShow = useCallback(
+    ({ editor: viewEditor }: { editor: Editor }) =>
+      isTextSelectionMenuVisibleNow(viewEditor, enabled),
+    [enabled],
   );
-  const {
-    isBold,
-    isItalic,
-    isStrikethrough,
-    isCode,
-    isHighlight,
-    isTextSelectionMenuVisible,
-  } = useEditorState({
-    editor,
-    selector: (ctx) => ({
-      isBold: ctx.editor.isActive("bold"),
-      isItalic: ctx.editor.isActive("italic"),
-      isStrikethrough: ctx.editor.isActive("strike"),
-      isCode: ctx.editor.isActive("code"),
-      isHighlight: ctx.editor.isActive("highlight"),
-      // Keep formatting-state selection and visibility state in one editor snapshot.
-      isTextSelectionMenuVisible: isTextSelectionMenuVisibleNow(
-        ctx.editor,
-        enabled,
-      ),
-    }),
-  });
-
-  useEffect(() => {
-    // Publish menu visibility so competing menus (e.g., table controls) can hide immediately.
-    setTextSelectionMenuOpen(isTextSelectionMenuVisible);
-    return () => {
-      // Reset global menu state when component unmounts.
-      setTextSelectionMenuOpen(false);
-    };
-  }, [isTextSelectionMenuVisible, setTextSelectionMenuOpen]);
-
-  useEffect(() => {
-    const syncVisibility = () => {
-      // Sync immediately on editor events to avoid one-click lag when selection collapses.
-      setTextSelectionMenuOpen(isTextSelectionMenuVisibleNow(editor, enabled));
-    };
-
-    editor.on("selectionUpdate", syncVisibility);
-    editor.on("transaction", syncVisibility);
-    editor.on("blur", syncVisibility);
-    // Run once on mount/config changes.
-    syncVisibility();
-
-    return () => {
-      editor.off("selectionUpdate", syncVisibility);
-      editor.off("transaction", syncVisibility);
-      editor.off("blur", syncVisibility);
-    };
-  }, [editor, enabled, setTextSelectionMenuOpen]);
 
   const formats = [
     ...(isBold ? ["bold"] : []),
@@ -128,12 +66,7 @@ export const TextSelectionBubbleMenu = ({
   ];
 
   return (
-    <BubbleMenu
-      editor={editor}
-      options={{ placement: "top", offset: 8, flip: true }}
-      // Read live editor state so menu closes immediately when selection collapses.
-      shouldShow={() => isTextSelectionMenuVisibleNow(editor, enabled)}
-    >
+    <BubbleMenu editor={editor} shouldShow={shouldShow}>
       <Paper
         elevation={2}
         sx={{

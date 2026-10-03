@@ -1,6 +1,7 @@
 // Floating editor actions: read/write FAB and source/rich FAB.
 // Save lives in the desktop top bar.
 
+import { memo } from "react";
 import { Box, ButtonBase, Fab, Stack, Tooltip } from "@mui/material";
 import CodeIcon from "@mui/icons-material/Code";
 import EditIcon from "@mui/icons-material/Edit";
@@ -11,6 +12,7 @@ import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { useActiveNoteStore } from "../../zustand/editorStore";
 import { useThemeStore } from "../../zustand/useThemeStore";
+import { logRerender } from "./editorRenderLog";
 
 export interface InsertSpeedDialProps {
   editor: Editor | null;
@@ -64,11 +66,15 @@ const SecondaryFab: React.FC<{
   );
 };
 
-export const InsertSpeedDial: React.FC<InsertSpeedDialProps> = ({
+const InsertSpeedDialImpl: React.FC<InsertSpeedDialProps> = ({
   editor,
   sourceMarkdown,
   setSourceMarkdown,
 }) => {
+  logRerender("InsertSpeedDial", {
+    hasEditor: !!editor,
+    sourceLen: sourceMarkdown.length,
+  });
   const { theme } = useThemeStore();
   const { viewMode, setViewMode, editMode, setWrite } = useEditorSettings();
   const { isMobile } = useBreakpoint();
@@ -134,3 +140,5 @@ export const InsertSpeedDial: React.FC<InsertSpeedDialProps> = ({
     </Stack>
   );
 };
+
+export const InsertSpeedDial = memo(InsertSpeedDialImpl);
