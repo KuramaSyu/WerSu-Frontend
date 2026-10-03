@@ -15,12 +15,7 @@ interface ActiveNoteState {
   /* re-renders only when the editor object ref changes. not when state changes within happen */
   editor: Editor | null;
 
-  /**
-   * Y.Doc backing the editor when Collaboration is active. NoteEditorCore
-   * registers this on mount so `setContent` can write directly into the
-   * Y.XmlFragment instead of going through `editor.commands.setContent`,
-   * which was causing the flushSync re-render storm on enter-edit-mode.
-   */
+  /** Y.Doc backing the editor when Collaboration is active. NoteEditorCore registers this on mount. */
   ydoc: Y.Doc | null;
 
   title: string;
@@ -42,9 +37,7 @@ interface ActiveNoteState {
   setTitle: (title: string) => void;
   setSourceMarkdown: (markdown: string) => void;
 
-  /**
-   * setter for updateNote. Use it to inject a tanstack mutation function, so that updates/invalidation can be handled proerly
-   */
+  /** Setter for updateNote; injects a tanstack mutation function so updates/invalidation work. */
   setUpdateNoteFn: (
     fn: (title: string, content: string) => Promise<Note>,
   ) => void;
@@ -55,6 +48,7 @@ interface ActiveNoteState {
 }
 
 // Watchdog: trip after N calls in WINDOW_MS, block writes for COOLDOWN_MS.
+// 5 s cooldown is short enough to recover quickly yet breaks the feedback loop.
 const WATCHDOG_WINDOW_MS = 2_000;
 const WATCHDOG_THRESHOLD = 10;
 const WATCHDOG_COOLDOWN_MS = 60_000;
@@ -106,6 +100,22 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => {
     },
 
     setContent: (markdown) => {
+      // Log call count + caller stack so we can find the hammering site.
+      // Gated: first call + every call once we cross 3 in the window.
+      const _traceCount = callTimestamps.length;
+      if (_traceCount >= 3 || _traceCount === 0) {
+        const _stack = new Error("setContent trace").stack ?? "";
+        const _frames = _stack
+          .split("\n")
+          .slice(1, 5)
+          .map((f) => f.trim())
+          .join(" | ");
+        // eslint-disable-next-line no-console
+        console.log(
+          `[editor-watchdog] setContent call #${_traceCount + 1} markdownLen=${markdown?.length ?? 0} first80=${(markdown ?? "").slice(0, 80).replace(/\n/g, "\\n")} stack=${_frames}`,
+        );
+      }
+
       // Slide the rolling window forward and trip if we are over threshold.
       const now = Date.now();
       callTimestamps.push(now);
@@ -141,8 +151,15 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => {
             ? `line ${firstChangedLine + 1}: ${(newLines[firstChangedLine] ?? "").slice(0, 80)}`
             : "no line-level diff (whitespace or attribute drift)";
         const sample = (markdown ?? "").slice(0, 200);
+        // Include the caller stack in the trip event too.
+        const _tripStack = new Error("setContent trip").stack ?? "";
+        const _tripFrames = _tripStack
+          .split("\n")
+          .slice(1, 6)
+          .map((f) => f.trim())
+          .join(" | ");
         console.error(
-          `[editor-watchdog] setContent tripped: ${callTimestamps.length} calls in ${WATCHDOG_WINDOW_MS}ms. Suspected drift around ${where}. First 200 chars of incoming markdown:\n${sample}`,
+          `[editor-watchdog] setContent tripped: ${callTimestamps.length} calls in ${WATCHDOG_WINDOW_MS}ms. Suspected drift around ${where}. First 200 chars of incoming markdown:\n${sample}\nstack=${_tripFrames}`,
         );
         set({ sourceMarkdown: markdown });
         useInfoStore
@@ -176,11 +193,8 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => {
       const normalizedDoc = markdownToProsemirror(editor, markdown);
 
       // Fast path: diff the bound XmlFragment in place against the new
-      // prosemirror doc. updateYFragment inside prosemirrorJSONToYXmlFragment
-      // reuses existing XmlElement/XmlText instances wherever possible and
-      // preserves the binding's mapping, so the Collaboration plugin
-      // applies the changes without going through editor.commands.setContent
-      // (which was the source of the flushSync re-render storm).
+      // prosemirror doc, avoiding editor.commands.setContent (the source
+      // of the flushSync re-render storm).
       if (ydoc) {
         try {
           const fragment = ydoc.getXmlFragment("default");
@@ -196,8 +210,7 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => {
       }
 
       // Legacy path: read mode (no ydoc bound yet) and ydoc-write fallback.
-      // Deferred out of any lifecycle method so the round-trip cannot
-      // trigger React flushSync.
+      // Deferred via queueMicrotask so the round-trip cannot trigger flushSync.
       queueMicrotask(() => {
         editor.commands.setContent(normalizedDoc);
       });
