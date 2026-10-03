@@ -1,10 +1,5 @@
-// Tier-1 unit test for `useAuthStore.resolveShareAttachmentToken`.
-//
-// The map's keys may be a bare id, attachments/<id>, or
-// attachments/<dir>/<id> depending on the backend's S3 path layout,
-// so the resolver tries all three forms before giving up. The NodeView
-// hands the resolved key straight to AttachmentLinkBuilder, so the
-// returned key must match whatever the backend stored.
+// Tier-1 unit test for resolveShareAttachmentToken.
+// Tries bare id, attachments prefix, then suffix match.
 
 // @vitest-environment jsdom
 
@@ -32,7 +27,7 @@ describe("useAuthStore.resolveShareAttachmentToken", () => {
     ).toEqual({ jwt: "jwt-a", key: "att-1" });
   });
 
-  it("matches when the map uses attachments/<id> but the caller has bare", () => {
+  it("matches when the map uses the attachments prefix but the caller has bare", () => {
     useAuthStore
       .getState()
       .setShareAttachmentTokens({ "attachments/att-1": "jwt-a" });
@@ -41,7 +36,7 @@ describe("useAuthStore.resolveShareAttachmentToken", () => {
     ).toEqual({ jwt: "jwt-a", key: "attachments/att-1" });
   });
 
-  it("matches a deeper attachments/<dir>/<id> entry by suffix", () => {
+  it("matches a deeper attachments/dir/id entry by suffix", () => {
     useAuthStore
       .getState()
       .setShareAttachmentTokens({ "attachments/dir-7/att-1": "jwt-a" });

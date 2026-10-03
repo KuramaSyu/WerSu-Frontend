@@ -14,7 +14,7 @@ interface AuthState {
   setShareAttachmentTokens: (tokens: Record<string, string>) => void;
 
   // Resolves a JWT and the URL-safe key for an attachment id.
-  // Tries bare id, then attachments/<id>, then any suffix match.
+  // Tries bare id, then attachments/ prefix, then any suffix match.
   resolveShareAttachmentToken: (
     key: string,
   ) => { jwt: string; key: string } | undefined;
