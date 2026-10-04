@@ -15,6 +15,7 @@ import ClearIcon from "@mui/icons-material/Clear";
 import CloseIcon from "@mui/icons-material/Close";
 import { useMemo, useState } from "react";
 import { useDirectorySelectionStore } from "../../zustand/useDirectorySelectionStore";
+import { useThemeStore } from "../../zustand/useThemeStore";
 import { useBulkSelectionActions } from "./useBulkSelectionActions.hook";
 import { MoveCopyTargetDialog } from "./MoveCopyTargetDialog";
 import { ConfirmationModal } from "../Settings/ConfirmationModal";
@@ -28,6 +29,11 @@ export const SelectionActionBar: React.FC<{
   /** Every selectable row on the current page, used by Select All. */
   allSelectable: { kind: "directory" | "note"; id: string }[];
 }> = ({ allSelectable }) => {
+  // Pull the wrapped theme from the store so sx objects can call
+  // theme.elevate; the sx-callback form would receive the nearest
+  // <ThemeProvider> theme, which may be a stock MUI theme that lacks
+  // the elevate extension.
+  const { theme } = useThemeStore();
   const active = useDirectorySelectionStore((s) => s.active);
   const selected = useDirectorySelectionStore((s) => s.selected);
   const clear = useDirectorySelectionStore((s) => s.clear);
@@ -49,7 +55,7 @@ export const SelectionActionBar: React.FC<{
     <>
       <Slide direction="down" in={active} mountOnEnter unmountOnExit>
         <Box
-          sx={(theme) => ({
+          sx={{
             position: "sticky",
             top: 0,
             zIndex: 5,
@@ -64,7 +70,7 @@ export const SelectionActionBar: React.FC<{
               14,
             ),
             backdropFilter: "blur(8px)",
-          })}
+          }}
         >
           <Stack
             direction="row"
