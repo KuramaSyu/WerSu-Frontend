@@ -13,6 +13,13 @@ import { create } from "zustand";
  *   - `connecting` / `connected` / `authFailed` / `disconnected` —
  *                         mirror Hocuspocus's `WebSocketStatus` plus
  *                         auth-specific failure.
+ *   - `editingOffline`  — user (or auto-fallback) opted to work without the
+ *                         collaboration server. IndexedDB persistence is
+ *                         attached and edits are stored locally only.
+ *   - `conflict`        — a reconnect was attempted with local unsynced
+ *                         edits that conflict with server state. The user
+ *                         must resolve via the diff modal before edits
+ *                         can be re-applied.
  */
 export type CollabStatus =
   | "idle"
@@ -21,7 +28,9 @@ export type CollabStatus =
   | "connecting"
   | "connected"
   | "authFailed"
-  | "disconnected";
+  | "disconnected"
+  | "editingOffline"
+  | "conflict";
 
 /** Per-note diagnostic surfaced in the badge tooltip. */
 export interface CollabDiagnostic {
@@ -31,6 +40,10 @@ export interface CollabDiagnostic {
   /** Timestamp (ms since epoch) of the most recent status change. */
   since?: number;
   authFailures?: number;
+  /** True when the user explicitly entered offline mode (vs. auto-fallback). */
+  manuallyOffline?: boolean;
+  /** True when the WS gave up retrying and the local fallback kicked in. */
+  autoOffline?: boolean;
 }
 
 interface CollabStatusState {
@@ -40,6 +53,12 @@ interface CollabStatusState {
   setStatus: (noteId: string, status: CollabStatus, message?: string) => void;
   setAuthFailed: (noteId: string, reason?: string) => void;
   setTokenFetchError: (noteId: string, error: unknown) => void;
+  setEditingOffline: (
+    noteId: string,
+    origin: "manual" | "auto",
+    message?: string,
+  ) => void;
+  setConflict: (noteId: string, message?: string) => void;
   clearNote: (noteId: string) => void;
 }
 
@@ -66,6 +85,10 @@ export const collabStatusStore = create<CollabStatusState>((set) => ({
         status === "connected" ||
         status === "awaitingToken" ||
         status === "idle";
+      // Leaving offline mode clears the offline-origin flags.
+      const leavingOffline =
+        status !== "editingOffline" &&
+        (prev.manuallyOffline || prev.autoOffline);
       return {
         byNoteId: { ...state.byNoteId, [noteId]: status },
         diagnostics: {
@@ -77,6 +100,54 @@ export const collabStatusStore = create<CollabStatusState>((set) => ({
             tokenFetchError: resetTransient ? undefined : prev.tokenFetchError,
             since: Date.now(),
             authFailures: resetTransient ? 0 : (prev.authFailures ?? 0),
+            manuallyOffline: leavingOffline
+              ? undefined
+              : (prev.manuallyOffline ?? undefined),
+            autoOffline: leavingOffline
+              ? undefined
+              : (prev.autoOffline ?? undefined),
+          },
+        },
+      };
+    }),
+  setEditingOffline: (noteId, origin, message) =>
+    set((state) => {
+      const prev = state.diagnostics[noteId] ?? EMPTY_DIAGNOSTIC;
+      return {
+        byNoteId: { ...state.byNoteId, [noteId]: "editingOffline" },
+        diagnostics: {
+          ...state.diagnostics,
+          [noteId]: {
+            message:
+              message ??
+              (origin === "manual"
+                ? "Working offline. Changes save to this browser only."
+                : "WebSocket unreachable. Working offline. Changes save to this browser only."),
+            since: Date.now(),
+            authFailures: prev.authFailures ?? 0,
+            manuallyOffline: origin === "manual" ? true : undefined,
+            autoOffline: origin === "auto" ? true : undefined,
+          },
+        },
+      };
+    }),
+  setConflict: (noteId, message) =>
+    set((state) => {
+      const prev = state.diagnostics[noteId] ?? EMPTY_DIAGNOSTIC;
+      return {
+        byNoteId: { ...state.byNoteId, [noteId]: "conflict" },
+        diagnostics: {
+          ...state.diagnostics,
+          [noteId]: {
+            message:
+              message ??
+              "Local edits conflict with server state. Resolve before continuing.",
+            since: Date.now(),
+            authFailures: prev.authFailures ?? 0,
+            // Preserve offline-origin flags so the badge still shows the
+            // right tooltip text after the conflict modal closes.
+            manuallyOffline: prev.manuallyOffline,
+            autoOffline: prev.autoOffline,
           },
         },
       };
