@@ -2,6 +2,7 @@ import {
   Box,
   Button,
   IconButton,
+  Paper,
   Slide,
   Stack,
   Tooltip,
@@ -54,7 +55,8 @@ export const SelectionActionBar: React.FC<{
   return (
     <>
       <Slide direction="down" in={active} mountOnEnter unmountOnExit>
-        <Box
+        <Paper
+          elevation={6}
           sx={{
             position: "sticky",
             top: 0,
@@ -64,12 +66,6 @@ export const SelectionActionBar: React.FC<{
             py: 1,
             mb: 1.5,
             borderRadius: 2,
-            border: `1px solid ${theme.palette.divider}`,
-            backgroundColor: theme.elevate(
-              theme.palette.background.default,
-              14,
-            ),
-            backdropFilter: "blur(8px)",
           }}
         >
           <Stack
@@ -159,7 +155,7 @@ export const SelectionActionBar: React.FC<{
               </IconButton>
             </Tooltip>
           </Stack>
-        </Box>
+        </Paper>
       </Slide>
 
       <MoveCopyTargetDialog
