@@ -19,16 +19,22 @@ import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
 import LockIcon from "@mui/icons-material/Lock";
 import ErrorOutlineOutlinedIcon from "@mui/icons-material/ErrorOutlineOutlined";
 import PersonIcon from "@mui/icons-material/Person";
+import CloudOffIcon from "@mui/icons-material/CloudOff";
 import { useLocation } from "react-router-dom";
 import {
   getCollabEntry,
+  goOffline,
+  goOnline,
   useNoteCollaboration,
 } from "../../hooks/useNoteCollaboration";
 import {
   getPublicCollabEntry,
+  goPublicOffline,
+  goPublicOnline,
   usePublicNoteCollaboration,
 } from "../../hooks/usePublicNoteCollaboration";
 import {
+  collabStatusStore,
   useCollabDiagnostic,
   useCollabStatus,
   type CollabStatus,
@@ -39,6 +45,7 @@ import { useActiveNoteStore } from "../../zustand/editorStore";
 import { queryClient } from "../../api/queryClient";
 import { useLiveUsers } from "../../zustand/useLiveUsersStore";
 import { useUsers } from "../../api/queries/useUser";
+import type { Note } from "../../api/models/search";
 import { displayInitials } from "../../utils/publicUserName";
 import { M1, M2 } from "../../statics";
 
@@ -88,6 +95,18 @@ function meta(status: CollabStatus): StatusMeta {
         label: "Offline",
         color: "error",
         icon: <WifiOffIcon fontSize="small" />,
+      };
+    case "editingOffline":
+      return {
+        label: "Editing offline",
+        color: "warning",
+        icon: <WifiOffIcon fontSize="small" />,
+      };
+    case "conflict":
+      return {
+        label: "Sync conflict",
+        color: "error",
+        icon: <ErrorOutlineOutlinedIcon fontSize="small" />,
       };
     case "idle":
     default:
@@ -190,6 +209,31 @@ function tooltipBody(
           since={since}
           sincePrefix="Since"
         />
+      );
+    case "editingOffline":
+      return (
+        <Stack spacing={0.25}>
+          <Typography variant="body2">
+            {d.manuallyOffline
+              ? "You chose to work offline. Changes save to this browser only."
+              : "WebSocket unreachable. Working offline. Changes save to this browser only."}
+          </Typography>
+          <Typography variant="caption" sx={{ opacity: 0.75 }}>
+            Click the chip to try reconnecting. If the server has newer
+            changes, you'll be asked how to merge.
+          </Typography>
+        </Stack>
+      );
+    case "conflict":
+      return (
+        <Stack spacing={0.25}>
+          <Typography variant="body2">
+            Local edits conflict with the server. Click the chip to resolve.
+          </Typography>
+          <Typography variant="caption" sx={{ opacity: 0.75 }}>
+            The conflict modal shows both versions side by side.
+          </Typography>
+        </Stack>
       );
     case "idle":
     default:
@@ -405,9 +449,41 @@ export const CollabStatusBadge: React.FC = () => {
   const clickable =
     status === "disconnected" ||
     status === "authFailed" ||
-    status === "tokenFetchError";
+    status === "tokenFetchError" ||
+    status === "editingOffline" ||
+    status === "conflict";
 
   const handleRetry = () => {
+    if (!noteId) return;
+    if (status === "editingOffline") {
+      // Hand off to the conflict resolver when we have local edits;
+      // otherwise just reconnect.
+      const entry = isPublic
+        ? getPublicCollabEntry(noteId)
+        : getCollabEntry(noteId);
+      if (entry?.hasUnsyncedLocalEdits) {
+        collabStatusStore.getState().setConflict(
+          noteId,
+          "Reconnecting with local unsynced edits. Resolve the conflict before continuing.",
+        );
+        // Open the modal in the NoteEditorCore shell; the badge just
+        // flips the status. The NoteEditorCore subscribes to status
+        // changes and shows the modal accordingly.
+        return;
+      }
+      if (isPublic) {
+        goPublicOnline(noteId);
+      } else {
+        goOnline(noteId);
+      }
+      return;
+    }
+    if (status === "conflict") {
+      // The conflict modal is already wired to status === "conflict";
+      // clicking the chip is a no-op while the modal is open. (A
+      // follow-up could focus the modal here.)
+      return;
+    }
     if (!isPublic && status === "tokenFetchError") {
       queryClient.invalidateQueries({ queryKey: ["accessToken"] });
       return;
@@ -418,12 +494,37 @@ export const CollabStatusBadge: React.FC = () => {
     const provider =
       collab?.provider ??
       (isPublic
-        ? getPublicCollabEntry(noteId ?? "")?.provider
-        : getCollabEntry(noteId ?? "")?.provider);
+        ? getPublicCollabEntry(noteId)?.provider
+        : getCollabEntry(noteId)?.provider);
     provider?.connect();
   };
 
+  const handleGoOffline = () => {
+    if (!noteId) return;
+    // Snapshot the server's view of the note from the React Query
+    // cache so the conflict modal has a baseline to detect concurrent
+    // server-side edits against. Falls back to null if we don't have
+    // the note cached (e.g. token-gated first open).
+    const cached = queryClient.getQueryData<Note>(["note", noteId]);
+    const preOfflineCloudMarkdown =
+      cached?.content || cached?.stripped_content || null;
+    if (isPublic) {
+      void goPublicOffline(noteId, "manual", preOfflineCloudMarkdown);
+    } else {
+      void goOffline(noteId, "manual", preOfflineCloudMarkdown);
+    }
+  };
+
   const showLiveUsersChip = status === "connected" && liveUserIds.length > 0;
+  // Manual "go offline" affordance: visible whenever we have a
+  // collab entry that isn't already offline. We do not show it
+  // while idle / awaiting token because there is no provider yet.
+  const showGoOfflineButton =
+    !!noteId &&
+    !!collab &&
+    status !== "editingOffline" &&
+    status !== "idle" &&
+    status !== "awaitingToken";
 
   return (
     <Stack direction="row" spacing={M1} sx={{ alignItems: "center" }}>
@@ -449,6 +550,37 @@ export const CollabStatusBadge: React.FC = () => {
           />
         </Box>
       </Tooltip>
+      {showGoOfflineButton && (
+        <Tooltip
+          title="Work offline. Edits save to this browser only until you reconnect."
+          arrow
+        >
+          <Box
+            role="button"
+            tabIndex={0}
+            onClick={handleGoOffline}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                handleGoOffline();
+              }
+            }}
+            sx={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: CHIP_HEIGHT,
+              height: CHIP_HEIGHT,
+              borderRadius: "50%",
+              cursor: "pointer",
+              color: "text.secondary",
+              "&:hover": { color: "warning.main" },
+            }}
+          >
+            <CloudOffIcon fontSize="small" />
+          </Box>
+        </Tooltip>
+      )}
       {showLiveUsersChip && (
         <Tooltip
           title={

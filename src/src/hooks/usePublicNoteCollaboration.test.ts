@@ -58,8 +58,15 @@ vi.mock("@hocuspocus/provider", () => {
       this: unknown,
       config: unknown,
     ) {
+      const ws = {
+        on: vi.fn(),
+        off: vi.fn(),
+        status: "disconnected",
+      };
       const instance = {
         config,
+        configuration: { websocketProvider: ws },
+        websocketProvider: ws,
         connect: vi.fn(),
         disconnect: vi.fn(),
         on: vi.fn(),
@@ -156,20 +163,25 @@ describe("usePublicNoteCollaboration - token gating", () => {
     rerender({ token: "share-jwt-abc" });
 
     expect(mockedProvider).toHaveBeenCalledTimes(1);
+    // IndexedDB persistence is deferred until the user (or auto
+    // fallback) opts into offline mode. The happy path MUST NOT
+    // create the persistence eagerly; that's the whole point of
+    // this refactor.
+    expect(mockedPersistence).not.toHaveBeenCalled();
+
     const config = mockedProvider.mock.calls[0][0];
-    // assume correct name for the collab id. Should be the same like the private one.
     expect(config.name).toBe("note-n-token-gate-2");
-    // The dev .env wires the WS URL to the local Hocuspocus server.
     expect(config.url).toBe("ws://localhost:8666");
-    // The token is a function so JWT rotations land on handshake.
     expect(typeof config.token).toBe("function");
     expect((config.token as () => string)()).toBe("share-jwt-abc");
 
-    // The returned cache entry references the same provider.
     expect(result.current?.provider).toBe(recorder.providers[0]);
     expect(getPublicCollabEntry("n-token-gate-2")?.provider).toBe(
       recorder.providers[0],
     );
+    // The cache entry starts offline-disabled.
+    expect(result.current?.persistence).toBeNull();
+    expect(result.current?.offlineOrigin).toBeNull();
   });
 
   it("reuses the cached provider when the hook is mounted a second time with the same noteId", () => {
