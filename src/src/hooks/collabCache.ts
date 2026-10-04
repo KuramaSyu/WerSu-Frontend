@@ -9,6 +9,7 @@
 // ---------------------------------------------------------------------------
 
 import * as Y from "yjs";
+import type { HocuspocusProvider } from "@hocuspocus/provider";
 import { IndexeddbPersistence } from "y-indexeddb";
 import { collabStatusStore } from "../zustand/useCollabStatusStore";
 
@@ -19,12 +20,15 @@ import { collabStatusStore } from "../zustand/useCollabStatusStore";
  */
 export interface CollabCacheEntry {
   ydoc: Y.Doc;
-  provider: {
-    connect: () => void;
-    disconnect: () => void;
-    on: (event: string, handler: (...args: unknown[]) => void) => void;
-    off: (event: string, handler: (...args: unknown[]) => void) => void;
-  };
+  /**
+   * The full `HocuspocusProvider` instance. Typed as the concrete
+   * class so downstream consumers (the editor's collab extensions,
+   * the live-users / status bridges) can call any method they need
+   * without a cast. The previous structural subset broke
+   * `NoteEditorCore`'s prop contract whenever the cache entry was
+   * threaded into the editor as a `provider` prop.
+   */
+  provider: HocuspocusProvider;
   persistence: IndexeddbPersistence | null;
   /** Local-only edits accumulated since we last synced with the server. */
   hasUnsyncedLocalEdits: boolean;

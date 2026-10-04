@@ -4,7 +4,7 @@ import UploadFileBuilder from "../../pages/NotePage/UploadFileBuilder";
 import { Plugin } from "@tiptap/pm/state";
 import { file, string } from "zod";
 import { progress } from "framer-motion";
-import { Node as ProseMirrorNode } from "prosemirror-model";
+import { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { Node } from "@tiptap/core";
 import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
 import type { AssignmentReturnSharp } from "@mui/icons-material";
