@@ -90,7 +90,11 @@ export const useDirectoryByIdQuery = (id: string | undefined) => {
       if (!id) {
         throw new Error("id required");
       }
-      return await directoryApi.get(id);
+      // include_child_notes is false by default in DirectoryApi.get; that
+      // would strip the populated child_note_ids the list call returned,
+      // and the merge in useChapterAccordion would then fall through to
+      // the empty array and the row badge would always read "Empty".
+      return await directoryApi.get(id, { include_child_notes: true });
     },
     enabled: !!id,
   });
