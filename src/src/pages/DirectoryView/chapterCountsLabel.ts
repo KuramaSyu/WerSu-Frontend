@@ -1,9 +1,6 @@
 /**
  * Builds the secondary-line label for a chapter row.
- *
- * Always shows both counts separated by a middle dot so the badge stays
- * stable across renders (no layout shifts as counts change between zero
- * and non-zero).
+ * Only the non-zero half is shown so the badge stays compact.
  */
 export function chapterCountsLabel(
   pages: number,
@@ -12,7 +9,13 @@ export function chapterCountsLabel(
   if (pages === 0 && subdirectories === 0) {
     return "Empty";
   }
-  const pageWord = pages === 1 ? "page" : "pages";
-  const subdirWord = subdirectories === 1 ? "subdirectory" : "subdirectories";
-  return `${pages} ${pageWord} \u00B7 ${subdirectories} ${subdirWord}`;
+  const parts: string[] = [];
+  if (pages > 0) {
+    parts.push(`${pages} ${pages === 1 ? "page" : "pages"}`);
+  }
+  if (subdirectories > 0) {
+    const subdirWord = subdirectories === 1 ? "subdirectory" : "subdirectories";
+    parts.push(`${subdirectories} ${subdirWord}`);
+  }
+  return parts.join(" \u00B7 ");
 }
