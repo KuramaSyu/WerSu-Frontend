@@ -4,8 +4,9 @@ import {
   AccordionDetails,
   AccordionSummary,
   Box,
-  ButtonBase,
+  Checkbox,
   Paper,
+  Stack,
   Typography,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -16,6 +17,12 @@ import { ChapterAccordionSkeleton } from "./ChapterAccordionSkeleton";
 import { ChapterRowView } from "./ChapterRowView";
 import { useChapterAccordion } from "./ChapterAccordion.hook";
 import { NoteRowView } from "./NoteRowView";
+import { useLongPress } from "../../hooks/useLongPress";
+import { useDirectorySelectionStore } from "../../zustand/useDirectorySelectionStore";
+import { useThemeStore } from "../../zustand/useThemeStore";
+import type { CustomThemeImpl } from "../../theme/customTheme";
+import type { MinimalNote } from "../../api/models/search";
+import type { UseChapterAccordionResult } from "./ChapterAccordion.hook";
 
 interface ChapterAccordionProps {
   /** Directory reply backing this chapter row. */
@@ -53,7 +60,24 @@ export const ChapterAccordion: React.FC<ChapterAccordionProps> = ({
     noteAccentAlt,
   } = useChapterAccordion(directory, index);
 
-  const handleOpenChapter = () => onNavigate(`/d/${directory.id}`);
+  const { theme } = useThemeStore();
+  const entry = { kind: "directory" as const, id: directory.id };
+  const active = useDirectorySelectionStore((s) => s.active);
+  const isSelected = useDirectorySelectionStore((s) =>
+    Boolean(s.selected[`${entry.kind}:${entry.id}`]),
+  );
+  const startSelection = useDirectorySelectionStore((s) => s.startSelection);
+  const toggle = useDirectorySelectionStore((s) => s.toggle);
+
+  const summaryBindings = useLongPress({
+    onLongPress: () => {
+      if (!active) {
+        startSelection(entry);
+      } else {
+        toggle(entry);
+      }
+    },
+  });
 
   return (
     <Accordion
@@ -75,9 +99,18 @@ export const ChapterAccordion: React.FC<ChapterAccordionProps> = ({
         borderRadius: 2,
         overflow: "hidden",
         "&:before": { display: "none" },
+        outline: isSelected
+          ? `2px solid ${theme.palette.primary.main}`
+          : "none",
+        outlineOffset: -2,
+        transition: (t) =>
+          t.transitions.create("outline", {
+            duration: t.transitions.duration.short,
+          }),
       }}
     >
       <AccordionSummary
+        {...summaryBindings}
         expandIcon={
           <ExpandMoreIcon
             onClick={toggleExpanded}
@@ -94,9 +127,31 @@ export const ChapterAccordion: React.FC<ChapterAccordionProps> = ({
           />
         }
         onClick={() => {
-          handleOpenChapter();
+          // AccordionSummary also fires onClick on the summary row;
+          // route the press through our long-press binding so the
+          // single-tap / long-tap distinction matches the rest of
+          // the directory view.
+          if (summaryBindings.longPressFired.current) {
+            return;
+          }
+          if (active) {
+            toggle(entry);
+          } else {
+            onNavigate(`/d/${directory.id}`);
+          }
         }}
       >
+        {active && (
+          <Checkbox
+            edge="start"
+            size="small"
+            checked={isSelected}
+            tabIndex={-1}
+            disableRipple
+            sx={{ p: 0.5, mr: 0.5 }}
+            aria-label="Select directory"
+          />
+        )}
         <ChapterRowView
           name={
             hydratedDirectory.display_name ??
@@ -104,12 +159,6 @@ export const ChapterAccordion: React.FC<ChapterAccordionProps> = ({
             hydratedDirectory.slug ??
             hydratedDirectory.id
           }
-          // Subtract 1 only when the field is actually populated. Some
-          // endpoints strip `child_note_ids` entirely, leaving it as
-          // `[]` - subtracting 1 from 0 produces "-1 pages". Treat the
-          // unknown case as "no notes" rather than a negative count.
-          // The README is the first entry when present, so `>= 1` means
-          // at least the README was returned.
           pages={
             hydratedDirectory.child_note_ids &&
             hydratedDirectory.child_note_ids.length >= 1
@@ -136,10 +185,6 @@ export const ChapterAccordion: React.FC<ChapterAccordionProps> = ({
             </Typography>
           )}
           {!showEmptyState && (
-            // Inner component holds the `notesReady` state. The key
-            // remounts it whenever the data shape changes, resetting
-            // the state so the notes Trail waits for the new dirs
-            // Trail to settle.
             <AnimatedTrailBody
               key={`${subdirectories.length}-${notes.length}`}
               subdirectories={subdirectories}
@@ -155,16 +200,9 @@ export const ChapterAccordion: React.FC<ChapterAccordionProps> = ({
   );
 };
 
-/**
- * Owns the `notesReady` state and renders the dirs Trail followed
- * (after the dirs settle) by the notes Trail. Extracted from the
- * main `ChapterAccordion` so the state resets cleanly when the
- * parent's `key` on this component changes - that's how we
- * re-sequence both trails on data refresh.
- */
 interface TrailBodyProps {
   subdirectories: DirectoryReply[];
-  notes: ReturnType<typeof useChapterAccordion>["notes"];
+  notes: UseChapterAccordionResult["notes"];
   noteAccent: string;
   noteAccentAlt: string;
   onNavigate: (path: string) => void;
@@ -177,13 +215,9 @@ const AnimatedTrailBody: React.FC<TrailBodyProps> = ({
   noteAccentAlt,
   onNavigate,
 }) => {
-  // When there are no dirs, there's nothing to wait for - start as
-  // `true` so the notes Trail mounts on the first render. When dirs
-  // exist, `onRest` from the dirs Trail flips this to `true` once
-  // they settle. The parent's `key` change on this component
-  // remounts it, so the initial value is enough - no reset effect
-  // needed.
   const [notesReady, setNotesReady] = useState(subdirectories.length === 0);
+  const { theme } = useThemeStore();
+  const active = useDirectorySelectionStore((s) => s.active);
 
   return (
     <>
@@ -205,50 +239,131 @@ const AnimatedTrailBody: React.FC<TrailBodyProps> = ({
       {notesReady && notes.length > 0 && (
         <Trail key={`notes-${notes.length}-${subdirectories.length}`}>
           {notes.map((note) => (
-            <ButtonBase
+            <NoteRowWithSelection
               key={note.id}
-              onClick={() => onNavigate(`/n/${note.id}`)}
-              sx={{
-                width: "100%",
-                textAlign: "left",
-                borderRadius: 2,
-                overflow: "hidden",
-                // Without this, the flex item below (the padded
-                // Box wrapping NoteRowView) won't shrink below its
-                // content's intrinsic min-width when the note
-                // title is long, pushing the row's left edge past
-                // the AccordionDetails' padding.
-                minWidth: 0,
-              }}
-            >
-              <Paper
-                elevation={3}
-                sx={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: 2,
-                  px: 2,
-                  py: 1,
-                  my: 0.5,
-                  width: "100%",
-                  borderRadius: 2,
-                  minWidth: 0,
-                }}
-              >
-                <NoteRowView
-                  note={note}
-                  accentColor={
-                    // Match the alternating note palette so nested
-                    // rows visually echo the top-level `DirectoryItem`.
-                    notes.indexOf(note) % 2 === 0 ? noteAccent : noteAccentAlt
-                  }
-                  compact
-                />
-              </Paper>
-            </ButtonBase>
+              note={note}
+              noteAccent={noteAccent}
+              noteAccentAlt={noteAccentAlt}
+              onNavigate={onNavigate}
+              showCheckbox={active}
+              theme={theme}
+              notes={notes}
+            />
           ))}
         </Trail>
       )}
     </>
+  );
+};
+
+const NoteRowWithSelection: React.FC<{
+  note: MinimalNote;
+  noteAccent: string;
+  noteAccentAlt: string;
+  onNavigate: (path: string) => void;
+  showCheckbox: boolean;
+  theme: CustomThemeImpl;
+  notes: UseChapterAccordionResult["notes"];
+}> = ({
+  note,
+  noteAccent,
+  noteAccentAlt,
+  onNavigate,
+  showCheckbox,
+  theme,
+  notes,
+}) => {
+  const entry = { kind: "note" as const, id: note.id };
+  const isSelected = useDirectorySelectionStore((s) =>
+    Boolean(s.selected[`${entry.kind}:${entry.id}`]),
+  );
+  const startSelection = useDirectorySelectionStore((s) => s.startSelection);
+  const toggle = useDirectorySelectionStore((s) => s.toggle);
+  const active = useDirectorySelectionStore((s) => s.active);
+
+  const bindings = useLongPress({
+    onLongPress: () => {
+      if (!active) {
+        startSelection(entry);
+      } else {
+        toggle(entry);
+      }
+    },
+  });
+
+  return (
+    <Box
+      {...bindings}
+      role="button"
+      tabIndex={0}
+      onClick={() => {
+        if (bindings.longPressFired.current) {
+          return;
+        }
+        if (active) {
+          toggle(entry);
+        } else {
+          onNavigate(`/n/${note.id}`);
+        }
+      }}
+      sx={{
+        width: "100%",
+        borderRadius: 2,
+        overflow: "hidden",
+        outline: isSelected
+          ? `2px solid ${theme.palette.primary.main}`
+          : "none",
+        outlineOffset: -2,
+        cursor: "pointer",
+        transition: (t) =>
+          t.transitions.create("outline", {
+            duration: t.transitions.duration.short,
+          }),
+      }}
+    >
+      <Paper
+        elevation={3}
+        sx={{
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 2,
+          px: 2,
+          py: 1,
+          my: 0.5,
+          width: "100%",
+          borderRadius: 2,
+          minWidth: 0,
+          backgroundColor: isSelected
+            ? theme.elevate(theme.palette.background.paper, 6)
+            : undefined,
+        }}
+      >
+        {showCheckbox && (
+          <Stack
+            direction="row"
+            sx={{ alignItems: "center", alignSelf: "stretch" }}
+          >
+            <Checkbox
+              edge="start"
+              size="small"
+              checked={isSelected}
+              tabIndex={-1}
+              disableRipple
+              sx={{ p: 0.5 }}
+              aria-label="Select note"
+            />
+          </Stack>
+        )}
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <NoteRowView
+            note={note}
+            accentColor={
+              notes.indexOf(note) % 2 === 0 ? noteAccent : noteAccentAlt
+            }
+            compact
+          />
+        </Box>
+      </Paper>
+    </Box>
   );
 };

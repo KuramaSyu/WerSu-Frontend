@@ -1,6 +1,7 @@
 import { Divider, Paper, Stack, Typography } from "@mui/material";
 import { DragDropProvider } from "@dnd-kit/react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
 import { DirectoryLeftPanel } from "./LeftPanel";
 import { DirectoryActions } from "./DirectoryActions";
 import { DirectoryMenu } from "./DirectoryMenu";
@@ -14,6 +15,8 @@ import { useCreateModalsFromUrl } from "../../hooks/useCreateModalsFromUrl";
 import { M3, M4 } from "../../statics";
 import { DirectoryHirarchyItem } from "../../models/HirarchyItem";
 import { ChapterAccordion } from "./ChapterAccordion";
+import { SelectionActionBar } from "./SelectionActionBar";
+import { useDirectorySelectionStore } from "../../zustand/useDirectorySelectionStore";
 
 /**
  * Renders the directory view UI, including breadcrumb navigation, child
@@ -35,6 +38,9 @@ export const DirectoryView: React.FC = () => {
   const [editDirectoryId, setEditDirectoryId] = useState<string | undefined>(
     undefined,
   );
+
+  const { id: routeId } = useParams();
+  const directoryId = routeId ?? "root";
 
   const {
     currentNode,
@@ -80,6 +86,30 @@ export const DirectoryView: React.FC = () => {
   // store hydrates from the loading fallback.
   useLeftPanel(<DirectoryLeftPanel currentNode={currentNode} />, [currentNode]);
 
+  // Clear any leftover selection when the user navigates to a new
+  // directory, so the bar never references items from a previous
+  // page. The store's ids would otherwise survive a route change
+  // and confuse the "Select All" count.
+  const clearSelection = useDirectorySelectionStore((s) => s.clear);
+  useEffect(() => {
+    clearSelection();
+  }, [directoryId, clearSelection]);
+
+  // Build the list of every selectable item on this page so the
+  // action bar can power Select All. Only direct children of the
+  // current directory are in scope; nested chapters are reachable
+  // by long-press from inside their own accordion.
+  const allSelectable = useMemo(
+    () => [
+      ...childDirectories.map((d) => ({
+        kind: "directory" as const,
+        id: d.getId(),
+      })),
+      ...notesInDirectory.map((n) => ({ kind: "note" as const, id: n.id })),
+    ],
+    [childDirectories, notesInDirectory],
+  );
+
   return (
     <Paper
       elevation={0}
@@ -108,6 +138,7 @@ export const DirectoryView: React.FC = () => {
               overflow: "auto",
             }}
           >
+            <SelectionActionBar allSelectable={allSelectable} />
             <Stack spacing={M3}>
               <Stack spacing={0.5}>
                 <DirectoryBreadCrumbs
