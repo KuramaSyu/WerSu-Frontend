@@ -75,6 +75,7 @@
     "swagger-ui-react": "^5.31.0",
     "swagger-ui-themes": "^3.0.1",
     "y-indexeddb": "^9.0.12",
+    "yjs": "13.6.32",
     "zod": "^4.1.13",
     "zustand": "^5.0.9"
   },
