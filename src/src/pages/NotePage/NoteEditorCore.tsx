@@ -42,6 +42,7 @@ import {
 import { useEditorSlashCommands } from "./EditorSlashCommands.hook";
 import { type LatexDialogOpenParams } from "./LatexDialogController.utils";
 import { logRerender } from "./editorRenderLog";
+import { CollabConflictController } from "./CollabConflictController";
 
 export interface NoteEditorProps {
   note?: Note;
@@ -278,6 +279,10 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
         provider={provider}
         enabled={editMode}
       />
+      {/* Shows the conflict resolution modal when the collab status
+          is `conflict`. Mounted at all times so the modal can pop up
+          without a remount. */}
+      <CollabConflictController noteId={noteId} />
     </>
   );
 };
