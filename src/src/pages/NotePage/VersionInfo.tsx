@@ -43,7 +43,6 @@ import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { color } from "@uiw/react-codemirror/esm/getDefaultExtensions.js";
 import { blendColors, hexToRgb, rgbToHex } from "../../utils/blendWithContrast";
 import { CollabStatusBadge } from "./CollabStatusBadge";
-import { useUpdateNote } from "../../api/queries/useNoteQueries";
 import { rehydrateCollabSession } from "../../hooks/useNoteCollaboration";
 import { useLocation } from "react-router-dom";
 
@@ -133,13 +132,13 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
     }
   }, [usersById, selectedVersion]);
 
-  // Restores a version by pushing the historical note's content to
-  // the server, then fully rehydrating the local ydoc + provider so
-  // the editor picks up the new state cleanly. The ydoc-direct
-  // write alone (the previous behavior) is not enough: the Hocuspocus
-  // provider would still hold the old state vector and IndexedDB
-  // would rehydrate stale updates on the next open.
-  const { mutateAsync: updateNote } = useUpdateNote();
+  // Restores a version by loading it into the local editor: the ydoc
+  // is rebuilt and the Hocuspocus provider is recreated so the
+  // editor sees the historical content. No server write happens
+  // here -- the user reviews the restored content in the editor and
+  // triggers an explicit save. The Hocuspocus provider attached to
+  // the fresh ydoc will still sync the change back to the server
+  // once the user saves.
   const isPublic = useLocation().pathname.startsWith("/public/");
   const handleRestoreVersion = async (
     version: NoteVersionSummaryReply,
@@ -158,35 +157,22 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
     }
     setIsRestoringVersion(true);
     try {
-      // 1. Push the version's content + title to the server. This
-      //    creates a new server-side version so the restored state
-      //    is durable.
-      await updateNote({
-        noteId,
-        title: note.title,
-        content: note.content,
-      });
-      // 2. Fully rehydrate the local ydoc + provider. The Hocuspocus
-      //    WS will sync the new server state into the fresh ydoc
-      //    when it next opens. IndexedDB is cleared so we don't
-      //    rehydrate stale updates on the next open.
+      // Rebuild the ydoc + provider so the editor picks up the
+      // historical content cleanly. IndexedDB is cleared so stale
+      // local updates do not rehydrate on the next open.
       if (isPublic) {
-        const { rehydratePublicCollabSession } = await import(
-          "../../hooks/usePublicNoteCollaboration"
-        );
+        const { rehydratePublicCollabSession } =
+          await import("../../hooks/usePublicNoteCollaboration");
         await rehydratePublicCollabSession(noteId, note.content);
       } else {
         await rehydrateCollabSession(noteId, note.content);
       }
-      // 3. Mirror the restored title/content into the local store so
-      //    the editor's seed effect picks them up.
+      // Mirror the restored title/content into the local store so
+      // the editor's seed effect picks them up.
       setTitle(note.title);
       setContent(note.content);
       setMessage(
-        new SnackbarUpdateImpl(
-          `Restored v${version.version_index}`,
-          "success",
-        ),
+        new SnackbarUpdateImpl(`Restored v${version.version_index}`, "success"),
       );
     } catch (error) {
       console.error("Restore failed", error);
