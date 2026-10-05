@@ -44,3 +44,4 @@ vite.config.ts.timestamp*
 # pnpm-lock.yaml
 data/
 src/pnpm-workspace.yaml
+pnpm-lock.yaml
