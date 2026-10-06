@@ -21,6 +21,7 @@ import {
 } from "./components/Rail/useTopPanelScrollVisibility";
 import { useThemeStore } from "./zustand/useThemeStore";
 import { useScrollElementStore } from "./zustand/outlineStore";
+import AppBackground from "./components/AppBackground";
 
 // Path patterns that gate the auto-hide topbar behaviour. The topbar
 // only collapses on scroll, and only re-reveals via cursor, while
@@ -120,6 +121,7 @@ export const AppShell: React.FC = () => {
           backgroundColor: theme.palette.background.default,
         }}
       >
+        <AppBackground />
         <AnimatePresence initial={false}>
           {showSplashScreen && (
             <motion.div
