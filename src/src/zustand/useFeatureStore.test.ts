@@ -29,9 +29,7 @@ describe("useFeatureStore", () => {
   });
 
   it("setFlag flips only the named flag", () => {
-    useFeatureStore
-      .getState()
-      .setFlag(FeatureFlagName.DeveloperMode, true);
+    useFeatureStore.getState().setFlag(FeatureFlagName.DeveloperMode, true);
     expect(
       useFeatureStore.getState().flags[FeatureFlagName.DeveloperMode],
     ).toBe(true);
@@ -49,9 +47,20 @@ describe("useFeatureStore", () => {
   it("resetFlags clears every flag back to defaults", () => {
     const { setFlag, resetFlags } = useFeatureStore.getState();
     setFlag(FeatureFlagName.DeveloperMode, true);
+    setFlag(FeatureFlagName.BlurredBackgroundDebug, true);
     resetFlags();
     expect(
       useFeatureStore.getState().flags[FeatureFlagName.DeveloperMode],
+    ).toBe(false);
+    expect(
+      useFeatureStore.getState().flags[FeatureFlagName.BlurredBackgroundDebug],
+    ).toBe(false);
+  });
+
+  it("BlurredBackgroundDebug defaults to false", () => {
+    useFeatureStore.getState().resetFlags();
+    expect(
+      useFeatureStore.getState().flags[FeatureFlagName.BlurredBackgroundDebug],
     ).toBe(false);
   });
 });

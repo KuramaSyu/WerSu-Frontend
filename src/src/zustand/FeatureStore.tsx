@@ -16,6 +16,21 @@ export enum FeatureFlagName {
    * end users cannot accidentally enable it.
    */
   UseFakeApi = "UseFakeApi",
+  /**
+   * When true, the theme generator dumps a step-by-step trace
+   * (URL routing, fetch status, blob/image timing, vibrant
+   * swatches, resolved palette) to the browser console. Only
+   * surfaced in the Settings UI when `DeveloperMode` is also on.
+   */
+  ThemeDebug = "ThemeDebug",
+  /**
+   * When true, the AppBackground blur pipeline logs a one-line
+   * summary to the browser console each time it starts bluring,
+   * finishes a blur, or falls back to the raw URL. Off by
+   * default; the per-frame cost is zero. Surfaced under the
+   * developer settings, gated on `DeveloperMode`.
+   */
+  BlurredBackgroundDebug = "BlurredBackgroundDebug",
 }
 
 const FEATURE_FLAG_NAMES = Object.values(FeatureFlagName);
@@ -28,11 +43,11 @@ const FEATURE_FLAG_NAMES = Object.values(FeatureFlagName);
 const DEFAULT_FEATURE_FLAGS: Record<FeatureFlagName, boolean> = {
   [FeatureFlagName.DeveloperMode]: false,
   [FeatureFlagName.UseFakeApi]: false,
+  [FeatureFlagName.ThemeDebug]: false,
+  [FeatureFlagName.BlurredBackgroundDebug]: false,
 };
 
-const isBooleanRecord = (
-  value: unknown,
-): value is Record<string, boolean> =>
+const isBooleanRecord = (value: unknown): value is Record<string, boolean> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
 /**

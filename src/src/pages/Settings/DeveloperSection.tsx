@@ -1,10 +1,6 @@
-import {
-  Alert,
-  Stack,
-  Switch,
-  Typography,
-} from "@mui/material";
+import { Alert, Stack, Switch, Typography } from "@mui/material";
 import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
+import { ThemeManager } from "../../theme/themeManager";
 
 /**
  * Developer-only settings.
@@ -24,6 +20,12 @@ export const DeveloperSection: React.FC = () => {
   const useFakeApi = useFeatureStore(
     (s) => s.flags[FeatureFlagName.UseFakeApi],
   );
+  const themeDebug = useFeatureStore(
+    (s) => s.flags[FeatureFlagName.ThemeDebug],
+  );
+  const blurredBackgroundDebug = useFeatureStore(
+    (s) => s.flags[FeatureFlagName.BlurredBackgroundDebug],
+  );
   const setFlag = useFeatureStore((s) => s.setFlag);
 
   if (!developerMode) {
@@ -37,6 +39,59 @@ export const DeveloperSection: React.FC = () => {
   return (
     <Stack spacing={3}>
       <Stack>
+        <Typography variant="subtitle1">Theme generation debug</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Dump a step-by-step trace of every theme generation to the browser
+          console (URL routing, fetch status, blob/image timing, vibrant
+          swatches, resolved palette). Also flips the in-process
+          ThemeManager.debug static for the current session.
+        </Typography>
+      </Stack>
+
+      <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
+        <Switch
+          checked={themeDebug}
+          onChange={(e) => {
+            setFlag(FeatureFlagName.ThemeDebug, e.target.checked);
+            // Mirror onto the static so the toggle is visible in
+            // ThemeManager itself, not just the feature store.
+            ThemeManager.debug = e.target.checked;
+          }}
+          slotProps={{ input: { "aria-label": "Theme generation debug" } }}
+        />
+        <Typography>
+          {themeDebug ? "Theme debug is on" : "Theme debug is off"}
+        </Typography>
+      </Stack>
+
+      <Stack>
+        <Typography variant="subtitle1">Blurred background debug</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Log a one-line summary to the browser console each time the
+          AppBackground blur pipeline starts, finishes, or falls back to the raw
+          URL. Per-frame cost is zero. Filter the DevTools console by{" "}
+          <code>[blur]</code> to see only these lines.
+        </Typography>
+      </Stack>
+
+      <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
+        <Switch
+          checked={blurredBackgroundDebug}
+          onChange={(e) =>
+            setFlag(FeatureFlagName.BlurredBackgroundDebug, e.target.checked)
+          }
+          slotProps={{
+            input: { "aria-label": "Blurred background debug" },
+          }}
+        />
+        <Typography>
+          {blurredBackgroundDebug
+            ? "Blurred background debug is on"
+            : "Blurred background debug is off"}
+        </Typography>
+      </Stack>
+
+      <Stack>
         <Typography variant="subtitle1">Fake API (MSW)</Typography>
         <Typography variant="body2" color="text.secondary">
           Route every <code>/api/*</code> request through an in-browser MSW
@@ -45,11 +100,7 @@ export const DeveloperSection: React.FC = () => {
         </Typography>
       </Stack>
 
-      <Stack
-        direction="row"
-        spacing={2}
-        sx={{ alignItems: "center" }}
-      >
+      <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
         <Switch
           checked={useFakeApi}
           onChange={(e) =>
