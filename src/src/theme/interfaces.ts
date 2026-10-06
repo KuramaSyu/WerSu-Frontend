@@ -49,17 +49,21 @@ declare module "@mui/material/styles" {
 
   interface Theme {
     custom: {
-      backgroundImage: string;
+      /** Optional array of background image URLs the theme can pick from. */
+      backgroundImages: string[];
       themeName: string;
       longName: string;
+      /** The image the ThemeManager actually picked for the current theme instance. */
+      chosenBackgroundImage?: string;
     };
   }
 
   interface ThemeOptions {
     custom?: {
-      backgroundImage?: string;
+      backgroundImages?: string[];
       themeName?: string;
       longName?: string;
+      chosenBackgroundImage?: string;
     };
   }
 }
