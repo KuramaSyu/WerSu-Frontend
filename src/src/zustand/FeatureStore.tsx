@@ -31,6 +31,14 @@ export enum FeatureFlagName {
    * developer settings, gated on `DeveloperMode`.
    */
   BlurredBackgroundDebug = "BlurredBackgroundDebug",
+  /**
+   * When true, the background-image upload pipeline and the
+   * IndexedDB blob cache dump a step-by-step trace (file pick,
+   * downscale timings, cache hits, IDB open/put timings, stuck
+   * writes) to the browser console. Filter by `[bg-debug]`.
+   * Surfaced under the developer settings, gated on `DeveloperMode`.
+   */
+  BackgroundImageDebug = "BackgroundImageDebug",
 }
 
 const FEATURE_FLAG_NAMES = Object.values(FeatureFlagName);
@@ -45,6 +53,7 @@ const DEFAULT_FEATURE_FLAGS: Record<FeatureFlagName, boolean> = {
   [FeatureFlagName.UseFakeApi]: false,
   [FeatureFlagName.ThemeDebug]: false,
   [FeatureFlagName.BlurredBackgroundDebug]: false,
+  [FeatureFlagName.BackgroundImageDebug]: false,
 };
 
 const isBooleanRecord = (value: unknown): value is Record<string, boolean> =>
