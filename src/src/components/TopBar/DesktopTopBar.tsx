@@ -1,12 +1,21 @@
 import { Box, Divider, Slide, Stack } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import { M1, M2, M3, M4, M5, TOP_BAR_HEIGHT } from "../../statics";
+import {
+  M1,
+  M2,
+  M3,
+  M4,
+  M5,
+  TOP_BAR_ELEVATION,
+  TOP_BAR_HEIGHT,
+} from "../../statics";
 import { useLayout } from "../../LayoutProvider";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { SearchBar } from "../search/SearchBar";
 import { LeftPanelToggle, RightPanelToggle } from "../Panels/LeftPanelToggle";
 import { ShelfMenu } from "./ShelfMenu";
 import { TopBarRightCluster } from "./TopBarRightCluster";
+import { TranslucentPaper } from "../TranslucentPaper";
 
 /**
  * Desktop top bar chrome:
@@ -47,7 +56,9 @@ export const DesktopTopBar: React.FC = () => {
         exit: theme.transitions.easing.easeInOut,
       }}
     >
-      <Box
+      <TranslucentPaper
+        elevation={TOP_BAR_ELEVATION}
+        square
         sx={{
           position: "fixed",
           top: 0,
@@ -115,7 +126,7 @@ export const DesktopTopBar: React.FC = () => {
 
         {/* Far-right: collapse / expand the right rail */}
         <RightPanelToggle />
-      </Box>
+      </TranslucentPaper>
     </Slide>
   );
 };

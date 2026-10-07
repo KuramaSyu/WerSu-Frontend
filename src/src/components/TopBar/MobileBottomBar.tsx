@@ -4,7 +4,6 @@ import {
   Box,
   IconButton,
   Menu,
-  Paper,
   Popover,
   Stack,
   Tooltip,
@@ -28,6 +27,7 @@ import { useServiceReachability } from "./useServiceReachability";
 import { UserMenu } from "./UserMenu";
 import { NotificationsPanel } from "./NotificationsPanel";
 import { ServiceFailureDialog } from "./ServiceFailureDialog";
+import { TranslucentPaper } from "../TranslucentPaper";
 
 /**
  * Minimum horizontal travel (px) before a swipe is recognised as
@@ -181,7 +181,7 @@ export const MobileBottomBar: React.FC = () => {
 
   return (
     <>
-      <Paper
+      <TranslucentPaper
         elevation={8}
         sx={{
           position: "fixed",
@@ -305,7 +305,7 @@ export const MobileBottomBar: React.FC = () => {
             </IconButton>
           </Tooltip>
         </Stack>
-      </Paper>
+      </TranslucentPaper>
 
       <Menu
         anchorEl={userMenuAnchor}
