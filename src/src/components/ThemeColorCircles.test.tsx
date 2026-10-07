@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import "../test/setup";
 import { ThemeColorCircles } from "./ThemeColorCircles";
 import { useThemeStore } from "../zustand/useThemeStore";
+import { CustomThemeImpl } from "../theme/customTheme";
 
 // Stub the broken dynamic-color import path that customTheme.ts
 // transitively pulls in via material-color-utilities.
@@ -25,24 +26,18 @@ vi.mock("node-vibrant/browser", () => ({
 }));
 
 function resetStores() {
-  useThemeStore.setState({
-    theme: {
-      ...createTheme({
-        palette: {
-          mode: "dark",
-          primary: { main: "#111111" },
-          secondary: { main: "#222222" },
-          background: { default: "#333333", paper: "#444444" },
-        },
-      }),
-      custom: {
-        backgroundImages: [],
-        themeName: "test",
-        longName: "Test",
-        chosenBackgroundImage: undefined,
+  const nextTheme = new CustomThemeImpl(
+    createTheme({
+      palette: {
+        mode: "dark",
+        primary: { main: "#111111" },
+        secondary: { main: "#222222" },
+        background: { default: "#333333", paper: "#444444" },
       },
-    },
-  });
+    }),
+    { name: "test", longName: "Test", backgrounds: [] },
+  );
+  useThemeStore.setState({ theme: nextTheme });
 }
 
 beforeEach(() => {
