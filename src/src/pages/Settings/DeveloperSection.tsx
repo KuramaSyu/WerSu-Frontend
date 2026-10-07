@@ -26,6 +26,9 @@ export const DeveloperSection: React.FC = () => {
   const blurredBackgroundDebug = useFeatureStore(
     (s) => s.flags[FeatureFlagName.BlurredBackgroundDebug],
   );
+  const backgroundImageDebug = useFeatureStore(
+    (s) => s.flags[FeatureFlagName.BackgroundImageDebug],
+  );
   const setFlag = useFeatureStore((s) => s.setFlag);
 
   if (!developerMode) {
@@ -88,6 +91,34 @@ export const DeveloperSection: React.FC = () => {
           {blurredBackgroundDebug
             ? "Blurred background debug is on"
             : "Blurred background debug is off"}
+        </Typography>
+      </Stack>
+
+      <Stack>
+        <Typography variant="subtitle1">Background image debug</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Trace the background-image upload + IndexedDB blob cache
+          pipeline (file pick, downscale timing, cache hits, IDB
+          open/put timings, stuck writes) to the browser console.
+          Per-frame cost is zero. Filter the DevTools console by{" "}
+          <code>[bg-debug]</code> to see only these lines.
+        </Typography>
+      </Stack>
+
+      <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
+        <Switch
+          checked={backgroundImageDebug}
+          onChange={(e) =>
+            setFlag(FeatureFlagName.BackgroundImageDebug, e.target.checked)
+          }
+          slotProps={{
+            input: { "aria-label": "Background image debug" },
+          }}
+        />
+        <Typography>
+          {backgroundImageDebug
+            ? "Background image debug is on"
+            : "Background image debug is off"}
         </Typography>
       </Stack>
 
