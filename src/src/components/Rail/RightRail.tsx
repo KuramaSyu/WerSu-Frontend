@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { Box } from "@mui/material";
 import { useThemeStore } from "../../zustand/useThemeStore";
-import { M2 } from "../../statics";
+import { M2, TOP_BAR_ELEVATION } from "../../statics";
+import { TranslucentPaper } from "../TranslucentPaper";
 
 export interface RightRailProps {
   /** Mounted right-rail content (whatever the current route put there). */
@@ -21,15 +22,16 @@ export const RightRail: React.FC<RightRailProps> = ({ children }) => {
   const { theme } = useThemeStore();
 
   return (
-    <Box
+    <TranslucentPaper
+      elevation={TOP_BAR_ELEVATION}
+      square
       sx={{
         display: "flex",
         flexDirection: "column",
-        // Transparent so the right rail blends into the parent
-        // wrapper's paper-toned canvas. Section content paints its
-        // own outlined boxes on top via the rail's children
-        // (`UpperPanel variant="outlined"`).
-        backgroundColor: "transparent",
+        // The right rail's own paper-tinted shell sits on top of
+        // the parent's paper-toned canvas; both are translucent so
+        // the AppBackground still shows through.
+        backgroundColor: theme.palette.background.default,
         height: "100%",
         overflow: "hidden",
         minWidth: 0,
@@ -46,6 +48,6 @@ export const RightRail: React.FC<RightRailProps> = ({ children }) => {
       >
         {children}
       </Box>
-    </Box>
+    </TranslucentPaper>
   );
 };

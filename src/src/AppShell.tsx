@@ -1,9 +1,9 @@
-import { Box, Stack } from "@mui/material";
+import { Box, Paper, Stack } from "@mui/material";
 import { Outlet, useLocation } from "react-router-dom";
 import {
   COLLAPSED_PANEL_SIZE,
+  MAIN_PANEL_ELEVATION,
   M2,
-  M5,
   MOBILE_BOTTOM_BAR_CLEARANCE,
   TOP_BAR_HEIGHT,
 } from "./statics";
@@ -22,6 +22,7 @@ import {
 import { useThemeStore } from "./zustand/useThemeStore";
 import { useScrollElementStore } from "./zustand/outlineStore";
 import AppBackground from "./components/AppBackground";
+import { TranslucentPaper } from "./components/TranslucentPaper";
 
 // Path patterns that gate the auto-hide topbar behaviour. The topbar
 // only collapses on scroll, and only re-reveals via cursor, while
@@ -165,12 +166,10 @@ export const AppShell: React.FC = () => {
         <Box
           sx={{
             display: "grid",
-            // Two-column layout: left rail (default-toned canvas)
+            // Two-column layout: left rail
             // | main+right wrapper (paper-toned, fixed-size card).
             // The wrapper owns its own background, so the main
             // content + right rail scroll surface is always paper
-            // -- no transparent leak through to the wrapper's
-            // `default` canvas during scroll.
             gridTemplateColumns: `${leftColumnWidth} minmax(0, 1fr)`,
             transition: `grid-template-columns ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
             height: "100vh",
@@ -178,26 +177,23 @@ export const AppShell: React.FC = () => {
         >
           <LeftRail>{leftPanel}</LeftRail>
 
-          {/* Main + right rail wrapper: paper-toned, fixed-size,
-              extends upward when the top bar hides (marginTop
-              transition). Scrolling happens inside this container
-              only. On mobile there is no top bar, so the wrapper
-              is anchored to the top; the bottom bar floats over
-              the canvas and the main scroll container reserves
-              bottom space so content never sits under it. */}
-          <Box
+          {/* Main + right rail wrapper */}
+          <TranslucentPaper
+            elevation={MAIN_PANEL_ELEVATION}
+            square
             sx={{
               display: "grid",
               gridTemplateColumns: `minmax(0, 1fr) ${rightColumnWidth}`,
               transition: `grid-template-columns ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}, margin-top ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
-              backgroundColor: theme.palette.background.paper,
               marginTop: isMobile ? 0 : showTopPanel ? TOP_BAR_HEIGHT : 0,
               // `overflow: hidden` keeps sub-pixel rounding from
               // leaking a horizontal scrollbar during the
               // marginTop transition.
+              backgroundColor: theme.palette.background.default,
               overflow: "hidden",
               minWidth: 0,
               minHeight: 0,
+              zIndex: 1,
             }}
           >
             <Box
@@ -207,7 +203,7 @@ export const AppShell: React.FC = () => {
                 overflowY: "auto",
                 display: "block",
                 scrollbarWidth: "none",
-                backgroundColor: "transparent",
+                // backgroundColor: theme.palette.background.paper,
                 p: M2,
                 // Mobile: the bottom bar is `position: fixed`,
                 // so it floats over the canvas. Pad the scroll
@@ -237,7 +233,7 @@ export const AppShell: React.FC = () => {
             </Box>
 
             <RightRail>{rightPanel}</RightRail>
-          </Box>
+          </TranslucentPaper>
         </Box>
       </Box>
     </>

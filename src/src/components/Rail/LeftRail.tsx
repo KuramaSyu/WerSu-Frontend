@@ -5,8 +5,9 @@ import { useLayout } from "../../LayoutProvider";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useSearchNotesStore } from "../../zustand/useSearchNotesStore";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
-import { M1, M2, M5 } from "../../statics";
+import { M1, M2, M5, TOP_BAR_ELEVATION } from "../../statics";
 import { panelIconButtonSx, panelIconSvgSx } from "./panelIconStyles";
+import { TranslucentPaper } from "../TranslucentPaper";
 
 export interface LeftRailProps {
   /** Mounted left-rail content (whatever the current route put there). */
@@ -40,7 +41,9 @@ export const LeftRail: React.FC<LeftRailProps> = ({ children }) => {
   const isCollapsed = !leftPanelOpen;
 
   return (
-    <Box
+    <TranslucentPaper
+      elevation={TOP_BAR_ELEVATION}
+      square
       sx={{
         display: "flex",
         flexDirection: "column",
@@ -96,6 +99,6 @@ export const LeftRail: React.FC<LeftRailProps> = ({ children }) => {
           {children}
         </Box>
       )}
-    </Box>
+    </TranslucentPaper>
   );
 };
