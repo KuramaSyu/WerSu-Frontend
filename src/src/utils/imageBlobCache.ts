@@ -1,6 +1,5 @@
-// IndexedDB-backed image blob cache, keyed by source URL.
-// Schema: db wersu-image-blob-cache v2, store blobs, value { v, blob, contentType, fetchedAt }.
-// Every entry carries its schema v; a hydrate that sees a different v drops it.
+// IndexedDB-backed blob cache. Every entry carries its schema v; a hydrate
+// that sees a different v drops it.
 
 import { bgLog, bgLogError, bgLogWarn } from "./bgDebug";
 
@@ -8,7 +7,7 @@ const DB_NAME = "wersu-image-blob-cache";
 const DB_VERSION = 2;
 const STORE_NAME = "blobs";
 
-// Bump this whenever the on-disk shape of a CachedBlob changes.
+// Bump this whenever the on-disk shape of a cached blob changes.
 export const CACHE_ENTRY_VERSION = 1;
 
 interface CachedBlob {
@@ -20,9 +19,8 @@ interface CachedBlob {
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
-// How long to wait for `indexedDB.open` to settle before giving up.
-// Without this, a stuck upgrade (e.g. another tab holds v1) wedges
-// the whole cache silently and breaks every `get` / `put`.
+// Max wait for IDB open to settle. Without this, a stuck upgrade wedges
+// every get/put silently.
 const OPEN_TIMEOUT_MS = 3000;
 
 function openDb(): Promise<IDBDatabase> {
@@ -75,14 +73,12 @@ function openDb(): Promise<IDBDatabase> {
         bgLog(
           "openDb: onblocked (another connection holds the previous version)",
         );
-        // Don't reject here -- the blocked open can still succeed once
-        // the other tab closes. The OPEN_TIMEOUT_MS below is the real
-        // safety net.
+        // Do not reject here: a blocked open can still succeed once the
+        // other tab closes. OPEN_TIMEOUT_MS is the real safety net.
       };
     });
-    // Wrap the inner promise so we can attach a hard timeout. The
-    // timer rejects with a synthetic error; the resulting promise is
-    // what `runTx` and `getCachedBlob` actually await.
+    // Wrap the inner promise to attach a hard timeout; the result is what
+    // runTx and getCachedBlob actually await.
     dbPromise = new Promise<IDBDatabase>((resolve, reject) => {
       const timeoutHandle = setTimeout(() => {
         const err = new Error(
@@ -103,14 +99,13 @@ function openDb(): Promise<IDBDatabase> {
       );
     });
     dbPromise.catch(() => {
-      // Swallow here so the rejection isn't reported as an
-      // unhandled rejection; the awaiter still sees it.
+      // Swallow so the rejection is not reported as unhandled; the awaiter still sees it.
     });
   }
   return dbPromise;
 }
 
-// Callback can return IDBRequest or Promise; two-shape pattern dodges IDBRequest<T> contravariance.
+// Callback can return IDBRequest or Promise; the two-shape pattern dodges IDBRequest T contravariance.
 type TxCallback<T> = (store: IDBObjectStore) => IDBRequest | Promise<T>;
 
 function runTx<T>(mode: IDBTransactionMode, fn: TxCallback<T>): Promise<T> {
@@ -217,10 +212,8 @@ export async function putCachedBlob(
       url,
     ),
   );
-  // Safety net: log if the write takes too long. The real await
-  // happens below, so we never return before the transaction
-  // actually settles -- otherwise a reload during the stuck window
-  // would drop the row and hydrate would find nothing.
+  // Safety net: log if the write takes too long. We never return before the
+  // tx settles, or a reload would drop the row and hydrate would find nothing.
   const stuckTimer = new Promise<void>((resolve) => {
     setTimeout(() => {
       bgLogError(
@@ -282,9 +275,8 @@ export async function getAllCachedBlobs(): Promise<
   }
 }
 
-// http(s) URLs and our internal local: keys are cacheable. blob:/data:
-// are already local and not worth the IDB round-trip; anything else is
-// rejected to avoid persisting random strings.
+// http(s) and local: URLs are cacheable. blob: and data: stay in memory;
+// anything else is rejected to avoid persisting random strings.
 function isCacheableUrl(url: string): boolean {
   return (
     url.startsWith("http:") ||
