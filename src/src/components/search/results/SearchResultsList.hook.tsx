@@ -30,15 +30,13 @@ const EMPTY_SNAPSHOT: SearchResultsSnapshot = {
 const SearchResultsContext =
   createContext<SearchResultsSnapshot>(EMPTY_SNAPSHOT);
 
+// data.pages is normally MinimalNote[][] but a stale persisted cache
+// can hand us a flat MinimalNote[]. flat() handles both shapes.
 const flattenPages = (
-  pages: { notes: MinimalNote[] }[] | undefined,
+  pages: MinimalNote[] | MinimalNote[][] | undefined,
 ): MinimalNote[] => {
   if (!pages || pages.length === 0) return EMPTY_NOTES;
-  const out: MinimalNote[] = [];
-  for (const page of pages) {
-    for (const n of page.notes) out.push(n);
-  }
-  return out;
+  return pages.flat() as MinimalNote[];
 };
 
 // Provider: single useInfiniteNoteSearch call drives the whole overlay.
@@ -62,22 +60,20 @@ export const SearchResultsProvider: React.FC<{
   );
 
   // Flatten pages on real page arrivals only. TanStack mutates
-  // `query.data.pages` in place when it appends a new page, so we key
-  // the memo on the array length + the last page's last note id —
-  // identity-stable across every other internal state tick.
+  // query.data.pages in place when it appends a new page, so we key
+  // the memo on the array length + the last note's id - identity-stable
+  // across every other internal state tick.
   const pages = query.data?.pages;
   const pageCount = pages?.length ?? 0;
-  const lastPageNotes = pages?.[pageCount - 1]?.notes;
+  const flatList = flattenPages(pages);
   const lastNoteId =
-    lastPageNotes && lastPageNotes.length > 0
-      ? lastPageNotes[lastPageNotes.length - 1].id
-      : null;
+    flatList.length > 0 ? flatList[flatList.length - 1].id : null;
 
-  // hold the previous flatten so a fresh query (whose `query.data` is
-  // briefly `undefined` between debouncedSearch flipping and the first
+  // hold the previous flatten so a fresh query (whose query.data is
+  // briefly undefined between debouncedSearch flipping and the first
   // page landing) doesn't wipe the visible list to empty
   const flatNotesRef = useRef<MinimalNote[]>(EMPTY_NOTES);
-  const flatNotes = useMemo(() => flattenPages(pages), [pageCount, lastNoteId]);
+  const flatNotes = useMemo(() => flatList, [pageCount, lastNoteId]);
   if (flatNotes.length > 0 || pageCount > 0) {
     flatNotesRef.current = flatNotes;
   }
