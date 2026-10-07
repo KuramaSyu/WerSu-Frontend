@@ -3,118 +3,72 @@ import {
   useMutation,
   useQuery,
   useQueryClient,
-  type UseQueryResult,
 } from "@tanstack/react-query";
 import { AttachmentApi } from "../AttachmentApi";
 import type {
   AttachmentMetadata,
   UpdateAttachmentRequest,
 } from "../models/attachment";
-import { getSearchNotesApi, type ISearchNotesApi } from "../SearchNotesApi";
-import {
-  Note,
-  RestNotesSearchType,
-  type MinimalNote,
-  type NoteData,
-  type NotesReply,
-} from "../models/search";
-import { getNoteApi, type INoteApi } from "../NoteApi";
+import { SearchNotesApi, type ISearchNotesApi } from "../SearchNotesApi";
+import { Note, RestNotesSearchType, type MinimalNote } from "../models/search";
+import { NoteApi, type INoteApi } from "../NoteApi";
 import { updateNoteParentDirectory } from "../../utils/updateNoteParentDirectory";
-import { mergeTagsFromNotesReply } from "../../zustand/useTagStore";
-import { WersuUserImpl } from "../../components/DiscordLogin";
-import { useUserKey } from "./useUser";
 
-export interface UpdateNoteVariables {
-  noteId: string;
-  title?: string;
-  content?: string;
-  directory_ids?: string[];
-  tag_ids?: string[];
-}
-
-export interface CreateNoteVariables {
-  title: string;
-  content: string;
-  /** Forwarded as shelf_id on POST /api/notes. */
-  shelf_id?: string;
-  /** Forwarded as directory_ids on POST /api/notes. */
-  directory_ids?: string[];
-}
-
-// Use the registered singletons so the share-token provider installed on
-// `Bootstrap` reaches these instances (a fresh `new NoteApi()` would not
-// receive the provider). `getNoteApi()` throws if not registered — that's
-// intentional: silent `undefined` here would cause "why is my fetch missing
-// the auth header" bugs that are painful to track down.
-const searchNotesApi: ISearchNotesApi = getSearchNotesApi();
-const noteApi: INoteApi = getNoteApi();
-
-/**
- * Wraps a `NotesReply`-returning fetch with the side-effect that
- * keeps `useTagStore` in sync with the inline `tags` payload. The
- * fetched reply is returned untouched so callers can still read the
- * full payload.
- */
-const fetchAndForwardTags = async (
-  fetcher: () => Promise<NotesReply>,
-): Promise<NotesReply> => {
-  const reply = await fetcher();
-  mergeTagsFromNotesReply(reply);
-  return reply;
-};
+const searchNotesApi: ISearchNotesApi = new SearchNotesApi();
+const noteApi: INoteApi = new NoteApi();
 
 export const noteQueries = {
   /**
    * Default list shown in main screen with the latest 50 entries.
-   *
-   * Returns a `NotesReply` (notes + referenced tags) so the tag store
-   * stays in sync.
+   * The queryFn unwraps `NotesReply` to `MinimalNote[]` so the
+   * optimistic `useCreateNote` and the consumer in `MainContent`
+   * can treat the cache as a flat note list.
    */
-  list: (userKey: string | null) => ({
-    queryKey: ["notes", userKey],
+  list: () => ({
+    queryKey: ["notes"],
 
-    queryFn: async (): Promise<NotesReply> =>
-      fetchAndForwardTags(() =>
-        searchNotesApi.search(RestNotesSearchType.LATEST, "", {
+    queryFn: async (): Promise<MinimalNote[]> => {
+      const reply = await searchNotesApi.search(
+        RestNotesSearchType.LATEST,
+        "",
+        {
           limit: 50,
           offset: 0,
-        }),
-      ),
+        },
+      );
+      return reply.notes;
+    },
   }),
 
   /**
-   * Search notes. Returns the full `NotesReply` so callers can show
-   * tag labels without an extra fetch.
-   *
-   * The `queryKey` mirrors `useInfiniteNoteSearch`'s cache key
-   * (searchType + query) so callers can pin either one without the
-   * two query stores drifting apart.
+   * Search notes.
+   * @returns MinimalNote[] -- each page is one `NotesReply.notes` array.
    */
   search: (
-    userKey: string | null,
     searchType: RestNotesSearchType,
     query: string,
     limit: number,
     offset: number,
   ) => ({
-    queryKey: ["notes", "search", searchType, query, userKey],
+    queryKey: ["notes", "search", searchType, query, limit, offset],
 
-    queryFn: async (): Promise<NotesReply> =>
-      fetchAndForwardTags(() =>
-        searchNotesApi.search(searchType, query, { limit, offset }),
-      ),
+    queryFn: async (): Promise<MinimalNote[]> => {
+      const reply = await searchNotesApi.search(searchType, query, {
+        limit,
+        offset,
+      });
+      return reply.notes;
+    },
   }),
 
   /**
    * Full note details with permissions and full content
    * @returns Note
    */
-  detail: (userKey: string | null, noteId: string) => ({
-    queryKey: ["notes", noteId, userKey],
+  detail: (noteId: string) => ({
+    queryKey: ["notes", noteId],
 
     queryFn: () => noteApi.get(noteId),
-
-    select: (data: NoteData) => new Note(data as NoteData),
   }),
 };
 
@@ -130,11 +84,7 @@ export const noteQueries = {
  * @returns MinimalNote[] of the latest 50 notes
  */
 export function useLatestNotes() {
-  const userKey = useUserKey();
-  return useQuery({
-    ...noteQueries.list(userKey),
-    select: (reply: NotesReply | undefined) => reply?.notes ?? [],
-  });
+  return useQuery(noteQueries.list());
 }
 
 /**
@@ -149,42 +99,26 @@ export function useInfiniteNoteSearch(
   limit = 20,
   enabled = true,
 ) {
-  const userKey = useUserKey();
   return useInfiniteQuery({
-    queryKey: ["notes", "search", searchType, query, userKey],
+    queryKey: ["notes", "search", searchType, query],
 
     /**
      * pageParam is our offset.
      * First page starts with offset=0
      */
     queryFn: ({ pageParam = 0 }) =>
-      noteQueries
-        .search(userKey, searchType, query, limit, pageParam)
-        .queryFn(),
+      noteQueries.search(searchType, query, limit, pageParam).queryFn(),
 
     /**
-     * Determines pageParam = offset for the next call. We use the note
-     * count of the last page (the directory / tag fan-out is a constant
-     * multiplier that doesn't pin pagination).
-     *
-     * The `lastPageNotes` helper also tolerates the pre-migration
-     * `MinimalNote[]` shape so a stale persisted page that slipped past
-     * the cache buster can't crash the hook with `lastPage.notes is
-     * undefined`.
+     * determines pageParam = offset for the next call
      */
     getNextPageParam: (lastPage, allPages) => {
-      const lastPageNotes = Array.isArray(lastPage)
-        ? (lastPage as unknown as MinimalNote[])
-        : (lastPage?.notes ?? []);
-      if (lastPageNotes.length < limit) {
+      console.log("lastPage", lastPage);
+      if (lastPage.length < limit) {
         return undefined;
       }
       return allPages.length * limit;
     },
-
-    // No `select` here on purpose: callers flatten `data.pages` inside a
-    // useMemo so the resulting array only changes when a new page
-    // actually arrives, not on every TanStack status tick.
 
     initialPageParam: 0,
     enabled,
@@ -197,9 +131,8 @@ export function useInfiniteNoteSearch(
  * @returns Note
  */
 export function useNote(noteId?: string) {
-  const userKey = useUserKey();
   return useQuery({
-    queryKey: ["notes", noteId, userKey],
+    queryKey: ["notes", noteId],
 
     queryFn: () => {
       if (!noteId) {
@@ -209,40 +142,46 @@ export function useNote(noteId?: string) {
     },
 
     enabled: !!noteId,
-
-    select: (data) => new Note({ ...data } as NoteData),
   });
 }
 
 /**
- * get a note with all details
- * @param noteId id of note
- * @returns Note
+ * Fetch a specific historical version of a note. Disabled when
+ * `noteId` or `versionIndex` is missing, which lets the caller
+ * short-circuit (e.g. skip the fetch when the selection already
+ * matches the latest version).
  */
-export function useNoteVersion(
-  noteId?: string,
-  versionIndex?: number,
-): UseQueryResult<Note, Error> {
-  const userKey = useUserKey();
+export function useNoteVersion(noteId?: string, versionIndex?: number) {
   return useQuery({
-    queryKey: ["versions", noteId, versionIndex, userKey],
+    queryKey: ["notes", noteId, "version", versionIndex],
 
     queryFn: () => {
-      if (!noteId || !versionIndex) {
+      if (!noteId || versionIndex === undefined) {
         throw new Error("noteId and versionIndex required");
       }
       return noteApi.getVersion(noteId, versionIndex);
     },
 
-    enabled: !!noteId,
-
-    select: (data) => new Note({ ...data } as NoteData),
+    enabled: !!noteId && versionIndex !== undefined,
   });
+}
+
+/**
+ * Variables accepted by the `useUpdateNote` mutation. Mirrors the
+ * patch API: title, content, and the parent / tag relationships are
+ * all optional because each call only sends the fields that actually
+ * changed (see `NotePage`).
+ */
+export interface UpdateNoteVariables {
+  noteId: string;
+  title?: string;
+  content?: string;
+  directory_ids?: string[];
+  tag_ids?: string[];
 }
 
 export function useUpdateNote() {
   const queryClient = useQueryClient();
-  const userKey = useUserKey();
 
   return useMutation({
     mutationFn: ({
@@ -258,17 +197,11 @@ export function useUpdateNote() {
      * refresh detail cache instantly
      */
     onSuccess: (updatedNote) => {
-      queryClient.setQueryData(["notes", updatedNote.id, userKey], updatedNote);
+      queryClient.setQueryData(["notes", updatedNote.id], updatedNote);
 
       // Refresh notes lists and searches
       queryClient.invalidateQueries({
         queryKey: ["notes"],
-      });
-
-      // acitivties
-      queryClient.invalidateQueries({ queryKey: ["activity"] });
-      queryClient.refetchQueries({
-        queryKey: ["activity", "note", updatedNote.id],
       });
     },
   });
@@ -277,19 +210,12 @@ export function useUpdateNote() {
 /**
  * @usage ```ts
  * const createNote = useCreateNote();
- * const note = await createNote.mutateAsync({
- *   title: "hunter x hunter",
- *   content: "one of the best animes",
- *   // at least one of shelf_id / directory_ids is required by the backend:
- *   shelf_id: "shelf-1",
- *   // or: directory_ids: ["dir-1", "dir-2"],
- * })
+ * const note = await createNote.mutateAsync({title: "hunter x hunter", content: "one of the best animes"})
  * ```
  * @returns factory to create notes
  */
 export function useCreateNote() {
   const queryClient = useQueryClient();
-  const userKey = useUserKey();
 
   return useMutation({
     mutationFn: ({
@@ -297,31 +223,28 @@ export function useCreateNote() {
       content,
       shelf_id,
       directory_ids,
-    }: CreateNoteVariables) =>
-      noteApi.post(title, content, { shelf_id, directory_ids }),
+    }: {
+      title: string;
+      content: string;
+      shelf_id?: string;
+      directory_ids?: string[];
+    }) =>
+      noteApi.post(title, content, {
+        shelf_id,
+        directory_ids,
+      }),
 
     onSuccess: (createdNote) => {
       // update "notes" e.g. latest 50
-      queryClient.setQueryData<NotesReply | undefined>(
-        ["notes", userKey],
-        (old) =>
-          old
-            ? {
-                ...old,
-                notes: [createdNote, ...old.notes],
-              }
-            : old,
-      );
+      queryClient.setQueryData(["notes"], (old: MinimalNote[] = []) => [
+        createdNote,
+        ...old,
+      ]);
 
-      queryClient.setQueryData(["notes", createdNote.id, userKey], createdNote);
+      queryClient.setQueryData(["notes", createdNote.id], createdNote);
 
       // Update the detail cache
-      queryClient.setQueryData(["notes", createdNote.id, userKey], createdNote);
-
-      // Refresh activity lists so the new note appears immediately
-      queryClient.invalidateQueries({
-        queryKey: ["activity"],
-      });
+      queryClient.setQueryData(["notes", createdNote.id], createdNote);
     },
   });
 }
@@ -331,7 +254,6 @@ export function useCreateNote() {
  */
 export function useDeleteNote() {
   const queryClient = useQueryClient();
-  const userKey = useUserKey();
 
   return useMutation({
     mutationFn: (noteId: string) => noteApi.delete(noteId),
@@ -340,7 +262,7 @@ export function useDeleteNote() {
     onSuccess: (_, noteId) => {
       // remove detail cache
       queryClient.removeQueries({
-        queryKey: ["notes", noteId, userKey],
+        queryKey: ["notes", noteId],
       });
 
       // refresh all lists/searches
@@ -357,7 +279,6 @@ export function useDeleteNote() {
  */
 export function useMoveNote() {
   const queryClient = useQueryClient();
-  const userKey = useUserKey();
 
   return useMutation({
     mutationFn: ({
@@ -372,7 +293,7 @@ export function useMoveNote() {
     onSuccess: (_, noteId) => {
       // remove detail cache
       queryClient.removeQueries({
-        queryKey: ["notes", noteId, userKey],
+        queryKey: ["notes", noteId],
       });
 
       // refresh all lists/searches
@@ -384,54 +305,23 @@ export function useMoveNote() {
     // patch the note permissions and update it
     onMutate: async ({ noteId, directoryId }) => {
       await queryClient.cancelQueries({
-        queryKey: ["notes", noteId, userKey],
+        queryKey: ["notes", noteId],
       });
 
-      const previous = queryClient.getQueryData<Note>([
-        "notes",
-        noteId,
-        userKey,
-      ]);
-      const previousParentId = previous?.directory_ids?.[0];
-      queryClient.setQueryData(
-        ["notes", noteId, userKey],
-        (note: Note | undefined) => {
-          if (!note) {
-            return note;
-          }
+      const previous = queryClient.getQueryData<Note>(["notes", noteId]);
+      queryClient.setQueryData(["notes", noteId], (note: Note | undefined) => {
+        if (!note) {
+          return note;
+        }
 
-          return updateNoteParentDirectory(note, directoryId);
-        },
-      );
-
-      return { previousParentId };
+        return updateNoteParentDirectory(previous!, directoryId);
+      });
     },
 
-    onSettled: (_, __, variables, context) => {
-      // get valid and used directories
-      const directoryIds: string[] = [];
-      for (const directoryId of [
-        context?.previousParentId,
-        variables.directoryId,
-      ]) {
-        if (!directoryId) continue;
-
-        if (directoryIds.includes(directoryId)) {
-          continue;
-        }
-        directoryIds.push(directoryId);
-      }
-
-      // invalidate their cache
-      for (const directoryId of directoryIds) {
-        queryClient.removeQueries({
-          queryKey: ["directory", "notes", directoryId, userKey],
-        });
-      }
-
+    onSettled: (_, __, variables) => {
       // invalidate default view
       queryClient.invalidateQueries({
-        queryKey: ["notes", userKey],
+        queryKey: ["notes"],
         exact: true,
       });
 
