@@ -93,7 +93,10 @@ export interface CustomThemeConfig {
 export interface ThemeCustomExtension {
   themeName: string; // Short identifier, e.g. 'ocean'
   longName: string; // Descriptive name, e.g. 'Ocean Breeze'
-  backgroundImage: string;
+  /** Background image URLs this theme supports. May be empty for plain themes. */
+  backgroundImages: string[];
+  /** The single image picked for the current theme instance; falls back to backgroundImages[0]. */
+  chosenBackgroundImage?: string;
 }
 
 export interface RecalculateOpions {
@@ -140,15 +143,15 @@ export class CustomThemeImpl implements CustomTheme {
   darken: (color: string, coefficient: string | number) => string;
 
   constructor(theme: CustomTheme);
-  constructor(theme: Theme | CustomTheme, config: ThemeCustomExtension);
+  constructor(theme: Theme | CustomTheme, config: CustomThemeConfig);
   constructor(
     theme: Theme | CustomTheme,
-    config?: ThemeCustomExtension,
+    config?: CustomThemeConfig,
     recalculateColors?: RecalculateOpions,
   );
   constructor(
     theme: Theme | CustomTheme,
-    config?: ThemeCustomExtension,
+    config?: CustomThemeConfig,
     recalculateColors?: RecalculateOpions,
   ) {
     Object.assign(this, theme);
@@ -166,9 +169,16 @@ export class CustomThemeImpl implements CustomTheme {
       return this.palette.background.default;
     };
 
-    // If config is provided, use it; otherwise use theme's custom property
+    // Build the runtime custom extension from the constructor config
+    // (which uses `backgrounds[]`). When no config is provided, reuse
+    // whatever the underlying theme already carries.
     if (config) {
-      this.custom = config;
+      this.custom = {
+        themeName: config.name,
+        longName: config.longName,
+        backgroundImages: config.backgrounds,
+        chosenBackgroundImage: config.backgrounds[0],
+      };
     } else if ("custom" in theme) {
       this.custom = (theme as CustomTheme).custom;
     }

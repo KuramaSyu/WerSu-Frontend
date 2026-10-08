@@ -32,24 +32,9 @@ function buildPaletteRequestUrl(url: string): string {
   return parsedUrl.toString();
 }
 
-// Augment MUI's Theme to include extra custom properties.
-declare module "@mui/material/styles" {
-  interface Theme {
-    palette: Palette;
-    custom: {
-      backgroundImage: string;
-      themeName: string;
-      longName: string;
-    };
-  }
-  interface ThemeOptions {
-    custom?: {
-      backgroundImage?: string;
-      themeName?: string;
-      longName?: string;
-    };
-  }
-}
+// Note: the MUI Theme / ThemeOptions augmentation for the `custom` field
+// lives in `./interfaces.ts`. Keeping it there avoids a TS2717 conflict
+// from declaring the same field with two different shapes.
 
 export function buildCustomTheme(
   primaryMain: string,
@@ -91,7 +76,8 @@ export function buildCustomTheme(
       },
     },
     custom: {
-      backgroundImage: chosenBackground,
+      backgroundImages: [chosenBackground],
+      chosenBackgroundImage: chosenBackground,
       themeName: config.name,
       longName: config.longName,
     },
@@ -108,6 +94,10 @@ export class ThemeManager {
   private readonly THEME_LOADING_WARNING_TIMEOUT_MS = 4000;
   // For now, we use a constant to choose dark mode; later this can be dynamically set.
   private readonly isDark: boolean = true;
+  /** Toggled by the developer-mode ThemeDebug switch in `DeveloperSection`.
+   *  Read by callers (e.g. theme generation trace) to gate their output.
+   *  Defaults to false so production builds stay silent. */
+  public static debug: boolean = false;
 
   private constructor(themes: CustomTheme[]) {
     this.themes = new Map();
