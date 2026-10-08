@@ -24,7 +24,8 @@ export const defaultTheme = createTheme({
     success: { main: "#5e81ac", light: "#8fbcbb", dark: "#4c688a" }, // Nord10, Nord7, Nord9
   },
   custom: {
-    backgroundImage: "https://i.postimg.cc/prhxrMh8/thumb-1920-553471.jpg",
+    backgroundImages: [],
+    chosenBackgroundImage: null,
     themeName: "default",
     longName: "Nord Theme Dark",
   },
@@ -47,7 +48,8 @@ export const docsTheme = createTheme({
     success: { main: "#5e81ac", light: "#8fbcbb", dark: "#4c688a" }, // Nord10, Nord7, Nord9
   },
   custom: {
-    backgroundImage: "https://i.postimg.cc/prhxrMh8/thumb-1920-553471.jpg",
+    backgroundImages: [],
+    chosenBackgroundImage: null,
     themeName: "docs",
     longName: "Nord Theme Bright",
   },
@@ -71,7 +73,8 @@ export const githubTheme = createTheme({
     success: { main: "#1f883d", light: "#3fb950", dark: "#116329" },
   },
   custom: {
-    backgroundImage: "https://i.postimg.cc/prhxrMh8/thumb-1920-553471.jpg",
+    backgroundImages: [],
+    chosenBackgroundImage: null,
     themeName: "github",
     longName: "GitHub Light",
   },
@@ -95,7 +98,8 @@ export const githubDarkTheme = createTheme({
     success: { main: "#2ea043", light: "#3fb950", dark: "#238636" },
   },
   custom: {
-    backgroundImage: "https://i.postimg.cc/prhxrMh8/thumb-1920-553471.jpg",
+    backgroundImages: [],
+    chosenBackgroundImage: null,
     themeName: "github-dark",
     longName: "GitHub Dark",
   },
@@ -119,7 +123,8 @@ export const brightTheme = createTheme({
     success: { main: "#2e7d32", light: "#60ad5e", dark: "#005005" },
   },
   custom: {
-    backgroundImage: "https://i.postimg.cc/prhxrMh8/thumb-1920-553471.jpg",
+    backgroundImages: [],
+    chosenBackgroundImage: null,
     themeName: "bright",
     longName: "Bright Theme",
   },
@@ -146,7 +151,8 @@ export const midnightTheme = createTheme({
     success: { main: "#34d399", light: "#6ee7b7", dark: "#10b981" },
   },
   custom: {
-    backgroundImage: "https://i.postimg.cc/prhxrMh8/thumb-1920-553471.jpg",
+    backgroundImages: [],
+    chosenBackgroundImage: null,
     themeName: "midnight",
     longName: "Midnight Blue",
   },
@@ -169,7 +175,8 @@ export const tokyoNightStorm = createTheme({
     success: { main: "#9ece6a" }, // Strings / CSS class names (closest green)
   },
   custom: {
-    backgroundImage: "https://i.postimg.cc/prhxrMh8/thumb-1920-553471.jpg",
+    backgroundImages: [],
+    chosenBackgroundImage: null,
     themeName: "tokyo-night-storm",
     longName: "Tokyo Night Storm",
   },
@@ -192,7 +199,8 @@ export const tokyoNightLight = createTheme({
     success: { main: "#33635c" }, // Terminal Green
   },
   custom: {
-    backgroundImage: "https://i.postimg.cc/prhxrMh8/thumb-1920-553471.jpg",
+    backgroundImages: [],
+    chosenBackgroundImage: null,
     themeName: "tokyo-night-light",
     longName: "Tokyo Night Light",
   },
@@ -215,7 +223,8 @@ export const tokyoNight = createTheme({
     success: { main: "#9ece6a" }, // Strings / CSS class names (closest green)
   },
   custom: {
-    backgroundImage: "https://i.postimg.cc/prhxrMh8/thumb-1920-553471.jpg",
+    backgroundImages: [],
+    chosenBackgroundImage: null,
     themeName: "tokyo-night",
     longName: "Tokyo Night",
   },
@@ -236,7 +245,8 @@ export const everforestHardDark = createTheme({
     success: { main: "#a7c080", dark: "#425047" },
   },
   custom: {
-    backgroundImage: "https://i.postimg.cc/prhxrMh8/thumb-1920-553471.jpg",
+    backgroundImages: [],
+    chosenBackgroundImage: null,
     themeName: "everforest-hard-dark",
     longName: "Everforest Dark",
   },
@@ -259,7 +269,8 @@ export const everforestSoftLight = createTheme({
     success: { main: "#8DA101", light: "#93B259", dark: "#6F8400" }, // green / statusline1
   },
   custom: {
-    backgroundImage: "https://i.postimg.cc/prhxrMh8/thumb-1920-553471.jpg",
+    backgroundImages: [],
+    chosenBackgroundImage: null,
     themeName: "everforest-soft-light",
     longName: "Everforest Soft Light",
   },
@@ -291,7 +302,8 @@ export const esportsArena = createTheme({
     success: { main: "#3b82f6", light: "#60a5fa", dark: "#1d4ed8" },
   },
   custom: {
-    backgroundImage: "https://i.postimg.cc/prhxrMh8/thumb-1920-553471.jpg",
+    backgroundImages: [],
+    chosenBackgroundImage: null,
     themeName: "esports-arena",
     longName: "Esports Arena",
   },
@@ -322,7 +334,11 @@ export const cauldronChaos = createTheme({
     success: { main: "#a3e635", light: "#bef264", dark: "#65a30d" },
   },
   custom: {
-    backgroundImage: "https://i.postimg.cc/prhxrMh8/thumb-1920-553471.jpg",
+    backgroundImages: [
+      "https://cdn.discordapp.com/media/v1/collectibles-shop/aac5f1177098b45ca05714c26ca68e83e85cf72a3c3aa50fd45561ba0d5b4654",
+    ],
+    chosenBackgroundImage:
+      "https://cdn.discordapp.com/media/v1/collectibles-shop/aac5f1177098b45ca05714c26ca68e83e85cf72a3c3aa50fd45561ba0d5b4654",
     themeName: "cauldron-chaos",
     longName: "Cauldron Chaos",
   },
@@ -336,9 +352,9 @@ export const customThemes = [
       },
     }),
     {
-      themeName: "material-mark",
+      name: "material-mark",
       longName: "Material Mark",
-      backgroundImage: "",
+      backgrounds: [],
     },
   ),
   new CustomThemeImpl(githubDarkTheme),

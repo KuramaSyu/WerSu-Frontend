@@ -54,7 +54,7 @@ declare module "@mui/material/styles" {
       themeName: string;
       longName: string;
       /** The image the ThemeManager actually picked for the current theme instance. */
-      chosenBackgroundImage?: string;
+      chosenBackgroundImage?: string | null;
     };
   }
 
@@ -63,7 +63,7 @@ declare module "@mui/material/styles" {
       backgroundImages?: string[];
       themeName?: string;
       longName?: string;
-      chosenBackgroundImage?: string;
+      chosenBackgroundImage?: string | null;
     };
   }
 }

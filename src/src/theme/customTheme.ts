@@ -95,8 +95,8 @@ export interface ThemeCustomExtension {
   longName: string; // Descriptive name, e.g. 'Ocean Breeze'
   /** Background image URLs this theme supports. May be empty for plain themes. */
   backgroundImages: string[];
-  /** The single image picked for the current theme instance; falls back to backgroundImages[0]. */
-  chosenBackgroundImage?: string;
+  /** The single image picked for the current theme instance; null when no image is set. */
+  chosenBackgroundImage?: string | null;
 }
 
 export interface RecalculateOpions {
