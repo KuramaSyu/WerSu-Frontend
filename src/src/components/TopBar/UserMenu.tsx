@@ -41,7 +41,14 @@ export interface UserMenuProps {
  * close it. Notifications live on a dedicated bell button.
  */
 export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
-  const { theme, themeName, setTheme, customThemes } = useThemeStore();
+  const {
+    theme,
+    themeName,
+    setTheme,
+    customThemes,
+    lastLightTheme,
+    lastDarkTheme,
+  } = useThemeStore();
   const { data: user } = useUser();
   const navigate = useNavigate();
   const selectedShelfId = useSelectedShelfStore((s) => s.selectedShelfId);
@@ -103,16 +110,22 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
     ? themeName
     : (filteredThemes[0]?.custom.themeName ?? "");
 
-  // Toggle: pick the first theme of the OTHER mode. No-op if
-  // every theme is the same mode.
+  // Toggle: prefer the last theme the user had on for the other
+  // mode (so light -> dark -> light returns to the same light
+  // theme they were on before). Fall back to the first theme of
+  // the other mode when the user has never picked one in this
+  // mode on this device.
   const otherMode: "dark" | "light" = currentMode === "dark" ? "light" : "dark";
+  const lastUsedOther = otherMode === "light" ? lastLightTheme : lastDarkTheme;
   const toggleTooltip =
     currentMode === "dark" ? "Switch to light theme" : "Switch to dark theme";
   const handleToggleMode = () => {
-    const next = customThemes.find((t) => {
-      const m = t.palette.mode === "light" ? "light" : "dark";
-      return m === otherMode;
-    });
+    const next = lastUsedOther
+      ? customThemes.find((t) => t.custom.themeName === lastUsedOther)
+      : customThemes.find((t) => {
+          const m = t.palette.mode === "light" ? "light" : "dark";
+          return m === otherMode;
+        });
     if (next) void setTheme(next.custom.themeName);
   };
 
