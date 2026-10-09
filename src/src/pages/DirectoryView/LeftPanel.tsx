@@ -8,7 +8,7 @@ import { PanelSection } from "../../components/Panels/PanelSection";
 import { NavigationSection } from "../../components/Panels/NavigationSection";
 import { UpperPanel } from "../../components/Panels/UpperPanel";
 import { useDirectory } from "../../api/queries/useDirectoryQuery";
-import { Box } from "@mui/material";
+import { InlineEditableDescription } from "../../components/DirectoryView/InlineEditableDescription/InlineEditableDescription";
 
 interface DirectoryLeftPanelProps {
   currentNode: HirarchyItem;
@@ -36,6 +36,7 @@ export const DirectoryLeftPanel: React.FC<DirectoryLeftPanelProps> = ({
         titleIcon={<ScheduleIcon fontSize="small" />}
       >
         <RecentActivityPanel
+          title={""}
           target={
             currentNode.getId() === "root"
               ? { type: "root" }
@@ -43,14 +44,15 @@ export const DirectoryLeftPanel: React.FC<DirectoryLeftPanelProps> = ({
           }
         />
       </PanelSection>
-      {dir?.description && (
+      {dir?.id && (
         <PanelSection
           title="Description"
           titleIcon={<NotesIcon fontSize="small" />}
         >
-          <Box sx={{ color: "text.secondary" }}>
-            {dir?.description || "No description"}
-          </Box>
+          <InlineEditableDescription
+            directoryId={dir.id}
+            initialDescription={dir.description ?? ""}
+          />
         </PanelSection>
       )}
     </UpperPanel>
