@@ -20,13 +20,13 @@ import LightModeIcon from "@mui/icons-material/LightMode";
 import Logout from "@mui/icons-material/Logout";
 import RuleFolderIcon from "@mui/icons-material/RuleFolder";
 import SettingsIcon from "@mui/icons-material/Settings";
-import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useUser } from "../../api/queries/useUser";
 import { M1, M2, M4 } from "../../statics";
 import { Pages } from "./Pages";
 import { useSelectedShelfStore } from "../../zustand/useSelectedShelfStore";
+import { handleLogout as performLogout } from "../../utils/logout";
 
 export interface UserMenuProps {
   /** Fired after the user picks a row; parent closes the surrounding Menu. */
@@ -42,14 +42,14 @@ export interface UserMenuProps {
 export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
   const { theme, themeName, setTheme, customThemes } = useThemeStore();
   const { data: user } = useUser();
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const selectedShelfId = useSelectedShelfStore((s) => s.selectedShelfId);
 
-  // Clear the query cache so the previous user's data doesn't flash
-  // on the next session.
-  const handleLogout = () => {
-    queryClient.clear();
+  // Drop identity on the backend (best-effort) and clear every
+  // identity-shaped zustand store + the React Query cache so the
+  // previous user's data doesn't flash on the next session.
+  const handleLogout = async () => {
+    await performLogout();
     onRequestClose();
   };
 
@@ -222,9 +222,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
         </ListItemIcon>
         <ListItemText
           primary="Rules"
-          secondary={
-            rulesDisabled ? "Pick a shelf first" : undefined
-          }
+          secondary={rulesDisabled ? "Pick a shelf first" : undefined}
         />
       </MenuItem>
 
