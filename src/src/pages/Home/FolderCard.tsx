@@ -6,45 +6,41 @@ import { useFavouritesStore } from "../../zustand/useFavouritesStore";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { getActivityApi } from "../../api/ActivityApi";
 import { useDirectory } from "../../api/queries/useDirectoryQuery";
+import { useIsAuthenticated } from "../../api/queries/useUser";
 import { UserError } from "../../api/models/UserError";
 import { FolderCardView, type CardSize } from "./FolderCardView";
 import type { NoteVersionSummaryReply } from "../../api/models/activity";
 
 export interface FolderCardProps {
-  /** ID of the directory to render. */
+  // ID of the directory to render.
   directoryId: string;
-  /** Visual size preset forwarded to `FolderCardView`. */
+  // Visual size preset forwarded to FolderCardView.
   size?: CardSize;
 }
 
 const activityApi = getActivityApi();
 
-/**
- * Feature wrapper for a favourite directory card.
- * Reads metadata from the shared directory list query, falling back to
- * `useDirectory` for records the list hasn't covered yet.
- */
+// Feature wrapper for a favourite directory card. Reads from the shared directory list query, falls back to useDirectory.
 export const FolderCard: React.FC<FolderCardProps> = ({
   directoryId,
   size = "medium",
 }) => {
   const navigate = useNavigate();
   const { byId: directoriesById } = useAllDirectoriesQuery();
+  // Gate per-card activity fetch on auth so N cards do not fan out N 401s on the cold-start frame.
+  const isAuthed = useIsAuthenticated();
   const cachedDirectory = directoriesById[directoryId];
 
   const isRoot = directoryId === "root";
 
-  // Skip the fetch when we already have a cached record from the
-  // shared list query.
+  // Skip the fetch when we already have a cached record from the shared list query.
   const {
     data: fetchedDirectory,
     isPending: isDirectoryPending,
     error,
   } = useDirectory(cachedDirectory || isRoot ? undefined : directoryId);
 
-  // On a 403, drop this directory from favourites and surface a one-shot
-  // info snackbar. The ref guards against re-running the side effect when
-  // the query re-renders with the same error (e.g. on tab focus).
+  // On a 403, drop this directory from favourites and surface a one-shot info snackbar.
   const handledForbiddenRef = useRef<string | null>(null);
   useEffect(() => {
     if (
@@ -73,18 +69,13 @@ export const FolderCard: React.FC<FolderCardProps> = ({
   const isMissing = !isDirectoryPending && (!directory || isForbidden);
   const isLoading = !!directoryId && isDirectoryPending && !cachedDirectory;
 
-  // Favourite state for this directory. `toggleDirectory` returns the
-  // new status; we keep it as the source of truth instead of flipping
-  // a local boolean so an external `setDirectoryFavourite` (e.g. the
-  // 403 handler above) still wins on the next render.
+  // Favourite state. toggleDirectory is the source of truth so an external setDirectoryFavourite still wins.
   const isFavourite = useFavouritesStore((s) =>
     directoryId ? Boolean(s.directories[directoryId]) : false,
   );
   const toggleDirectory = useFavouritesStore((s) => s.toggleDirectory);
 
-  // Latest activity timestamp (single row). Inlined `useQuery` because
-  // this is the only consumer right now - if a second consumer appears,
-  // lift into `useDirectoryActivityQuery` next to `useDirectory`.
+  // Latest activity timestamp (single row). Inlined useQuery because this is the only consumer right now.
   const { data: activity } = useQuery<NoteVersionSummaryReply[]>({
     queryKey: ["activity", "directory", directoryId],
     queryFn: () =>
@@ -94,7 +85,8 @@ export const FolderCard: React.FC<FolderCardProps> = ({
         max_depth: 1,
         directory_id: directoryId,
       }),
-    enabled: !isRoot,
+    // See the auth-gate comment above for the cold-start rationale.
+    enabled: !isRoot && isAuthed,
   });
   const lastModified =
     activity && activity.length > 0 ? activity[0].created_at : undefined;
@@ -114,8 +106,7 @@ export const FolderCard: React.FC<FolderCardProps> = ({
       hidden={isRoot || isMissing}
       size={size}
       isFavourite={isFavourite}
-      // `stopPropagation` keeps the click from also firing the card's
-      // own `onClick` and navigating into the directory.
+      // stopPropagation keeps the click from also firing the card's own onClick and navigating into the directory.
       onToggleFavourite={(event) => {
         event.stopPropagation();
         toggleDirectory(directoryId);

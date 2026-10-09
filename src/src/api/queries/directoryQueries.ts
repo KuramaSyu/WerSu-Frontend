@@ -7,33 +7,20 @@ import {
 import type { DirectoryReply } from "../models/directory";
 import { getDirectoryApi, type ListDirectoriesQuery } from "../DirectoryApi";
 import { useAuthStore } from "../../zustand/useAuthStore";
-import { useUserKey } from "./useUser";
+import { useIsAuthenticated, useUserKey } from "./useUser";
 
-// Use the registered singleton so the share-token provider installed on
-// `Bootstrap` reaches this instance. See `useNoteQueries` for rationale.
+// Resolve through the api registry so the share-token provider installed on Bootstrap reaches this instance.
 const directoryApi = getDirectoryApi();
 
-// Backoff schedule for retrying a directory list that keeps coming back
-// empty. The first few intervals are tight (so a freshly-created
-// directory appears quickly), then the cadence eases off to avoid
-// hammering the backend once we suspect the user has no directories
-// at all. The last entry is reused for every subsequent poll — there's
-// no point in waiting longer than 5 minutes between checks.
+// Backoff schedule for retrying an empty list. First interval is generous so a freshly-logged-in session has time to settle.
 const EMPTY_POLL_SCHEDULE_MS = [
-  1_000, // 1s
-  2_000, // 2s
-  5_000, // 5s
   10_000, // 10s
   30_000, // 30s
   60_000, // 1m
   300_000, // 5m
 ] as const;
 
-// Tracks how many consecutive empty responses each queryKey has seen.
-// Lives at module scope because the `refetchInterval` callback closes
-// over it; TanStack re-creates the callback on every poll, so an
-// instance-local closure wouldn't survive. Keyed by the full queryKey
-// tuple so concurrent calls with different filters don't share state.
+// Tracks how many consecutive empty responses each queryKey has seen. Lives at module scope for refetchInterval callback closures.
 const emptyStreakByKey = new Map<string, number>();
 
 export const directoryQueryKeys = {
@@ -49,10 +36,12 @@ export const useDirectoriesQuery = (
   enabled: boolean,
 ) => {
   const userKey = useUserKey();
+  const isAuthed = useIsAuthenticated();
   return useQuery({
     queryKey: directoryQueryKeys.list(userKey, query),
     queryFn: async () => await directoryApi.list(query),
-    enabled,
+    // Gate on auth so the call does not fire on the cold-start frame before the session cookie settles.
+    enabled: enabled && isAuthed,
     // Re-poll on empty response, because after login no dirs are displayed
     refetchInterval: (q) => {
       const key = JSON.stringify(q.queryKey);
@@ -73,15 +62,7 @@ export const useDirectoriesQuery = (
   });
 };
 
-/**
- * Fetches a single `DirectoryReply` by id. Always enabled - pass an
- * empty / undefined id if you want to skip the fetch (the API call
- * will be a no-op against the backend).
- *
- * Used by nested `ChapterAccordion`s to hydrate the row badge with
- * populated `child_note_ids` / `child_dir_ids` before the user
- * expands the chapter.
- */
+// Fetches a single DirectoryReply by id. Pass empty or undefined id to skip.
 export const useDirectoryByIdQuery = (id: string | undefined) => {
   const userKey = useUserKey();
   return useQuery({
@@ -90,27 +71,20 @@ export const useDirectoryByIdQuery = (id: string | undefined) => {
       if (!id) {
         throw new Error("id required");
       }
-      // include_child_notes is false by default in DirectoryApi.get; that
-      // would strip the populated child_note_ids the list call returned,
-      // and the merge in useChapterAccordion would then fall through to
-      // the empty array and the row badge would always read "Empty".
+      // Override include_child_notes so the populated child_note_ids from the list call survive the merge.
       return await directoryApi.get(id, { include_child_notes: true });
     },
     enabled: !!id,
   });
 };
 
-/**
- * Convenience hook which wraps
- * useDirectoriesQuery({ limit: 500, offset: 0 }) and returns a memoised
- * lookup table
- */
+// Wraps useDirectoriesQuery with limit 500 offset 0 and returns a memoised lookup table.
 export interface AllDirectoriesQueryResult {
-  /** Raw list payload from `GET /api/directories`. Undefined while loading. */
+  // Raw list payload. Undefined while loading.
   list: DirectoryReply[] | undefined;
-  /** Memoised lookup table built from `list`. Empty object while loading. */
+  // Memoised lookup table. Empty object while loading.
   byId: Record<string, DirectoryReply>;
-  /** True while the underlying query is in flight. */
+  // True while the underlying query is in flight.
   isLoading: boolean;
 }
 
@@ -133,10 +107,7 @@ export function useAllDirectoriesQuery(
   return { list: data, byId, isLoading };
 }
 
-/**
- * Mirrors a freshly-created / patched `DirectoryReply` into every
- * cached list-query payload.
- */
+// Mirrors a freshly-created or patched DirectoryReply into every cached list payload.
 export const upsertDirectory = (
   queryClient: QueryClient,
   directory: DirectoryReply,
@@ -157,10 +128,7 @@ export const upsertDirectory = (
   );
 };
 
-/**
- * Removes a directory from every cached list-query payload.
- * (list query = [directories, list])
- */
+// Removes a directory from every cached list-query payload.
 export const removeDirectory = (
   queryClient: QueryClient,
   directoryId: string,

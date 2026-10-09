@@ -5,18 +5,12 @@ import { useAuthStore } from "../../zustand/useAuthStore";
 import { useUserStore } from "../../zustand/userStore";
 import { WersuUserImpl, type WersuUser } from "../../components/DiscordLogin";
 
-// Use the registered singleton so the share-token provider installed on
-// `Bootstrap` reaches this instance. `UserApi` doesn't extend the bearer
-// mixin yet, but resolving through the registry keeps wiring consistent and
-// lets us add share-token support later without touching call sites.
+// Resolve through the api registry so the share-token provider installed on Bootstrap reaches this instance.
 const userApi = getUserApi();
 
 const USER_FETCH_RETRY_LIMIT = 1;
 
-/**
- * `react-query` retry predicate. Returns `false` to skip further
- * retries for a given error.
- */
+// react-query retry predicate.
 const shouldRetryFetchUser = (
   failureCount: number,
   error: unknown,
@@ -27,22 +21,15 @@ const shouldRetryFetchUser = (
   return failureCount < USER_FETCH_RETRY_LIMIT;
 };
 
-/**
- * Identity key for `queryKey` tuples: the logged-in user id when
- * one is known, otherwise the public-share JWT, otherwise `null`.
- * Embedding this in a queryKey forces a refetch when the viewer
- * switches (anonymous -> login, login -> logout, share -> different
- * share).
- */
+// Identity key for queryKey tuples: user id, share JWT, or null.
+// Embedding this in a queryKey forces a refetch when the viewer switches.
 export function useUserKey(): string | null {
   const userId = useUserStore((s) => s.user?.id ?? null);
   const shareToken = useAuthStore((s) => s.shareAccessToken);
   return userId ?? shareToken;
 }
 
-/**
- * Hook to fetch the current user with discord login authentication.
- */
+// Hook to fetch the current user with discord login authentication.
 export function useUser(): UseQueryResult<WersuUserImpl, Error> {
   return useQuery<WersuUser, Error, WersuUserImpl>({
     queryKey: ["user"],
@@ -58,15 +45,16 @@ export function useUser(): UseQueryResult<WersuUserImpl, Error> {
   });
 }
 
-// Cache usersById by raw query-data identity. Tanstack preserves the
-// data ref across renders when nothing changed, so the cache hit
-// returns the same Record ref and stops frequent useless updates
+// True once useUser has resolved to a logged-in viewer.
+// Use this to gate auth-required queries on the cold-start frame.
+export function useIsAuthenticated(): boolean {
+  return useUser().isSuccess;
+}
+
+// Cache usersById by raw query-data identity so cache hits return the same Record ref.
 const usersByIdCache = new WeakMap<object, Record<string, WersuUser>>();
 
-/**
- * Hook to fetch all users the current user has access to, including their friends
- * @returns
- */
+// Hook to fetch all users the current user has access to, including their friends.
 export function useUsers(
   userIds: string[],
 ): UseQueryResult<Record<string, WersuUser>, Error> {

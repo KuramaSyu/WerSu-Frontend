@@ -54,9 +54,7 @@ export interface IDirectoryApi {
   delete(id: string): Promise<DirectoryReply | undefined>;
 }
 
-// Extends `ShareTokenBearerMixin` so directory endpoints can attach the
-// anonymous share JWT when a public share is active. See `NoteApi` for the
-// full rationale — `DirectoryApi` follows the same pattern.
+// Extends ShareTokenBearerMixin so directory endpoints can attach the anonymous share JWT when a public share is active.
 export class DirectoryApi
   extends ShareTokenBearerMixin
   implements IDirectoryApi
@@ -111,10 +109,20 @@ export class DirectoryApi
     });
 
     if (!response.ok) {
-      this.logError(
-        `${DIRECTORIES_API_PATH}?${url.searchParams.toString()}`,
-        `Response not ok: ${response.status}; ${response.statusText}`,
-      );
+      const status = response.status;
+      const statusText = response.statusText;
+      const urlPart = `${DIRECTORIES_API_PATH}?${url.searchParams.toString()}`;
+      this.logError(urlPart, `Response not ok: ${status}; ${statusText}`);
+      // Throw on auth failures so a 401 does not masquerade as an empty list and trip the empty-poll cascade.
+      if (status === 401 || status === 403) {
+        const detail = await response.text().catch(() => "");
+        throw new UserError(
+          "Failed to load directories",
+          detail || statusText || "Unknown error",
+          status,
+        );
+      }
+      // Other non-OK responses degrade quietly to an empty list.
       return [];
     }
 
@@ -206,18 +214,8 @@ export class DirectoryApi
     return this.requestWithoutBody("DELETE", `${DIRECTORIES_API_PATH}/${id}`);
   }
 
-  /**
-   * Lists notes in a directory. Hits `GET /api/directories/:id/notes`.
-   *
-   * The backend routes this path without a trailing slash; sending the
-   * slashed variant triggers a 301 redirect whose response is missing the
-   * CORS headers gin adds on real responses. The browser then refuses to
-   * follow the redirect cross-origin.
-   *
-   * The returned payload is a `NotesReply`: it embeds every directory
-   * and tag referenced by the returned notes so the client can resolve
-   * labels without a follow-up fetch.
-   */
+  // Lists notes in a directory. Hits GET /api/directories/:id/notes.
+  // Backend routes without a trailing slash; the slashed variant 301-redirects and loses CORS headers.
   async listNotes(
     id: string,
     query?: ListDirectoryNotesQuery,
@@ -322,11 +320,7 @@ export class DirectoryApi
 const directoryApiSingleton = new DirectoryApi();
 apiRegistry.register(directoryApiSingleton);
 
-/**
- * Typed token for retrieving the registered `DirectoryApi` singleton from
- * the registry. Prefer the `getDirectoryApi()` helper over calling
- * `apiRegistry.get(DIRECTORY_API_TOKEN)` directly.
- */
+// Typed token for retrieving the registered DirectoryApi singleton from the registry.
 export const DIRECTORY_API_TOKEN: ApiToken<DirectoryApi> = Symbol(
   "DirectoryApi",
 ) as ApiToken<DirectoryApi>;
@@ -334,11 +328,7 @@ export const DIRECTORY_API_TOKEN: ApiToken<DirectoryApi> = Symbol(
 // Register the SAME instance under the typed token too - see above.
 apiRegistry.register(directoryApiSingleton, DIRECTORY_API_TOKEN);
 
-/**
- * Resolve the registered `DirectoryApi` singleton.
- *
- * Throws if the API isn't registered — see `getNoteApi` for rationale.
- */
+// Resolve the registered DirectoryApi singleton. Throws if not registered.
 export function getDirectoryApi(): DirectoryApi {
   return apiRegistry.get<DirectoryApi>(DIRECTORY_API_TOKEN);
 }

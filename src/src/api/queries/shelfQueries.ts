@@ -1,10 +1,4 @@
-// shelf_queries.ts
-//
-// TanStack query hooks for the authenticated shelf-management
-// API (ShelfApi in ../ShelfApi.ts). Mirrors the shape of
-// sharingQueries.ts: a xxxKeys object for query-key
-// composition, useXxx query hooks, and useXxx mutation hooks
-// that invalidate the matching namespace on success.
+// shelf_queries.ts - TanStack query hooks for the authenticated shelf-management API.
 
 import {
   useMutation,
@@ -15,6 +9,7 @@ import {
 } from "@tanstack/react-query";
 
 import { getShelfApi } from "../ShelfApi";
+import { useIsAuthenticated } from "./useUser";
 
 import type {
   AttachBookEndpointReply,
@@ -41,8 +36,7 @@ import type {
   UpdateShelfEndpointRequest,
 } from "../models/shelf";
 
-// Use the registered singleton so the share-token provider installed on
-// Bootstrap reaches this instance. See useNoteQueries for rationale.
+// Resolve through the api registry so the share-token provider installed on Bootstrap reaches this instance.
 const shelfApi = getShelfApi();
 
 // Query keys
@@ -67,11 +61,7 @@ export const shelfKeys = {
 };
 
 // Queries
-/**
- * Fetch shelves via GET /api/shelves with the given filter.
- * include_books=true makes the backend fill book_ids on
- * every row.
- */
+// Fetch shelves via GET /api/shelves. include_books fills book_ids on every row.
 export function useShelves(
   request: ListShelvesEndpointRequest,
   options?: Omit<
@@ -84,16 +74,17 @@ export function useShelves(
     "queryKey" | "queryFn"
   >,
 ) {
+  const isAuthed = useIsAuthenticated();
   return useQuery({
     queryKey: shelfKeys.list(request),
     queryFn: () => shelfApi.listShelves(request),
+    // AND the caller's enabled with the auth gate so the cold-start protection composes with caller-side gating.
     ...options,
+    enabled: (options?.enabled ?? true) && isAuthed,
   });
 }
 
-/**
- * Fetch a single shelf by id.
- */
+// Fetch a single shelf by id.
 export function useShelf(
   request: GetShelfByIdEndpointRequest,
   options?: Omit<
@@ -114,11 +105,7 @@ export function useShelf(
   });
 }
 
-/**
- * Fetch multiple shelves by id in a single request.
- * Skipped when request.ids is empty so an empty arg does not
- * hit the backend.
- */
+// Fetch multiple shelves by id in a single request.
 export function useShelvesById(
   request: GetShelvesByIdsEndpointRequest,
   options?: Omit<
@@ -139,9 +126,7 @@ export function useShelvesById(
   });
 }
 
-/**
- * Fetch the book ids bound to a single shelf.
- */
+// Fetch the book ids bound to a single shelf.
 export function useShelfBooks(
   request: GetShelfBooksEndpointRequest,
   options?: Omit<
@@ -162,9 +147,7 @@ export function useShelfBooks(
   });
 }
 
-/**
- * Resolve the shelves a book sits on.
- */
+// Resolve the shelves a book sits on.
 export function useShelvesByBook(
   request: GetShelvesByBookEndpointRequest,
   options?: Omit<
@@ -186,13 +169,7 @@ export function useShelvesByBook(
 }
 
 // Mutations
-/**
- * Create a shelf.
-
- *
- * Invalidates every shelf query on success so the new row shows
- * up in the next list/detail fetch.
- */
+// Create a shelf. Invalidates every shelf query on success.
 export function useCreateShelf(
   options?: UseMutationOptions<
     CreateShelfEndpointReply,
@@ -202,10 +179,7 @@ export function useCreateShelf(
 ) {
   const queryClient = useQueryClient();
 
-  // Pull onSuccess out of options so we can compose it after the
-  // invalidation. Spreading ...options AFTER our own onSuccess would
-  // let the caller's handler silently replace ours - leaving the cache
-  // stale and forcing a page reload to see the new shelf.
+  // Pull onSuccess out so the invalidation wrapper cannot be silently replaced by the caller's handler.
   const { onSuccess: userOnSuccess, ...restOptions } = options ?? {};
 
   return useMutation({
@@ -220,11 +194,7 @@ export function useCreateShelf(
   });
 }
 
-/**
- * Update a shelf.
- *
- * Invalidates every shelf query on success.
- */
+// Update a shelf. Invalidates every shelf query on success.
 export function useUpdateShelf(
   options?: UseMutationOptions<
     UpdateShelfEndpointReply,
@@ -234,8 +204,7 @@ export function useUpdateShelf(
 ) {
   const queryClient = useQueryClient();
 
-  // See useCreateShelf - keep onSuccess out of restOptions so the
-  // invalidation wrapper can't be overridden by the caller.
+  // See useCreateShelf - keep onSuccess out of restOptions.
   const { onSuccess: userOnSuccess, ...restOptions } = options ?? {};
 
   return useMutation({
@@ -250,10 +219,7 @@ export function useUpdateShelf(
   });
 }
 
-/**
- * Delete a shelf. The backend returns the would-be / was-been
- * cascade in DeleteShelfReply; we surface it as-is.
- */
+// Delete a shelf. Surfaces the cascade reply from the backend as-is.
 export function useDeleteShelf(
   options?: UseMutationOptions<
     DeleteShelfEndpointReply,
@@ -263,8 +229,7 @@ export function useDeleteShelf(
 ) {
   const queryClient = useQueryClient();
 
-  // See useCreateShelf - keep onSuccess out of restOptions so the
-  // invalidation wrapper can't be overridden by the caller.
+  // See useCreateShelf - keep onSuccess out of restOptions.
   const { onSuccess: userOnSuccess, ...restOptions } = options ?? {};
 
   return useMutation({
@@ -279,12 +244,7 @@ export function useDeleteShelf(
   });
 }
 
-/**
- * Replace the set of books bound to a shelf.
- *
- * Invalidates the shelf namespace so both the shelf row and
- * the books sub-query refresh.
- */
+// Replace the books bound to a shelf. Invalidates the shelf namespace.
 export function useSetShelfBooks(
   options?: UseMutationOptions<
     SetShelfBooksEndpointReply,
@@ -294,8 +254,7 @@ export function useSetShelfBooks(
 ) {
   const queryClient = useQueryClient();
 
-  // See useCreateShelf - keep onSuccess out of restOptions so the
-  // invalidation wrapper can't be overridden by the caller.
+  // See useCreateShelf - keep onSuccess out of restOptions.
   const { onSuccess: userOnSuccess, ...restOptions } = options ?? {};
 
   return useMutation({
@@ -310,9 +269,7 @@ export function useSetShelfBooks(
   });
 }
 
-/**
- * Attach a single book to a shelf.
- */
+// Attach a single book to a shelf.
 export function useAttachBook(
   options?: UseMutationOptions<
     AttachBookEndpointReply,
@@ -322,8 +279,7 @@ export function useAttachBook(
 ) {
   const queryClient = useQueryClient();
 
-  // See useCreateShelf - keep onSuccess out of restOptions so the
-  // invalidation wrapper can't be overridden by the caller.
+  // See useCreateShelf - keep onSuccess out of restOptions.
   const { onSuccess: userOnSuccess, ...restOptions } = options ?? {};
 
   return useMutation({
@@ -338,9 +294,7 @@ export function useAttachBook(
   });
 }
 
-/**
- * Detach a single book from a shelf.
- */
+// Detach a single book from a shelf.
 export function useDetachBook(
   options?: UseMutationOptions<
     DetachBookEndpointReply,
@@ -350,8 +304,7 @@ export function useDetachBook(
 ) {
   const queryClient = useQueryClient();
 
-  // See useCreateShelf - keep onSuccess out of restOptions so the
-  // invalidation wrapper can't be overridden by the caller.
+  // See useCreateShelf - keep onSuccess out of restOptions.
   const { onSuccess: userOnSuccess, ...restOptions } = options ?? {};
 
   return useMutation({

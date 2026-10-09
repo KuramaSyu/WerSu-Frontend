@@ -1,14 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { getDirectoryApi } from "../DirectoryApi";
 import { UserError } from "../models/UserError";
-import { useUserKey } from "./useUser";
+import { useIsAuthenticated, useUserKey } from "./useUser";
 
-// Use the registered singleton so the share-token provider installed on
-// `Bootstrap` reaches this instance. See `useNoteQueries` for rationale.
+// Resolve through the api registry so the share-token provider installed on Bootstrap reaches this instance.
 const directoryApi = getDirectoryApi();
 
-// 403 is permanent (access denied) — retrying just delays the user-facing
-// reaction. Any other failure keeps the default retry policy.
+// 403 is permanent (access denied) - skip retries to surface it sooner.
 const shouldRetryFetchDirectory = (
   failureCount: number,
   error: unknown,
@@ -25,18 +23,10 @@ export const directoryQueryKeys = {
     ["directory", directoryId, userKey] as const,
 };
 
-/**
- * Fetches a single directory by id via `GET /api/directories/:id`.
- *
- * Returns `undefined` while loading, a `DirectoryReply` on success, and
- * surfaces the underlying `UserError` (with `status`) on a non-OK
- * response. Consumers should fall back to cached data on `error` rather
- * than rendering the loading state — the page renders from the
- * shared `useAllDirectoriesQuery` cache while this query is in
- * flight.
- */
+// Fetches a single directory by id. Returns undefined while loading, DirectoryReply on success, UserError on non-OK.
 export function useDirectory(directoryId?: string) {
   const userKey = useUserKey();
+  const isAuthed = useIsAuthenticated();
   return useQuery({
     queryKey: directoryQueryKeys.detail(userKey, directoryId ?? ""),
     queryFn: async () => {
@@ -45,7 +35,7 @@ export function useDirectory(directoryId?: string) {
       }
       return await directoryApi.get(directoryId);
     },
-    enabled: !!directoryId,
+    enabled: !!directoryId && isAuthed,
     retry: shouldRetryFetchDirectory,
   });
 }

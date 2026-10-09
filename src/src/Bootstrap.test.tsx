@@ -1,6 +1,5 @@
 // Tier 2 test for useShareTokenMode (the side-effect of Bootstrap).
-// Verifies the share-token provider is installed on /public/* and anonymous
-// /n/* paths and uninstalled for logged-in /n/* viewers.
+// Verifies the share-token provider is installed on /public/* and uninstalled for logged-in viewers.
 
 // @vitest-environment jsdom
 
@@ -12,19 +11,14 @@ import { render } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-// Bootstrap renders an empty fragment and its only MUI dependency is via
-// useThemeStore, which we mock away. Keeps the test out of the
-// material-color-utilities ESM-graph landmine documented in setup.ts.
+// Bootstrap renders an empty fragment. Mock away useThemeStore to keep the test out of MUI.
 vi.mock("./zustand/useThemeStore", () => ({
   useThemeStore: () => ({ theme: { palette: { background: {} } } }),
 }));
 
-// Heavy stores/queries get stubbed so the test focuses on the
-// route-aware provider policy. useShareTokenMode only triggers their
-// side-effects (queries, invalidations), never reads them for branching.
+// Heavy stores/queries get stubbed so the test focuses on the route-aware provider policy.
 vi.mock("./zustand/userStore", () => ({
-  // Mirrors zustand's call signature: useStore() returns the whole state
-  // slice, useStore(selector) applies the selector. Bootstrap uses both.
+  // Mirrors zustand call signature: useStore() or useStore(selector). Bootstrap uses both.
   useUserStore: (<T,>(selector?: (s: { user: unknown }) => T) =>
     selector
       ? selector({ user: globalUser })
@@ -44,11 +38,7 @@ vi.mock("./api/SearchNotesApi", () => ({
 vi.mock("./api/UserApi", () => ({
   getUserApi: () => ({ fetchUser: vi.fn() }),
 }));
-// useUser and useShareAccessToken are read by Bootstrap itself. They
-// transitively import DiscordLogin -> @mui/material -> the
-// react-transition-group/TransitionGroupContext directory shim, which
-// Vite 8 / Vitest 4's strict ESM resolver refuses. Stubbing keeps the
-// test out of MUI entirely.
+// Stub useUser and useShareAccessToken: their transitive import of @mui/material hits an ESM-graph shim Vite 8 refuses.
 vi.mock("./api/queries/useUser", () => ({
   useUser: () => ({
     data: globalUser,
@@ -56,19 +46,19 @@ vi.mock("./api/queries/useUser", () => ({
     isSuccess: true,
   }),
   useUserKey: () => null,
+  // Auth gate mirror. useUser is already isSuccess in the test harness.
+  useIsAuthenticated: () => true,
 }));
 vi.mock("./api/queries/useShareAccessToken", () => ({
   useShareAccessToken: () => undefined,
 }));
 
-// useFakeApiMode in Bootstrap does a dynamic import of ./mocks/browser
-// from inside a useEffect.
+// useFakeApiMode dynamically imports ./mocks/browser from inside a useEffect.
 vi.mock("./mocks/browser", () => ({
   setApiMode: () => Promise.resolve(),
 }));
 
-// globalUser is read by the mocked useUserStore selector. Each test
-// sets it before rendering so the hook sees the right slice.
+// globalUser is read by the mocked useUserStore selector. Each test sets it before rendering.
 let globalUser: { id: string } | null = null;
 
 // Imported after mocks so the factories apply.
@@ -77,15 +67,12 @@ import { apiRegistry } from "./api/apiRegistry";
 
 beforeEach(() => {
   globalUser = null;
-  // Reset registry state between tests so a previous test's installed
-  // provider does not bleed into the next.
+  // Reset registry state between tests so a previous test's installed provider does not bleed.
   apiRegistry.installShareTokenProvider(null);
 });
 
 function renderAt(pathname: string) {
-  // Use a real QueryClient so useQuery calls inside Bootstrap do not
-  // throw. The queries sit idle (gated by enabled); we just need the
-  // provider in scope.
+  // Use a real QueryClient so useQuery calls inside Bootstrap do not throw.
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
@@ -107,9 +94,7 @@ function renderAt(pathname: string) {
 
 describe("useShareTokenMode", () => {
   it("does not throw when mounted inside a Router (regression)", () => {
-    // The original bug: Bootstrap rendered outside Router called
-    // useLocation() and React Router threw with a "must be inside Router"
-    // error.
+    // Original bug: Bootstrap rendered outside Router, useLocation threw with a "must be inside Router" error.
     globalUser = null;
     expect(() => renderAt("/n/abc")).not.toThrow();
   });
