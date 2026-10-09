@@ -19,14 +19,39 @@ interface OutlineState {
   clear: () => void;
 }
 
+/** Elementwise equality for the outline array; order matters. */
+const sameItems = (
+  a: ReadonlyArray<OutlineItem>,
+  b: ReadonlyArray<OutlineItem>,
+): boolean => {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    const x = a[i];
+    const y = b[i];
+    if (
+      x.id !== y.id ||
+      x.level !== y.level ||
+      x.textContent !== y.textContent
+    ) {
+      return false;
+    }
+  }
+  return true;
+};
+
 /**
  * Holds the current editor's outline so the outline panel (which lives
  * in the route component, NOT inside the editor) can render the list
  * without re-rendering on every ProseMirror transaction.
+ *
+ * `setItems` is a structural no-op when the new array is elementwise
+ * equal to the previous one, so the panel stays quiet on repeated
+ * `push()` calls that produced identical content.
  */
 export const useOutlineStore = create<OutlineState>((set) => ({
   items: [],
-  setItems: (items) => set({ items }),
+  setItems: (items) =>
+    set((state) => (sameItems(state.items, items) ? state : { items })),
   clear: () => set({ items: [] }),
 }));
 

@@ -1,9 +1,11 @@
 // ---------------------------------------------------------------------------
 // OutlineBridge
-// Mirrors the editor's heading outline into useOutlineStore on every
-// editor.on("update"). Each heading gets a stable kebab slug used as
-// the URL section param and stamped on the DOM node for deep-link
-// and click-to-scroll. Renders nothing.
+// Mirrors the editor's heading outline into useOutlineStore. It only
+// pushes on structural heading changes (level, text content, count, or
+// presence), skipped via a cached `level:textContent` signature; this
+// keeps the bridge silent while the user types into body paragraphs.
+// Each heading gets a stable kebab slug stamped on its DOM node for the
+// URL `?section=<id>` param, deep-link, and click-to-scroll. Renders nothing.
 // ---------------------------------------------------------------------------
 
 import { memo, useEffect } from "react";
@@ -20,6 +22,21 @@ const OutlineBridgeImpl: React.FC<OutlineBridgeProps> = ({ editor }) => {
   logRerender("OutlineBridge", { hasEditor: !!editor });
   useEffect(() => {
     if (!editor) return;
+
+    // Cheap structural signature: walks the doc once and serializes the
+    // heading sequence as `level:textContent` tokens. Stable across body
+    // edits so the per-keystroke outline rebuild is skipped while typing.
+    const signature = (doc: typeof editor.state.doc): string => {
+      const parts: string[] = [];
+      doc.descendants((node) => {
+        if (node.type.name !== "heading") return;
+        if (node.textContent.length === 0) return;
+        parts.push(`${node.attrs.level ?? 1}:${node.textContent}`);
+      });
+      return parts.join("|");
+    };
+
+    let prevSig = signature(editor.state.doc);
 
     const push = () => {
       const doc = editor.state.doc;
@@ -41,6 +58,8 @@ const OutlineBridgeImpl: React.FC<OutlineBridgeProps> = ({ editor }) => {
         });
       });
 
+      prevSig = signature(doc);
+
       if (headings.length === 0) {
         useOutlineStore.getState().clear();
         return;
@@ -61,10 +80,24 @@ const OutlineBridgeImpl: React.FC<OutlineBridgeProps> = ({ editor }) => {
       useOutlineStore.getState().setItems(items);
     };
 
-    editor.on("update", push);
+    const onTransaction = ({
+      transaction,
+    }: {
+      transaction: { docChanged: boolean };
+    }) => {
+      // No-doc changes (selection moves, mark refreshes with no range
+      // change) can't affect the heading list -> skip the rebuild.
+      if (!transaction.docChanged) return;
+      // Heading list unchanged -> skip. This is the per-keystroke skip
+      // for body typing that used to re-walk + re-slug + re-render.
+      if (signature(editor.state.doc) === prevSig) return;
+      push();
+    };
+
+    editor.on("transaction", onTransaction);
     push();
     return () => {
-      editor.off("update", push);
+      editor.off("transaction", onTransaction);
       useOutlineStore.getState().clear();
     };
   }, [editor]);
@@ -72,5 +105,5 @@ const OutlineBridgeImpl: React.FC<OutlineBridgeProps> = ({ editor }) => {
   return null;
 };
 
-/** Memoized so a parent re-render does not re-fire the update subscription. */
+/** Memoized so a parent re-render does not re-fire the transaction subscription. */
 export const OutlineBridge = memo(OutlineBridgeImpl);
