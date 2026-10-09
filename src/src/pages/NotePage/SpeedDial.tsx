@@ -4,6 +4,7 @@
 import { memo } from "react";
 import { Box, ButtonBase, Fab, Stack, Tooltip } from "@mui/material";
 import CodeIcon from "@mui/icons-material/Code";
+import EditIcon from "@mui/icons-material/Edit";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import type { Editor } from "@tiptap/react";
 import { M4, MOBILE_BOTTOM_BAR_CLEARANCE } from "../../statics";
@@ -98,7 +99,7 @@ const InsertSpeedDialImpl: React.FC<InsertSpeedDialProps> = ({
   const readWriteLabel = editMode
     ? "Switch to read mode"
     : "Switch to write mode";
-  const ReadWriteIcon = editMode ? VisibilityIcon : ArticleIcon;
+  const ReadWriteIcon = editMode ? VisibilityIcon : EditIcon;
 
   const bottom = isMobile ? `calc(${M4} + ${MOBILE_BOTTOM_BAR_CLEARANCE})` : M4;
   const paperFg = theme.palette.getContrastText(
