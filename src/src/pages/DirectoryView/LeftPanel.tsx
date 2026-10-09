@@ -1,5 +1,6 @@
 import React from "react";
 import ScheduleIcon from "@mui/icons-material/Schedule";
+import NotesIcon from "@mui/icons-material/Notes";
 import { RecentActivityPanel } from "../../components/RecentActivity/Main";
 import { DirectorySideView } from "../MainPage/DirectorySideView";
 import type { HirarchyItem } from "../../models/HirarchyItem";
@@ -7,6 +8,7 @@ import { PanelSection } from "../../components/Panels/PanelSection";
 import { NavigationSection } from "../../components/Panels/NavigationSection";
 import { UpperPanel } from "../../components/Panels/UpperPanel";
 import { useDirectory } from "../../api/queries/useDirectoryQuery";
+import { Box } from "@mui/material";
 
 interface DirectoryLeftPanelProps {
   currentNode: HirarchyItem;
@@ -27,9 +29,8 @@ export const DirectoryLeftPanel: React.FC<DirectoryLeftPanelProps> = ({
     currentNode.getId() === "root" ? undefined : currentNode.getId(),
   );
   return (
-    <UpperPanel>
+    <UpperPanel spacing={2}>
       <NavigationSection />
-      <DirectorySideView />
       <PanelSection
         title="Recent activity"
         titleIcon={<ScheduleIcon fontSize="small" />}
@@ -42,11 +43,16 @@ export const DirectoryLeftPanel: React.FC<DirectoryLeftPanelProps> = ({
           }
         />
       </PanelSection>
-      <PanelSection title="Description" titleIcon={<></>}>
-        <p style={{ fontSize: "0.8rem" }}>
-          {dir?.description || "No description"}
-        </p>
-      </PanelSection>
+      {dir?.description && (
+        <PanelSection
+          title="Description"
+          titleIcon={<NotesIcon fontSize="small" />}
+        >
+          <Box sx={{ color: "text.secondary" }}>
+            {dir?.description || "No description"}
+          </Box>
+        </PanelSection>
+      )}
     </UpperPanel>
   );
 };

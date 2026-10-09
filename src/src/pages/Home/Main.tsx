@@ -75,7 +75,6 @@ export const HomePage: React.FC = () => {
       >
         <RecentActivityPanel target={{ type: "root" }} />
       </PanelSection>
-      <DirectorySideView />
     </UpperPanel>,
   );
 
