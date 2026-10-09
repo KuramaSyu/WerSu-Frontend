@@ -1,4 +1,4 @@
-import { Divider, Paper, Stack, Typography } from "@mui/material";
+import { Box, Divider, Paper, Stack, Typography } from "@mui/material";
 import { DragDropProvider } from "@dnd-kit/react";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
@@ -17,6 +17,8 @@ import { DirectoryHirarchyItem } from "../../models/HirarchyItem";
 import { ChapterAccordion } from "./ChapterAccordion";
 import { SelectionActionBar } from "./SelectionActionBar";
 import { useDirectorySelectionStore } from "../../zustand/useDirectorySelectionStore";
+import TranslucentPaper from "../../components/TranslucentPaper";
+import { useThemeStore } from "../../zustand/useThemeStore";
 
 /**
  * Renders the directory view UI, including breadcrumb navigation, child
@@ -38,6 +40,7 @@ export const DirectoryView: React.FC = () => {
   const [editDirectoryId, setEditDirectoryId] = useState<string | undefined>(
     undefined,
   );
+  const { theme } = useThemeStore();
 
   const { id: routeId } = useParams();
   const directoryId = routeId ?? "root";
@@ -66,10 +69,7 @@ export const DirectoryView: React.FC = () => {
     },
   });
 
-  // Match the home screen's left-panel sizing so the directory tree
-  // has the same breathing room as the main page's recent activity
-  // panel. `usePanelSize` writes to the layout context; the AppShell
-  // reads it to size the grid column.
+  // Match the home screen's left-panel sizing
   usePanelSize({ left: "clamp(20rem, 25vw, 30rem)" });
 
   // `?action=create-note|create-directory` -> open the matching
@@ -79,17 +79,11 @@ export const DirectoryView: React.FC = () => {
     setCreateDirectoryOpen,
   });
 
-  console.log("DirectoryView: childDirectories", childDirectories);
-  // Same dep-array rationale as `useRightPanel` in the features hook:
-  // the left panel reads `currentNode` for the recent-activity target
-  // and the description fetch, so re-push on node changes once the
-  // store hydrates from the loading fallback.
+  // currentNode, e.g. the current selected directory, is a dependecy
+  // -> if the dir changes, then we need to update the panel
   useLeftPanel(<DirectoryLeftPanel currentNode={currentNode} />, [currentNode]);
 
-  // Clear any leftover selection when the user navigates to a new
-  // directory, so the bar never references items from a previous
-  // page. The store's ids would otherwise survive a route change
-  // and confuse the "Select All" count.
+  // Clear any leftover selection when the user navigates to a new directory
   const clearSelection = useDirectorySelectionStore((s) => s.clear);
   useEffect(() => {
     clearSelection();
@@ -111,8 +105,10 @@ export const DirectoryView: React.FC = () => {
   );
 
   return (
-    <Paper
-      elevation={0}
+    // this would be a paper with elevation=0, but this breaks the
+    // transluctent effect -> hence use app background uses elevation=0 backgruond
+    // and we swtich here to a plain box
+    <Box
       ref={setScrollElement}
       sx={{
         display: "flex",
@@ -124,93 +120,87 @@ export const DirectoryView: React.FC = () => {
         alignSelf: "center",
       }}
     >
-      {/* dnd probably not needed anymore */}
-      <DragDropProvider onDragEnd={() => undefined}>
-        <Stack direction="row" spacing={M4} sx={{}}>
-          <Paper
-            elevation={0}
-            sx={{
-              flex: 1,
-              p: M3,
-              // The directory/note content can grow tall (lots of
-              // children or an expanded accordion). Clip here
-              height: "100%",
-              overflow: "auto",
-            }}
-          >
-            <SelectionActionBar allSelectable={allSelectable} />
-            <Stack spacing={M3}>
-              <Stack spacing={0.5}>
-                <DirectoryBreadCrumbs
-                  path={path}
-                  onNavigate={(id) => navigate(`/d/${id}`)}
+      <Stack direction="row" spacing={M4} sx={{}}>
+        <TranslucentPaper
+          elevation={0}
+          sx={{
+            flex: 1,
+            p: M3,
+            // The directory/note content can grow tall (lots of
+            // children or an expanded accordion). Clip here
+            height: "100%",
+            overflow: "auto",
+            borderRadius: theme.shape.borderRadius,
+          }}
+        >
+          <SelectionActionBar allSelectable={allSelectable} />
+          <Stack spacing={M3}>
+            <Stack spacing={0.5}>
+              <DirectoryBreadCrumbs
+                path={path}
+                onNavigate={(id) => navigate(`/d/${id}`)}
+              />
+              <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+                <Typography variant="h4" sx={{ fontWeight: 600 }}>
+                  {title}
+                </Typography>
+                <DirectoryMenu
+                  currentNode={currentNode}
+                  cascadePreview={cascadePreview}
+                  handleEditDirectory={handleEditDirectory}
+                  handleDeleteDirectory={handleDeleteDirectory}
                 />
-                <Stack
-                  direction="row"
-                  spacing={1}
-                  sx={{ alignItems: "center" }}
-                >
-                  <Typography variant="h4" sx={{ fontWeight: 600 }}>
-                    {title}
-                  </Typography>
-                  <DirectoryMenu
-                    currentNode={currentNode}
-                    cascadePreview={cascadePreview}
-                    handleEditDirectory={handleEditDirectory}
-                    handleDeleteDirectory={handleDeleteDirectory}
-                  />
-                </Stack>
-              </Stack>
-
-              <Stack spacing={2}>
-                {childDirectories.map((child) => (
-                  <ChapterAccordion
-                    key={child.getId()}
-                    index={0}
-                    directory={
-                      child instanceof DirectoryHirarchyItem
-                        ? child.getDirectory()
-                        : {
-                            id: child.getId(),
-                            name: child.getName(),
-                            display_name: child.getName(),
-                            parent_dir_ids: child.getParent()
-                              ? [child.getParent()!]
-                              : [],
-                            child_dir_ids: [],
-                            child_note_ids: [],
-                            shelf_ids: [],
-                          }
-                    }
-                    // Fetch the full DirectoryReply on mount so the
-                    // row badge has accurate counts even before
-                    // the user expands the chapter.
-                    onNavigate={navigate}
-                  />
-                ))}
-
-                <Divider sx={{ opacity: 0.3 }} />
-
-                {notesInDirectory.length === 0 ? (
-                  <Typography variant="body2" color="textSecondary">
-                    No notes yet in this directory.
-                  </Typography>
-                ) : (
-                  notesInDirectory.map((note, index) => (
-                    <DirectoryItem
-                      key={note.id}
-                      variant="note"
-                      index={index}
-                      note={note}
-                      onClick={() => navigate(`/n/${note.id}`)}
-                    />
-                  ))
-                )}
               </Stack>
             </Stack>
-          </Paper>
-        </Stack>
-      </DragDropProvider>
+
+            <Stack spacing={2}>
+              {childDirectories.map((child) => (
+                <ChapterAccordion
+                  key={child.getId()}
+                  index={0}
+                  directory={
+                    child instanceof DirectoryHirarchyItem
+                      ? child.getDirectory()
+                      : {
+                          id: child.getId(),
+                          name: child.getName(),
+                          display_name: child.getName(),
+                          parent_dir_ids: child.getParent()
+                            ? [child.getParent()!]
+                            : [],
+                          child_dir_ids: [],
+                          child_note_ids: [],
+                          shelf_ids: [],
+                        }
+                  }
+                  // Fetch the full DirectoryReply on mount so the
+                  // row badge has accurate counts even before
+                  // the user expands the chapter.
+                  onNavigate={navigate}
+                />
+              ))}
+
+              <Divider sx={{ opacity: 0.3 }} />
+
+              {notesInDirectory.length === 0 ? (
+                <Typography variant="body2" color="textSecondary">
+                  No notes yet in this directory.
+                </Typography>
+              ) : (
+                notesInDirectory.map((note, index) => (
+                  <DirectoryItem
+                    key={note.id}
+                    variant="note"
+                    index={index}
+                    note={note}
+                    onClick={() => navigate(`/n/${note.id}`)}
+                  />
+                ))
+              )}
+            </Stack>
+          </Stack>
+        </TranslucentPaper>
+      </Stack>
       <CreateNote
         open={createNoteOpen}
         onOpenChange={setCreateNoteOpen}
@@ -240,6 +230,6 @@ export const DirectoryView: React.FC = () => {
         handleCreateNote={handleCreateNote}
         handleCreateSubdirectory={handleCreateSubdirectory}
       />
-    </Paper>
+    </Box>
   );
 };
