@@ -1,5 +1,15 @@
 import "@mui/material/styles";
 
+// Runtime fields attached to a theme via theme.custom.
+export interface ThemeCustomExtension {
+  themeName: string; // Short identifier, e.g. 'ocean'
+  longName: string; // Descriptive name, e.g. 'Ocean Breeze'
+  /** Background image URLs this theme supports. May be empty for plain themes. */
+  backgroundImages: string[];
+  /** The single image picked for the current theme instance; null when no image is set. */
+  chosenBackgroundImage?: string | null;
+}
+
 declare module "@mui/material/styles" {
   interface Palette {
     vibrant: {
@@ -48,22 +58,10 @@ declare module "@mui/material/styles" {
   }
 
   interface Theme {
-    custom: {
-      /** Optional array of background image URLs the theme can pick from. */
-      backgroundImages: string[];
-      themeName: string;
-      longName: string;
-      /** The image the ThemeManager actually picked for the current theme instance. */
-      chosenBackgroundImage?: string | null;
-    };
+    custom: ThemeCustomExtension;
   }
 
   interface ThemeOptions {
-    custom?: {
-      backgroundImages?: string[];
-      themeName?: string;
-      longName?: string;
-      chosenBackgroundImage?: string | null;
-    };
+    custom?: Partial<ThemeCustomExtension>;
   }
 }

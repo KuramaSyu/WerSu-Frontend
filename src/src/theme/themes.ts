@@ -29,7 +29,7 @@ export const defaultTheme = createTheme({
     themeName: "default",
     longName: "Nord Theme Dark",
   },
-}) as CustomTheme;
+}) as unknown as CustomTheme;
 
 export const docsTheme = createTheme({
   palette: {
@@ -53,7 +53,7 @@ export const docsTheme = createTheme({
     themeName: "docs",
     longName: "Nord Theme Bright",
   },
-} as CustomTheme);
+} as unknown as CustomTheme);
 
 export const githubTheme = createTheme({
   palette: {
@@ -78,7 +78,7 @@ export const githubTheme = createTheme({
     themeName: "github",
     longName: "GitHub Light",
   },
-} as CustomTheme);
+} as unknown as CustomTheme);
 
 export const githubDarkTheme = createTheme({
   palette: {
@@ -103,7 +103,7 @@ export const githubDarkTheme = createTheme({
     themeName: "github-dark",
     longName: "GitHub Dark",
   },
-} as CustomTheme);
+} as unknown as CustomTheme);
 
 export const brightTheme = createTheme({
   palette: {
@@ -128,7 +128,7 @@ export const brightTheme = createTheme({
     themeName: "bright",
     longName: "Bright Theme",
   },
-} as CustomTheme);
+} as unknown as CustomTheme);
 
 export const midnightTheme = createTheme({
   palette: {
@@ -156,7 +156,7 @@ export const midnightTheme = createTheme({
     themeName: "midnight",
     longName: "Midnight Blue",
   },
-} as CustomTheme);
+} as unknown as CustomTheme);
 
 export const tokyoNightStorm = createTheme({
   palette: {
@@ -180,7 +180,7 @@ export const tokyoNightStorm = createTheme({
     themeName: "tokyo-night-storm",
     longName: "Tokyo Night Storm",
   },
-} as CustomTheme);
+} as unknown as CustomTheme);
 
 export const tokyoNightLight = createTheme({
   palette: {
@@ -204,7 +204,7 @@ export const tokyoNightLight = createTheme({
     themeName: "tokyo-night-light",
     longName: "Tokyo Night Light",
   },
-} as CustomTheme);
+} as unknown as CustomTheme);
 
 export const tokyoNight = createTheme({
   palette: {
@@ -228,7 +228,7 @@ export const tokyoNight = createTheme({
     themeName: "tokyo-night",
     longName: "Tokyo Night",
   },
-} as CustomTheme);
+} as unknown as CustomTheme);
 
 export const everforestHardDark = createTheme({
   palette: {
@@ -250,7 +250,7 @@ export const everforestHardDark = createTheme({
     themeName: "everforest-hard-dark",
     longName: "Everforest Dark",
   },
-} as CustomTheme);
+} as unknown as CustomTheme);
 
 export const everforestSoftLight = createTheme({
   palette: {
@@ -274,7 +274,7 @@ export const everforestSoftLight = createTheme({
     themeName: "everforest-soft-light",
     longName: "Everforest Soft Light",
   },
-} as CustomTheme);
+} as unknown as CustomTheme);
 
 // Esports arena dark: deep slate canvas, slightly elevated cards,
 // white text, blue accent (chart line + live indicators),
@@ -307,7 +307,7 @@ export const esportsArena = createTheme({
     themeName: "esports-arena",
     longName: "Esports Arena",
   },
-} as CustomTheme);
+} as unknown as CustomTheme);
 
 // Cauldron chaos dark: deep indigo canvas, slightly lifted cards,
 // white text, lime-green magic accent, magenta highlight.
@@ -342,7 +342,7 @@ export const cauldronChaos = createTheme({
     themeName: "cauldron-chaos",
     longName: "Cauldron Chaos",
   },
-} as CustomTheme);
+} as unknown as CustomTheme);
 
 export const customThemes = [
   new CustomThemeImpl(

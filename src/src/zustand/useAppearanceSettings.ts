@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { PERSIST_KEYS } from "../statics";
 
 /**
  * User-selectable hljs themes for code blocks.
@@ -53,7 +54,7 @@ export const useAppearanceSettings = create<AppearanceSettingsState>()(
       setCodeBlockThemeDark: (theme) => set({ codeBlockThemeDark: theme }),
     }),
     {
-      name: "appearance-storage",
+      name: PERSIST_KEYS.appearance,
       storage: createJSONStorage(() => sessionStorage),
       version: 1,
       partialize: (state) => ({

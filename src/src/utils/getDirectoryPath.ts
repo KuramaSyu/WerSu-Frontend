@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Note, type MinimalNote, type NotesReply } from "../api/models/search";
+import type { MinimalNote, NotesReply } from "../api/models/search";
 import { directoryQueryKeys } from "../api/queries/directoryQueries";
 import type { DirectoryReply } from "../api/models/directory";
 import type { ShelfReply } from "../api/models/shelf";

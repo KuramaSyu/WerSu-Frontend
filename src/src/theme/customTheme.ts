@@ -6,6 +6,7 @@ import {
   type Theme,
   type Motion,
 } from "@mui/material/styles";
+import type { ThemeCustomExtension } from "./interfaces";
 import { getContrastRatio } from "@mui/system/colorManipulator";
 import {
   blendColors,
@@ -34,7 +35,7 @@ export type ColorInput =
   | "secondaryLight"
   | "secondaryDark";
 
-/** Alias of MUI Theme; the augmenting module below adds the project's extra fields. */
+// Alias of MUI Theme; runtime fields are added in interfaces.ts.
 export type CustomTheme = Theme;
 
 // Augment MUI's Theme/Palette so useTheme() returns our extended type.
@@ -90,14 +91,7 @@ export interface CustomThemeConfig {
   backgrounds: string[];
 }
 
-export interface ThemeCustomExtension {
-  themeName: string; // Short identifier, e.g. 'ocean'
-  longName: string; // Descriptive name, e.g. 'Ocean Breeze'
-  /** Background image URLs this theme supports. May be empty for plain themes. */
-  backgroundImages: string[];
-  /** The single image picked for the current theme instance; null when no image is set. */
-  chosenBackgroundImage?: string | null;
-}
+export type { ThemeCustomExtension } from "./interfaces";
 
 export interface RecalculateOpions {
   recalculateTextColors?: boolean; // Whether to recalculate text colors based on contrast
@@ -169,9 +163,7 @@ export class CustomThemeImpl implements CustomTheme {
       return this.palette.background.default;
     };
 
-    // Build the runtime custom extension from the constructor config
-    // (which uses `backgrounds[]`). When no config is provided, reuse
-    // whatever the underlying theme already carries.
+    // Build custom from the constructor config, or copy it from the theme.
     if (config) {
       this.custom = {
         themeName: config.name,
@@ -722,8 +714,7 @@ function getOverlayAlpha(elevation: number): number {
   return Math.round(alphaValue * 10) / 1000;
 }
 
-// Mixes a color toward `overlay` at fractional opacity `alpha` (0-1).
-// Equivalent to `alpha(overlay, alpha)` composited over `base`.
+// Mixes a color toward overlay at fractional opacity alpha (0-1).
 function blendWithAlpha(base: string, overlay: string, alpha: number): string {
   const baseRgb = hexToRgb(base);
   const overlayRgb = hexToRgb(overlay);
@@ -734,8 +725,7 @@ function blendWithAlpha(base: string, overlay: string, alpha: number): string {
   });
 }
 
-// Module-level color helpers kept out of the class so CustomThemeImpl stays
-// assignable to Partial<Theme> (TS structural privacy check on private members).
+// Module-level helpers kept out of the class to avoid TS private-member issues.
 function rgbToHsl(
   r: number,
   g: number,

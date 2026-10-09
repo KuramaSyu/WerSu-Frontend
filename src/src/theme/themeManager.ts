@@ -82,7 +82,7 @@ export function buildCustomTheme(
       longName: config.longName,
     },
     ...themechanges,
-  }) as CustomTheme;
+  }) as unknown as CustomTheme;
 }
 
 // Helper function that selects the correct color based on mode.
