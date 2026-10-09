@@ -50,6 +50,7 @@ export const RightSidePanel: React.FC<RightSidePanelProps> = ({
             zIndex: (theme) => theme.zIndex.appBar + 1,
             transition: "left 220ms ease, background-color 120ms ease",
             "&:hover": { bgcolor: "action.hover" },
+            color: "text.secondary",
           }}
         >
           <ChevronRightIcon fontSize="small" />

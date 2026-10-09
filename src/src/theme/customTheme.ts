@@ -505,13 +505,14 @@ export class CustomThemeImpl implements CustomTheme {
         },
       },
 
-      MuiSvgIcon: {
-        styleOverrides: {
-          root: {
-            color: this.palette.text.primary,
-          },
-        },
-      },
+      // NOTE: No `MuiSvgIcon` color override here. SvgIcon's default
+      // `color: 'inherit'` (per the MUI docs) is exactly what we want —
+      // the inner `<path>` paints with `fill: currentColor`, so the icon
+      // follows whatever color its parent sets (e.g. an IconButton with
+      // `sx={{ color: 'text.secondary' }}`, or a Box wrapping `titleIcon`
+      // inside a nested ThemeProvider that swaps in a dimmed palette).
+      // Forcing `color: text.primary` on the SVG itself breaks that
+      // inheritance chain and silently overrides local overrides.
     };
   }
 

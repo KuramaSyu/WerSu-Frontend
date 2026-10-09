@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { IconButton, Stack, Tooltip } from "@mui/material";
+import { IconButton, Stack, Tooltip, useTheme } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -19,6 +19,7 @@ export const NavigationSection: React.FC = () => {
   const location = useLocation();
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
+  const theme = useTheme();
 
   // Update button states whenever the location changes.
   useEffect(() => {
@@ -52,14 +53,24 @@ export const NavigationSection: React.FC = () => {
     <Stack direction="row" spacing={M1}>
       <Tooltip title="Back">
         <span>
-          <IconButton onClick={handleBack} size="small" disabled={!canUndo}>
+          <IconButton
+            onClick={handleBack}
+            size="small"
+            disabled={!canUndo}
+            sx={{ color: "text.secondary" }}
+          >
             <ArrowBackIcon fontSize="small" />
           </IconButton>
         </span>
       </Tooltip>
       <Tooltip title="Forward">
         <span>
-          <IconButton onClick={handleForward} size="small" disabled={!canRedo}>
+          <IconButton
+            onClick={handleForward}
+            size="small"
+            disabled={!canRedo}
+            sx={{ color: "text.secondary" }}
+          >
             <ArrowForwardIcon fontSize="small" />
           </IconButton>
         </span>

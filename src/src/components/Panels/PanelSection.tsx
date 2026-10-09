@@ -65,15 +65,15 @@ const PanelSectionTitle: React.FC<PanelSectionTitleProps> = ({
   const iconTransition = useThemeStore((s) => s.theme.iconTransition);
 
   // dim function which dimms given color
-  const dim = (color: string) =>
-    theme.palette.mode === "dark"
-      ? theme.darken(color, 0.3)
-      : theme.lighten(color, 0.3);
+  // const dim = (color: string) =>
+  //   theme.palette.mode === "dark"
+  //     ? theme.darken(color, 0.3)
+  //     : theme.lighten(color, 0.3);
 
-  const dimmedTextColor = useMemo(
-    () => dim(theme.palette.text.primary),
-    [theme],
-  );
+  // const dimmedTextColor = useMemo(
+  //   () => dim(theme.palette.text.primary),
+  //   [theme],
+  // );
 
   return (
     <Box
@@ -86,7 +86,7 @@ const PanelSectionTitle: React.FC<PanelSectionTitleProps> = ({
         mb: inAccordion ? 0 : M1,
         minHeight: 24,
         width: "100%",
-        color: hovered ? theme.palette.text.primary : dimmedTextColor,
+        color: theme.palette.text.secondary,
         ...iconTransition.root,
       }}
     >
@@ -99,6 +99,8 @@ const PanelSectionTitle: React.FC<PanelSectionTitleProps> = ({
             width: 24,
             height: 24,
             px: M1,
+            color: theme.palette.text.secondary,
+            ...iconTransition.root,
           }}
         >
           {titleIcon}
@@ -108,6 +110,7 @@ const PanelSectionTitle: React.FC<PanelSectionTitleProps> = ({
         variant="body1"
         sx={{
           textTransform: "uppercase",
+          ...iconTransition.root,
           zindex: 10,
         }}
       >
@@ -205,6 +208,9 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
           square
           sx={{
             zindex: 10,
+            // adjust accordion paddings to
+            // spare a lot of otherwise wasted space
+            // in a side rail
             backgroundColor: "transparent",
             "&:before": { display: "none" },
             "&.MuiAccordion-root": {

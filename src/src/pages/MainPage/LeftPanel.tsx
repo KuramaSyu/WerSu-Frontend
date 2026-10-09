@@ -97,6 +97,7 @@ export const LeftPanel: React.FC<LeftSideViewProps> = ({
                       onClick={handleUndo}
                       size="small"
                       disabled={!canUndo}
+                      sx={{ color: "text.secondary" }}
                     >
                       <ArrowBackIcon fontSize="small" />
                     </IconButton>
@@ -108,6 +109,7 @@ export const LeftPanel: React.FC<LeftSideViewProps> = ({
                       onClick={handleRedo}
                       size="small"
                       disabled={!canRedo}
+                      sx={{ color: "text.secondary" }}
                     >
                       <ArrowForwardIcon fontSize="small" />
                     </IconButton>
@@ -115,7 +117,11 @@ export const LeftPanel: React.FC<LeftSideViewProps> = ({
                 </Tooltip>
               </Stack>
               <Tooltip title={open ? "Collapse" : "Expand"}>
-                <IconButton onClick={() => setOpen((v) => !v)} size="small">
+                <IconButton
+                  onClick={() => setOpen((v) => !v)}
+                  size="small"
+                  sx={{ color: "text.secondary" }}
+                >
                   {open ? (
                     <ChevronLeftIcon fontSize="small" />
                   ) : (
