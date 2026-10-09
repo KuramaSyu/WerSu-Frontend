@@ -24,6 +24,7 @@ import { useNavigate } from "react-router-dom";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useUser } from "../../api/queries/useUser";
 import { M1, M2, M4 } from "../../statics";
+import { ThemeColorCircles } from "../ThemeColorCircles";
 import { Pages } from "./Pages";
 import { useSelectedShelfStore } from "../../zustand/useSelectedShelfStore";
 import { handleLogout as performLogout } from "../../utils/logout";
@@ -118,7 +119,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
   return (
     // minWidth hints the Menu past the longest text so the profile
     // header doesn't squeeze.
-    <Stack sx={{ minWidth: 240 }}>
+    <Stack sx={{ minWidth: 280 }}>
       <Stack
         spacing={M2}
         direction="row"
@@ -181,9 +182,33 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
             onChange={(event) => setTheme(event.target.value)}
             sx={{ borderRadius: M4 }}
             inputProps={{ "aria-label": "Select theme" }}
+            renderValue={(value) => {
+              const selected = filteredThemes.find(
+                (t) => t.custom.themeName === value,
+              );
+              if (!selected) return null;
+              return (
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                    minHeight: 30,
+                  }}
+                >
+                  <ThemeColorCircles theme={selected} circleSize={16} />
+                  {selected.custom.longName}
+                </Box>
+              );
+            }}
           >
             {filteredThemes.map((t) => (
-              <MenuItem key={t.custom.themeName} value={t.custom.themeName}>
+              <MenuItem
+                key={t.custom.themeName}
+                value={t.custom.themeName}
+                sx={{ gap: 1, minHeight: 52 }}
+              >
+                <ThemeColorCircles theme={t} circleSize={16} />
                 {t.custom.longName}
               </MenuItem>
             ))}
@@ -196,7 +221,10 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
       <SectionLabel>Pages</SectionLabel>
       <MenuItem
         onClick={handleOpenHome}
-        sx={{ "&:hover": { backgroundColor: theme.palette.action.hover } }}
+        sx={{
+          "&:hover": { backgroundColor: theme.palette.action.hover },
+          minHeight: 52,
+        }}
       >
         <ListItemIcon>
           <HomeIcon fontSize="small" />
@@ -205,7 +233,10 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
       </MenuItem>
       <MenuItem
         onClick={handleOpenGraph}
-        sx={{ "&:hover": { backgroundColor: theme.palette.action.hover } }}
+        sx={{
+          "&:hover": { backgroundColor: theme.palette.action.hover },
+          minHeight: 52,
+        }}
       >
         <ListItemIcon>
           <AccountTreeIcon fontSize="small" />
@@ -215,7 +246,10 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
       <MenuItem
         onClick={handleOpenRules}
         disabled={rulesDisabled}
-        sx={{ "&:hover": { backgroundColor: theme.palette.action.hover } }}
+        sx={{
+          "&:hover": { backgroundColor: theme.palette.action.hover },
+          minHeight: 52,
+        }}
       >
         <ListItemIcon>
           <RuleFolderIcon fontSize="small" />
@@ -230,7 +264,10 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
 
       <MenuItem
         onClick={handleOpenSettings}
-        sx={{ "&:hover": { backgroundColor: theme.palette.action.hover } }}
+        sx={{
+          "&:hover": { backgroundColor: theme.palette.action.hover },
+          minHeight: 52,
+        }}
       >
         <ListItemIcon>
           <SettingsIcon fontSize="small" />
@@ -239,7 +276,10 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
       </MenuItem>
       <MenuItem
         onClick={handleLogout}
-        sx={{ "&:hover": { backgroundColor: theme.palette.action.hover } }}
+        sx={{
+          "&:hover": { backgroundColor: theme.palette.action.hover },
+          minHeight: 52,
+        }}
       >
         <ListItemIcon>
           <Logout fontSize="small" />

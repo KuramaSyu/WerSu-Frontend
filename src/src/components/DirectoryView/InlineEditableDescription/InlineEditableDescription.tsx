@@ -74,7 +74,7 @@ export const InlineEditableDescription: React.FC<
       if (previous) {
         queryClient.setQueryData<DirectoryReply | null>(
           ["directory", directoryId, userKey],
-          { ...previous, description: next },
+          (prev) => (prev ? { ...prev, description: next } : prev),
         );
       }
       return { previous };
