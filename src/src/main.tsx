@@ -6,10 +6,30 @@ import "./index.css";
 import "katex/dist/katex.min.css";
 import App from "./App.tsx";
 import { queryClient } from "./api/queryClient";
+import { Note } from "./api/models/search";
 
 const localStoragePersister = createAsyncStoragePersister({
   storage: window.localStorage,
 });
+
+/**
+ * Inverse of `serializeData` for `hydrate`. localStorage only
+ * roundtrips plain JSON, so Note prototype methods (get_dir,
+ * get_attachment_ids) disappear on hard reload. Re-wrap any shape
+ * with full Note fields so consumers keep their typed API.
+ */
+function deserializePersistedData(data: unknown): unknown {
+  if (data === null || typeof data !== "object") return data;
+  if (data instanceof Note) return data;
+  const record = data as Record<string, unknown>;
+  const looksLikeNote =
+    typeof record.id === "string" &&
+    typeof record.title === "string" &&
+    typeof record.content === "string" &&
+    Array.isArray(record.directory_ids);
+  if (!looksLikeNote) return data;
+  return Note.fromJson(record as never);
+}
 
 /**
  * Persisted-cache namespace version. Bump this whenever the shape of
@@ -37,6 +57,11 @@ createRoot(document.getElementById("root")!).render(
       persistOptions={{
         persister: localStoragePersister,
         buster: PERSIST_CACHE_BUSTER,
+        hydrateOptions: {
+          defaultOptions: {
+            deserializeData: deserializePersistedData,
+          },
+        },
       }}
     >
       <App />
