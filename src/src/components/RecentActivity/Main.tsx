@@ -1,14 +1,18 @@
-import { Box, Stack, Typography, useTheme } from "@mui/material";
+import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   useHistoryRows,
   type HistoryRowEntry,
   type HistoryTarget,
+  getHistoryRowMeta,
+  getHistoryRowVariantLabel,
+  formatHistoryRowTimestamp,
 } from "./HistoryRowFeatures";
-
 import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
-import { HistoryRowView } from "./HistoryRowView";
-import { useMemo } from "react";
+import {
+  HistoryListPanel,
+  IconTitleSubtitleRow,
+} from "../Panels/HistoryListPanel";
 
 /**
  * Props for the RecentActivityPanel component.
@@ -20,23 +24,12 @@ export interface RecentActivityPanelProps {
   title?: string;
   /** Max number of items to fetch and render. */
   limit?: number;
-  /**
-   * Time window the backend uses to scope the activity log
-   * (days parameter on /api/history). Mirrors the previous
-   * maxDepth knob at the panel level but lives one layer down.
-   */
+  /** Time window (days parameter on /api/history). Mirrors the previous maxDepth knob at the panel level. */
   days?: number;
 }
 
-/**
- * Generic panel that shows recent activity for a note/directory.
- *
- * Data loading is owned by useHistoryRows (which wraps the
- * /api/history mode=history TanStack Query hook); each row is
- * rendered by HistoryRowView. The same component will power the
- * upcoming Frequently Used panel -- there it will be fed from the
- * mode=most_used sibling hook instead.
- */
+/** Generic panel that shows recent activity for a note/directory.
+ *  Data via useHistoryRows; row icons from VARIANT_META so every action keeps its colour and glyph. */
 export const RecentActivityPanel: React.FC<RecentActivityPanelProps> = ({
   target,
   title = "Recent activity",
@@ -44,11 +37,6 @@ export const RecentActivityPanel: React.FC<RecentActivityPanelProps> = ({
   days = 30,
 }) => {
   const { rows, isLoading, hasError } = useHistoryRows(target, limit, days);
-  // useTheme() picks up the nearest ThemeProvider. When this panel
-  // is rendered inside a PanelSection, that provider is the
-  // section's dimmed theme (or the global theme on hover). The store
-  // would only ever return the global theme and ignore the swap.
-  const theme = useTheme();
   const navigate = useNavigate();
   const developerMode = useFeatureStore(
     (state) => state.flags[FeatureFlagName.DeveloperMode],
@@ -60,46 +48,30 @@ export const RecentActivityPanel: React.FC<RecentActivityPanelProps> = ({
     [rows],
   );
 
-  // when clicking, reroute to /n/<note_id>
-  const handleItemClick = (entry: HistoryRowEntry) => {
-    navigate(`/n/${entry.note_id}`);
-  };
-
   return (
-    <Box sx={{ color: theme.palette.text.secondary }}>
-      {title && (
-        <Typography
-          variant="subtitle2"
-          sx={{ fontWeight: 600, mb: theme.spacing(1) }}
-        >
-          {title}
-        </Typography>
-      )}
-      {isLoading && (
-        <Typography variant="body2" color="textSecondary">
-          Loading activity...
-        </Typography>
-      )}
-      {hasError && !isLoading && (
-        <Typography variant="body2" color="error">
-          Failed to load activity.
-        </Typography>
-      )}
-      {!isLoading && !hasError && recentRows.length === 0 && (
-        <Typography variant="body2" color="textSecondary">
-          No recent activity.
-        </Typography>
-      )}
-      <Stack spacing={1}>
-        {recentRows.map((entry) => (
-          <HistoryRowView
-            key={entry.id ?? entry.note_id}
-            entry={entry}
-            onClick={handleItemClick}
-            developerMode={developerMode}
+    <HistoryListPanel
+      title={title}
+      rows={recentRows}
+      isLoading={isLoading}
+      hasError={hasError}
+      loadingText="Loading activity..."
+      errorText="Failed to load activity."
+      emptyText="No recent activity."
+      renderRow={(entry) => {
+        const e = entry as HistoryRowEntry;
+        const meta = getHistoryRowMeta(e);
+        const Icon = meta.icon;
+        return (
+          <IconTitleSubtitleRow
+            icon={<Icon fontSize="small" color={meta.color} />}
+            title={getHistoryRowVariantLabel(e)}
+            subtitle={e.at ? formatHistoryRowTimestamp(e.at) : undefined}
+            onClick={() => navigate(`/n/${e.note_id}`)}
+            iconTooltip={meta.label}
+            developerDebug={developerMode ? JSON.stringify(e) : undefined}
           />
-        ))}
-      </Stack>
-    </Box>
+        );
+      }}
+    />
   );
 };

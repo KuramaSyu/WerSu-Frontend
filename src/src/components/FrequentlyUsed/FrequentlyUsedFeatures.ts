@@ -15,7 +15,7 @@ import { markdownPreview } from "../../utils/markdownPreview";
 /** Cap on the description preview rendered per frequently-used row. */
 const FREQUENTLY_USED_DESCRIPTION_CAP = 120;
 
-/** Fetches aggregated most-used rows for the Frequently Used panel; copies `title` and a 120-char `description` preview into each row. */
+/** Fetches aggregated most-used rows for the Frequently Used panel; copies title and a 120-char description preview into each row. */
 export function useFrequentlyUsedRows(
   limit: number = 8,
   algorithm: HistoryFilter["algorithm"] = "MOST_USED_ALGORITHM_LOG_COUNT",
@@ -31,9 +31,7 @@ export function useFrequentlyUsedRows(
 
   const result = useMostUsedActivity(filter);
 
-  // Map wire shape into the shared `HistoryRowEntry`. Markdown stripping
-  // runs first so table pipes, bold/italic markers etc. don't reach the
-  // row preview; `crumble` then enforces the 120-char display cap.
+  // Map wire shape into shared HistoryRowEntry. Markdown strip + crumble enforce the 120-char cap.
   const rows: HistoryRowEntry[] = (result.data ?? []).map((r) => {
     const description = r.stripped_content
       ? (crumble(
@@ -58,7 +56,7 @@ export function useFrequentlyUsedRows(
   };
 }
 
-/** Fetches the most recent `note_viewed` activity rows for the Last Used panel. Lifts `title` / `description` from `metadata_json` so the view doesn't have to parse JSON. */
+/** Fetches the most recent note_viewed activity rows for the Last Used panel. Lifts title / description from metadata_json. */
 export function useLastUsedRows(
   limit: number = 3,
   days: number = 30,
@@ -75,9 +73,7 @@ export function useLastUsedRows(
 
   const result = useActivityHistory(filter);
 
-  // `ActivityReply` rows are a structural superset of `HistoryRowEntry`;
-  // lift title/description from metadata_json so the row view doesn't
-  // re-parse the metadata on every render.
+  // ActivityReply rows are a superset of HistoryRowEntry; lift title/description from metadata_json.
   const rawRows: HistoryRowEntry[] = (result.data ?? []).map((row) => {
     const { title, description } = extractNoteMetadata(row);
     return {
@@ -87,12 +83,8 @@ export function useLastUsedRows(
     };
   });
 
-  // Collapse duplicates by `note_id` so re-viewing the same note doesn't
-  // push other recently-viewed notes out of the list. The backend
-  // returns rows newest-first, so the first occurrence per id is the
-  // most recent event for that note. We over-fetch on the wire (a
-  // multiple of `limit`) to keep the visible list at `limit` entries
-  // even after dedupe trims duplicates.
+  // Collapse duplicates by note_id (newest-first, so the first occurrence per id wins).
+  // Over-fetch on the wire so the visible list stays at limit entries after dedupe.
   const seen = new Set<string>();
   const rows: HistoryRowEntry[] = [];
   for (const row of rawRows) {
