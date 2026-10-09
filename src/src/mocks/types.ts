@@ -237,6 +237,132 @@ export function createInitialFakeDb(): FakeDb {
       tag_ids: [],
       attachment_ids: [],
     },
+    /**
+     * Stress-test fixture for the note renderer. Carries every markdown
+     * shape the editor claims to support: nested headings, GFM tables
+     * (with and without alignment), ordered and unordered lists, inline
+     * code, fenced code with a language tag, blockquotes (including
+     * nested ones), bold/italic emphasis, and links. Content is a
+     * paraphrased excerpt of the TempleOS Wikipedia entry, included for
+     * layout testing only.
+     */
+    {
+      id: "note-8",
+      title: "TempleOS",
+      content: `# TempleOS
+
+TempleOS (formerly *J Operating System*, *LoseThos*, and *SparrowOS*) is a Biblical-themed lightweight operating system designed to be the Third Temple from the Hebrew Bible. It was created by American computer programmer Terry A. Davis, who developed it alone over the course of a decade.
+
+The system was characterized as a modern x86-64 Commodore 64, using an interface similar to a mixture of DOS and Turbo C. Davis proclaimed that the system's features, such as its 640x480 resolution, 16-color display, and single-voice audio, were designed according to explicit instructions from God.
+
+## Specifications
+
+| Field | Value |
+| --- | --- |
+| Developer | Terry A. Davis |
+| Written in | HolyC and x86 Assembly |
+| Source model | Open-source |
+| Initial release | 2005 (as J Operating System); 2013 (as TempleOS) |
+| Latest release | 5.03 / November 20, 2017 |
+| Supported platforms | x64 |
+| Kernel type | Monolithic |
+| Default UI | 16-color graphics, 640x480 |
+| License | Public domain |
+| Official website | https://templeos.org |
+
+## Background
+
+Terry A. Davis was an electrical engineer from Wisconsin. He began developing TempleOS circa 1993. One of its early names was the "J Operating System" before renaming it to "LoseThos", a reference to a scene from the 1986 film *Platoon*. In 2008, Davis wrote that LoseThos was "primarily for making video games. It has no networking or Internet support. As far as I'm concerned, that would be reinventing the wheel". Another name he used was "SparrowOS" before settling on "TempleOS".
+
+## System overview
+
+TempleOS is a 64-bit, multi-core, **cooperative multitasking** operating system. It does not feature any preemption. All tasks must voluntarily yield. It was released into the public domain and has source code making it both libre software as well as open source software.
+
+Key features at a glance:
+
+- No kernel-user separation: all tasks run in ring-0 only.
+- All tasks share a single address space.
+- No networking or Internet support.
+- Ships with an original flight simulator, compiler, and kernel.
+- 640x480 resolution, 16-color display, single-voice audio.
+
+## HolyC
+
+HolyC (formerly *C+*), possibly a pun on *Holy See*, is a middle ground between the C and C++ programming languages with some unique differences, designed by Terry A. Davis specifically for TempleOS. It functions as both a general-purpose language for application development and a scripting language for automating tasks within TempleOS.
+
+### Syntax and features
+
+| Feature | C | HolyC |
+| --- | --- | --- |
+| Top-level execution | forbidden | allowed (acts as REPL) |
+| Function address | decays implicitly | requires explicit \`&\` |
+| Macros | supported | not supported |
+| \`switch\` ranges | not supported | supported (\`case 0...10:\`) |
+| Integer default | platform-dependent | 64-bit |
+| Linker | external | none, single compilation unit |
+| Inline assembly | via intrinsics | direct \`asm\` blocks |
+
+Notable syntactic points:
+
+1. No \`main()\` function is required. Top-level expressions run sequentially during compilation.
+2. Function addresses require the explicit \`&\` operator (for example, \`&MyFunction\`).
+3. \`class\` declarations define aggregate types, supporting inheritance.
+4. The \`switch\` statement supports range cases (for example, \`case 0...10:\`).
+5. All integer types default to 64-bit behavior on access, with explicit casting functions such as \`ToI64()\`.
+
+\`\`\`c
+class MyClass {
+  I64 value;
+};
+
+MyClass *c = MAlloc(sizeof(MyClass));
+c->value = 42;
+"Value: %d\\n", c->value;
+\`\`\`
+
+## Critical reception
+
+TempleOS received mostly "sympathetic" reviews. Tech journalist David Cassel opined that "programming websites tried to find the necessary patience and understanding to accommodate Davis".
+
+> "TempleOS is a testament to the dedication and passion of one man displaying his technological prowess. It doesn't need to be anything more." -- James Sanders, TechRepublic
+>
+> OSNews editor Kroc Camen wrote that the OS "shows that computing can still be a hobby; why is everybody so serious these days? If I want to code an OS that uses interpretive dance as the input method, I should be allowed to do so, companies like Apple be damned."
+
+In 2017, the OS was shown as a part of an outsider art exhibition in Bourgogne, France.
+
+## Legacy
+
+After Davis' death in 2018, OSNews editor Thom Holwerda wrote:
+
+> "Davis was clearly a gifted programmer - writing an entire operating system is no small feat - and it was sad to see him affected by his mental illness."
+
+A computer engineer compared the development of TempleOS to a one-man-built skyscraper, adding that it "actually boggles my mind that one man wrote all that".
+
+## See also
+
+- Creativity and mental health
+- Biblical software
+- Religion and video games
+
+## References
+
+1. Hicks, Jesse (November 25, 2014). "God's Lonely Programmer". VICE Motherboard.
+2. Cassel, David (September 23, 2018). "The Troubled Legacy of Terry Davis, 'God's Lonely Programmer'". The New Stack.
+3. Davis, Terry A. (2008). "The LoseThos IBM PC Operating System". LoseThos. Archived from the original on December 16, 2008.
+4. Sanders, James (January 21, 2014). "TempleOS: an educational tool for programming experiments". TechRepublic.
+
+---
+
+*Source: Wikipedia, "TempleOS". Text is available under the Creative Commons Attribution-ShareAlike 4.0 License. Included in this fixture as test content only.*
+`,
+      stripped_content:
+        "TempleOS is a Biblical-themed 64-bit operating system written by Terry A. Davis in HolyC, released into the public domain. Last release was 5.03 in November 2017.",
+      author_id: userId,
+      updated_at: ago(1),
+      directory_ids: [dirWorkId],
+      tag_ids: [],
+      attachment_ids: [],
+    },
   ];
 
   /**
