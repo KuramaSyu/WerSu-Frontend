@@ -108,6 +108,7 @@ const PanelSectionTitle: React.FC<PanelSectionTitleProps> = ({
         variant="body1"
         sx={{
           textTransform: "uppercase",
+          zindex: 10,
         }}
       >
         {title}
@@ -203,6 +204,7 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
           elevation={0}
           square
           sx={{
+            zindex: 10,
             backgroundColor: "transparent",
             "&:before": { display: "none" },
             "&.MuiAccordion-root": {

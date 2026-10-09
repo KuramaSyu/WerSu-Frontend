@@ -5,7 +5,7 @@ import { useLayout } from "../../LayoutProvider";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useSearchNotesStore } from "../../zustand/useSearchNotesStore";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
-import { M1, M2, M5, TOP_BAR_ELEVATION } from "../../statics";
+import { M1, M2, RAIL_ELEVATION, TOP_BAR_HEIGHT } from "../../statics";
 import { panelIconButtonSx, panelIconSvgSx } from "./panelIconStyles";
 import { TranslucentPaper } from "../TranslucentPaper";
 
@@ -42,23 +42,15 @@ export const LeftRail: React.FC<LeftRailProps> = ({ children }) => {
 
   return (
     <TranslucentPaper
-      elevation={TOP_BAR_ELEVATION}
+      elevation={RAIL_ELEVATION}
       square
       sx={{
         display: "flex",
         flexDirection: "column",
         backgroundColor: theme.palette.background.default,
-        height: "100vh",
-        // When the top panel hides, the rail extends upward to
-        // fill the freed space. Mobile has no top panel, so the
-        // rail anchors at the top of the viewport.
-        marginTop: isMobile ? 0 : showTopPanel ? M5 : 0,
-        transition: theme.transitions.create("margin-top", {
-          duration: theme.transitions.duration.standard,
-          easing: theme.transitions.easing.easeInOut,
-        }),
         overflow: "hidden",
         minWidth: 0,
+        zIndex: 1,
         borderRight: `1px solid ${theme.palette.divider}`,
       }}
     >

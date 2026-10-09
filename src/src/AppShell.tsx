@@ -119,7 +119,6 @@ export const AppShell: React.FC = () => {
         sx={{
           width: "100vw",
           height: "100vh",
-          backgroundColor: theme.palette.background.default,
         }}
       >
         <AppBackground />
@@ -151,27 +150,16 @@ export const AppShell: React.FC = () => {
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Top panel chrome (sibling of the grid). Lives in its
-            own component (`TopBar`) which picks the desktop top
-            bar vs the mobile bottom bar from the current
-            breakpoint. The desktop variant animates the chrome
-            up off-screen via `Slide` driven by
-            `showTopPanel`; the mobile variant pins to the
-            bottom and stays visible. The grid below extends
-            upward (`marginTop` transition) when the top bar
-            hides so the canvas stays continuous. */}
         <TopBar />
 
         <Box
           sx={{
             display: "grid",
-            // Two-column layout: left rail
-            // | main+right wrapper (paper-toned, fixed-size card).
-            // The wrapper owns its own background, so the main
-            // content + right rail scroll surface is always paper
+            // Two-column layout: left rail | main+right wrapper
             gridTemplateColumns: `${leftColumnWidth} minmax(0, 1fr)`,
-            transition: `grid-template-columns ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
+            //transition: `grid-template-columns ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
+            transition: `grid-template-columns ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}, margin-top ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
+            marginTop: isMobile ? 0 : showTopPanel ? TOP_BAR_HEIGHT : 0,
             height: "100vh",
           }}
         >
@@ -180,20 +168,15 @@ export const AppShell: React.FC = () => {
           {/* Main + right rail wrapper */}
           <TranslucentPaper
             elevation={MAIN_PANEL_ELEVATION}
+            aria-label="Main content translucent wrapper"
             square
             sx={{
               display: "grid",
               gridTemplateColumns: `minmax(0, 1fr) ${rightColumnWidth}`,
-              transition: `grid-template-columns ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}, margin-top ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
-              marginTop: isMobile ? 0 : showTopPanel ? TOP_BAR_HEIGHT : 0,
-              // `overflow: hidden` keeps sub-pixel rounding from
-              // leaking a horizontal scrollbar during the
-              // marginTop transition.
-              backgroundColor: theme.palette.background.default,
               overflow: "hidden",
               minWidth: 0,
               minHeight: 0,
-              zIndex: 1,
+              zIndex: 0,
             }}
           >
             <Box
@@ -203,15 +186,7 @@ export const AppShell: React.FC = () => {
                 overflowY: "auto",
                 display: "block",
                 scrollbarWidth: "none",
-                // backgroundColor: theme.palette.background.paper,
                 p: M2,
-                // Mobile: the bottom bar is `position: fixed`,
-                // so it floats over the canvas. Pad the scroll
-                // container by the bar's height + safe-area so
-                // the last row of content stays above it. The
-                // clearance comes from
-                // `MOBILE_BOTTOM_BAR_CLEARANCE` so the FAB /
-                // speed-dial `bottom` values line up.
                 paddingBottom: isMobile
                   ? `calc(env(safe-area-inset-bottom, 0px) + ${MOBILE_BOTTOM_BAR_CLEARANCE})`
                   : M2,

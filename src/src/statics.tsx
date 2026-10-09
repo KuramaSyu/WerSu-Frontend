@@ -33,22 +33,23 @@ export const M6 = "8rem";
 export const M7 = "12rem";
 export const M8 = "16rem";
 /**
- * MUI `elevation` value used by the top `AppBar` and (in dark mode) by
- * the side-rail `Paper` shells. Keeping them in sync via this constant
- * means a future tweak happens in one place.
+ * TopBar elevation
  */
 export const TOP_BAR_ELEVATION = 4;
+
+/**
+ * Side-rail elevation (left and right). Kept distinct from
+ * TOP_BAR_ELEVATION so TranslucentPaper can tune the top bar
+ * opaque without flattening the rails.
+ */
+export const RAIL_ELEVATION = 2;
 
 /**
  * M5 is too big and M4 is too small
  */
 export const TOP_BAR_HEIGHT = "3.5rem";
 /**
- * Default max-width for the note editor body, expressed in `rem` so the
- * layout scales with the user's font-size preference. A4 portrait at
- * 96 DPI is ~8.27in; 48rem at the default 16px root font-size renders
- * to 768px, which sits comfortably within physical A4 on most screens
- * without forcing horizontal scroll on narrower windows.
+ * Default max-width for the note editor body
  */
 
 export const NOTE_EDITOR_A4_WIDTH = "52rem"; /**
@@ -56,20 +57,21 @@ export const NOTE_EDITOR_A4_WIDTH = "52rem"; /**
  */
 export const COLLAPSED_PANEL_SIZE = "0px";
 /**
- * Vertical clearance the mobile bottom bar needs from anything
- * floating at the bottom of the viewport. Use this for the
- * `bottom` (or `paddingBottom`) of any FAB / speed-dial / fixed
- * action surface that sits over the mobile canvas, so the action
- * stays reachable and doesn't slide under the bottom bar.
- *
- * Same value backs the AppShell's mobile `paddingBottom` so the
- * scroll container, the FAB stack, and the bar all line up.
+ * Vertical spacing we need in mobile view, so that
+ * FABs are located properly
  */
 export const MOBILE_BOTTOM_BAR_CLEARANCE = "6rem";
 /**
- * Default `elevation` for the main-content `Paper` (the cell that
- * hosts routed pages: home, directory, settings, note editor, etc.).
- * Subtle on purpose so the side rails recede behind the canvas
- * without competing with any deeper card the page mounts.
+ * Elevation for Main Panel. All others should have elevation below that
  */
 export const MAIN_PANEL_ELEVATION = 1;
+
+/**
+ * Storage keys for the persisted zustand stores; v
+ * alues must match each store's persist name so the cross-tab listener in Bootstrap can match them.
+ */
+export const PERSIST_KEYS = {
+  backgroundImageLibrary: "background-image-library",
+  selectedBackgroundImage: "selected-background-image",
+  appearance: "appearance-storage",
+} as const;

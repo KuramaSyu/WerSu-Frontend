@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Box } from "@mui/material";
 import { useThemeStore } from "../../zustand/useThemeStore";
-import { M2, TOP_BAR_ELEVATION } from "../../statics";
+import { M2, RAIL_ELEVATION } from "../../statics";
 import { TranslucentPaper } from "../TranslucentPaper";
 
 export interface RightRailProps {
@@ -23,7 +23,7 @@ export const RightRail: React.FC<RightRailProps> = ({ children }) => {
 
   return (
     <TranslucentPaper
-      elevation={TOP_BAR_ELEVATION}
+      elevation={RAIL_ELEVATION}
       square
       sx={{
         display: "flex",
@@ -35,6 +35,7 @@ export const RightRail: React.FC<RightRailProps> = ({ children }) => {
         height: "100%",
         overflow: "hidden",
         minWidth: 0,
+        zIndex: 1,
       }}
     >
       <Box
