@@ -119,6 +119,14 @@ export const AppShell: React.FC = () => {
         sx={{
           width: "100vw",
           height: "100vh",
+          // Flex column so the grid below can use flex:1 and
+          // consume the remaining vertical space after its top
+          // margin. Without this, the grid's height would overflow the viewport
+          // whenever the top panel is visible, causing an unwanted
+          // Y-axis scroll on the body.
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
         }}
       >
         <AppBackground />
@@ -160,7 +168,10 @@ export const AppShell: React.FC = () => {
             //transition: `grid-template-columns ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
             transition: `grid-template-columns ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}, margin-top ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
             marginTop: isMobile ? 0 : showTopPanel ? TOP_BAR_HEIGHT : 0,
-            height: "100vh",
+            // flex: 1 to fill whatever the remaining vertical space is
+            // e.g. with or without topbar
+            flex: 1,
+            minHeight: 0,
           }}
         >
           <LeftRail>{leftPanel}</LeftRail>
@@ -187,9 +198,11 @@ export const AppShell: React.FC = () => {
                 display: "block",
                 scrollbarWidth: "none",
                 p: M2,
+                // pt: isMobile ? M2 : showTopPanel ? M2 : 0,
                 paddingBottom: isMobile
                   ? `calc(env(safe-area-inset-bottom, 0px) + ${MOBILE_BOTTOM_BAR_CLEARANCE})`
                   : M2,
+                transition: `padding-top ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
                 minHeight: 0,
               }}
             >
