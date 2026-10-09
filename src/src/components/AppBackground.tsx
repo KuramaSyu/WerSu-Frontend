@@ -13,13 +13,11 @@ const AppBackground: React.FC = () => {
     (s) => s.cachedObjectUrl,
   );
   const themeImage =
-    theme.custom.chosenBackgroundImage ?? theme.custom.backgroundImages[0] ?? "";
+    theme.custom.chosenBackgroundImage ??
+    theme.custom.backgroundImages[0] ??
+    "";
 
   // Empty userImage and empty themeImage mean "no image".
-  // No silent fallback: if the cached object URL has not resolved
-  // yet, the raw `local:bg-...` key is passed through so we can
-  // see the failure in DevTools and in the bg-debug logs rather
-  // than papering over it with the theme image.
   const sourceUrl = useMemo<string | undefined>(() => {
     if (userImage !== null && userImage.length > 0) {
       return cachedObjectUrl ?? userImage;
@@ -42,7 +40,7 @@ const AppBackground: React.FC = () => {
         left: 0,
         width: "100vw",
         height: "100vh",
-        zIndex: -1,
+        zIndex: 0,
         backgroundColor: theme.palette.background.default,
         overflow: "hidden",
       }}
