@@ -4,7 +4,6 @@
 import { memo } from "react";
 import { Box, ButtonBase, Fab, Stack, Tooltip } from "@mui/material";
 import CodeIcon from "@mui/icons-material/Code";
-import EditIcon from "@mui/icons-material/Edit";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import type { Editor } from "@tiptap/react";
 import { M4, MOBILE_BOTTOM_BAR_CLEARANCE } from "../../statics";
@@ -13,6 +12,7 @@ import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { useActiveNoteStore } from "../../zustand/editorStore";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { logRerender } from "./editorRenderLog";
+import ArticleIcon from "@mui/icons-material/Article";
 
 export interface InsertSpeedDialProps {
   editor: Editor | null;
@@ -98,7 +98,7 @@ const InsertSpeedDialImpl: React.FC<InsertSpeedDialProps> = ({
   const readWriteLabel = editMode
     ? "Switch to read mode"
     : "Switch to write mode";
-  const ReadWriteIcon = editMode ? VisibilityIcon : EditIcon;
+  const ReadWriteIcon = editMode ? VisibilityIcon : ArticleIcon;
 
   const bottom = isMobile ? `calc(${M4} + ${MOBILE_BOTTOM_BAR_CLEARANCE})` : M4;
   const paperFg = theme.palette.getContrastText(
@@ -128,13 +128,13 @@ const InsertSpeedDialImpl: React.FC<InsertSpeedDialProps> = ({
         </Fab>
       </Tooltip>
       <SecondaryFab
-        label={isRich ? "Source view" : "Rich editor"}
+        label={isRich ? "Swap to Source view" : "Swap to Rich editor"}
         onClick={handleSourceToggle}
       >
         {isRich ? (
           <CodeIcon sx={{ color: paperFg }} />
         ) : (
-          <EditIcon sx={{ color: paperFg }} />
+          <ArticleIcon sx={{ color: paperFg }} />
         )}
       </SecondaryFab>
     </Stack>
