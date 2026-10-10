@@ -118,21 +118,13 @@ export const CaretAnimation = Extension.create<CaretAnimationOptions>({
           return {
             update(view) {
               const editMode = useEditorSettings.getState().editMode;
-              if (!editMode || !editorView.hasFocus()) {
-                caretEl.style.display = "none";
-                selectionEl.style.display = "none";
-                stopBlinkTimer();
-                return;
-              }
-
               const { selection } = view.state;
               const containerRect = container.getBoundingClientRect();
 
               // Active text selection -> hide caret, show a single
-              // full-width block spanning every selected line. Block
-              // style means partial text outside the selection on the
-              // first / last line is also highlighted, which matches
-              // the editor's intended visual.
+              // full-width block spanning every selected line. The
+              // selection overlay works in both edit and view mode;
+              // only the caret below is edit-only.
               if (!selection.empty) {
                 caretEl.style.display = "none";
                 stopBlinkTimer();
@@ -184,8 +176,14 @@ export const CaretAnimation = Extension.create<CaretAnimationOptions>({
                 return;
               }
 
-              // Collapsed cursor -> hide selection, show caret with blink.
+              // Collapsed cursor -> caret is edit-only.
               selectionEl.style.display = "none";
+              if (!editMode || !editorView.hasFocus()) {
+                caretEl.style.display = "none";
+                stopBlinkTimer();
+                return;
+              }
+
               caretEl.style.display = "block";
               pauseBlink();
               scheduleBlink();
