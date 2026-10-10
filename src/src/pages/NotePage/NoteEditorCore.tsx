@@ -30,6 +30,7 @@ import { AttachmentPreviewModal } from "../../components/Editor/controllers/Atta
 import { imageLinkToBlock } from "./editorFormatUtils";
 import { useNoteEditor } from "./NoteEditorCore.hook";
 import { OutlineBridge } from "./OutlineBridge";
+import { NoteStatsBridge } from "./NoteStatsBridge";
 import { CollabSyncBridge } from "./CollabSyncBridge";
 import { LatexDialogController } from "./LatexDialogController";
 import { FileUploadDialogController } from "./FileUploadDialogController";
@@ -260,6 +261,7 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
       {/* Bridges: render nothing, own side-effect subscriptions off
           the per-keystroke render path. */}
       <OutlineBridge editor={editor} />
+      <NoteStatsBridge editor={editor} ydoc={ydoc} />
       <CollabSyncBridge
         editor={editor}
         ydoc={ydoc}

@@ -9,6 +9,8 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import { PanelSection } from "../../../components/Panels/PanelSection";
+import { TitleValuePill } from "../../../components/TitleValuePill";
+import { useNoteStatsStore } from "../../../zustand/noteStatsStore";
 
 export interface ParentDirectoryPath {
   id: string;
@@ -34,9 +36,9 @@ interface NoteActionPanelProps {
 
 /**
  * Metadata block for the note side panel: last-edited timestamp, parent
- * directory chips (with remove + add), and (commented out) permission
- * sections. Renders nothing visually meaningful while `isLoading` is
- * true.
+ * directory chips (with remove + add), live word / letter / row
+ * counts, and (commented out) permission sections. Renders nothing
+ * visually meaningful while `isLoading` is true.
  */
 export const NoteActionPanel: React.FC<NoteActionPanelProps> = ({
   isLoading,
@@ -48,6 +50,10 @@ export const NoteActionPanel: React.FC<NoteActionPanelProps> = ({
   onRemoveParent,
   canRemoveParent,
 }) => {
+  // Pushed by `NoteStatsBridge` from the live editor; stays 0/0/0
+  // until the editor mounts and the first transaction fires.
+  const stats = useNoteStatsStore((s) => s.stats);
+
   return (
     <PanelSection title="Metadata" collapsible defaultExpanded>
       {isLoading ? (
@@ -117,6 +123,17 @@ export const NoteActionPanel: React.FC<NoteActionPanelProps> = ({
                 </Tooltip>
               </ListItem>
             </List>
+          </Stack>
+
+          <Stack spacing={0.5}>
+            <Typography variant="caption" color="textSecondary">
+              Content
+            </Typography>
+            <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
+              <TitleValuePill title="Words" value={String(stats.words)} />
+              <TitleValuePill title="Letters" value={String(stats.letters)} />
+              <TitleValuePill title="Rows" value={String(stats.rows)} />
+            </Stack>
           </Stack>
         </Stack>
       )}
