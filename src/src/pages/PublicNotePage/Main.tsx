@@ -21,6 +21,7 @@ import { getPublicCollabEntry } from "../../hooks/usePublicNoteCollaboration";
 import { NoteLeftPanel } from "../NotePage/Panel/MainLeft";
 import { NoteRightPanel } from "../NotePage/Panel/MainRight";
 import { useScrollToSectionOnLoad } from "../../hooks/useScrollToSectionOnLoad";
+import { usePublicRouteReady } from "../../hooks/usePublicRouteReady";
 
 /**
  * Route `/public/n/:share_id` - opens a note published through a
@@ -43,16 +44,24 @@ export const PublicNotePage: React.FC = () => {
     share_id: share_id ?? "",
   });
   const { theme } = useThemeStore();
+  const { ready } = usePublicRouteReady();
 
-  const isWrite = grant?.permission === "SHARE_PERMISSION_WRITE";
   const noteIdFromGrant = grant?.note_id;
-
   const {
     data: note,
     isError: noteIsError,
     error: noteError,
-  } = useNote(noteIdFromGrant);
+  } = useNote(noteIdFromGrant, ready);
 
+  const isWrite = grant?.permission === "SHARE_PERMISSION_WRITE";
+  console.debug("PublicNotePage", {
+    note,
+    ready,
+    share_id,
+    grant,
+    noteIdFromGrant,
+    isWrite,
+  });
   const { mutate } = useUpdateNote();
   const updateNote = (n: Note) => {
     if (!noteIdFromGrant) return;
@@ -63,11 +72,7 @@ export const PublicNotePage: React.FC = () => {
     });
   };
 
-  // Mount the same left and right rails as the private note page so the
-  // share view shows the metadata block + outline on the left and
-  // version history + attachments on the right. The left panel is
-  // pinned to read-only: a share viewer can't move the note between
-  // directories. Same panel sizes and breakpoints as `NotePage`.
+  // Mount the same left and right rails as the private note page
   useLeftPanel(
     <NoteLeftPanel
       noteId={noteIdFromGrant}
@@ -87,10 +92,7 @@ export const PublicNotePage: React.FC = () => {
   // Honour `?section=<slug>` deep-link (same hook as the private note page).
   useScrollToSectionOnLoad();
 
-  // Force read mode per default; the user can flip to write if the
-  // share grants it. On mount: reset the per-attachment JWT map so a
-  // prior share's tokens don't satisfy the new note's requests. On
-  // unmount: clear share token + collab provider + JWT map.
+  // Force read mode per default
   useEffect(() => {
     if (!grant) return;
 
@@ -116,18 +118,30 @@ export const PublicNotePage: React.FC = () => {
 
   const noteReady = note !== undefined && shareAttachmentTokensLoaded;
 
-  // Sync the per-attachment JWTs into the auth store. Keyed on the
-  // tokens map itself, not on `note`: `useNote`'s `select` returns
-  // a fresh `Note` instance per render and Tanstack's deep-equal
-  // memoization doesn't always catch class instances with nested
-  // records
+  // Sync the per-attachment JWTs into the auth store
   const tokens = note?.tokens;
   useEffect(() => {
+    // depend on id. it could maybe not contain any tokens
     useAuthStore.getState().setShareAttachmentTokens(tokens ?? {});
-  }, [tokens]);
+  }, [note?.id]);
+
+  // Tripwire: if the share JWT never arrives, swap the skeleton
+  // for the unavailability surface instead of waiting forever.
+  const { timedOut: jwtTimedOut } = usePublicRouteReady();
 
   if (isError) {
     return <PublicShareUnavailable error={error} />;
+  }
+  if (jwtTimedOut) {
+    return (
+      <PublicShareUnavailable
+        error={
+          new Error(
+            "Share session expired before it could be loaded. Please reload the link.",
+          )
+        }
+      />
+    );
   }
   if (noteIsError) {
     return <PublicShareUnavailable error={noteError} />;
