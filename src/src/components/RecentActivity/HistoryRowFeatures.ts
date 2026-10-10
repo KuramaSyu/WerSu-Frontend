@@ -91,7 +91,16 @@ export type HistoryRowKind =
 /** Per-variant display metadata; icon / label changes happen here. Color is a MUI palette key so it re-themes with the rest of the app. */
 export interface HistoryRowVariantMeta {
   /** MUI icon component. */
-  icon: React.ComponentType<{ fontSize?: "small" | "medium" | "large" }>;
+  icon: React.ComponentType<{
+    fontSize?: "small" | "medium" | "large";
+    color?:
+      | "primary"
+      | "secondary"
+      | "success"
+      | "warning"
+      | "info"
+      | "error";
+  }>;
   /** Short caption rendered alongside the note title (e.g. "Edited"). */
   label: string;
   /** MUI palette key for the icon's color prop. */
