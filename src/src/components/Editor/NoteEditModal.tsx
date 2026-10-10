@@ -58,6 +58,7 @@ import { TableWithControls } from "./TableControlls/TableControlls";
 // codeblock extension + shared lowlight instance
 import { CustomCodeBlock } from "./View/CustomCodeBlock";
 import { lowlight } from "./lowlight";
+import { handleCodeBlockTabKey } from "./codeBlockTabKey";
 
 // Custom React component for demonstration
 const CustomReactComponent = ({ node }: any) => {
@@ -200,15 +201,11 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
     contentType: "markdown",
     editorProps: {
       handleKeyDown(view, event) {
-        if (event.key === "Tab" && editor?.isActive("codeBlock")) {
-          event.preventDefault();
-          const tab = "    ";
-          const { state, dispatch } = view;
-          const { selection } = state;
-          dispatch(state.tr.insertText(tab, selection.from, selection.to));
-          return true;
-        }
-        return false;
+        // Indent / outdent inside a codeBlock. Reads the selection
+        // ancestry straight from `view.state` -- see the comment on
+        // `codeBlockTabKey.ts` for why the previous
+        // `editor?.isActive(...)` gate never fired.
+        return handleCodeBlockTabKey(view, event);
       },
     },
   });

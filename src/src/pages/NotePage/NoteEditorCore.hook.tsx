@@ -34,6 +34,7 @@ import { useUser } from "../../api/queries/useUser";
 import { generatePublicUserName } from "../../utils/publicUserName";
 import { randomMatchingColor } from "../../utils/blendWithContrast";
 import { CustomCodeBlock } from "../../components/Editor/View/CustomCodeBlock";
+import { handleCodeBlockTabKey } from "../../components/Editor/codeBlockTabKey";
 import { lowlight } from "../../components/Editor/lowlight";
 import { TableWithControls } from "../../components/Editor/TableControlls/TableControlls";
 import {
@@ -258,15 +259,11 @@ export const useNoteEditor = (params: UseNoteEditorParams): Editor | null => {
       contentType: "markdown",
       editorProps: {
         handleKeyDown(view, event) {
-          if (event.key === "Tab" && editor?.isActive("codeBlock")) {
-            event.preventDefault();
-            const tab = "    ";
-            const { state, dispatch } = view;
-            const { selection } = state;
-            dispatch(state.tr.insertText(tab, selection.from, selection.to));
-            return true;
-          }
-          return false;
+          // Indent / outdent inside a codeBlock. Reads the selection
+          // ancestry straight from `view.state` -- see the comment on
+          // `codeBlockTabKey.ts` for why the previous
+          // `editor?.isActive(...)` gate never fired.
+          return handleCodeBlockTabKey(view, event);
         },
         handleDrop(view, event) {
           const jsonBody = event.dataTransfer?.getData(
