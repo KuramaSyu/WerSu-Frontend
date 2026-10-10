@@ -1,8 +1,16 @@
-// Floating editor actions: read/write FAB and source/rich FAB.
-// Save lives in the desktop top bar.
+// Floating editor actions: read/write FAB (or a read-only badge when
+// the view is not writable) and source/rich FAB. Save lives in the
+// desktop top bar.
 
 import { memo } from "react";
-import { Box, ButtonBase, Fab, Stack, Tooltip } from "@mui/material";
+import {
+  Box,
+  ButtonBase,
+  Fab,
+  Stack,
+  Tooltip,
+  Typography,
+} from "@mui/material";
 import CodeIcon from "@mui/icons-material/Code";
 import EditIcon from "@mui/icons-material/Edit";
 import VisibilityIcon from "@mui/icons-material/Visibility";
@@ -10,6 +18,7 @@ import type { Editor } from "@tiptap/react";
 import { M4, MOBILE_BOTTOM_BAR_CLEARANCE } from "../../statics";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
+import { useViewConfig } from "../../zustand/useViewConfig";
 import { useActiveNoteStore } from "../../zustand/editorStore";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { logRerender } from "./editorRenderLog";
@@ -78,6 +87,7 @@ const InsertSpeedDialImpl: React.FC<InsertSpeedDialProps> = ({
   });
   const { theme } = useThemeStore();
   const { viewMode, setViewMode, editMode, setWrite } = useEditorSettings();
+  const readOnly = useViewConfig((s) => s.config.readOnly);
   const { isMobile } = useBreakpoint();
   const setContent = useActiveNoteStore((s) => s.setContent);
 
@@ -101,6 +111,11 @@ const InsertSpeedDialImpl: React.FC<InsertSpeedDialProps> = ({
     : "Switch to write mode";
   const ReadWriteIcon = editMode ? VisibilityIcon : EditIcon;
 
+  // Read-only badge: replaces the toggle when the share does not
+  // grant write. Desktop gets an extended FAB with the "View only"
+  // label next to the eye; mobile gets the icon only.
+  const readOnlyLabel = "You only have read access";
+
   const bottom = isMobile ? `calc(${M4} + ${MOBILE_BOTTOM_BAR_CLEARANCE})` : M4;
   const paperFg = theme.palette.getContrastText(
     theme.palette.background.default,
@@ -118,15 +133,41 @@ const InsertSpeedDialImpl: React.FC<InsertSpeedDialProps> = ({
         zIndex: 1300,
       }}
     >
-      <Tooltip title={readWriteLabel}>
-        <Fab
-          size="large"
-          color="primary"
-          aria-label={readWriteLabel}
-          onClick={() => setWrite(!editMode)}
-        >
-          <ReadWriteIcon sx={{ color: primaryFg }} />
-        </Fab>
+      <Tooltip title={readOnly ? readOnlyLabel : readWriteLabel}>
+        {readOnly ? (
+          <Box
+            role="img"
+            aria-label={readOnlyLabel}
+            sx={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              minHeight: 56,
+              minWidth: 56,
+              paddingInline: isMobile ? undefined : 2,
+              borderRadius: isMobile ? "100%" : theme.shape.borderRadius,
+              backgroundColor: theme.palette.action.disabled,
+              color: primaryFg,
+              cursor: "default",
+            }}
+          >
+            <VisibilityIcon
+              sx={{ color: primaryFg, mr: isMobile ? undefined : 1 }}
+            />
+            {!isMobile && (
+              <Typography sx={{ color: primaryFg }}>View only</Typography>
+            )}
+          </Box>
+        ) : (
+          <Fab
+            size="large"
+            color="primary"
+            aria-label={readWriteLabel}
+            onClick={() => setWrite(!editMode)}
+          >
+            <ReadWriteIcon sx={{ color: primaryFg }} />
+          </Fab>
+        )}
       </Tooltip>
       <SecondaryFab
         label={isRich ? "Swap to Source view" : "Swap to Rich editor"}
