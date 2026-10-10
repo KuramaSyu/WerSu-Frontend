@@ -10,6 +10,7 @@
 
 import * as Y from "yjs";
 import { IndexeddbPersistence } from "y-indexeddb";
+import type { HocuspocusProvider } from "@hocuspocus/provider";
 import { collabStatusStore } from "../zustand/useCollabStatusStore";
 
 /**
@@ -19,12 +20,7 @@ import { collabStatusStore } from "../zustand/useCollabStatusStore";
  */
 export interface CollabCacheEntry {
   ydoc: Y.Doc;
-  provider: {
-    connect: () => void;
-    disconnect: () => void;
-    on: (event: string, handler: (...args: unknown[]) => void) => void;
-    off: (event: string, handler: (...args: unknown[]) => void) => void;
-  };
+  provider: HocuspocusProvider;
   persistence: IndexeddbPersistence | null;
   /** Local-only edits accumulated since we last synced with the server. */
   hasUnsyncedLocalEdits: boolean;
