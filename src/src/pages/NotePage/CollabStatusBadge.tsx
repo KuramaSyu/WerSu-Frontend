@@ -20,7 +20,6 @@ import LockIcon from "@mui/icons-material/Lock";
 import ErrorOutlineOutlinedIcon from "@mui/icons-material/ErrorOutlineOutlined";
 import PersonIcon from "@mui/icons-material/Person";
 import CloudOffIcon from "@mui/icons-material/CloudOff";
-import { useLocation } from "react-router-dom";
 import {
   getCollabEntry,
   goOffline,
@@ -48,6 +47,7 @@ import { useUsers } from "../../api/queries/useUser";
 import type { Note } from "../../api/models/search";
 import { displayInitials } from "../../utils/publicUserName";
 import { M1, M2 } from "../../statics";
+import { usePublicRouteReady } from "../../hooks/usePublicRouteReady";
 
 interface StatusMeta {
   label: string;
@@ -219,8 +219,8 @@ function tooltipBody(
               : "WebSocket unreachable. Working offline. Changes save to this browser only."}
           </Typography>
           <Typography variant="caption" sx={{ opacity: 0.75 }}>
-            Click the chip to try reconnecting. If the server has newer
-            changes, you'll be asked how to merge.
+            Click the chip to try reconnecting. If the server has newer changes,
+            you'll be asked how to merge.
           </Typography>
         </Stack>
       );
@@ -417,8 +417,8 @@ export const CollabStatusBadge: React.FC = () => {
   const { editMode } = useEditorSettings();
   const status = useCollabStatus(noteId);
   const diagnostic = useCollabDiagnostic(noteId);
-  // The badge is shared by both NotePage and PublicNotePage, so handle both
-  const isPublic = useLocation().pathname.startsWith("/public/");
+  // The badge is shared by both NotePage and PublicNotePage.
+  const { isPublic } = usePublicRouteReady({ timeoutMs: 0 });
   // Subscribe so the chip can read the current provider for a manual retry.
   const privateCollab = useNoteCollaboration(
     !isPublic && editMode && noteId ? noteId : undefined,
@@ -462,10 +462,12 @@ export const CollabStatusBadge: React.FC = () => {
         ? getPublicCollabEntry(noteId)
         : getCollabEntry(noteId);
       if (entry?.hasUnsyncedLocalEdits) {
-        collabStatusStore.getState().setConflict(
-          noteId,
-          "Reconnecting with local unsynced edits. Resolve the conflict before continuing.",
-        );
+        collabStatusStore
+          .getState()
+          .setConflict(
+            noteId,
+            "Reconnecting with local unsynced edits. Resolve the conflict before continuing.",
+          );
         // Open the modal in the NoteEditorCore shell; the badge just
         // flips the status. The NoteEditorCore subscribes to status
         // changes and shows the modal accordingly.

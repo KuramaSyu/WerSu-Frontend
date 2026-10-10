@@ -11,11 +11,14 @@ import type {
 } from "../models/attachment";
 import { SearchNotesApi, type ISearchNotesApi } from "../SearchNotesApi";
 import { Note, RestNotesSearchType, type MinimalNote } from "../models/search";
-import { NoteApi, type INoteApi } from "../NoteApi";
+import { getNoteApi, type INoteApi } from "../NoteApi";
 import { updateNoteParentDirectory } from "../../utils/updateNoteParentDirectory";
+import { usePublicRouteReady } from "../../hooks/usePublicRouteReady";
+import { useAuthStore } from "../../zustand/useAuthStore";
+import { useUserStore } from "../../zustand/userStore";
 
 const searchNotesApi: ISearchNotesApi = new SearchNotesApi();
-const noteApi: INoteApi = new NoteApi();
+const noteApi: INoteApi = getNoteApi();
 
 export const noteQueries = {
   /**
@@ -126,22 +129,22 @@ export function useInfiniteNoteSearch(
 }
 
 /**
- * get a note with all details
- * @param noteId id of note
- * @returns Note
+ * Get a note with all details.
+ * Public routes wait on the share JWT; private routes use the cookie.
  */
-export function useNote(noteId?: string) {
+export function useNote(noteId?: string, ready?: boolean) {
   return useQuery({
     queryKey: ["notes", noteId],
 
     queryFn: () => {
       if (!noteId) {
-        throw new Error("noteId reuqired");
+        throw new Error("noteId required");
       }
       return noteApi.get(noteId);
     },
 
-    enabled: !!noteId,
+    // note given and either JWT provided or user logged in
+    enabled: !!noteId && ready,
   });
 }
 

@@ -44,7 +44,7 @@ import { color } from "@uiw/react-codemirror/esm/getDefaultExtensions.js";
 import { blendColors, hexToRgb, rgbToHex } from "../../utils/blendWithContrast";
 import { CollabStatusBadge } from "./CollabStatusBadge";
 import { rehydrateCollabSession } from "../../hooks/useNoteCollaboration";
-import { useLocation } from "react-router-dom";
+import { usePublicRouteReady } from "../../hooks/usePublicRouteReady";
 
 export interface VersionInfoProps {
   noteId: string | undefined;
@@ -146,7 +146,7 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
   // not the version preview. Instead, view mode just mirrors the
   // historical title/content into the editor store so the user can
   // preview the historical version without any side effects.
-  const isPublic = useLocation().pathname.startsWith("/public/");
+  const { isPublic } = usePublicRouteReady({ timeoutMs: 0 });
   const handleRestoreVersion = async (
     version: NoteVersionSummaryReply,
     note: Note | undefined,

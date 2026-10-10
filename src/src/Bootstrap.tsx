@@ -24,14 +24,7 @@ import {
 import { useBackgroundImageLibraryStore } from "./zustand/useBackgroundImageLibraryStore";
 import { useAppearanceSettings } from "./zustand/useAppearanceSettings";
 import { PERSIST_KEYS } from "./statics";
-
-/**
- * Routes under `/public/*` are served by the share JWT only — never by
- * user cookies. Match by `pathname.startsWith("/public/")` so we catch
- * `/public/n/<share-id>` and any future siblings (e.g. `/public/d/...`).
- */
-const isPublicRoute = (pathname: string): boolean =>
-  pathname.startsWith("/public/");
+import { isPublicPathname } from "./utils/publicRoute";
 
 /**
  * Toggles the MSW worker based on the `UseFakeApi` feature flag.
@@ -85,9 +78,9 @@ function useShareTokenMode() {
   const { pathname } = useLocation();
 
   useEffect(() => {
-    const publicRoute = isPublicRoute(pathname);
+    const publicRoute = isPublicPathname(pathname);
     console.debug(
-      "[share-token-mode] effect — pathname=",
+      "[share-token-mode] effect - pathname=",
       pathname,
       "isPublic=",
       publicRoute,
@@ -188,10 +181,10 @@ export const Bootstrap: React.FC = () => {
   useInvalidateQueriesOnUserChange();
   useFakeApiMode();
   const { pathname } = useLocation();
-  const onPublicRoute = isPublicRoute(pathname);
+  const onPublicRoute = isPublicPathname(pathname);
   const shareIdMatch = pathname.match(/^\/public\/n\/([^/?#]+)/);
   const shareId = shareIdMatch ? shareIdMatch[1] : null;
-  // Hook no-ops on null `shareId`, so the conditional is in the arg.
+  // Hook no-ops on null shareId, so the conditional is in the arg.
   useShareAccessToken({ shareId: onPublicRoute ? shareId : null });
 
   const {
