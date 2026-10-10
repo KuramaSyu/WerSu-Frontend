@@ -14,6 +14,7 @@ import { Plugin, PluginKey } from "@tiptap/pm/state";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { useThemeStore } from "../../zustand/useThemeStore";
+import { alpha } from "@mui/material/styles";
 
 export interface CaretAnimationOptions {
   /** Disable the overlay entirely. The extension always reads
@@ -68,8 +69,18 @@ export const CaretAnimation = Extension.create<CaretAnimationOptions>({
 
         view(editorView) {
           const caretEl = createCaretElement();
-          const hoverBg = useThemeStore.getState().theme.palette.action.hover;
-          const selectionEl = createSelectionElement(hoverBg);
+          const computeHoverBg = () => {
+            const theme = useThemeStore.getState().theme;
+            return alpha(
+              theme.blendWithContrast(
+                theme.palette.primary.main,
+                0.3,
+                "primary",
+              ),
+              0.3,
+            );
+          };
+          const selectionEl = createSelectionElement(computeHoverBg());
           const container = editorView.dom.parentNode as HTMLElement | null;
           if (!container) {
             return {
@@ -98,8 +109,14 @@ export const CaretAnimation = Extension.create<CaretAnimationOptions>({
             }, BLINK_IDLE_MS);
           };
 
+          // Theme changes live outside ProseMirror, so paint the
+          // selection background directly from the subscribe callback.
+          const unsubscribeTheme = useThemeStore.subscribe(() => {
+            selectionEl.style.backgroundColor = computeHoverBg();
+          });
+
           return {
-            update() {
+            update(view) {
               const editMode = useEditorSettings.getState().editMode;
               if (!editMode || !editorView.hasFocus()) {
                 caretEl.style.display = "none";
@@ -108,10 +125,14 @@ export const CaretAnimation = Extension.create<CaretAnimationOptions>({
                 return;
               }
 
-              const { selection } = editorView.state;
+              const { selection } = view.state;
               const containerRect = container.getBoundingClientRect();
 
-              // Active text selection -> hide caret, show selection overlay.
+              // Active text selection -> hide caret, show a single
+              // full-width block spanning every selected line. Block
+              // style means partial text outside the selection on the
+              // first / last line is also highlighted, which matches
+              // the editor's intended visual.
               if (!selection.empty) {
                 caretEl.style.display = "none";
                 stopBlinkTimer();
@@ -120,17 +141,43 @@ export const CaretAnimation = Extension.create<CaretAnimationOptions>({
                 try {
                   const startCoords = editorView.coordsAtPos(selection.from);
                   const endCoords = editorView.coordsAtPos(selection.to);
+                  // A small threshold absorbs sub-pixel jitter from
+                  // `coordsAtPos` so same-line selections don't get
+                  // mis-classified as multi-line.
+                  const isMultiLine =
+                    Math.abs(startCoords.top - endCoords.top) > 1;
 
-                  const left = startCoords.left - containerRect.left;
-                  const top = startCoords.top - containerRect.top;
-                  // width only spans the first line; multi-line
-                  // selections are out of scope for this simple overlay.
-                  const width = endCoords.left - startCoords.left;
-                  const height = endCoords.bottom - startCoords.top;
-
-                  selectionEl.style.transform = `translate3d(${left}px, ${top}px, 0)`;
-                  selectionEl.style.width = `${width}px`;
-                  selectionEl.style.height = `${height}px`;
+                  if (isMultiLine) {
+                    // Multi-line: full-width block spanning every
+                    // selected line, anchored to the container so
+                    // the CSS transition smoothly interpolates
+                    // width/height/transform on each selection tick.
+                    const top = Math.min(startCoords.top, endCoords.top);
+                    const bottom = Math.max(
+                      startCoords.bottom,
+                      endCoords.bottom,
+                    );
+                    selectionEl.style.transform = `translate3d(0, ${
+                      top - containerRect.top
+                    }px, 0)`;
+                    selectionEl.style.width = `${containerRect.width}px`;
+                    selectionEl.style.height = `${bottom - top}px`;
+                  } else {
+                    // Single-line: rect tightly bounding the actual
+                    // characters, same as the caret would.
+                    const left = Math.min(startCoords.left, endCoords.left);
+                    const top = Math.min(startCoords.top, endCoords.top);
+                    const right = Math.max(startCoords.right, endCoords.right);
+                    const bottom = Math.max(
+                      startCoords.bottom,
+                      endCoords.bottom,
+                    );
+                    selectionEl.style.transform = `translate3d(${
+                      left - containerRect.left
+                    }px, ${top - containerRect.top}px, 0)`;
+                    selectionEl.style.width = `${right - left}px`;
+                    selectionEl.style.height = `${bottom - top}px`;
+                  }
                 } catch {
                   selectionEl.style.display = "none";
                 }
@@ -156,6 +203,7 @@ export const CaretAnimation = Extension.create<CaretAnimationOptions>({
               }
             },
             destroy() {
+              unsubscribeTheme();
               stopBlinkTimer();
               caretEl.remove();
               selectionEl.remove();
