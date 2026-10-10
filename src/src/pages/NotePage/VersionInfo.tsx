@@ -54,7 +54,7 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
   const { theme } = useThemeStore();
   const { setMessage } = useInfoStore();
   const { setTitle, setContent, save } = useActiveNoteStore();
-  const { setWrite } = useEditorSettings();
+  const { editMode, setWrite } = useEditorSettings();
 
   const { data: user } = useUser();
 
@@ -132,13 +132,20 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
     }
   }, [usersById, selectedVersion]);
 
-  // Restores a version by loading it into the local editor: the ydoc
-  // is rebuilt and the Hocuspocus provider is recreated so the
-  // editor sees the historical content. No server write happens
-  // here -- the user reviews the restored content in the editor and
-  // triggers an explicit save. The Hocuspocus provider attached to
-  // the fresh ydoc will still sync the change back to the server
-  // once the user saves.
+  // Loads a historical version into the editor for review. No server
+  // write happens here -- the user reviews the restored content in
+  // the editor and triggers an explicit save.
+  //
+  // Edit mode rebuilds the collab session (ydoc + provider) so the
+  // editor binds to a fresh doc and Hocuspocus pushes the user's
+  // future edits back to the server. View mode skips the rebuild:
+  // no collab session is open in read mode (Editor.tsx gates
+  // useNoteCollaboration on editMode), so writing a fresh entry to
+  // the cache would only leave it dangling until the user toggles
+  // to edit mode -- and at that point they want to see Live again,
+  // not the version preview. Instead, view mode just mirrors the
+  // historical title/content into the editor store so the user can
+  // preview the historical version without any side effects.
   const isPublic = useLocation().pathname.startsWith("/public/");
   const handleRestoreVersion = async (
     version: NoteVersionSummaryReply,
@@ -157,18 +164,20 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
     }
     setIsRestoringVersion(true);
     try {
-      // Rebuild the ydoc + provider so the editor picks up the
-      // historical content cleanly. IndexedDB is cleared so stale
-      // local updates do not rehydrate on the next open.
-      if (isPublic) {
-        const { rehydratePublicCollabSession } =
-          await import("../../hooks/usePublicNoteCollaboration");
-        await rehydratePublicCollabSession(noteId, note.content);
-      } else {
-        await rehydrateCollabSession(noteId, note.content);
+      if (editMode) {
+        // Rebuild the ydoc + provider so the editor picks up the
+        // historical content cleanly. IndexedDB is cleared so stale
+        // local updates do not rehydrate on the next open.
+        if (isPublic) {
+          const { rehydratePublicCollabSession } =
+            await import("../../hooks/usePublicNoteCollaboration");
+          await rehydratePublicCollabSession(noteId, note.content);
+        } else {
+          await rehydrateCollabSession(noteId, note.content);
+        }
       }
       // Mirror the restored title/content into the local store so
-      // the editor's seed effect picks them up.
+      // the editor displays the historical version.
       setTitle(note.title);
       setContent(note.content);
       setMessage(
