@@ -1,7 +1,7 @@
 import type { Editor } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
-import { useCallback } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import {
   Paper,
   Stack,
@@ -22,14 +22,18 @@ interface TextSelectionBubbleMenuProps {
   enabled?: boolean;
 }
 
-// O(1) shouldShow. Must stay cheap: invoked on every transaction.
-const isTextSelectionMenuVisibleNow = (editor: Editor, enabled: boolean) => {
-  if (!enabled || !editor.isEditable) return false;
-  if (!editor.isFocused) return false;
-  const { from, to, empty } = editor.state.selection;
-  if (empty || from === to) return false;
-  return true;
-};
+// Symmetric enter/exit values used by the sx-prop transition. Enter
+// uses a slight overshoot so the menu pops in; exit uses a clean
+// ease-out so it does not bounce on the way out.
+const ENTER_DURATION_MS = 240;
+const ENTER_EASING = "cubic-bezier(0.34, 1.56, 0.64, 1)";
+const EXIT_DURATION_MS = 160;
+
+// The Tiptap BubbleMenu plugin writes `left`/`top` directly on its
+// wrapper `<div>` (the portal target). With a CSS transition applied
+// to that wrapper, position updates between selection rects slide
+// smoothly instead of jumping.
+const MOVE_DURATION_MS = 180;
 
 export const TextSelectionBubbleMenu = ({
   editor,
@@ -37,8 +41,8 @@ export const TextSelectionBubbleMenu = ({
 }: TextSelectionBubbleMenuProps) => {
   const { theme } = useThemeStore();
 
-  // Formatting flags only; visibility lives in MenuVisibilityBridge.
-  const { isBold, isItalic, isStrikethrough, isCode, isHighlight } =
+  // Formatting flags only; visibility lives below.
+  const { isBold, isItalic, isStrikethrough, isCode, isHighlight, hasSelection } =
     useEditorState({
       editor,
       selector: (ctx) => ({
@@ -47,14 +51,57 @@ export const TextSelectionBubbleMenu = ({
         isStrikethrough: ctx.editor.isActive("strike"),
         isCode: ctx.editor.isActive("code"),
         isHighlight: ctx.editor.isActive("highlight"),
+        hasSelection: !ctx.editor.state.selection.empty,
       }),
     });
 
-  // Stable identity so the BubbleMenu plugin doesn't tear down on every render.
+  // Always-mounted: keep the wrapper in the DOM while the editor is
+  // editable so we can drive opacity / transform ourselves and let
+  // the exit transition play to completion.
   const shouldShow = useCallback(
     ({ editor: viewEditor }: { editor: Editor }) =>
-      isTextSelectionMenuVisibleNow(viewEditor, enabled),
+      enabled && viewEditor.isEditable,
     [enabled],
+  );
+
+  const isOpen = enabled && editor.isEditable && hasSelection;
+
+  // Forward the plugin's `<div>` wrapper so we can attach the
+  // position transition directly to it -- that is the element the
+  // floating-ui plugin writes `left`/`top` to on every selection
+  // change.
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  useLayoutEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    el.style.transition = [
+      `left ${MOVE_DURATION_MS}ms ease-out`,
+      `top ${MOVE_DURATION_MS}ms ease-out`,
+    ].join(", ");
+    return () => {
+      el.style.transition = "";
+    };
+  }, [isOpen]);
+
+  const opacityTransition = useMemo(
+    () =>
+      theme.transitions.create("opacity", {
+        duration: isOpen ? ENTER_DURATION_MS : EXIT_DURATION_MS,
+        easing: isOpen
+          ? ENTER_EASING
+          : theme.transitions.easing.easeOut,
+      }),
+    [theme, isOpen],
+  );
+  const transformTransition = useMemo(
+    () =>
+      theme.transitions.create("transform", {
+        duration: isOpen ? ENTER_DURATION_MS : EXIT_DURATION_MS,
+        easing: isOpen
+          ? ENTER_EASING
+          : theme.transitions.easing.easeOut,
+      }),
+    [theme, isOpen],
   );
 
   const formats = [
@@ -66,13 +113,20 @@ export const TextSelectionBubbleMenu = ({
   ];
 
   return (
-    <BubbleMenu editor={editor} shouldShow={shouldShow}>
+    <BubbleMenu editor={editor} shouldShow={shouldShow} ref={wrapperRef}>
       <Paper
         elevation={2}
         sx={{
           border: `1px solid ${theme.palette.divider}`,
           borderRadius: 50,
           p: 1,
+          opacity: isOpen ? 1 : 0,
+          transform: isOpen
+            ? "translateY(0) scale(1)"
+            : "translateY(-8px) scale(0.94)",
+          transformOrigin: "center",
+          transition: [opacityTransition, transformTransition].join(", "),
+          pointerEvents: isOpen ? "auto" : "none",
         }}
       >
         <Stack
@@ -138,3 +192,4 @@ export const TextSelectionBubbleMenu = ({
     </BubbleMenu>
   );
 };
+
