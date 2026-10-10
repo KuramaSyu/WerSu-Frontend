@@ -20,6 +20,7 @@ import Mathematics from "@tiptap/extension-mathematics";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Markdown } from "@tiptap/markdown";
 import { DetailsContent, DetailsSummary } from "@tiptap/extension-details";
+import { CaretAnimation } from "./CaretAnimation";
 import * as Y from "yjs";
 import { Awareness } from "y-protocols/awareness";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
@@ -160,6 +161,14 @@ export const useNoteEditor = (params: UseNoteEditorParams): Editor | null => {
         }),
         CustomHardBreak,
         CustomLink.configure({ openOnClick: true }),
+        // Smooth caret overlay for the local user. Built on top of
+        // `Decoration.widget` (the same primitive
+        // CollaborationCaret uses) so the caret sits inside the
+        // document tree, follows text flow, and scrolls with the
+        // editor. The extension reads `useEditorSettings.editMode`
+        // itself on every decoration rebuild, so flipping the
+        // read/edit toggle at runtime takes effect immediately.
+        CaretAnimation,
         Collaboration.configure({ document: stableYdoc }),
         CollaborationCaret.configure({
           provider: stableProvider,

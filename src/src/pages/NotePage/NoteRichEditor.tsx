@@ -60,6 +60,10 @@ const NoteRichEditorImpl: React.FC<NoteRichEditorProps> = ({
         >
           <DragIndicatorIcon fontSize="small" />
         </DragHandle>
+        {/* Smooth caret overlay is rendered by the
+            `CaretAnimation` Tiptap extension as a `Decoration.widget`
+            inside the document tree (see NoteEditorCore.hook.tsx),
+            so it follows text flow and scrolls with the editor. */}
         <ThemedEditorBox editor={editor}>
           <EditorContent editor={editor} className="tiptap" />
         </ThemedEditorBox>

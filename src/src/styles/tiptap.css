@@ -1,16 +1,23 @@
+.tiptap {
+  /* The .pm-animated-caret overlay is appended as a sibling of
+     .ProseMirror inside this wrapper, so anchor its absolute
+     positioning here. Without this, the overlay would anchor
+     to a much higher positioned ancestor and the translate3d
+     would offset it incorrectly. */
+  position: relative;
+}
+
 .tiptap .ProseMirror {
   /* Reserve a stable left gutter so drag handles stay reachable for wide blocks (tables). */
   padding-left: 1.5rem;
   /* Prevent wide blocks (long URLs, unwrapped code, oversized
      images, tables) from exceeding the viewport and triggering
-     horizontal scroll on the page. `overflow-wrap: break-word`
-     breaks mid-token only when no natural break is available, so
-     paragraphs read normally on desktop and long URLs wrap on
-     narrow viewports; `max-width: 100%` stops block-level
-     children (images, tables, iframes) from forcing the document
-     wider than its container. */
+     horizontal scroll on the page. */
   max-width: 100%;
   overflow-wrap: break-word;
+  /* Hide the browser-native caret so only the smooth overlay
+     caret from `CaretAnimation.tsx` shows */
+  caret-color: transparent;
 }
 
 /* Block-level children must not exceed the editor box on narrow
@@ -208,3 +215,48 @@
   z-index: 1000;
 }
 
+
+/* Smooth local-caret overlay (CaretAnimation.tsx). 
+*/
+.pm-animated-caret {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  border-left: 1px solid currentColor;
+  pointer-events: none;
+  /* A slightly more expressive curve with a micro-bounce landing */
+  transition: transform 140ms cubic-bezier(0.34, 1.25, 0.64, 1), 
+              height 140ms cubic-bezier(0.34, 1.25, 0.64, 1);
+  z-index: 1;
+}
+
+/* Smooth fade in/out when blinking */
+.pm-animated-caret--blinking {
+  animation: pm-animated-caret-blink 1060ms ease-in-out infinite;
+}
+
+@keyframes pm-animated-caret-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0; }
+}
+
+/* Hide the native browser selection highlight */
+.ProseMirror ::selection {
+  background: transparent;
+}
+
+/* Custom animated selection overlay */
+.pm-animated-selection {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  background-color: rgba(255, 255, 255, 0.8); /* Adjust to your selection color */
+  border-radius: 2px;
+
+  /* Smooth transition matching your caret */
+  transition: transform 140ms cubic-bezier(0.34, 1.3, 0.64, 1), 
+              width 140ms cubic-bezier(0.34, 1.3, 0.64, 1),
+              height 140ms cubic-bezier(0.34, 1.3, 0.64, 1);
+}
