@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Button,
@@ -46,6 +46,15 @@ const ShelfMenuImpl: React.FC = () => {
   // Resolve the label through the query so a server-side rename updates on refresh.
   const activeShelf =
     shelves?.find((shelf) => shelf.id === selectedShelfId) ?? null;
+
+  // No stored preference yet and at least one shelf is available:
+  // pick the first one so the top bar reflects a real selection.
+  useEffect(() => {
+    if (selectedShelfId === null && shelves && shelves.length > 0) {
+      setSelectedShelfId(shelves[0].id);
+    }
+  }, [shelves, selectedShelfId, setSelectedShelfId]);
+  
   const buttonLabel = activeShelf
     ? activeShelf.display_name || activeShelf.slug || "Shelf"
     : "Shelf";
