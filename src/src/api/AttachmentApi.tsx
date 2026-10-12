@@ -11,7 +11,8 @@ import { apiRegistry, type ApiToken } from "./apiRegistry";
 
 /**
  * Interface for managing attachment operations.
- * Provides methods for creating, retrieving, deleting, and linking attachments.
+ * Provides methods for creating, retrieving, deleting, and linking
+ * attachments to a note (default) or to a user.
  *
  * @interface IAttachmentApi
  */
@@ -55,15 +56,19 @@ export interface IAttachmentApi {
   deleteAttachment(key: string): Promise<DeleteAttachmentResponse | null>;
 
   /**
-   * Links an existing attachment to a note using the provided payload, which includes the attachment key and note ID.
-   * @param payload - The data required to link the attachment, including the attachment key and the note ID.
+   * Links an existing attachment to a note (default), to a user, or
+   * with no specific target - the optional `note_id` / `user_id`
+   * fields may be omitted entirely.
+   * @param payload - The data required to link the attachment, including the attachment key and optionally a note ID or user ID.
    * @returns the URL of the linked attachment or null if unsuccessful
    */
   linkAttachment(payload: AttachmentLinkBody): Promise<string | null>;
 
   /**
-   * Unlinks an attachment from a note using the provided payload, which includes the attachment key and note ID.
-   * @param payload - The data required to unlink the attachment, including the attachment key and the note ID.
+   * Unlinks an attachment from a note (default), from a user, or
+   * with no specific target - the optional `note_id` / `user_id`
+   * fields may be omitted entirely.
+   * @param payload - The data required to unlink the attachment, including the attachment key and optionally a note ID or user ID.
    * @returns whether or not the unlinking was successful
    */
   unlinkAttachment(payload: AttachmentLinkBody): Promise<boolean>;

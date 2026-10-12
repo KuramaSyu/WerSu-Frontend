@@ -12,9 +12,16 @@ export interface CreateAttachmentBody {
   data: string; // base64 or whatever your backend expects
 }
 
+/**
+ * Body for `/api/attachment-links`. At least one of `note_id` /
+ * `user_id` SHOULD be set, but the backend accepts both being
+ * absent too (link with no target) -- so both are optional here.
+ * Note wins over user when both happen to be present.
+ */
 export interface AttachmentLinkBody {
   attachment_key: string;
-  note_id: string;
+  note_id?: string;
+  user_id?: string;
 }
 
 export interface DeleteAttachmentResponse {
