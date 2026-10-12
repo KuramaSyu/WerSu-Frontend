@@ -1,6 +1,8 @@
 import { useRef, useState } from "react";
 import type { IconButtonProps } from "@mui/material";
 import {
+  Alert,
+  AlertTitle,
   Avatar,
   Box,
   Button,
@@ -19,12 +21,16 @@ import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import CloseIcon from "@mui/icons-material/Close";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import LinkIcon from "@mui/icons-material/Link";
+import LinkOffIcon from "@mui/icons-material/LinkOff";
 import {
   getBookstackImportApi,
   type BookstackBookImportReply,
 } from "../../api/BookstackImportApi";
 import { queryClient } from "../../api/queryClient";
+import { useAttachBook, useShelves } from "../../api/queries/shelfQueries";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
+import { useSelectedShelfStore } from "../../zustand/useSelectedShelfStore";
 
 /**
  * Pretty byte-size formatter for the selected-file label.
@@ -64,7 +70,14 @@ function isZipFile(file: File): boolean {
 type ImportStatus =
   | { kind: "idle" }
   | { kind: "uploading" }
-  | { kind: "success"; reply: BookstackBookImportReply }
+  | {
+      kind: "success";
+      reply: BookstackBookImportReply;
+      /** True once the new book has been bound to the active shelf. */
+      linked: boolean;
+      /** Populated when linking to the shelf failed. */
+      linkError?: string;
+    }
   | { kind: "error"; message: string };
 
 /** Stable key for a `File` so React can reconcile across re-renders. */
@@ -111,6 +124,23 @@ function ChipHeaderStatus({ status }: { status: ImportStatus }) {
             {reply.pages_imported} page(s), {reply.attachments_uploaded}{" "}
             attachment(s), {reply.chapters.length} chapter(s)
           </Typography>
+          <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
+            {status.linked ? (
+              <>
+                <LinkIcon sx={{ fontSize: "0.85rem" }} color="success" />
+                <Typography variant="caption" color="success.main">
+                  Linked to shelf
+                </Typography>
+              </>
+            ) : (
+              <>
+                <LinkOffIcon sx={{ fontSize: "0.85rem" }} color="warning" />
+                <Typography variant="caption" color="warning.main">
+                  Not linked to shelf
+                </Typography>
+              </>
+            )}
+          </Stack>
         </Stack>
       );
     }
@@ -134,22 +164,31 @@ function ChipDetails({ status }: { status: ImportStatus }) {
   if (status.kind === "success") {
     const reply = status.reply;
     // The totals + directory id are already in the always-visible
-    // summary above; the expanded body just drills into per-chapter
-    // detail.
-    return reply.chapters.length > 0 ? (
-      <Box component="ul" sx={{ m: 0, pl: 2.5, textAlign: "left" }}>
-        {reply.chapters.map((chapter) => (
-          <li key={chapter.directory_id}>
-            <Typography variant="caption">
-              {chapter.chapter_name}: {chapter.pages_imported} page(s)
-            </Typography>
-          </li>
-        ))}
-      </Box>
-    ) : (
-      <Typography variant="caption" color="text.secondary">
-        Book had no chapters.
-      </Typography>
+    // summary above; the expanded body drills into per-chapter
+    // detail and surfaces any shelf-link error.
+    return (
+      <Stack spacing={1}>
+        {status.linkError ? (
+          <Typography variant="caption" color="error.main">
+            Shelf link failed: {status.linkError}
+          </Typography>
+        ) : null}
+        {reply.chapters.length > 0 ? (
+          <Box component="ul" sx={{ m: 0, pl: 2.5, textAlign: "left" }}>
+            {reply.chapters.map((chapter) => (
+              <li key={chapter.directory_id}>
+                <Typography variant="caption">
+                  {chapter.chapter_name}: {chapter.pages_imported} page(s)
+                </Typography>
+              </li>
+            ))}
+          </Box>
+        ) : (
+          <Typography variant="caption" color="text.secondary">
+            Book had no chapters.
+          </Typography>
+        )}
+      </Stack>
     );
   }
   if (status.kind === "error") {
@@ -325,6 +364,13 @@ const FileChip: React.FC<FileChipProps> = ({
  * and shows the per-file reply (book directory id, per-chapter counts,
  * totals) inline on each chip. Errors from the backend are surfaced on
  * the chip and echoed via the snackbar.
+ *
+ * When a shelf is selected from the top-bar shelf menu, each
+ * successfully imported book is also attached to that shelf via
+ * `POST /api/shelves/books/attach` (run in parallel after the
+ * imports resolve). The link result is reflected on the chip and
+ * the snackbar so the user can tell at a glance which books
+ * landed on the active shelf.
  */
 export const BookstackImportSection: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -333,6 +379,20 @@ export const BookstackImportSection: React.FC = () => {
   const [statuses, setStatuses] = useState<ImportStatus[]>([]);
   const [uploading, setUploading] = useState(false);
   const { setMessage } = useInfoStore();
+
+  // Currently selected shelf, if any. Imported books are bound to it.
+  const selectedShelfId = useSelectedShelfStore((s) => s.selectedShelfId);
+  // include_books=true so we could surface binding counts (same shape as the top-bar shelf menu).
+  const { data: shelves } = useShelves({ include_books: true });
+  const activeShelf =
+    selectedShelfId === null
+      ? null
+      : (shelves?.find((shelf) => shelf.id === selectedShelfId) ?? null);
+  const activeShelfLabel =
+    activeShelf?.display_name || activeShelf?.slug || null;
+
+  // Hook-level mutation so the shelf-book cache invalidates on success.
+  const { mutateAsync: attachBookAsync } = useAttachBook();
 
   /** Apply a freshly-picked set: keep only zips and reset each status. */
   const selectFiles = (next: File[]) => {
@@ -380,13 +440,53 @@ export const BookstackImportSection: React.FC = () => {
       files.map((f) => getBookstackImportApi().importBook(f)),
     );
 
-    const nextStatuses: ImportStatus[] = results.map((r) => {
-      if (r.status === "fulfilled") {
-        return { kind: "success", reply: r.value };
+    // Bind each successful book to the active shelf in parallel; skipped when no shelf is selected.
+    const targetShelfId = selectedShelfId;
+    const linkResults = await Promise.allSettled(
+      results.map((r) => {
+        if (r.status === "rejected" || targetShelfId === null) {
+          // Resolves so the shape matches the success path; the chip surfaces the missing link.
+          return Promise.resolve(false as const);
+        }
+        return attachBookAsync({
+          shelf_id: targetShelfId,
+          book_id: r.value.book_directory_id,
+        }).then(
+          () => true as const,
+          (e: unknown) => {
+            throw e instanceof Error ? e : new Error(String(e));
+          },
+        );
+      }),
+    );
+
+    const nextStatuses: ImportStatus[] = results.map((r, i) => {
+      if (r.status === "rejected") {
+        const message =
+          r.reason instanceof Error
+            ? r.reason.message
+            : "Unknown import failure";
+        return { kind: "error", message };
       }
-      const message =
-        r.reason instanceof Error ? r.reason.message : "Unknown import failure";
-      return { kind: "error", message };
+      const link = linkResults[i];
+      if (selectedShelfId === null) {
+        return { kind: "success", reply: r.value, linked: false };
+      }
+      if (link.status === "fulfilled" && link.value === true) {
+        return { kind: "success", reply: r.value, linked: true };
+      }
+      const linkMessage =
+        link.status === "rejected"
+          ? link.reason instanceof Error
+            ? link.reason.message
+            : "Unknown link failure"
+          : "Not linked to shelf";
+      return {
+        kind: "success",
+        reply: r.value,
+        linked: false,
+        linkError: linkMessage,
+      };
     });
     setStatuses(nextStatuses);
 
@@ -397,17 +497,27 @@ export const BookstackImportSection: React.FC = () => {
 
     const successes = nextStatuses.filter((s) => s.kind === "success").length;
     const failures = nextStatuses.length - successes;
-    if (failures === 0) {
+    const linkedCount = nextStatuses.filter(
+      (s) => s.kind === "success" && s.linked,
+    ).length;
+    const linkFailures = nextStatuses.filter(
+      (s) => s.kind === "success" && !s.linked,
+    ).length;
+    if (failures === 0 && linkFailures === 0) {
+      const linkedSuffix =
+        selectedShelfId !== null && linkedCount > 0
+          ? ` and linked to ${activeShelfLabel ?? "shelf"}`
+          : "";
       setMessage(
         new SnackbarUpdateImpl(
-          `Imported ${successes} book${successes === 1 ? "" : "s"}`,
+          `Imported ${successes} book${successes === 1 ? "" : "s"}${linkedSuffix}`,
           "success",
         ),
       );
     } else {
       setMessage(
         new SnackbarUpdateImpl(
-          `Imported ${successes} book(s), ${failures} failed`,
+          `Imported ${successes} book(s)${linkedCount > 0 ? `, ${linkedCount} linked` : ""}, ${failures + linkFailures} failed`,
           "error",
         ),
       );
@@ -423,6 +533,22 @@ export const BookstackImportSection: React.FC = () => {
         directory trees. Files are uploaded in parallel and streamed to the
         backend in 1 MiB chunks; large books may take a moment.
       </Typography>
+
+      {selectedShelfId === null ? (
+        <Alert severity="warning" icon={<LinkOffIcon />}>
+          <AlertTitle>No shelf selected</AlertTitle>
+          Imported books will not be linked to any shelf. Pick one from the
+          shelf menu in the top bar to attach new books automatically.
+        </Alert>
+      ) : (
+        <Alert severity="info" icon={<LinkIcon />}>
+          <AlertTitle>
+            Will link to: {activeShelfLabel ?? "selected shelf"}
+          </AlertTitle>
+          Each successfully imported book is bound to this shelf via the shelves
+          API right after the upload completes.
+        </Alert>
+      )}
 
       <Box
         onClick={() => !uploading && fileInputRef.current?.click()}
