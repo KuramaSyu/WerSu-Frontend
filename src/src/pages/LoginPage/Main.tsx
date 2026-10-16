@@ -1,14 +1,11 @@
 import { useEffect, useState } from "react";
 import { useThemeStore } from "../../zustand/useThemeStore";
-import { Box, Typography } from "@mui/material";
+import { Box } from "@mui/material";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { StaticCircleBackground } from "../LoadingPage/CircleBackground";
-import { DiscordLoginBig } from "./DiscordLoginBig";
-import { PasskeyLogin } from "./PasskeyLogin";
+import { AuthCard } from "./EmailLoginForm";
 import { Title } from "../LoadingPage/Title";
-import React from "react";
 import { LogoSvgComponent } from "../LoadingPage/Main";
-import { useMinSquareSize } from "../LoadingPage/minSquareSize";
 import { useLoadingStore } from "../../zustand/loadingStore";
 import { useUsersStore, useUserStore } from "../../zustand/userStore";
 import { defaultTheme } from "../../theme/themes";
@@ -19,8 +16,6 @@ export const LoginPage: React.FC = () => {
   const { theme, setTheme } = useThemeStore();
   const [oldTheme, setOldTheme] = useState<string | null>();
   const { isMobile } = useBreakpoint();
-  const containerRef = React.useRef<HTMLDivElement>(null);
-  const size = useMinSquareSize(containerRef);
   const { setLeftPanelOpen, setRightPanelOpen } = useLayout();
 
   useEffect(() => {
@@ -45,13 +40,15 @@ export const LoginPage: React.FC = () => {
 
   return (
     <Box
+      aria-label="Login"
       sx={{
         position: "relative",
-        width: "100%",
-        height: `calc(100vh - ${M3} - ${M4} - ${M5})`, // appshell does not set a height
+        height: "100%",
+        minHeight: 0,
+        overflow: "hidden",
         display: "flex",
         flexDirection: isMobile ? "column-reverse" : "row",
-        alignItems: "center",
+        alignItems: "stretch",
         justifyContent: "center",
         backgroundColor: theme.palette.background.paper,
         zIndex: 2,
@@ -60,11 +57,9 @@ export const LoginPage: React.FC = () => {
       <Box
         sx={{
           position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: `calc(100vh - ${M3} - ${M4} - ${M5})`,
+          inset: 0,
           zIndex: 1,
+          pointerEvents: "none",
         }}
       >
         <StaticCircleBackground
@@ -79,38 +74,53 @@ export const LoginPage: React.FC = () => {
         sx={{
           display: "flex",
           flexDirection: "column",
-          width: isMobile ? "100%" : 2 / 5,
-          height: isMobile ? 2 / 5 : "100%",
+          width: isMobile ? "100%" : "40%",
+          height: isMobile ? "auto" : "100%",
+          minHeight: 0,
           zIndex: "inherit",
           justifyContent: "center",
           alignItems: "center",
+          overflow: "hidden",
         }}
       >
-        <DiscordLoginBig></DiscordLoginBig>
-        <PasskeyLogin />
+        <AuthCard />
       </Box>
       <Box
-        ref={containerRef}
         sx={{
           display: "flex",
           flexDirection: "column",
-          width: isMobile ? "100%" : 3 / 5,
-          height: isMobile ? 3 / 5 : "100%",
-          justifyContent: isMobile ? "space-between" : "center",
-          pb: isMobile ? 6 : 0,
+          width: isMobile ? "100%" : "60%",
+          height: isMobile ? "100%" : "100%",
+          flex: isMobile ? "1 1 auto" : "0 0 auto",
+          minHeight: 0,
+          justifyContent: "space-between",
           alignItems: "center",
+          py: 4,
           zIndex: 0,
+          overflow: "hidden",
         }}
       >
-        <Box sx={{ fontSize: isMobile ? "4rem" : "10vh" }}>
+        <Box
+          sx={{
+            fontSize: isMobile ? "3rem" : "clamp(2.5rem, 8vh, 8rem)",
+            lineHeight: 1.1,
+            textAlign: "center",
+            flex: "0 0 auto",
+          }}
+        >
           <Title theme={defaultTheme} />
         </Box>
         <Box
           sx={{
-            width: (size * 2) / 3,
-            height: (size * 2) / 3,
+            // Cap the logo to the smaller of the pane's width / height
+            // so the page never overflows regardless of viewport.
+            width: "min(100%, 60vh, 60vw)",
+            height: "min(100%, 60vh, 60vw)",
+            aspectRatio: "1 / 1",
             display: "flex",
             zIndex: 5,
+            flex: "1 1 auto",
+            minHeight: 0,
           }}
         >
           <LogoSvgComponent />
