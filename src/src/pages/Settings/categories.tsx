@@ -3,6 +3,7 @@ import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import CodeIcon from "@mui/icons-material/Code";
 import ImageIcon from "@mui/icons-material/Image";
+import LockIcon from "@mui/icons-material/Lock";
 import PaletteIcon from "@mui/icons-material/Palette";
 import SearchIcon from "@mui/icons-material/Search";
 import type { SettingsCategory } from "./types";
@@ -13,6 +14,7 @@ import { AdministrationSection } from "./AdministrationSection";
 import { AppearanceSection } from "./AppearanceSection";
 import { DeveloperSection } from "./DeveloperSection";
 import { SearchSection } from "./SearchSection";
+import { SecuritySection } from "./SecuritySection";
 import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
 import { useAppearanceSettings } from "../../zustand/useAppearanceSettings";
 import {
@@ -89,5 +91,11 @@ export const settingsCategories: SettingsCategory[] = [
         .getState()
         .setDefaultSearchType(SEARCH_TYPE_NO_OVERRIDE);
     },
+  },
+  {
+    id: "security",
+    label: "Security",
+    icon: <LockIcon />,
+    settingsContent: <SecuritySection />,
   },
 ];
