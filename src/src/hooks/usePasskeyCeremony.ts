@@ -25,6 +25,7 @@
 import { useMutation, type UseMutationResult } from "@tanstack/react-query";
 import { getPasskeyApi } from "../api/PasskeyApi";
 import { useUserStore } from "../zustand/userStore";
+import { useUser } from "../api/queries/useUser";
 import { WersuUserImpl } from "../components/DiscordLogin";
 import { queryClient } from "../api/queryClient";
 import type {
@@ -69,6 +70,19 @@ const requireWebAuthn = (): void => {
  * `ArrayBuffer`-backed views.
  */
 const base64UrlToBytes = (input: string): Uint8Array<ArrayBuffer> => {
+  // TS says string but a 200 reply can ship a partial body (no
+  // challenge) when the server thinks passkey support is up but the
+  // challenge generator bailed. Throw a neutral message instead of a
+  // raw TypeError on input.replace; do NOT use the
+  // "passkey support is not configured" prefix the controller uses
+  // for the actual not-configured case, otherwise the Settings UI
+  // would tell the user to set WEBAUTHN_RP_ID even though the server
+  // just returned 200 OK.
+  if (typeof input !== "string" || input.length === 0) {
+    throw new Error(
+      "Server reply missing challenge; passkey ceremony could not start.",
+    );
+  }
   const padded = input.replace(/-/g, "+").replace(/_/g, "/");
   const pad = padded.length % 4;
   const normalized = pad ? padded + "=".repeat(4 - pad) : padded;
@@ -112,18 +126,80 @@ const bufferToByteArray = (input: ArrayBuffer): number[] =>
   Array.from(new Uint8Array(input));
 
 /**
+ * Lightweight `{id, name, displayName}` derived from the current user.
+ * The link ceremony endpoint returns a challenge without `user_id` /
+ * `user_name` because the server already knows the caller from the
+ * session; the browser-side `user` block still has to be populated so
+ * the authenticator can correlate the new credential with the existing
+ * account. We pull that information from the live user store.
+ *
+ * Returns `undefined` when no user is loaded yet (e.g. on the cold-
+ * start frame before `useUser` has resolved). In that case the caller
+ * should fall back to the server-supplied fields; if neither source
+ * has the data, `buildCreationOptions` throws.
+ */
+interface LinkUser {
+  id: string;
+  name: string;
+  displayName?: string;
+}
+
+/**
+ * Read the active user out of the zustand store. Prefers the live
+ * react-query result (which writes back into `useUserStore` after a
+ * successful fetch) because that is the canonical "who is logged in
+ * right now" view. Returns `undefined` if nothing is hydrated.
+ */
+const resolveActiveUser = (): LinkUser | undefined => {
+  const u = useUserStore.getState().user;
+  if (u) {
+    const id = u.id?.length > 0 ? u.id : u.username;
+    if (id) {
+      return {
+        id,
+        name: u.username || id,
+        displayName: u.username || undefined,
+      };
+    }
+  }
+  // Fallback: the zustand store can be cleared momentarily while
+  // react-query refetches; in that window we don't have a User object.
+  return undefined;
+};
+
+/**
  * Build the `PublicKeyCredentialCreationOptions` document the browser
  * consumes during `navigator.credentials.create()`.
  *
  * The backend's `PasskeyCeremonyBeginReply` is the bare minimum needed
- * to identify the ceremony (challenge + rp + user). The rest of the
- * fields use sensible defaults for a passwordless UX.
+ * to identify the ceremony (challenge + rp). For a fresh registration
+ * it also carries the `user_id` / `user_name` the RP needs to seed a
+ * brand-new user record. For a link ceremony those fields are absent
+ * because the session already identifies the caller — `fallbackUser`
+ * is the optional in-app fallback populated from `useUserStore`.
+ *
+ * `forLink` toggles the error message: the link flow's "missing
+ * user_id" is a UI/cache problem (we couldn't read the user), not a
+ * backend problem. The register flow's "missing user_id" is genuinely
+ * a server-side reply-shape issue.
  */
 const buildCreationOptions = (
   reply: PasskeyCeremonyBeginReply,
-  friendlyName?: string,
+  friendlyName: string | undefined,
+  fallbackUser: LinkUser | undefined,
+  forLink: boolean,
 ): PublicKeyCredentialCreationOptions => {
-  if (!reply.user_id || !reply.user_name) {
+  const userId = reply.user_id ?? fallbackUser?.id;
+  const userName = reply.user_name ?? fallbackUser?.name;
+  if (!userId || !userName) {
+    if (forLink) {
+      // The logged-in user couldn't be resolved from the cache. Most
+      // often this means `useUser` is still fetching (cold-start).
+      // Surface it as a UI state, not a "server bug" message.
+      throw new Error(
+        "Couldn't read your account from the cache. Wait a moment and try again.",
+      );
+    }
     throw new Error(
       "Server response missing user_id/user_name; cannot start registration ceremony.",
     );
@@ -135,11 +211,15 @@ const buildCreationOptions = (
       name: reply.rp_name,
     },
     user: {
-      id: base64UrlToBytes(reply.user_id),
-      name: reply.user_name,
+      id: base64UrlToBytes(userId),
+      name: userName,
       // `displayName` falls back to the username; backend doesn't ship
       // a separate display name yet.
-      displayName: friendlyName ?? reply.user_name,
+      displayName:
+        friendlyName ??
+        fallbackUser?.displayName ??
+        reply.user_name ??
+        userName,
     },
     pubKeyCredParams: [
       { type: "public-key", alg: -7 }, // ES256
@@ -303,9 +383,15 @@ export function usePasskeyRegister(
       const begin = await api.registerBegin({
         username: vars.username ?? options.username,
       });
+      // Register normally returns user_id/user_name from the server,
+      // but supply the active-user cache as a safety net so a partial
+      // server reply can't crash the ceremony.
+      const fallbackUser = resolveActiveUser();
       const creationOptions = buildCreationOptions(
         begin,
         vars.friendlyName ?? options.friendlyName,
+        fallbackUser,
+        false,
       );
       const credential = (await navigator.credentials.create({
         publicKey: creationOptions,
@@ -323,6 +409,12 @@ export function usePasskeyRegister(
  * Public hook API for linking a new passkey to the currently
  * authenticated user. The backend requires the session cookie; the
  * browser handler is the same as registration but without a username.
+ *
+ * The linkBegin response deliberately omits `user_id` / `user_name`
+ * because the server already knows who you are from the session
+ * cookie. To populate the browser-side `user` block we read the
+ * logged-in user from the cache (zustand store, hydrated by
+ * `useUser`) and pass it as the fallback into `buildCreationOptions`.
  */
 export function usePasskeyLink(): UseMutationResult<
   PasskeyCeremonyFinishReply,
@@ -330,11 +422,23 @@ export function usePasskeyLink(): UseMutationResult<
   { friendlyName?: string }
 > {
   const api = getPasskeyApi();
+  // Subscribe so a cold-start frame where the user lands on this card
+  // before `useUser` has resolved still triggers the query when the
+  // store hasn't been hydrated yet. The hook just touches the data
+  // here; the store read happens at mutation time so we don't capture
+  // a stale value.
+  useUser();
   return useMutation({
     mutationFn: async (vars: { friendlyName?: string }) => {
       requireWebAuthn();
       const begin = await api.linkBegin();
-      const creationOptions = buildCreationOptions(begin, vars.friendlyName);
+      const fallbackUser = resolveActiveUser();
+      const creationOptions = buildCreationOptions(
+        begin,
+        vars.friendlyName,
+        fallbackUser,
+        true,
+      );
       const credential = (await navigator.credentials.create({
         publicKey: creationOptions,
       })) as PublicKeyCredential | null;
