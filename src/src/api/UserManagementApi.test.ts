@@ -1,0 +1,152 @@
+// Tier 1 tests for UserManagementApi.
+
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { UserManagementApi } from "./UserManagementApi";
+
+type FetchCall = { url: string; init: RequestInit };
+
+const mockFetch = (
+  response: unknown = {},
+  options: { ok?: boolean; status?: number } = {},
+) => {
+  const { ok = true, status = 200 } = options;
+  const calls: FetchCall[] = [];
+  const spy = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+    calls.push({ url: String(url), init: init ?? {} });
+    return {
+      ok,
+      status,
+      headers: new Headers({ "content-type": "application/json" }),
+      json: async () => response,
+      text: async () => JSON.stringify(response),
+    } as Response;
+  });
+  vi.stubGlobal("fetch", spy);
+  return { spy, calls };
+};
+
+beforeEach(() => vi.unstubAllGlobals());
+afterEach(() => vi.unstubAllGlobals());
+
+const SAMPLE_PHC =
+  "$argon2id$v=19$m=65536,t=3,p=1$AAAAAAAAAAAAAAAAAAAAAA$BBBBBBBBBBBBBBBBBBBBBB";
+
+describe("UserManagementApi.createUser", () => {
+  it("POSTs to /api/users with { email, username, password_phc }", async () => {
+    const { calls } = mockFetch({ id: "u1" });
+    const api = new UserManagementApi();
+    await api.createUser({
+      email: "alice@example.com",
+      username: "alice",
+      password_phc: SAMPLE_PHC,
+    });
+    expect(calls[0].url).toMatch(/\/api\/users$/);
+    expect(calls[0].init.method).toBe("POST");
+    expect(calls[0].init.credentials).toBe("include");
+    expect(calls[0].init.body).toBe(
+      JSON.stringify({
+        email: "alice@example.com",
+        username: "alice",
+        password_phc: SAMPLE_PHC,
+      }),
+    );
+  });
+});
+
+describe("UserManagementApi.signup", () => {
+  it("POSTs to /api/auth/signup with { username, email, password_phc }", async () => {
+    const { calls } = mockFetch({ id: "u1", username: "alice" });
+    const api = new UserManagementApi();
+    await api.signup({
+      username: "alice",
+      email: "alice@example.com",
+      password_phc: SAMPLE_PHC,
+    });
+    expect(calls[0].url).toMatch(/\/api\/auth\/signup$/);
+    expect(calls[0].init.method).toBe("POST");
+    expect(calls[0].init.credentials).toBe("include");
+    expect(JSON.parse(calls[0].init.body as string)).toEqual({
+      username: "alice",
+      email: "alice@example.com",
+      password_phc: SAMPLE_PHC,
+    });
+  });
+});
+
+describe("UserManagementApi.loginPassword", () => {
+  it("POSTs to /api/auth/login with { kind: 'password', email, password_phc }", async () => {
+    const { calls } = mockFetch({ id: "u1" });
+    const api = new UserManagementApi();
+    await api.loginPassword({
+      kind: "password",
+      email: "alice@example.com",
+      password_phc: SAMPLE_PHC,
+    });
+    expect(calls[0].url).toMatch(/\/api\/auth\/login$/);
+    expect(calls[0].init.method).toBe("POST");
+    expect(calls[0].init.credentials).toBe("include");
+    expect(JSON.parse(calls[0].init.body as string)).toEqual({
+      kind: "password",
+      email: "alice@example.com",
+      password_phc: SAMPLE_PHC,
+    });
+  });
+});
+
+describe("UserManagementApi.patchUser", () => {
+  it("PATCHes /api/users/{id} with the supplied payload", async () => {
+    const { calls } = mockFetch({ id: "u1" });
+    const api = new UserManagementApi();
+    await api.patchUser("u1", { username: "alice2" });
+    expect(calls[0].url).toMatch(/\/api\/users\/u1$/);
+    expect(calls[0].init.method).toBe("PATCH");
+    expect(calls[0].init.body).toBe(JSON.stringify({ username: "alice2" }));
+  });
+
+  it("round-trips a clear-only payload", async () => {
+    const { calls } = mockFetch({ id: "u1" });
+    const api = new UserManagementApi();
+    await api.patchUser("u1", { email_clear: true });
+    expect(JSON.parse(calls[0].init.body as string)).toEqual({
+      email_clear: true,
+    });
+  });
+
+  it("throws client-side when set and clear are supplied for the same field", async () => {
+    const { spy } = mockFetch({ id: "u1" });
+    const api = new UserManagementApi();
+    await expect(
+      api.patchUser("u1", { email: "x@x", email_clear: true }),
+    ).rejects.toThrow(/mutually exclusive/);
+    expect(spy).not.toHaveBeenCalled();
+  });
+});
+
+describe("UserManagementApi.changePassword", () => {
+  it("POSTs to /api/auth/password/change with { current_phc, new_phc }", async () => {
+    const { calls } = mockFetch(undefined, { status: 204 });
+    const api = new UserManagementApi();
+    await api.changePassword({
+      current_phc: SAMPLE_PHC,
+      new_phc: SAMPLE_PHC.replace("BBBB", "CCCC"),
+    });
+    expect(calls[0].url).toMatch(/\/api\/auth\/password\/change$/);
+    expect(calls[0].init.method).toBe("POST");
+    expect(calls[0].init.credentials).toBe("include");
+    expect(calls[0].init.body).toBe(
+      JSON.stringify({
+        current_phc: SAMPLE_PHC,
+        new_phc: SAMPLE_PHC.replace("BBBB", "CCCC"),
+      }),
+    );
+  });
+});
+
+describe("UserManagementApi registration", () => {
+  it("uses the api registry singleton", async () => {
+    const { apiRegistry } = await import("./apiRegistry");
+    const { USER_MANAGEMENT_API_TOKEN } = await import("./UserManagementApi");
+    const resolved = apiRegistry.get(USER_MANAGEMENT_API_TOKEN);
+    expect(resolved).toBeInstanceOf(UserManagementApi);
+  });
+});
