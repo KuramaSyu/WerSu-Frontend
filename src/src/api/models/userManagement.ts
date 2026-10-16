@@ -6,24 +6,24 @@ export type { JsUserAuth } from "./passkey";
 export interface PostUserRequest {
   email: string;
   username: string;
-  /** Argon2id PHC string. Raw plaintext must never appear on the wire. */
-  password_phc: string;
+  /** Plaintext password. */
+  password: string;
 }
 
 /** POST /api/auth/signup body. User-facing; success sets a session cookie. */
 export interface SignupRequest {
   username: string;
   email: string;
-  /** Argon2id PHC string. */
-  password_phc: string;
+  /** Plaintext password. */
+  password: string;
 }
 
 /** POST /api/auth/login body for the password path. */
 export interface LoginPasswordRequest {
   kind: "password";
   email: string;
-  /** Argon2id PHC string. */
-  password_phc: string;
+  /** Plaintext password. */
+  password: string;
 }
 
 /** PATCH /api/users/{id} body. Tri-state per field. */
@@ -36,10 +36,16 @@ export interface PatchUserRequest {
   avatar_url_clear?: boolean;
 }
 
-/** POST /api/auth/password/change body. Both fields are PHC strings. */
+/** POST /api/auth/password/change body. Both fields are plaintext. */
 export interface ChangePasswordRequest {
-  current_phc: string;
-  new_phc: string;
+  /**
+   * Current plaintext password. Omit when no password is set on the
+   * account yet (e.g. Discord-only sign-up) — the server then treats
+   * the call as a set-password.
+   */
+  current?: string;
+  /** Avoids the TS `new` reserved word while staying snake_case on the wire. */
+  new_password: string;
 }
 
 /** Throw when a PATCH sets the same field as it also marks for clear. */

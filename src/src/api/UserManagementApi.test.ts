@@ -28,17 +28,16 @@ const mockFetch = (
 beforeEach(() => vi.unstubAllGlobals());
 afterEach(() => vi.unstubAllGlobals());
 
-const SAMPLE_PHC =
-  "$argon2id$v=19$m=65536,t=3,p=1$AAAAAAAAAAAAAAAAAAAAAA$BBBBBBBBBBBBBBBBBBBBBB";
+const SAMPLE_PASSWORD = "correct horse battery staple";
 
 describe("UserManagementApi.createUser", () => {
-  it("POSTs to /api/users with { email, username, password_phc }", async () => {
+  it("POSTs to /api/users with { email, username, password } as plaintext", async () => {
     const { calls } = mockFetch({ id: "u1" });
     const api = new UserManagementApi();
     await api.createUser({
       email: "alice@example.com",
       username: "alice",
-      password_phc: SAMPLE_PHC,
+      password: SAMPLE_PASSWORD,
     });
     expect(calls[0].url).toMatch(/\/api\/users$/);
     expect(calls[0].init.method).toBe("POST");
@@ -47,20 +46,20 @@ describe("UserManagementApi.createUser", () => {
       JSON.stringify({
         email: "alice@example.com",
         username: "alice",
-        password_phc: SAMPLE_PHC,
+        password: SAMPLE_PASSWORD,
       }),
     );
   });
 });
 
 describe("UserManagementApi.signup", () => {
-  it("POSTs to /api/auth/signup with { username, email, password_phc }", async () => {
+  it("POSTs to /api/auth/signup with { username, email, password } as plaintext", async () => {
     const { calls } = mockFetch({ id: "u1", username: "alice" });
     const api = new UserManagementApi();
     await api.signup({
       username: "alice",
       email: "alice@example.com",
-      password_phc: SAMPLE_PHC,
+      password: SAMPLE_PASSWORD,
     });
     expect(calls[0].url).toMatch(/\/api\/auth\/signup$/);
     expect(calls[0].init.method).toBe("POST");
@@ -68,19 +67,19 @@ describe("UserManagementApi.signup", () => {
     expect(JSON.parse(calls[0].init.body as string)).toEqual({
       username: "alice",
       email: "alice@example.com",
-      password_phc: SAMPLE_PHC,
+      password: SAMPLE_PASSWORD,
     });
   });
 });
 
 describe("UserManagementApi.loginPassword", () => {
-  it("POSTs to /api/auth/login with { kind: 'password', email, password_phc }", async () => {
+  it("POSTs to /api/auth/login with { kind: 'password', email, password } as plaintext", async () => {
     const { calls } = mockFetch({ id: "u1" });
     const api = new UserManagementApi();
     await api.loginPassword({
       kind: "password",
       email: "alice@example.com",
-      password_phc: SAMPLE_PHC,
+      password: SAMPLE_PASSWORD,
     });
     expect(calls[0].url).toMatch(/\/api\/auth\/login$/);
     expect(calls[0].init.method).toBe("POST");
@@ -88,7 +87,7 @@ describe("UserManagementApi.loginPassword", () => {
     expect(JSON.parse(calls[0].init.body as string)).toEqual({
       kind: "password",
       email: "alice@example.com",
-      password_phc: SAMPLE_PHC,
+      password: SAMPLE_PASSWORD,
     });
   });
 });
@@ -123,22 +122,32 @@ describe("UserManagementApi.patchUser", () => {
 });
 
 describe("UserManagementApi.changePassword", () => {
-  it("POSTs to /api/auth/password/change with { current_phc, new_phc }", async () => {
+  it("POSTs to /api/auth/password/change with { current, new_password } as plaintext", async () => {
     const { calls } = mockFetch(undefined, { status: 204 });
     const api = new UserManagementApi();
     await api.changePassword({
-      current_phc: SAMPLE_PHC,
-      new_phc: SAMPLE_PHC.replace("BBBB", "CCCC"),
+      current: SAMPLE_PASSWORD,
+      new_password: "new-pw-1",
     });
     expect(calls[0].url).toMatch(/\/api\/auth\/password\/change$/);
     expect(calls[0].init.method).toBe("POST");
     expect(calls[0].init.credentials).toBe("include");
     expect(calls[0].init.body).toBe(
       JSON.stringify({
-        current_phc: SAMPLE_PHC,
-        new_phc: SAMPLE_PHC.replace("BBBB", "CCCC"),
+        current: SAMPLE_PASSWORD,
+        new_password: "new-pw-1",
       }),
     );
+  });
+
+  it("omits `current` from the body when it is not provided (set-password path)", async () => {
+    const { calls } = mockFetch(undefined, { status: 204 });
+    const api = new UserManagementApi();
+    await api.changePassword({ new_password: "new-pw-1" });
+    expect(calls[0].url).toMatch(/\/api\/auth\/password\/change$/);
+    expect(JSON.parse(calls[0].init.body as string)).toEqual({
+      new_password: "new-pw-1",
+    });
   });
 });
 
