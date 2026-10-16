@@ -31,9 +31,7 @@ export type DirectoryItemProps = DirectoryVariantProps | NoteVariantProps;
 
 const DIRECTORY_COLORS = ["#C27C3B", "#3B7CC2"] as const;
 
-const itemToEntry = (
-  props: DirectoryItemProps,
-): SelectionEntry =>
+const itemToEntry = (props: DirectoryItemProps): SelectionEntry =>
   props.variant === "directory"
     ? { kind: "directory", id: props.directoryId }
     : { kind: "note", id: props.note.id };
@@ -58,8 +56,11 @@ export const DirectoryItem: React.FC<DirectoryItemProps> = (props) => {
 
   const entry = itemToEntry(props);
   const active = useDirectorySelectionStore((s) => s.active);
-  const isSelected = useDirectorySelectionStore((s) =>
-    Boolean(s.selected[`${entry.kind}:${entry.id}`]),
+
+  // Hide marks outside select mode: exitSelectMode keeps the
+  // selection for re-entry, so the visual state must gate on active.
+  const isSelected = useDirectorySelectionStore(
+    (s) => s.active && Boolean(s.selected[`${entry.kind}:${entry.id}`]),
   );
   const startSelection = useDirectorySelectionStore((s) => s.startSelection);
   const toggle = useDirectorySelectionStore((s) => s.toggle);
@@ -133,9 +134,7 @@ export const DirectoryItem: React.FC<DirectoryItemProps> = (props) => {
               disableRipple
               sx={{ p: 0.5 }}
               aria-label={
-                variant === "directory"
-                  ? "Select directory"
-                  : "Select note"
+                variant === "directory" ? "Select directory" : "Select note"
               }
             />
           </Stack>
