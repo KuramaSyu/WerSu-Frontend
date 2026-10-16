@@ -195,7 +195,8 @@ export const AppShell: React.FC = () => {
               ref={setScrollElement}
               sx={{
                 overflowY: "auto",
-                display: "block",
+                display: "flex",
+                flexDirection: "column",
                 scrollbarWidth: "none",
                 p: M2,
                 // pt: isMobile ? M2 : showTopPanel ? M2 : 0,
@@ -206,18 +207,9 @@ export const AppShell: React.FC = () => {
                 minHeight: 0,
               }}
             >
-              <Stack
-                direction={"column"}
-                sx={{ position: "relative", flex: 1 }}
-              >
-                <Outlet />
-                <Box
-                  sx={{
-                    width: "100%",
-                    height: "20vh",
-                  }}
-                ></Box>
-              </Stack>
+              <Outlet />
+              {/* previously a strack with outlet and bottom padding
+              which looked nasty in the loginscreen */}
             </Box>
 
             <RightRail>{rightPanel}</RightRail>
