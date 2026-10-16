@@ -1,8 +1,7 @@
 // ---------------------------------------------------------------------------
 // NoteTitleBar
-// Title input row at the top of the editor. Memoized. The wrapper
-// constrains the Input to the available space; minWidth: 0 prevents
-// a long title from growing the row, overflow: hidden clips the caret.
+// Title input row at the top of the editor. Memoized. Multiline so
+// long titles wrap onto multiple lines instead of scrolling.
 // ---------------------------------------------------------------------------
 
 import { memo } from "react";
@@ -40,11 +39,11 @@ const NoteTitleBarImpl: React.FC<NoteTitleBarProps> = ({
         sx={{
           flex: 1,
           minWidth: 0,
-          overflow: "hidden",
         }}
       >
         <Input
           fullWidth
+          multiline
           value={title}
           onChange={(event) => setTitle(event.target.value)}
           placeholder="Note title"
@@ -52,6 +51,13 @@ const NoteTitleBarImpl: React.FC<NoteTitleBarProps> = ({
           sx={{
             fontSize: theme.typography.h3,
             pr: forceFullWidth ? 0 : M2,
+            // Wrap and grow vertically; no horizontal scroll.
+            "& textarea": {
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+              overflow: "hidden",
+              resize: "none",
+            },
           }}
         />
       </Box>
