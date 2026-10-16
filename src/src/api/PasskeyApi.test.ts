@@ -129,3 +129,47 @@ describe("RestPasskeyApi - link ceremony", () => {
     expect(calls[0].init.method).toBe("POST");
   });
 });
+
+describe("RestPasskeyApi - list and revoke", () => {
+  it("listPasskeys gets /api/auth/passkey/list with no query string by default", async () => {
+    const { calls } = mockFetch({ passkeys: [] });
+    const api = new RestPasskeyApi();
+    await api.listPasskeys();
+    expect(calls[0].url).toMatch(/\/api\/auth\/passkey\/list$/);
+    expect(calls[0].init.method).toBe("GET");
+    // No body, no query string for the default (revoked excluded) call.
+    expect(calls[0].init.body).toBeUndefined();
+  });
+
+  it("listPasskeys appends include_revoked=true when requested", async () => {
+    const { calls } = mockFetch({ passkeys: [] });
+    const api = new RestPasskeyApi();
+    await api.listPasskeys({ include_revoked: true });
+    expect(calls[0].url).toMatch(
+      /\/api\/auth\/passkey\/list\?include_revoked=true$/,
+    );
+  });
+
+  it("listPasskeys omits the query string for include_revoked=false (default)", async () => {
+    const { calls } = mockFetch({ passkeys: [] });
+    const api = new RestPasskeyApi();
+    await api.listPasskeys({ include_revoked: false });
+    expect(calls[0].url).not.toMatch(/\?/);
+  });
+
+  it("revokePasskey sends DELETE to /api/auth/passkey/{id}", async () => {
+    const { calls } = mockFetch({});
+    const api = new RestPasskeyApi();
+    await api.revokePasskey({ id: "pk_abc123" });
+    expect(calls[0].url).toMatch(/\/api\/auth\/passkey\/pk_abc123$/);
+    expect(calls[0].init.method).toBe("DELETE");
+  });
+
+  it("revokePasskey percent-encodes ids that contain characters needing escaping", async () => {
+    const { calls } = mockFetch({});
+    const api = new RestPasskeyApi();
+    await api.revokePasskey({ id: "pk/with space" });
+    expect(calls[0].url).toMatch(/\/api\/auth\/passkey\/pk%2Fwith%20space$/);
+    expect(calls[0].init.method).toBe("DELETE");
+  });
+});

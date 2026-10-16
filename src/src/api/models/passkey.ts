@@ -14,6 +14,8 @@
  *   - POST /auth/passkey/login/finish    (unauthenticated)
  *   - POST /auth/link/passkey/begin      (authenticated, links to current user)
  *   - POST /auth/link/passkey/finish     (authenticated, links to current user)
+ *   - GET  /auth/passkey/list            (authenticated, lists own passkeys)
+ *   - DELETE /auth/passkey/{id}          (authenticated, revoke one of own)
  */
 
 /**
@@ -76,3 +78,40 @@ export interface JsUserAuth {
   is_active: boolean;
   avatar_url?: string | null;
 }
+
+/**
+ * One entry from `GET /auth/passkey/list`. The backend populates
+ * `created_at` for every passkey; `friendly_name`, `last_used_at`,
+ * and `revoked_at` are optional because the authenticator may not
+ * have surfaced them at registration, the passkey may never have
+ * been used, or (for the last one) it may still be active.
+ */
+export interface Passkey {
+  id: string;
+  friendly_name?: string;
+  created_at: string;
+  last_used_at?: string;
+  revoked_at?: string;
+}
+
+/**
+ * Query parameters for `GET /auth/passkey/list`. `include_revoked=true`
+ * keeps revoked rows in the response so the user can audit what was
+ * retired; the default hides them.
+ */
+export interface ListPasskeysEndpointRequest {
+  include_revoked?: boolean;
+}
+
+/**
+ * Response for `GET /auth/passkey/list`.
+ */
+export interface ListPasskeysEndpointReply {
+  passkeys: Passkey[];
+}
+
+/**
+ * No-body request for `DELETE /auth/passkey/{id}`. Reserved so the
+ * mutation signature stays symmetric with the other delete hooks.
+ */
+export type RevokePasskeyEndpointRequest = { id: string };
