@@ -8,7 +8,7 @@ import { WersuUserImpl, type WersuUser } from "../../components/DiscordLogin";
 // Resolve through the api registry so the share-token provider installed on Bootstrap reaches this instance.
 const userApi = getUserApi();
 
-const USER_FETCH_RETRY_LIMIT = 1;
+const USER_FETCH_RETRY_LIMIT = 0;
 
 // react-query retry predicate.
 const shouldRetryFetchUser = (
