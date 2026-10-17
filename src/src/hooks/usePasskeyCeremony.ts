@@ -17,9 +17,11 @@
  *     of the app reconciles. A mutation is the natural place to do that.
  *
  * Wire-shape note:
- *   Per the swagger, the binary fields travel as `number[]` (Go `[]byte`
- *   -> JSON int array). `ArrayBuffer` -> `number[]` and back goes via
- *   `Uint8Array` for both directions.
+ *   The `/finish` body forwards the raw `PublicKeyCredential` from the
+ *   browser so the backend library (`go-webauthn`) can parse it
+ *   directly. Binary buffers inside `credential.response` travel as
+ *   base64url strings (no padding) because `JSON.stringify` would
+ *   otherwise drop them.
  */
 
 import { useMutation, type UseMutationResult } from "@tanstack/react-query";
@@ -29,6 +31,8 @@ import { useUser } from "../api/queries/useUser";
 import { WersuUserImpl } from "../components/DiscordLogin";
 import { queryClient } from "../api/queryClient";
 import type {
+  AuthenticatorAttachment,
+  AuthenticatorTransport,
   JsUserAuth,
   PasskeyCeremonyBeginReply,
   PasskeyCeremonyFinishReply,
@@ -63,6 +67,19 @@ const requireWebAuthn = (): void => {
 };
 
 /**
+ * Assert that the value, which belongs to a label, is given
+ * (e.g. not "string" and not len 0)
+ */
+const requireString = (value: unknown, label: string): string => {
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error(
+      `Server reply missing ${label}; passkey ceremony could not start.`,
+    );
+  }
+  return value;
+};
+
+/**
  * Decode base64url -> Uint8Array backed by a real `ArrayBuffer` (not
  * `SharedArrayBuffer`). The backend standard-encodes WebAuthn fields as
  * base64url strings (challenge, user_id); the browser expects
@@ -70,19 +87,8 @@ const requireWebAuthn = (): void => {
  * `ArrayBuffer`-backed views.
  */
 const base64UrlToBytes = (input: string): Uint8Array<ArrayBuffer> => {
-  // TS says string but a 200 reply can ship a partial body (no
-  // challenge) when the server thinks passkey support is up but the
-  // challenge generator bailed. Throw a neutral message instead of a
-  // raw TypeError on input.replace; do NOT use the
-  // "passkey support is not configured" prefix the controller uses
-  // for the actual not-configured case, otherwise the Settings UI
-  // would tell the user to set WEBAUTHN_RP_ID even though the server
-  // just returned 200 OK.
-  if (typeof input !== "string" || input.length === 0) {
-    throw new Error(
-      "Server reply missing challenge; passkey ceremony could not start.",
-    );
-  }
+  // assert, that challange actually has a value
+  requireString(input, "challenge");
   const padded = input.replace(/-/g, "+").replace(/_/g, "/");
   const pad = padded.length % 4;
   const normalized = pad ? padded + "=".repeat(4 - pad) : padded;
@@ -119,11 +125,22 @@ const bytesToUint8 = (
 };
 
 /**
- * Convert a `BufferSource` (typically `ArrayBuffer`) into the `number[]`
- * shape the backend expects in the finish request body.
+ * Encode an `ArrayBuffer` as a base64url string with no padding. The
+ * backend library parses these with `base64.RawURLEncoding`, so a
+ * trailing `=` or a `+`/`/` would fail `ParseCredentialCreationResponse`
+ * with `Parse error for Registration`.
  */
-const bufferToByteArray = (input: ArrayBuffer): number[] =>
-  Array.from(new Uint8Array(input));
+const bufToB64 = (input: ArrayBuffer): string => {
+  const bytes = new Uint8Array(input);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary)
+    .replaceAll("+", "-")
+    .replaceAll("/", "_")
+    .replaceAll("=", "");
+};
 
 /**
  * Lightweight `{id, name, displayName}` derived from the current user.
@@ -250,62 +267,103 @@ const buildRequestOptions = (
 });
 
 /**
- * Read the authenticator-data bytes off an attestation response.
- * `AuthenticatorAttestationResponse` exposes `getAuthenticatorData()`
- * in newer lib.dom.d.ts; older versions had it as a property. The
- * helper normalises both shapes so the wire serialization below
- * works regardless of which type definition the project pulls in.
+ * Read the transport hints off an attestation response.
+ * `getTransports()` is part of the modern `lib.dom.d.ts`; older
+ * versions don't expose it. Optional-chain to an empty array when
+ * the platform doesn't surface transport hints (the backend treats
+ * absence and `[]` identically).
  */
-const readAttestationAuthData = (
+const readTransports = (
   attestation: AuthenticatorAttestationResponse,
-): ArrayBuffer => {
+): string[] => {
   const candidate = attestation as unknown as {
-    getAuthenticatorData?: () => ArrayBuffer;
-    authenticatorData?: ArrayBuffer;
+    getTransports?: () => string[];
   };
-  if (typeof candidate.getAuthenticatorData === "function") {
-    return candidate.getAuthenticatorData.call(attestation);
-  }
-  if (candidate.authenticatorData) {
-    return candidate.authenticatorData;
-  }
-  throw new Error(
-    "Authenticator response did not expose authenticatorData; cannot finish ceremony.",
-  );
+  return typeof candidate.getTransports === "function"
+    ? candidate.getTransports.call(attestation)
+    : [];
 };
 
 /**
  * Serialize an attestation response (the result of
  * `navigator.credentials.create()`) into the backend's
- * `PasskeyCeremonyFinishRequest` shape.
+ * `PasskeyCeremonyFinishRequest` shape. Forwards the raw
+ * `PublicKeyCredential` nested under `credential`; the backend
+ * library parses it directly.
  */
 const attestationToFinishRequest = (
   credential: PublicKeyCredential,
+  sessionKey: string,
+  friendlyName?: string,
 ): PasskeyCeremonyFinishRequest => {
   const attestation = credential.response as AuthenticatorAttestationResponse;
-  return {
-    credential_id: bufferToByteArray(credential.rawId),
-    client_data_json: bufferToByteArray(attestation.clientDataJSON),
-    authenticator_data: bufferToByteArray(readAttestationAuthData(attestation)),
-    signature: [], // present only on assertion responses, not attestation
+  // `lib.dom.d.ts` types `getClientExtensionResults()` as
+  // `AuthenticationExtensionsClientOutputs` (no index signature) and
+  // `authenticatorAttachment` as `string`; widen both to the
+  // JSON-friendly shapes the wire model declares.
+  const extensionResults =
+    (credential.getClientExtensionResults?.() as Record<string, unknown>) ?? {};
+  const transports = readTransports(attestation) as AuthenticatorTransport[];
+  const result: PasskeyCeremonyFinishRequest = {
+    session_key: sessionKey,
+    credential: {
+      id: credential.id,
+      rawId: bufToB64(credential.rawId),
+      type: "public-key",
+      response: {
+        clientDataJSON: bufToB64(attestation.clientDataJSON),
+        attestationObject: bufToB64(attestation.attestationObject),
+        transports,
+      },
+      clientExtensionResults: extensionResults,
+    },
   };
+  if (credential.authenticatorAttachment) {
+    result.credential.authenticatorAttachment =
+      credential.authenticatorAttachment as AuthenticatorAttachment;
+  }
+  if (friendlyName) {
+    result.friendly_name = friendlyName;
+  }
+  return result;
 };
 
 /**
  * Serialize an assertion response (the result of
  * `navigator.credentials.get()`) into the backend's
- * `PasskeyCeremonyFinishRequest` shape.
+ * `PasskeyCeremonyFinishRequest` shape. Forwards the raw
+ * `PublicKeyCredential` nested under `credential`; the backend
+ * library parses it directly.
  */
 const assertionToFinishRequest = (
   credential: PublicKeyCredential,
+  sessionKey: string,
 ): PasskeyCeremonyFinishRequest => {
   const assertion = credential.response as AuthenticatorAssertionResponse;
-  return {
-    credential_id: bufferToByteArray(credential.rawId),
-    client_data_json: bufferToByteArray(assertion.clientDataJSON),
-    authenticator_data: bufferToByteArray(assertion.authenticatorData),
-    signature: bufferToByteArray(assertion.signature),
+  const extensionResults =
+    (credential.getClientExtensionResults?.() as Record<string, unknown>) ?? {};
+  const result: PasskeyCeremonyFinishRequest = {
+    session_key: sessionKey,
+    credential: {
+      id: credential.id,
+      rawId: bufToB64(credential.rawId),
+      type: "public-key",
+      response: {
+        clientDataJSON: bufToB64(assertion.clientDataJSON),
+        authenticatorData: bufToB64(assertion.authenticatorData),
+        signature: bufToB64(assertion.signature),
+      },
+      clientExtensionResults: extensionResults,
+    },
   };
+  if (credential.authenticatorAttachment) {
+    result.credential.authenticatorAttachment =
+      credential.authenticatorAttachment as AuthenticatorAttachment;
+  }
+  if (assertion.userHandle) {
+    result.credential.response.userHandle = bufToB64(assertion.userHandle);
+  }
+  return result;
 };
 
 /**
@@ -340,6 +398,8 @@ export function usePasskeyLogin(): UseMutationResult<JsUserAuth, Error, void> {
       requireWebAuthn();
       const begin = await api.loginBegin();
       const requestOptions = buildRequestOptions(begin);
+      // session key is required, that server can distingluish client/caller between /begin and /finish
+      requireString(begin.session_key, "session_key");
       const credential = (await navigator.credentials.get({
         publicKey: requestOptions,
       })) as PublicKeyCredential | null;
@@ -348,7 +408,15 @@ export function usePasskeyLogin(): UseMutationResult<JsUserAuth, Error, void> {
           "Passkey prompt was cancelled or no credential was selected.",
         );
       }
-      const finishRequest = assertionToFinishRequest(credential);
+      // Pin the boundary between the platform-authenticator call and
+      // the backend /finish roundtrip. Without it we can't tell
+      // whether a subsequent `Parse error for Registration` came from
+      // a missing credential or a malformed body.
+      console.debug("[passkey] login credential resolved", credential.id);
+      const finishRequest = assertionToFinishRequest(
+        credential,
+        begin.session_key,
+      );
       const user = await api.loginFinish(finishRequest);
       commitLogin(user);
       return user;
@@ -393,13 +461,24 @@ export function usePasskeyRegister(
         fallbackUser,
         false,
       );
+      // session key is required, so that server can distingluish caller between /begin and /finish
+      requireString(begin.session_key, "session_key");
       const credential = (await navigator.credentials.create({
         publicKey: creationOptions,
       })) as PublicKeyCredential | null;
       if (!credential) {
         throw new Error("Passkey creation was cancelled.");
       }
-      const finishRequest = attestationToFinishRequest(credential);
+      // Pin the boundary between the platform-authenticator call and
+      // the backend /finish roundtrip. Without it we can't tell
+      // whether a subsequent `Parse error for Registration` came from
+      // a missing credential or a malformed body.
+      console.debug("[passkey] register credential resolved", credential.id);
+      const finishRequest = attestationToFinishRequest(
+        credential,
+        begin.session_key,
+        vars.friendlyName ?? options.friendlyName,
+      );
       return await api.registerFinish(finishRequest);
     },
   });
@@ -439,13 +518,26 @@ export function usePasskeyLink(): UseMutationResult<
         fallbackUser,
         true,
       );
+      // Refuse to prompt the authenticator if we can't complete the
+      // round-trip on the finish side; an empty session_key would 400
+      // the backend with "ceremony not found".
+      requireString(begin.session_key, "session_key");
       const credential = (await navigator.credentials.create({
         publicKey: creationOptions,
       })) as PublicKeyCredential | null;
       if (!credential) {
         throw new Error("Passkey linking was cancelled.");
       }
-      const finishRequest = attestationToFinishRequest(credential);
+      // Pin the boundary between the platform-authenticator call and
+      // the backend /finish roundtrip. Without it we can't tell
+      // whether a subsequent `Parse error for Registration` came from
+      // a missing credential or a malformed body.
+      console.debug("[passkey] link credential resolved", credential.id);
+      const finishRequest = attestationToFinishRequest(
+        credential,
+        begin.session_key,
+        vars.friendlyName,
+      );
       return await api.linkFinish(finishRequest);
     },
   });
@@ -471,5 +563,5 @@ export function isWebAuthnSupported(): boolean {
 export const __test__ = {
   base64UrlToBytes,
   bytesToUint8,
-  bufferToByteArray,
+  bufToB64,
 };

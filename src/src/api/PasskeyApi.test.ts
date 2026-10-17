@@ -62,10 +62,19 @@ describe("RestPasskeyApi - registration ceremony", () => {
     const { calls } = mockFetch({ credential_id: "abc" });
     const api = new RestPasskeyApi();
     await api.registerFinish({
-      credential_id: [1, 2, 3],
-      client_data_json: [4, 5],
-      authenticator_data: [6, 7],
-      signature: [],
+      session_key: "sk",
+      credential: {
+        id: "abc",
+        rawId: "AQID",
+        type: "public-key",
+        response: {
+          clientDataJSON: "BAU",
+          attestationObject: "Bgc",
+          transports: ["internal"],
+        },
+        authenticatorAttachment: "platform",
+        clientExtensionResults: {},
+      },
     });
     expect(calls[0].url).toMatch(/\/api\/auth\/passkey\/register\/finish$/);
     expect(calls[0].init.method).toBe("POST");
@@ -93,10 +102,18 @@ describe("RestPasskeyApi - login ceremony", () => {
     });
     const api = new RestPasskeyApi();
     await api.loginFinish({
-      credential_id: [1],
-      client_data_json: [2],
-      authenticator_data: [3],
-      signature: [4],
+      session_key: "sk",
+      credential: {
+        id: "abc",
+        rawId: "AQ",
+        type: "public-key",
+        response: {
+          clientDataJSON: "Ag",
+          authenticatorData: "Aw",
+          signature: "BA",
+          userHandle: "BQ",
+        },
+      },
     });
     expect(calls[0].url).toMatch(/\/api\/auth\/passkey\/login\/finish$/);
     expect(calls[0].init.method).toBe("POST");
@@ -120,10 +137,17 @@ describe("RestPasskeyApi - link ceremony", () => {
     const { calls } = mockFetch({ credential_id: "xyz" });
     const api = new RestPasskeyApi();
     await api.linkFinish({
-      credential_id: [9],
-      client_data_json: [8],
-      authenticator_data: [7],
-      signature: [],
+      session_key: "sk",
+      friendly_name: "iPhone",
+      credential: {
+        id: "xyz",
+        rawId: "CQ",
+        type: "public-key",
+        response: {
+          clientDataJSON: "CA",
+          attestationObject: "Bw",
+        },
+      },
     });
     expect(calls[0].url).toMatch(/\/api\/auth\/link\/passkey\/finish$/);
     expect(calls[0].init.method).toBe("POST");

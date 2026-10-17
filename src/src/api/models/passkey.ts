@@ -2,10 +2,11 @@
  * Passkey / WebAuthn ceremony types.
  *
  * Wire shape mirrors the Go controller types in `controllers.Passkey*`.
- * The binary fields (`client_data_json`, `authenticator_data`, `signature`,
- * `credential_id`) travel as `number[]` over JSON because the swagger
- * generator maps `[]byte` to int arrays; the browser provides them as
- * `ArrayBuffer` so the API client converts both directions.
+ * The `/finish` bodies forward the raw `PublicKeyCredential` produced by
+ * `navigator.credentials.{create,get}()`: binary buffers travel as
+ * base64url strings (no padding) because the backend library parses
+ * them with `base64.RawURLEncoding`. SPA-side encoding lives in
+ * `usePasskeyCeremony`.
  *
  * Routes covered:
  *   - POST /auth/passkey/register/begin  (unauthenticated)
@@ -19,6 +20,27 @@
  */
 
 /**
+ * WebAuthn transport hint surfaced on the attestation response.
+ * Mirrors the W3C `AuthenticatorTransport` enum; typed inline so the
+ * wire shape doesn't depend on which `lib.dom.d.ts` the project ships.
+ */
+export type AuthenticatorTransport =
+  | "usb"
+  | "nfc"
+  | "ble"
+  | "internal"
+  | "hybrid"
+  | "smart-card"
+  | "cable";
+
+/**
+ * WebAuthn authenticator attachment hint surfaced on
+ * `PublicKeyCredential.authenticatorAttachment`. Some browsers
+ * (notably Safari) report `null`; the wire shape preserves that.
+ */
+export type AuthenticatorAttachment = "platform" | "cross-platform";
+
+/**
  * Server response for the start of any passkey ceremony.
  *
  * The actual `PublicKeyCredentialCreationOptions` / `PublicKeyCredentialRequestOptions`
@@ -29,6 +51,11 @@ export interface PasskeyCeremonyBeginReply {
   challenge: string;
   rp_id: string;
   rp_name: string;
+  /**
+   * Server-issued 16-byte nonce that keys the ceremony between
+   * `/begin` and `/finish`
+   */
+  session_key: string;
   timeout?: number;
   user_id?: string;
   user_name?: string;
@@ -44,16 +71,65 @@ export interface PasskeyCeremonyBeginRequest {
 }
 
 /**
+ * Body of the `credential` block on a `PasskeyCeremonyFinishRequest`.
+ *
+ * Mirrors the `PublicKeyCredential` the browser hands back from
+ * `navigator.credentials.{create,get}()`: the backend library
+ * (`go-webauthn`) parses this exact shape, so we forward it as-is
+ * instead of flattening it. Binary buffers are base64url-encoded
+ * (no padding) so `JSON.stringify` doesn't drop them.
+ *
+ * Attestation case (register / link): populate `attestationObject`
+ * and `transports`. Assertion case (login): populate
+ * `authenticatorData`, `signature`, and optionally `userHandle`.
+ */
+export interface FinishRequestCredential {
+  /** Browser-reported credential id; opaque, used for UX correlation. */
+  id: string;
+  /** Base64url-encoded `rawId` (matches the `id` semantically). */
+  rawId: string;
+  type: "public-key";
+  response: {
+    /** Base64url-encoded `clientDataJSON` from the authenticator. */
+    clientDataJSON: string;
+    /** Attestation case: CBOR-encoded attestation object. */
+    attestationObject?: string;
+    /** Attestation case: transport hints surfaced by the platform. */
+    transports?: AuthenticatorTransport[];
+    /** Assertion case: `authenticatorData` from the assertion. */
+    authenticatorData?: string;
+    /** Assertion case: signature over `authenticatorData + clientDataJSON`. */
+    signature?: string;
+    /** Assertion case: user handle for discoverable credentials; absent when null. */
+    userHandle?: string;
+  };
+  /** Browser-reported attachment hint; absent when null (e.g. Safari). */
+  authenticatorAttachment?: AuthenticatorAttachment;
+  /** Browser-reported client extension outputs. */
+  clientExtensionResults?: Record<string, unknown>;
+}
+
+/**
  * WebAuthn attestation / assertion response sent to the matching
- * `finish` endpoint. Binary blobs are encoded as `number[]` to match
- * the swagger definition (Go `[]byte` -> JSON int array).
+ * `finish` endpoint. The `credential` block is the raw
+ * `PublicKeyCredential` from the browser; the backend parses it
+ * directly (see `go-webauthn/webauthn`'s `ParseCredentialCreationResponse`
+ * / `ParseCredentialAssertionResponse`). Binary buffers inside are
+ * base64url-encoded strings (no padding).
  */
 export interface PasskeyCeremonyFinishRequest {
-  credential_id: number[];
-  client_data_json: number[];
-  authenticator_data: number[];
-  signature: number[];
+  /**
+   * Echo of the `session_key` returned by the matching `/begin` call.
+   * The backend uses it to resolve the in-flight `webauthn.SessionData`
+   * that `/begin` stored; without it `takeCeremony` 400s with
+   * "ceremony not found". Always required for every finish
+   * (register / login / link).
+   */
+  session_key: string;
+  /** Optional UX label; backend passes it through to `AuthService.RegisterPasskey`. */
   friendly_name?: string;
+  /** Raw `PublicKeyCredential` from the browser. */
+  credential: FinishRequestCredential;
 }
 
 /**
