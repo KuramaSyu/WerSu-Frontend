@@ -36,35 +36,102 @@ const mockLinkMutate = vi.fn();
 let mockLinkPending = false;
 let mockLinkSupported = true;
 
-// Default: Discord + password are linked, no passkeys — matches the
-// legacy "everything is set up" assumption the page used to make when
-// it had to read state off avatar_url and an inferred flag.
+// Default: Discord + password are linked, no passkeys. Wire shape
+// uses the proto enum numbers (1 = Discord, 3 = Password) because
+// that is what the Go backend JSON-encodes.
 let mockCredentials: {
   isSuccess: boolean;
   data?: {
-    credentials: Array<{ kind: string; identifier?: string }>;
+    credentials: Array<{
+      kind: number | string;
+      identifier?: string;
+      id?: string;
+      user_id?: string;
+      created_at?: unknown;
+      Payload?: Record<string, unknown>;
+      [key: string]: unknown;
+    }>;
     passkeys: Array<{
       id: string;
-      created_at: string;
-      revoked_at?: string;
+      created_at?: unknown;
+      last_used_at?: unknown;
+      revoked_at?: unknown;
       friendly_name?: string;
+      credential_id?: string;
+      [key: string]: unknown;
     }>;
   };
 } = {
   isSuccess: true,
   data: {
-    credentials: [{ kind: "discord" }, { kind: "password" }],
+    credentials: [{ kind: 1 }, { kind: 2 }],
     passkeys: [],
   },
 };
 
-vi.mock("../../api/queries/linkedProvidersQueries", () => ({
-  useLinkedCredentials: () => mockCredentials,
-  linkedProvidersKeys: {
-    all: ["linked-providers"],
-    credentials: () => ["linked-providers", "credentials"],
-  },
-}));
+vi.mock("../../api/queries/linkedProvidersQueries", async () => {
+  // Mirror the production summary hook against the (mocked)
+  // credentials. The Discord `id` field is wired straight to the
+  // real `DiscordLinkedAccountImpl` from `utils/DiscordLinkedAccount`,
+  // so the snowflake math is exercised through the production class.
+  const { DiscordLinkedAccountImpl } =
+    await import("../../utils/DiscordLinkedAccount");
+  function isProtoTimestampUnset(value: unknown): boolean {
+    if (value === undefined || value === null) return true;
+    if (typeof value === "string") return value.length === 0;
+    if (typeof value === "object") return Object.keys(value).length === 0;
+    return false;
+  }
+  function kindLabel(
+    kind: unknown,
+  ): "discord" | "google" | "password" | undefined {
+    // Mirrors LINKED_PROVIDER_KIND_NUMBER on the production side
+    // (DISCORD=1, PASSWORD=2, GOOGLE=3).
+    if (kind === 1) return "discord";
+    if (kind === 2) return "password";
+    if (kind === 3) return "google";
+    return undefined;
+  }
+  return {
+    useLinkedCredentials: () => mockCredentials,
+    linkedProvidersKeys: {
+      all: ["linked-providers"],
+      credentials: () => ["linked-providers", "credentials"],
+    },
+    useLinkedProvidersSummary: () => {
+      const reply =
+        mockCredentials.isSuccess && mockCredentials.data
+          ? mockCredentials.data
+          : undefined;
+      const discordCred = reply?.credentials.find(
+        (c) => kindLabel(c.kind) === "discord",
+      );
+      const discordId =
+        discordCred && discordCred.Payload
+          ? (discordCred.Payload as Record<string, unknown>).DiscordId
+          : undefined;
+      const discord =
+        typeof discordId === "string"
+          ? new DiscordLinkedAccountImpl(discordId)
+          : undefined;
+      return {
+        ready: mockCredentials.isSuccess,
+        discordLinked: reply
+          ? reply.credentials.some((c) => kindLabel(c.kind) === "discord")
+          : null,
+        passwordSet: reply
+          ? reply.credentials.some((c) => kindLabel(c.kind) === "password")
+          : null,
+        activePasskeyCount: reply
+          ? (reply.passkeys ?? []).filter((p) =>
+              isProtoTimestampUnset(p.revoked_at),
+            ).length
+          : null,
+        discord,
+      };
+    },
+  };
+});
 
 vi.mock("../../hooks/usePasskeyCeremony", () => ({
   usePasskeyLink: () => ({
@@ -142,7 +209,25 @@ vi.mock("@mui/material", () => {
         {children}
       </div>
     ),
+    Avatar: ({ src, alt }: { src?: string; alt?: string }) => (
+      <img data-testid="mui-avatar" src={src} alt={alt} />
+    ),
     Box: passthrough("div"),
+    Link: ({
+      children,
+      href,
+      target,
+      rel,
+    }: {
+      children?: ReactNode;
+      href?: string;
+      target?: string;
+      rel?: string;
+    }) => (
+      <a data-testid="mui-link" href={href} target={target} rel={rel}>
+        {children}
+      </a>
+    ),
     Button: ({
       children,
       onClick,
@@ -237,7 +322,7 @@ beforeEach(() => {
   mockCredentials = {
     isSuccess: true,
     data: {
-      credentials: [{ kind: "discord" }, { kind: "password" }],
+      credentials: [{ kind: 1 }, { kind: 2 }],
       passkeys: [],
     },
   };
@@ -424,11 +509,11 @@ describe("SecuritySection", () => {
   });
 
   it("hides the current password field when no password credential is linked", async () => {
-    // Discord-only account: no "password" credential kind.
+    // Discord-only account: no password credential kind.
     mockCredentials = {
       isSuccess: true,
       data: {
-        credentials: [{ kind: "discord" }],
+        credentials: [{ kind: 1 }],
         passkeys: [],
       },
     };
@@ -451,10 +536,20 @@ describe("SecuritySection", () => {
     expect(payload).not.toHaveProperty("current");
   });
 
+  // While the credentials query is in flight we default to "no password"
+  // so a Discord-only account never sees a "Current password" field
+  // flash in and out on first paint.
+  it("hides the current password field while credentials are loading", () => {
+    mockCredentials = { isSuccess: false };
+    render(<SecuritySection />, { wrapper: buildWrapper(qc) });
+    expect(screen.queryByLabelText("Current password")).not.toBeInTheDocument();
+    expect(screen.getByText("Set password")).toBeInTheDocument();
+  });
+
   it("renders the Discord row from /auth/me/credentials instead of avatar_url", () => {
     mockCredentials = {
       isSuccess: true,
-      data: { credentials: [{ kind: "password" }], passkeys: [] },
+      data: { credentials: [{ kind: 2 }], passkeys: [] },
     };
     render(<SecuritySection />, { wrapper: buildWrapper(qc) });
     // The legacy Discord-avatar URL is still on the user, but the
@@ -466,7 +561,7 @@ describe("SecuritySection", () => {
   it("renders the password row from credentials (Not set)", () => {
     mockCredentials = {
       isSuccess: true,
-      data: { credentials: [{ kind: "discord" }], passkeys: [] },
+      data: { credentials: [{ kind: 1 }], passkeys: [] },
     };
     render(<SecuritySection />, { wrapper: buildWrapper(qc) });
     expect(screen.getByText("Not set.")).toBeInTheDocument();
@@ -476,7 +571,7 @@ describe("SecuritySection", () => {
     mockCredentials = {
       isSuccess: true,
       data: {
-        credentials: [{ kind: "discord" }, { kind: "password" }],
+        credentials: [{ kind: 1 }, { kind: 2 }],
         passkeys: [
           { id: "p1", created_at: "2024-01-01T00:00:00Z" },
           { id: "p2", created_at: "2024-01-02T00:00:00Z" },
@@ -493,11 +588,51 @@ describe("SecuritySection", () => {
     expect(screen.getByText("2 registered.")).toBeInTheDocument();
   });
 
+  // Pins the actual wire shape from GET /api/auth/me/credentials: the
+  // backend serializes a nil proto Timestamp as `{}`, and an empty
+  // `revoked_at` means the passkey is still active.
+  it("counts a passkey as active when the wire returns empty timestamp objects", () => {
+    mockCredentials = {
+      isSuccess: true,
+      data: {
+        credentials: [{ kind: 1 }, { kind: 2 }],
+        passkeys: [
+          {
+            id: "p1",
+            created_at: {},
+            last_used_at: {},
+            revoked_at: {},
+          },
+        ],
+      },
+    };
+    render(<SecuritySection />, { wrapper: buildWrapper(qc) });
+    expect(screen.getByText("1 registered.")).toBeInTheDocument();
+  });
+
+  it("counts a passkey as revoked when the wire returns a set revoked_at timestamp", () => {
+    mockCredentials = {
+      isSuccess: true,
+      data: {
+        credentials: [{ kind: 1 }, { kind: 2 }],
+        passkeys: [
+          {
+            id: "p1",
+            created_at: { seconds: 1, nanos: 0 },
+            revoked_at: { seconds: 2, nanos: 0 },
+          },
+        ],
+      },
+    };
+    render(<SecuritySection />, { wrapper: buildWrapper(qc) });
+    expect(screen.getByText("None registered.")).toBeInTheDocument();
+  });
+
   it("shows None registered when no active passkeys remain", () => {
     mockCredentials = {
       isSuccess: true,
       data: {
-        credentials: [{ kind: "discord" }, { kind: "password" }],
+        credentials: [{ kind: 1 }, { kind: 2 }],
         passkeys: [
           {
             id: "p1",
@@ -509,6 +644,75 @@ describe("SecuritySection", () => {
     };
     render(<SecuritySection />, { wrapper: buildWrapper(qc) });
     expect(screen.getByText("None registered.")).toBeInTheDocument();
+  });
+
+  // Pin the regression that motivated the refactor: the backend sends
+  // `kind` as the proto enum number (1 = Discord, 2 = Google, 3 = Password),
+  // not a lowercase string. The Settings card used to compare against
+  // "discord" / "password" literals and rendered "Not linked." for
+  // every row, including the user's Discord + Password + Passkey
+  // account. Verify the full happy path against the actual wire shape.
+  it("renders Discord + Password + active passkey from the proto-number wire", () => {
+    mockCredentials = {
+      isSuccess: true,
+      data: {
+        credentials: [
+          {
+            id: "discord-row",
+            user_id: "u1",
+            kind: 1,
+            created_at: { seconds: 1786138329, nanos: 239304000 },
+            Payload: { DiscordId: "362262726191349761" },
+          },
+          {
+            id: "password-row",
+            user_id: "u1",
+            kind: 2,
+            created_at: { seconds: 1792193351, nanos: 589187000 },
+            Payload: { PasswordHash: "$argon2id$..." },
+          },
+        ],
+        passkeys: [
+          {
+            id: "p1",
+            credential_id: "39up3Mh6QaGOY0rds4DTSg==",
+            created_at: {},
+            last_used_at: {},
+            revoked_at: {},
+          },
+        ],
+      },
+    };
+    render(<SecuritySection />, { wrapper: buildWrapper(qc) });
+    expect(screen.getByText("Set.")).toBeInTheDocument();
+    expect(screen.getByText("1 registered.")).toBeInTheDocument();
+    // Password is set -> the current-password field must render and
+    // the button must read "Update password".
+    expect(screen.getByLabelText("Current password")).toBeInTheDocument();
+    expect(screen.getByText("Update password")).toBeInTheDocument();
+
+    // Discord row renders the snowflake, the deterministic default
+    // avatar, and the account-creation date derived from the
+    // snowflake. The default-avatar index is `(id >> 22) % 5`, which
+    // for 362262726191349761 is 0.
+    const avatar = screen.getByTestId("mui-avatar");
+    expect(avatar.getAttribute("src")).toBe(
+      "https://cdn.discordapp.com/embed/avatars/0.png",
+    );
+    // 362262726191349761 >> 22 + 1_420_070_400_000 ms = 2017-09-26.
+    // Pin the ISO day so a future epoch regression fails loudly.
+    // The id is rendered inside an <a>, so the surrounding text is
+    // split across nodes; check that the full sentence appears in the DOM.
+    expect(document.body.textContent ?? "").toContain(
+      "Linked as 362262726191349761 (created 2017-09-26).",
+    );
+    // The id is wrapped in a link to the Discord profile so users
+    // can verify the linked account from the settings page.
+    const profileLink = screen.getByTestId("mui-link");
+    expect(profileLink.getAttribute("href")).toBe(
+      "https://discord.com/users/362262726191349761",
+    );
+    expect(profileLink.textContent).toBe("362262726191349761");
   });
 
   it("keeps the current password field on a 400 that is not 'no password set'", async () => {

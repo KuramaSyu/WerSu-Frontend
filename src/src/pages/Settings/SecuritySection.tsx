@@ -1,14 +1,16 @@
 // Settings: Security section. Change password, profile patch, linked methods.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  Avatar,
   Box,
   Button,
   Card,
   CardContent,
   CardHeader,
   CircularProgress,
+  Link as MuiLink,
   Stack,
   TextField,
   Typography,
@@ -28,12 +30,9 @@ import {
 } from "../../hooks/usePasskeyCeremony";
 import type { ChangePasswordRequest } from "../../api/models/userManagement";
 import {
-  LINKED_PROVIDER_KIND,
-  isLinkedPasskeyActive,
-} from "../../api/models/linkedProviders";
-import {
   linkedProvidersKeys,
   useLinkedCredentials,
+  useLinkedProvidersSummary,
 } from "../../api/queries/linkedProvidersQueries";
 
 type CardState = "idle" | "pending" | "error" | "success";
@@ -51,15 +50,16 @@ interface PatchFieldState {
 /** Card 1: POST /api/auth/password/change */
 function ChangePasswordCard(): React.ReactElement {
   // Whether the user already has a password is read from
-  // GET /api/auth/me/credentials; while the response is in flight we
-  // assume they do (legacy default) so existing users don't see the
-  // current field flash and disappear.
-  const credentialsQuery = useLinkedCredentials();
-  const hasPassword = credentialsQuery.isSuccess
-    ? credentialsQuery.data.credentials.some(
-        (c) => c.kind === LINKED_PROVIDER_KIND.PASSWORD,
-      )
-    : true;
+  // GET /api/auth/me/credentials via the summary hook. While the
+  // response is in flight we default to "no password" so a
+  // Discord-only account (the common sign-up path) never sees the
+  // "Current password" field flash in and out. Users with an
+  // existing password pay a one-frame cost; it disappears the
+  // moment the credentials query resolves.
+  const { passwordSet } = useLinkedProvidersSummary();
+  // `null` -> credentials still loading -> assume no password yet so
+  // the form starts with the minimal two-field layout.
+  const hasPassword = passwordSet === true;
   const queryClient = useQueryClient();
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
@@ -359,9 +359,19 @@ const isPasskeyUnconfigured = (message: string): boolean =>
 function LinkedMethodsCard(): React.ReactElement {
   const userQuery = useUser();
   const user = userQuery.data;
+  const { discordLinked, passwordSet, activePasskeyCount, discord } =
+    useLinkedProvidersSummary();
+  // Same response the summary hook derives from, kept here so we can
+  // log the raw payload once it lands (the summary alone is derived).
   const credentialsQuery = useLinkedCredentials();
-  const credentials = credentialsQuery.data;
-  const credentialsKnown = credentialsQuery.isSuccess;
+  useEffect(() => {
+    if (credentialsQuery.isSuccess) {
+      console.debug(
+        "[security-section] GET /api/auth/me/credentials result",
+        credentialsQuery.data,
+      );
+    }
+  }, [credentialsQuery.isSuccess, credentialsQuery.data]);
   const queryClient = useQueryClient();
   const linkPasskey = usePasskeyLink();
   const supported = useMemo(() => isWebAuthnSupported(), []);
@@ -412,23 +422,10 @@ function LinkedMethodsCard(): React.ReactElement {
       </Card>
     );
   }
-  // All three lines are derived from GET /api/auth/me/credentials.
-  // Until the response lands we render a neutral "Loading..." so the
-  // UI doesn't claim "Not linked" for a Discord-only account on the
-  // first paint.
-  const discordLinked = credentialsKnown
-    ? credentials!.credentials.some(
-        (c) => c.kind === LINKED_PROVIDER_KIND.DISCORD,
-      )
-    : null;
-  const passwordSet = credentialsKnown
-    ? credentials!.credentials.some(
-        (c) => c.kind === LINKED_PROVIDER_KIND.PASSWORD,
-      )
-    : null;
-  const activePasskeyCount = credentialsKnown
-    ? (credentials!.passkeys ?? []).filter(isLinkedPasskeyActive).length
-    : null;
+  // All three rows are derived from GET /api/auth/me/credentials via
+  // the summary hook. Until the response lands each field is `null`,
+  // which the renderer maps to "Loading..." so a Discord-only
+  // account never sees a false "Not linked." on first paint.
   const linking = linkStatus === "pending" || linkPasskey.isPending;
   const disabled = !supported || linking || serverUnsupported;
   return (
@@ -442,13 +439,40 @@ function LinkedMethodsCard(): React.ReactElement {
         <Stack spacing={1}>
           <Box>
             <Typography variant="subtitle2">Discord</Typography>
-            <Typography variant="body2" color="text.secondary">
-              {discordLinked === null
-                ? "Loading..."
-                : discordLinked
-                  ? "Linked."
-                  : "Not linked."}
-            </Typography>
+            {discord && (
+              <Stack
+                direction="row"
+                spacing={1}
+                sx={{ alignItems: "center", mt: 0.5 }}
+              >
+                <Avatar
+                  src={discord.getDefaultAvatarUrl()}
+                  alt={`Discord user ${discord.id}`}
+                  sx={{ width: 32, height: 32 }}
+                />
+                <Typography variant="body2" color="text.secondary">
+                  Linked as{" "}
+                  <MuiLink
+                    href={`https://discord.com/users/${discord.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    underline="hover"
+                  >
+                    {discord.id}
+                  </MuiLink>
+                  {` (created ${discord.getCreatedAt().toISOString().slice(0, 10)}).`}
+                </Typography>
+              </Stack>
+            )}
+            {discord === undefined && (
+              <Typography variant="body2" color="text.secondary">
+                {discordLinked === null
+                  ? "Loading..."
+                  : discordLinked
+                    ? "Linked."
+                    : "Not linked."}
+              </Typography>
+            )}
           </Box>
           <Box>
             <Typography variant="subtitle2">Password</Typography>
