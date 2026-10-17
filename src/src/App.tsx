@@ -27,6 +27,7 @@ import "@fontsource/fira-sans/500.css";
 import "@fontsource/fira-sans/700.css";
 import { LayoutProvider } from "./LayoutProvider";
 import { AppShell } from "./AppShell";
+import { RequireAuth } from "./components/RequireAuth";
 import { PublicNotePage } from "./pages/PublicNotePage/Main";
 import SettingsPage from "./pages/Settings/Main";
 import { LoginPage } from "./pages/LoginPage/Main";
@@ -60,16 +61,18 @@ function App() {
           <Routes>
             <Route element={<AppShell />}>
               <Route path="/login" element={<LoginPage />} />
-              <Route path="/" element={<HomePage />} />
-              <Route path="/n/:id" element={<NotePage />} />
-              <Route path="/d/:id" element={<DirectoryView />} />
-              <Route path="/d/:id/edit" element={<DirectoryEditPage />} />
-              <Route path="/d/:id/new" element={<CreateSubdirectoryPage />} />
-              <Route path="/graph" element={<FileGraphPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/shelves/:shelfId/rules" element={<RulesPage />} />
               <Route path="/public/n/:share_id" element={<PublicNotePage />} />
               <Route path="/docs/*" element={<SwaggerDocs />} />
+              <Route element={<RequireAuth />}>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/n/:id" element={<NotePage />} />
+                <Route path="/d/:id" element={<DirectoryView />} />
+                <Route path="/d/:id/edit" element={<DirectoryEditPage />} />
+                <Route path="/d/:id/new" element={<CreateSubdirectoryPage />} />
+                <Route path="/graph" element={<FileGraphPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/shelves/:shelfId/rules" element={<RulesPage />} />
+              </Route>
             </Route>
           </Routes>
         </LayoutProvider>

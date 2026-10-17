@@ -1,25 +1,29 @@
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useUser } from "../api/queries/useUser";
+import { useUserStore } from "../zustand/userStore";
 
-/**
- * Returns whether the wrapped route subtree may render, and triggers a
- * redirect to `/login` if it may not.
- *
- * Behaviour:
- *
- *   - `useUser()` raises an error -> redirect to /login
- *   - `/public/*` is ignored
- */
+// Redirect to /login when identity is missing. Two signals, same gate:
+// store flips on logout, query 401s on cold start. /public/* exempt.
 export function useRequireAuth(): boolean {
   const { data: user, isLoading: userLoading, isError: userError } = useUser();
+  const storeUser = useUserStore((s) => s.user);
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const onPublicRoute = pathname.startsWith("/public/");
-  const shouldRedirectToLogin = !onPublicRoute && !userLoading && userError;
+
+  // Store flips on setUser(null), independent of react query.
+  const storeIsLoggedOut = storeUser === null;
+
+  // Query 401s on cold start with no session cookie.
+  const queryIsLoggedOut = !userLoading && userError;
+
+  const shouldRedirectToLogin =
+    !onPublicRoute && (storeIsLoggedOut || queryIsLoggedOut);
   useEffect(() => {
     if (!shouldRedirectToLogin) return;
     navigate("/login", { replace: true });
   }, [shouldRedirectToLogin, navigate]);
-  return !shouldRedirectToLogin;
+  // Return true while loading; false once we know identity is gone.
+  return storeUser !== null || (!storeIsLoggedOut && !queryIsLoggedOut);
 }

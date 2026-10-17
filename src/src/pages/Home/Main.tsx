@@ -28,7 +28,6 @@ import { CreateNote } from "../MainPage/CreateNote";
 import { FavouriteDirectories } from "./FavouriteDirectories";
 import { AllDirectories } from "./AllDirectories";
 import { M3, M4 } from "../../statics";
-import { useRequireAuth } from "../../hooks/useRequireAuth";
 import { useCreateModalsFromUrl } from "../../hooks/useCreateModalsFromUrl";
 import CreateFab from "../../components/CreateFab";
 import { FabSlot } from "../../components/FabSlot";
@@ -45,7 +44,6 @@ export const HomePage: React.FC = () => {
     setLeftPanelOpen,
   } = useLayout();
   const { isMobile } = useBreakpoint();
-  useRequireAuth();
 
   useCreateModalsFromUrl({
     setCreateNoteOpen,
