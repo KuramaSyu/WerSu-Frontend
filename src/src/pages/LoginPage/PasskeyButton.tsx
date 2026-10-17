@@ -4,6 +4,7 @@
 
 import React, { useMemo } from "react";
 import { ThemeProvider, Button, Stack } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 import { defaultTheme } from "../../theme/themes";
 import {
   usePasskeyLogin,
@@ -14,13 +15,22 @@ export const PasskeyButton: React.FC = () => {
   const login = usePasskeyLogin();
   const supported = useMemo(() => isWebAuthnSupported(), []);
   const theme = defaultTheme;
+  const navigate = useNavigate();
 
   return (
     <ThemeProvider theme={theme}>
       <Button
         variant="outlined"
         color="primary"
-        onClick={() => login.mutate()}
+        onClick={() =>
+          login.mutate(undefined, {
+            // Mirror EmailLoginForm: ship the user home once the
+            // ceremony commits. Without this the user stays on
+            // /login because `usePasskeyLogin` only writes the
+            // user into the store; nothing else routes.
+            onSuccess: () => navigate("/", { replace: true }),
+          })
+        }
         disabled={!supported || login.isPending}
         fullWidth
         aria-label="Login with passkey"
