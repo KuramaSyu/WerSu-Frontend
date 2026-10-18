@@ -6,6 +6,13 @@ interface EditorMenuState {
   // Setter used by menu components to publish their active visibility state.
   setTextSelectionMenuOpen: (isOpen: boolean) => void;
 
+  // True while the user is mid-drag inside the editor. The bubble
+  // menu suppresses itself during a drag and pops in only on
+  // pointerup, so the menu does not flicker alongside the
+  // selection rect as the user makes it.
+  isPointerDown: boolean;
+  setPointerDown: (isDown: boolean) => void;
+
   // Counter-based request channel for dialogs whose state lives in
   // NoteEditorCore. Right-rail buttons (or any other non-ancestor
   // component) bump the counter; NoteEditorCore watches the counter
@@ -20,6 +27,9 @@ export const useEditorMenuStore = create<EditorMenuState>((set) => ({
   isTextSelectionMenuOpen: false,
   setTextSelectionMenuOpen: (isOpen) =>
     set({ isTextSelectionMenuOpen: isOpen }),
+
+  isPointerDown: false,
+  setPointerDown: (isDown) => set({ isPointerDown: isDown }),
 
   fileDialogRequest: 0,
   latexDialogRequest: 0,
