@@ -15,6 +15,28 @@ import { useNote } from "./useNoteQueries";
 import { useAuthStore } from "../../zustand/useAuthStore";
 import { apiRegistry } from "../apiRegistry";
 
+// `useNoteQueries` imports `useUserStore` from `userStore.ts`, which
+// transitively pulls `@mui/icons-material/Logout` -> `@mui/material`.
+// `@mui/material@9`'s `internal/Transition.mjs` does a bare directory
+// import for `react-transition-group/TransitionGroupContext`, and
+// Vite 8's strict ESM resolver rejects it. The hook doesn't actually
+// call into the store, so a no-op stub is enough.
+vi.mock("../../zustand/userStore", () => ({
+  useUserStore: Object.assign(
+    (<T,>(_selector?: (s: { user: unknown }) => T) =>
+      ({ user: null } as T)) as never,
+    {
+      getState: () => ({ user: null, setUser: () => {} }),
+      setState: () => {},
+    },
+  ),
+}));
+vi.mock("../../components/DiscordLogin", () => ({
+  WersuUserImpl: class WersuUserImplStub {
+    id: string | undefined;
+  },
+}));
+
 const buildWrapper =
   (pathname: string, qc: QueryClient) =>
   ({ children }: { children: ReactNode }) => (
