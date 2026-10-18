@@ -1,4 +1,4 @@
-import { Box, Button, Collapse, Fade, Stack, useTheme } from "@mui/material";
+import { Box, Button, Fade, useTheme } from "@mui/material";
 import {
   NodeViewWrapper,
   NodeViewContent,
@@ -8,18 +8,16 @@ import {
 } from "@tiptap/react";
 import { Table } from "@tiptap/extension-table";
 import { TextSelection } from "@tiptap/pm/state";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { IconPlus as AddIcon } from "@tabler/icons-react";
 import { useEditorMenuStore } from "../../../zustand/editorMenuStore";
-import { M2 } from "../../../statics";
-import { TableActionRow } from "./TableActionRow";
-import { TableColumnMenuHost } from "./TableColumnMenu";
-import { useTableColumnRect } from "./TableColumnMenu.hooks.tsx";
 import { renderWerSuTable } from "../../../utils/converters/toMarkdown/renderTableToMarkdown";
 
-// Grace period so the user can cross the gap from the table to
-// the column menu before the action row hides.
-const CELL_CLICKED_HIDE_DELAY_MS = 200;
+// Action row + column menu are disabled: the bubble menu now
+// owns add/remove/move for rows and columns, so the legacy
+// hover toolbars are no longer rendered. The component files
+// (TableActionRow, TableColumnMenuHost, TableColumnMenu.hooks)
+// are kept around in case we need to wire them back.
 
 export const TableNodeView: React.FC<ReactNodeViewProps> = ({
   editor,
@@ -28,17 +26,7 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
   const [isTableHovered, setIsTableHovered] = useState(false);
   const [showAddRowControl, setShowAddRowControl] = useState(false);
   const [showAddColControl, setShowAddColControl] = useState(false);
-  const [cellClicked, setCellClicked] = useState(false);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
-  const actionRowRef = useRef<HTMLDivElement | null>(null);
-  const [actionRowWidth, setActionRowWidth] = useState(0);
-  const [tableWidth, setTableWidth] = useState(0);
-  // Bumped on every false->true transition of `showActionRow` so
-  // the `Collapse` remounts and replays its enter animation each
-  // time the menu re-appears. Without this, repeated show/hide
-  // cycles skip the animation after the first one.
-  const [actionRowAppearanceId, setActionRowAppearanceId] = useState(0);
-  const [prevShowActionRow, setPrevShowActionRow] = useState(false);
   const theme = useTheme();
   const isTextSelectionMenuOpen = useEditorMenuStore(
     (state) => state.isTextSelectionMenuOpen,
@@ -50,99 +38,6 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
     }),
   });
   const shouldHideTableControls = hasSelection || isTextSelectionMenuOpen;
-  const showActionRow =
-    cellClicked && editor.isEditable && !shouldHideTableControls;
-  if (showActionRow !== prevShowActionRow) {
-    setPrevShowActionRow(showActionRow);
-    if (showActionRow) {
-      setActionRowAppearanceId((id) => id + 1);
-    }
-  }
-
-  // Debounced hide: schedule a reset, but cancel if the cursor
-  // re-enters the table or the column menu within the window.
-  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const scheduleHideCellClicked = () => {
-    if (hideTimerRef.current !== null) return;
-    hideTimerRef.current = setTimeout(() => {
-      hideTimerRef.current = null;
-      setCellClicked(false);
-    }, CELL_CLICKED_HIDE_DELAY_MS);
-  };
-
-  const cancelHideCellClicked = () => {
-    if (hideTimerRef.current !== null) {
-      clearTimeout(hideTimerRef.current);
-      hideTimerRef.current = null;
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      if (hideTimerRef.current !== null) {
-        clearTimeout(hideTimerRef.current);
-      }
-    };
-  }, []);
-
-  // Track wrapper width so the action row can be positioned within the table bounds.
-  useLayoutEffect(() => {
-    const el = wrapperRef.current;
-    if (!el) return;
-    setTableWidth(el.clientWidth);
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        setTableWidth(entry.contentRect.width);
-      }
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  // Measure the action row once it mounts.
-  useLayoutEffect(() => {
-    const el = actionRowRef.current;
-    if (!el || !showActionRow) return;
-    const width = el.offsetWidth;
-    if (width > 0) setActionRowWidth(width);
-  }, [showActionRow]);
-
-  // Active column's rect (relative to the wrapper) anchors the column menu.
-  const { rect: columnRect } = useTableColumnRect(editor);
-
-  // Estimated width of the column menu (3 small IconButtons + Paper p:1 + Stack M2 padding).
-  // The menu content is stable, so a hardcoded estimate is reliable enough for collision avoidance.
-  const COLUMN_MENU_ESTIMATED_WIDTH = 180;
-
-  // Find a horizontal slot for the action row that doesn't overlap the column menu.
-  // Both menus sit in the same horizontal band above the table.
-  let actionRowLeft = 0;
-  if (tableWidth > 0 && actionRowWidth > 0 && columnRect) {
-    const cx = columnRect.left + columnRect.width / 2;
-    const menuLeft = cx - COLUMN_MENU_ESTIMATED_WIDTH / 2;
-    const menuRight = cx + COLUMN_MENU_ESTIMATED_WIDTH / 2;
-    const rightLeft = tableWidth - actionRowWidth;
-
-    if (rightLeft >= 0 && rightLeft >= menuRight) {
-      // Right edge is clear of the menu.
-      actionRowLeft = rightLeft;
-    } else if (actionRowWidth <= menuLeft) {
-      // Left edge is clear of the menu.
-      actionRowLeft = 0;
-    } else if (menuLeft - actionRowWidth >= 0) {
-      // Snug fit just left of the menu.
-      actionRowLeft = menuLeft - actionRowWidth;
-    } else if (menuRight + actionRowWidth <= tableWidth) {
-      // Snug fit just right of the menu.
-      actionRowLeft = menuRight;
-    } else {
-      // No clean fit; pick the side with less overlap.
-      const rightOverlap = Math.max(0, menuLeft - rightLeft);
-      const leftOverlap = Math.max(0, menuRight - actionRowWidth);
-      actionRowLeft = rightOverlap <= leftOverlap ? Math.max(0, rightLeft) : 0;
-    }
-  }
 
   const addColumnAfter = () => {
     const pos = getPos();
@@ -225,38 +120,19 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
     setShowAddColControl(isLastCol);
   };
 
-  const handleTableClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    const target = event.target as HTMLElement;
-    if (target.closest("td, th")) {
-      setCellClicked(true);
-    }
-  };
-
   return (
     <NodeViewWrapper
       ref={wrapperRef}
       className="table-nodeview"
       onMouseEnter={() => {
         setIsTableHovered(true);
-        cancelHideCellClicked();
       }}
-      onMouseLeave={(event: React.MouseEvent<HTMLDivElement>) => {
+      onMouseLeave={() => {
         setIsTableHovered(false);
         setShowAddRowControl(false);
         setShowAddColControl(false);
-        // Don't schedule a hide if the cursor is moving to the
-        // column menu (the menu sits above the wrapper).
-        const related = event.relatedTarget as HTMLElement | null;
-        if (related?.closest("[data-table-column-menu]")) {
-          return;
-        }
-        scheduleHideCellClicked();
       }}
-      onMouseMove={(event: React.MouseEvent<HTMLDivElement>) => {
-        handleTableMouseMove(event);
-        cancelHideCellClicked();
-      }}
-      onClick={handleTableClick}
+      onMouseMove={handleTableMouseMove}
       style={{
         position: "relative",
         marginBottom: "16px",
@@ -284,48 +160,6 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
           },
         }}
       >
-        <Box
-          ref={actionRowRef}
-          sx={{
-            position: "absolute",
-            bottom: "calc(100% + 6px)",
-            left: `${actionRowLeft}px`,
-            width: "max-content",
-            zIndex: 25,
-            pointerEvents: showActionRow ? "auto" : "none",
-            transition: theme.transitions.create("left"),
-          }}
-        >
-          <Collapse
-            key={actionRowAppearanceId}
-            in={showActionRow}
-            timeout={theme.transitions.duration.enteringScreen}
-            mountOnEnter
-            unmountOnExit
-            appear
-          >
-            <Stack
-              direction="row"
-              spacing={0}
-              sx={{
-                alignItems: "center",
-                padding: M2,
-                position: "relative",
-                "&::after": {
-                  content: '""',
-                  position: "absolute",
-                  top: "100%",
-                  left: 0,
-                  right: 0,
-                  height: "10px",
-                },
-              }}
-            >
-              <TableActionRow editor={editor} />
-            </Stack>
-          </Collapse>
-        </Box>
-
         {/* add column side button */}
         <Fade in={isTableHovered && showAddColControl && editor.isEditable}>
           <Box className="table-col-control">
@@ -379,18 +213,6 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
       <CssOverrideForImageCellsBox>
         <NodeViewContent />
       </CssOverrideForImageCellsBox>
-
-      {/* column menu sits at the wrapper root so its absolute
-          positioning is anchored to the wrapper, not the
-          controls box. */}
-      {editor.isEditable && (
-        <TableColumnMenuHost
-          editor={editor}
-          menuVisible={cellClicked}
-          onMouseEnterMenu={cancelHideCellClicked}
-          onMouseLeaveMenu={scheduleHideCellClicked}
-        />
-      )}
     </NodeViewWrapper>
   );
 };
