@@ -363,6 +363,68 @@ A computer engineer compared the development of TempleOS to a one-man-built skys
       tag_ids: [],
       attachment_ids: [],
     },
+    /**
+     * Long-form notes-on-a-series fixture for the note renderer.
+     * Real markdown shape: intro prose, a GFM table (Abyss layers),
+     * more prose (ascending curse, characters, themes).
+     */
+    {
+      id: "note-9",
+      title: "Made in Abyss",
+      content: `# Made in Abyss
+
+Made in Abyss is a Japanese manga series by Akihito Tsukushi, serialised in Enterbrain's WEB Comic Gamma since 2012. It has been adapted into anime by Kinema Citrus (2017) and a 2022 film sequel, *Dawn of the Deep Soul*. The story follows Riko, an orphan cave raider, and her robot companion Reg as they descend into the Abyss -- a colossal, unexplored pit on the island of Orth -- in search of Riko's missing mother, Lyza the Annihilator.
+
+## Layers of the Abyss
+
+| Layer | Name | Depth | Hazards and notes |
+| --- | --- | --- | --- |
+| 1 | Edge of the Abyss | 0 m | Safe enough for settlements; home to Orth and the base of the raiding guild. |
+| 2 | Forest of Temptation | 1,300 m | Sound-based fauna; its aroma causes hallucinations in humans. |
+| 3 | Great Fault / Reverse Wind | 2,600 m | Inverted gravity around the rim; powerful upward airspeeds deeper in. |
+| 4 | Goblets of Gourmets | 4,400 m | Flesh-melting waters fall from upper layers; raider gear begins to fail. |
+| 5 | Sea of Corpses | 7,000 m | Primal fauna only; some boundary between life and the Abyss itself. |
+| 6 | Capital of the Unreturned | ~10,000 m | Curse of the Abyss becomes fatal on ascent; almost no one returns. |
+| 7 | Final Maelstrom | 13,000 m+ | At or below the netherworld; only one documented expedition reached it. |
+
+## The curse of ascending
+
+A central conceit of the series is the *Abyss curse* (gently called the "blessing of the Abyss" in the upper layers), whose severity scales with how deep a raider has gone and how quickly they come back. The deeper the layer and the faster the ascent, the worse the symptoms. They begin as dizziness and nausea, then progress to numbness, sensory loss, and in the lower layers, to permanent damage or death.
+
+The typical presentation, by layer:
+
+- Layer 1: mild dizziness and nausea.
+- Layer 2: nausea, numbness in the limbs, mild hallucinations.
+- Layer 3: vertigo and balance problems from the inverted-gravity zone.
+- Layer 4: full-body pain, sensory loss, complete exhaustion.
+- Layer 5 and below: mutative changes, permanent mental damage, or death.
+
+Lyza the Annihilator, Riko's mother, was one of the strongest White Whistles of the Orth raiding guild. She descended and never returned, leaving behind only a final letter found at the depth of the Abyss.
+
+## Characters
+
+- **Riko** -- cheerful, headstrong apprentice cave raider (Red Whistle); co-protagonist.
+- **Reg** -- a robot of unknown origin found by Riko near the bottom; can fire an Incinerator from his helmet.
+- **Lyza the Annihilator** -- Riko's mother and a legendary White Whistle; one of the few to reach the final layer.
+- **Ozen the Immovable** -- a two-metre-tall White Whistle who trained Riko before her descent.
+- **Bondrewd the Bestial** -- a researcher whose experiments stretch the ethics of the Orth raiding guild.
+
+## Themes
+
+The series is known for the contrast between its soft, childlike visual style and the genuine physical suffering its characters endure in pursuit of knowledge and reunion. Critics often compare it to classical adventure fiction retold with more honest consequences, where every metre of descent is paid for in body and mind.
+
+---
+
+*Source: Wikipedia, "Made in Abyss". Included in this fixture as test content only.*
+`,
+      stripped_content:
+        "Made in Abyss follows Riko and the robot Reg as they descend the Abyss, a pit of seven increasingly hostile layers, in search of Riko's missing mother Lyza.",
+      author_id: userId,
+      updated_at: ago(2),
+      directory_ids: [dirWorkId],
+      tag_ids: [],
+      attachment_ids: [],
+    },
   ];
 
   /**
