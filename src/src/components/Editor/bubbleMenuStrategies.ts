@@ -30,12 +30,8 @@ export interface SelectionAnalysisFull {
   cell?: CellContext;
 }
 
-// One button the bubble menu renders.
-// `tone` drives the ToggleButton color: "primary" for add/new
-// ops, "error" for delete/destructive ops, "neutral" (default)
-// for everything else (moves, copy, etc.).
-export type OpTone = "primary" | "error" | "neutral";
-
+// One button the bubble menu renders. Icons stay neutral;
+// the bubble-menu component never applies a colour tint.
 export type BubbleMenuOp =
   | { kind: "toggle"; mark: string; label: string; icon: string }
   | {
@@ -43,7 +39,6 @@ export type BubbleMenuOp =
       id: string;
       label: string;
       icon: string;
-      tone: OpTone;
       run: (editor: Editor) => void;
     }
   | { kind: "divider" }
@@ -225,7 +220,7 @@ const tableWholeStrategy: BubbleMenuStrategy = {
         id: "delete-table",
         label: "Delete table",
         icon: "table-remove",
-        tone: "error",
+
         run: (e) => e.chain().focus().deleteTable().run(),
       },
     ];
@@ -247,7 +242,7 @@ const rowStrategy: BubbleMenuStrategy = {
         id: "add-row-before",
         label: "Add row above",
         icon: "row-insert-top",
-        tone: "primary",
+
         run: (e) => e.chain().focus().addRowBefore().run(),
       },
       {
@@ -255,7 +250,7 @@ const rowStrategy: BubbleMenuStrategy = {
         id: "add-row-after",
         label: "Add row below",
         icon: "row-insert-bottom",
-        tone: "primary",
+
         run: (e) => e.chain().focus().addRowAfter().run(),
       },
       { kind: "divider" },
@@ -264,7 +259,7 @@ const rowStrategy: BubbleMenuStrategy = {
         id: "move-row-up",
         label: "Move row up",
         icon: "row-move-up",
-        tone: "neutral",
+
         run: (e) => moveRowsByDelta(e, -1, rowIndices),
       },
       {
@@ -272,7 +267,7 @@ const rowStrategy: BubbleMenuStrategy = {
         id: "move-row-down",
         label: "Move row down",
         icon: "row-move-down",
-        tone: "neutral",
+
         run: (e) => moveRowsByDelta(e, 1, rowIndices),
       },
       { kind: "divider" },
@@ -282,7 +277,7 @@ const rowStrategy: BubbleMenuStrategy = {
         id: "delete-row",
         label: isMulti ? "Delete rows" : "Delete row",
         icon: "row-remove",
-        tone: "error",
+
         run: (e) => e.chain().focus().deleteRow().run(),
       },
     ];
@@ -304,7 +299,7 @@ const columnStrategy: BubbleMenuStrategy = {
         id: "add-column-before",
         label: "Add column left",
         icon: "column-insert-left",
-        tone: "primary",
+
         run: (e) => e.chain().focus().addColumnBefore().run(),
       },
       {
@@ -312,7 +307,7 @@ const columnStrategy: BubbleMenuStrategy = {
         id: "add-column-after",
         label: "Add column right",
         icon: "column-insert-right",
-        tone: "primary",
+
         run: (e) => e.chain().focus().addColumnAfter().run(),
       },
       { kind: "divider" },
@@ -321,7 +316,7 @@ const columnStrategy: BubbleMenuStrategy = {
         id: "move-column-left",
         label: "Move column left",
         icon: "column-move-left",
-        tone: "neutral",
+
         run: (e) => moveColumnsByDelta(e, -1, columnIndices),
       },
       {
@@ -329,7 +324,7 @@ const columnStrategy: BubbleMenuStrategy = {
         id: "move-column-right",
         label: "Move column right",
         icon: "column-move-right",
-        tone: "neutral",
+
         run: (e) => moveColumnsByDelta(e, 1, columnIndices),
       },
       { kind: "divider" },
@@ -339,7 +334,7 @@ const columnStrategy: BubbleMenuStrategy = {
         id: "delete-column",
         label: isMulti ? "Delete columns" : "Delete column",
         icon: "column-remove",
-        tone: "error",
+
         run: (e) => e.chain().focus().deleteColumn().run(),
       },
     ];
@@ -361,7 +356,7 @@ const cellStrategy: BubbleMenuStrategy = {
         id: "clear-cells",
         label: a.kind === "tableBlock" ? "Clear cell(s)" : "Clear cell",
         icon: "format-clear",
-        tone: "error",
+
         run: (e) => clearCells(e),
       },
     ];
@@ -381,7 +376,7 @@ const textStrategy: BubbleMenuStrategy = {
         id: "clear-formatting",
         label: "Clear formatting",
         icon: "format-clear",
-        tone: "error",
+
         run: (e) => e.chain().focus().unsetAllMarks().clearNodes().run(),
       },
     ]);
@@ -456,8 +451,11 @@ function clearCells(editor: Editor): void {
 
 // Tiptap's moveRow only handles a single row; do a full-table
 // replace. We swap row nodes in the table's row array and
-// reinstall a CellSelection on the new row so the menu stays
-// in place across the swap.
+// reinstall a `CellSelection.rowSelection` on the new row so
+// the menu stays in place across the swap. Using
+// `rowSelection` (not `CellSelection.create`) is important:
+// the factory expands anchor/head to the full row band, which
+// avoids the last cell's text leaking into the selection rect.
 function moveRowsByDelta(
   editor: Editor,
   delta: -1 | 1,
@@ -507,15 +505,16 @@ function moveRowsByDelta(
   );
 
   // Compute where the band lands in the new table so we can
-  // restore the CellSelection. We anchor on the top-left of
-  // the band and head on the bottom-right so a row-band
-  // selection looks like a full row after the swap.
+  // pass the first and last cell positions to
+  // `CellSelection.rowSelection`, which expands the band to
+  // the full row extent.
   const newMap = TableMap.get(newTable);
   const newTopRow =
     delta === -1 ? indices[0] - 1 : indices[indices.length - 1] + 1;
   const newBotRow = newTopRow + indices.length - 1;
-  const anchorPos = tablePos + 1 + newMap.positionAt(newTopRow, 0, newTable);
-  const headPos =
+  const firstCellPos =
+    tablePos + 1 + newMap.positionAt(newTopRow, 0, newTable);
+  const lastCellPos =
     tablePos + 1 + newMap.positionAt(newBotRow, map.width - 1, newTable);
 
   const tr = state.tr
@@ -526,7 +525,15 @@ function moveRowsByDelta(
     // from raw node refs, and the link autolink isn't needed
     // for a row swap anyway.
     .setMeta("preventAutolink", true);
-  tr.setSelection(CellSelection.create(tr.doc, anchorPos, headPos));
+  // Resolve against the new doc (post-`replaceWith`) so the
+  // positions point into the new table.
+  const newDoc = tr.doc;
+  tr.setSelection(
+    CellSelection.rowSelection(
+      newDoc.resolve(firstCellPos),
+      newDoc.resolve(lastCellPos),
+    ),
+  );
 
   editor.view.dispatch(tr);
   editor.view.focus();
@@ -579,22 +586,31 @@ function moveColumnsByDelta(
     tableNode.marks,
   );
 
-  // Restore the CellSelection on the moved band. We anchor on
-  // the top-left of the band and head on the bottom-right so
-  // a column-band selection looks like a full column after
-  // the swap.
+  // Restore the CellSelection on the moved band using the
+  // `colSelection` factory, which expands the band to the
+  // full column extent. Same rationale as `rowSelection`
+  // for rows above.
   const newMap = TableMap.get(newTable);
   const newLeftCol =
     delta === -1 ? indices[0] - 1 : indices[indices.length - 1] + 1;
   const newRightCol = newLeftCol + indices.length - 1;
-  const anchorPos = tablePos + 1 + newMap.positionAt(0, newLeftCol, newTable);
-  const headPos =
-    tablePos + 1 + newMap.positionAt(map.height - 1, newRightCol, newTable);
+  const firstCellPos =
+    tablePos + 1 + newMap.positionAt(0, newLeftCol, newTable);
+  const lastCellPos =
+    tablePos +
+    1 +
+    newMap.positionAt(map.height - 1, newRightCol, newTable);
 
   const tr = state.tr
     .replaceWith(tablePos, tablePos + tableNode.nodeSize, newTable)
     .setMeta("preventAutolink", true);
-  tr.setSelection(CellSelection.create(tr.doc, anchorPos, headPos));
+  const newDoc = tr.doc;
+  tr.setSelection(
+    CellSelection.colSelection(
+      newDoc.resolve(firstCellPos),
+      newDoc.resolve(lastCellPos),
+    ),
+  );
 
   editor.view.dispatch(tr);
   editor.view.focus();
