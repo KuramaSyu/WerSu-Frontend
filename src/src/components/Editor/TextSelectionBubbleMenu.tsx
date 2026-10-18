@@ -41,7 +41,6 @@ import {
   analyseSelection,
   pickStrategy,
   type BubbleMenuOp,
-  type OpTone,
 } from "./bubbleMenuStrategies";
 
 // Bubble-menu tooltips: arrow on, anchored above the row so the
@@ -410,7 +409,6 @@ function renderOps(
               size="small"
               aria-label={op.label}
               onClick={() => op.run(editor)}
-              color={toggleColorForTone(op.tone)}
               sx={{ border: 0 }}
             >
               {iconForName(op.icon)}
@@ -562,19 +560,5 @@ function iconForName(name: string): React.ReactNode {
     // the strategy never silently renders nothing.
     default:
       return <FormatClearIcon fontSize="small" />;
-  }
-}
-
-// Map the strategy's tone to MUI ToggleButton `color`.
-// "primary" -> primary palette colour, "error" -> destructive
-// red, "neutral" -> default (no color prop, MUI's standard).
-function toggleColorForTone(tone: OpTone): "primary" | "error" | "standard" {
-  switch (tone) {
-    case "primary":
-      return "primary";
-    case "error":
-      return "error";
-    default:
-      return "standard";
   }
 }
