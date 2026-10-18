@@ -5,16 +5,21 @@
 // `transform: translate3d(...)` on every plugin update, and the
 // global stylesheet owns the transition so the browser reliably
 // interpolates each change. A companion selection overlay renders
-// over an active text selection, replacing the browser's
-// `::selection` highlight. `caret-color: transparent` on
-// `.ProseMirror` hides the native caret (see tiptap.css).
+// over an active selection, replacing the browser's `::selection`
+// highlight. `caret-color: transparent` on `.ProseMirror` hides the
+// native caret (see tiptap.css). The selection overlay also covers
+// table cell selections (single cell, row, column, block): it
+// reads each cell's DOM rect via `view.nodeDOM(pos)` and unions
+// them so a row/column/block highlight looks like one solid block.
 
 import { Extension } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
+import { CellSelection } from "@tiptap/pm/tables";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { alpha } from "@mui/material/styles";
+import { computeCellSelectionRect } from "./CaretAnimation.helpers";
 
 export interface CaretAnimationOptions {
   /** Disable the overlay entirely. The extension always reads
@@ -120,6 +125,34 @@ export const CaretAnimation = Extension.create<CaretAnimationOptions>({
               const editMode = useEditorSettings.getState().editMode;
               const { selection } = view.state;
               const containerRect = container.getBoundingClientRect();
+
+              // Cell selection (table): the editor state carries a
+              // `CellSelection` whose `from` / `to` positions are
+              // just the start and end cells - they don't represent
+              // a meaningful rect. Walk every selected cell, take
+              // its DOM rect, and draw a single block over the
+              // union. Works for single-cell, row, column, and
+              // block (rectangular) selections.
+              if (selection instanceof CellSelection) {
+                caretEl.style.display = "none";
+                stopBlinkTimer();
+                try {
+                  const rect = computeCellSelectionRect(view, selection);
+                  if (rect === null) {
+                    selectionEl.style.display = "none";
+                    return;
+                  }
+                  selectionEl.style.display = "block";
+                  selectionEl.style.transform = `translate3d(${
+                    rect.left - containerRect.left
+                  }px, ${rect.top - containerRect.top}px, 0)`;
+                  selectionEl.style.width = `${rect.right - rect.left}px`;
+                  selectionEl.style.height = `${rect.bottom - rect.top}px`;
+                } catch {
+                  selectionEl.style.display = "none";
+                }
+                return;
+              }
 
               // Active text selection -> hide caret, show a single
               // full-width block spanning every selected line. The
