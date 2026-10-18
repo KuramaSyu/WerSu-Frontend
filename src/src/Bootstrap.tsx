@@ -10,6 +10,7 @@ import { useShareAccessToken } from "./api/queries/useShareAccessToken";
 import { apiRegistry } from "./api/apiRegistry";
 import { queryClient } from "./api/queryClient";
 import { useUser } from "./api/queries/useUser";
+import { WersuUserImpl } from "./components/DiscordLogin";
 import { useGlobalModifier } from "./hooks/useGlobalModifier";
 import { useFocusGuardOnModifier } from "./hooks/useFocusGuardOnModifier";
 import { FeatureFlagName, useFeatureStore } from "./zustand/FeatureStore";
@@ -174,6 +175,52 @@ function useInvalidateQueriesOnUserChange() {
 }
 
 /**
+ * Mirrors the resolved `useUser` query into the global
+ * `useUserStore` so the auth gate (`useRequireAuth`) sees a logged-in
+ * viewer on cold start -- not just after `commitLogin()` runs.
+ *
+ * Without this hydration, the `useUser` query can succeed (cookie
+ * session, /api/auth/user returns 200, fake mode pre-seeds a user)
+ * while `useUserStore.user` stays at its initial `null`, and
+ * `useRequireAuth` then bounces the viewer to /login based on the
+ * store. Explicit login (`commitLogin`) and passkey flows still own
+ * their own writes; this effect only bridges the cold-start path.
+ */
+function useHydrateUserStoreFromQuery(
+  user: WersuUserImpl | undefined,
+  isSuccess: boolean,
+  isError: boolean,
+): void {
+  const lastSeenIdRef = useRef<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (isSuccess && user) {
+      const id = user.id ?? null;
+      if (lastSeenIdRef.current === id) return;
+      lastSeenIdRef.current = id;
+      const current = useUserStore.getState().user;
+      // Don't clobber an already-matching store entry (e.g. from
+      // `commitLogin` running concurrently with this hydration).
+      if (current?.id !== id) {
+        useUserStore.getState().setUser(user);
+      }
+      return;
+    }
+    if (isError) {
+      // /api/auth/user failed -- treat as logged out. Logout itself
+      // already calls `setUser(null)`, so this only fires on a
+      // cookie-missing cold start, which is exactly the path we want.
+      if (lastSeenIdRef.current !== null) {
+        lastSeenIdRef.current = null;
+        if (useUserStore.getState().user !== null) {
+          useUserStore.getState().setUser(null);
+        }
+      }
+    }
+  }, [user, isSuccess, isError]);
+}
+
+/**
  * Ensures, that on page load the user and notes get loaded
  */
 export const Bootstrap: React.FC = () => {
@@ -189,9 +236,10 @@ export const Bootstrap: React.FC = () => {
 
   const {
     data: user,
-    isLoading: isUserLoading,
     isSuccess: isUserSuccess,
+    isError: isUserError,
   } = useUser();
+  useHydrateUserStoreFromQuery(user, isUserSuccess, isUserError);
 
   // const searchNotesApi = getSearchNotesApi();
   const userApi = getUserApi();

@@ -15,6 +15,8 @@ import { useRequireAuth } from "../hooks/useRequireAuth";
  *   - `/public/*` is exempt: the share JWT, not user cookies, is
  *     the auth source on that subtree, so a missing user cookie
  *     must never bounce a share-link viewer to the login page.
+ *   - `/settings` is exempt: it must stay reachable when logged out
+ *     so the user can sign in or change prefs unauthenticated.
  *
  * Use as a layout route:
  *
