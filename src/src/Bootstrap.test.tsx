@@ -16,13 +16,33 @@ vi.mock("./zustand/useThemeStore", () => ({
   useThemeStore: () => ({ theme: { palette: { background: {} } } }),
 }));
 
+// `Bootstrap.tsx` imports `WersuUserImpl` from `DiscordLogin`, which
+// transitively pulls `@mui/icons-material/Logout` -> `@mui/material`.
+// `@mui/material@9`'s `internal/Transition.mjs` does a bare directory
+// import for `react-transition-group/TransitionGroupContext`, and
+// Vite 8's strict ESM resolver rejects it. Stub the class so the test
+// chain never reaches MUI.
+vi.mock("./components/DiscordLogin", () => ({
+  WersuUserImpl: class WersuUserImplStub {
+    id: string | undefined;
+  },
+}));
+
 // Heavy stores/queries get stubbed so the test focuses on the route-aware provider policy.
 vi.mock("./zustand/userStore", () => ({
   // Mirrors zustand call signature: useStore() or useStore(selector). Bootstrap uses both.
-  useUserStore: (<T,>(selector?: (s: { user: unknown }) => T) =>
-    selector
-      ? selector({ user: globalUser })
-      : ({ user: globalUser } as T)) as never,
+  // Bootstrap's hydration effect also calls `useUserStore.getState().setUser(user)`,
+  // so the mock needs the static `getState` / `setState` shape too.
+  useUserStore: Object.assign(
+    (<T,>(selector?: (s: { user: unknown }) => T) =>
+      selector
+        ? selector({ user: globalUser })
+        : ({ user: globalUser } as T)) as never,
+    {
+      getState: () => ({ user: globalUser, setUser: () => {} }),
+      setState: () => {},
+    },
+  ),
 }));
 vi.mock("./api/queries/useAccessToken", () => ({
   useAccessToken: () => ({ refetch: vi.fn() }),
