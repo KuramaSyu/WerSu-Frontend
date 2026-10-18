@@ -131,8 +131,16 @@ export function useInfiniteNoteSearch(
 /**
  * Get a note with all details.
  * Public routes wait on the share JWT; private routes use the cookie.
+ *
+ * The hook reads `usePublicRouteReady` itself so it can short-circuit
+ * the fetch on `/public/*` until the share JWT lands in the store.
+ * Without this gate, an anonymous public viewer fires a request that
+ * the backend rejects with 401 before the JWT resolver has a chance
+ * to attach the bearer header -- the regression this hook was
+ * originally written to pin.
  */
 export function useNote(noteId?: string, ready?: boolean) {
+  const { ready: routeReady, isPublic } = usePublicRouteReady();
   return useQuery({
     queryKey: ["notes", noteId],
 
@@ -143,8 +151,10 @@ export function useNote(noteId?: string, ready?: boolean) {
       return noteApi.get(noteId);
     },
 
-    // note given and either JWT provided or user logged in
-    enabled: !!noteId && ready,
+    // Caller can force-disable with `ready = false`; on private routes
+    // `routeReady` is always true (cookie auth), on public routes it
+    // tracks the share JWT landing in the store.
+    enabled: !!noteId && (ready ?? (routeReady || !isPublic)),
   });
 }
 
