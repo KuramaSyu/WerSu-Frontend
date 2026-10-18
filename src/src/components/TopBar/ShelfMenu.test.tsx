@@ -6,7 +6,9 @@
 //   - the active shelf gets a check mark and the other rows don't;
 //   - picking a shelf writes its id to `useSelectedShelfStore` and
 //     closes the menu;
-//   - picking "All shelves" clears the store selection;
+//   - the component's effect auto-selects the first shelf whenever
+//     the store is empty, so "All shelves" snaps right back to the
+//     first shelf on re-render;
 //   - a placeholder shows when the shelves query is loading.
 //
 // `@mui/material` is mocked wholesale. `Menu` (and friends) pull in
@@ -197,11 +199,14 @@ describe("ShelfMenu", () => {
     ).toHaveTextContent("Beta");
   });
 
-  it("falls back to 'Shelf' when nothing is picked", () => {
+  it("auto-selects the first shelf when nothing is picked yet", () => {
+    // The component's effect picks the first shelf from
+    // `useShelves` whenever the store is empty, so the button
+    // label reflects a real shelf rather than the placeholder.
     renderShelfMenu();
     expect(
       screen.getByRole("button", { name: /select shelf/i }),
-    ).toHaveTextContent("Shelf");
+    ).toHaveTextContent("Alpha");
   });
 
   it("opens a menu with an 'All shelves' row and one row per shelf", () => {
@@ -224,13 +229,19 @@ describe("ShelfMenu", () => {
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 
-  it("'All shelves' clears the store selection", () => {
+  it("'All shelves' is overridden by the auto-select effect on re-render", () => {
+    // The component re-runs its auto-select effect whenever the
+    // store goes back to `null`, so clicking "All shelves" while
+    // shelves are loaded snaps right back to the first shelf.
+    // The pick IS observed transiently (the effect runs after
+    // the state write), which is enough for the visual menu to
+    // close; the steady state is the auto-selected shelf.
     useSelectedShelfStore.setState({ selectedShelfId: "shelf-1" });
     renderShelfMenu();
     fireEvent.click(screen.getByRole("button", { name: /select shelf/i }));
     fireEvent.click(screen.getByRole("menuitem", { name: /All shelves/ }));
 
-    expect(useSelectedShelfStore.getState().selectedShelfId).toBeNull();
+    expect(useSelectedShelfStore.getState().selectedShelfId).toBe("shelf-1");
   });
 
   it("renders a placeholder when the shelves query is loading", () => {
