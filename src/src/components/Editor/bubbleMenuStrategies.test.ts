@@ -167,7 +167,7 @@ describe("analyseSelection", () => {
       const analysis = analyseSelection(editor.state);
       expect(analysis.kind).toBe("tableWhole");
       // The cell context still carries the full row/col index
-      // list so the strategy's tone/icon decisions can read
+      // list so the strategy's icon/label decisions can read
       // from it.
       expect(analysis.cell?.rowIndices).toEqual([0, 1, 2]);
       expect(analysis.cell?.columnIndices).toEqual([0, 1, 2]);
@@ -640,7 +640,7 @@ describe("column move", () => {
 });
 
 describe("whole-table strategy ops", () => {
-  it("emits only a delete-table action with the error tone", () => {
+  it("emits only a delete-table action", () => {
     const editor = buildThreeByThreeTable();
     try {
       selectCells(editor, { row: 0, col: 0 }, { row: 2, col: 2 });
@@ -651,73 +651,9 @@ describe("whole-table strategy ops", () => {
       expect(actions).toHaveLength(1);
       expect(actions[0].id).toBe("delete-table");
       expect(actions[0].icon).toBe("table-remove");
-      expect(actions[0].tone).toBe("error");
       // No formatting toggles -- the whole-table menu only
       // shows the destructive action.
       expect(ops.some((o) => o.kind === "toggle")).toBe(false);
-    } finally {
-      editor.destroy();
-    }
-  });
-});
-
-describe("op tones", () => {
-  it("row strategy: add-* = primary, move-* = neutral, delete-row = error", () => {
-    const editor = buildThreeByThreeTable();
-    try {
-      selectCells(editor, { row: 0, col: 0 }, { row: 0, col: 2 });
-      const ops = pickStrategy(analyseSelection(editor.state)).build(
-        analyseSelection(editor.state),
-        editor,
-      );
-      const tones = Object.fromEntries(
-        ops.filter(opIsAction).map((o) => [o.id, o.tone]),
-      );
-      expect(tones["add-row-before"]).toBe("primary");
-      expect(tones["add-row-after"]).toBe("primary");
-      expect(tones["move-row-up"]).toBe("neutral");
-      expect(tones["move-row-down"]).toBe("neutral");
-      expect(tones["delete-row"]).toBe("error");
-    } finally {
-      editor.destroy();
-    }
-  });
-
-  it("column strategy: add-* = primary, move-* = neutral, delete-column = error", () => {
-    const editor = makeEditor();
-    try {
-      editor.commands.insertTable({ rows: 2, cols: 2, withHeaderRow: false });
-      selectCells(editor, { row: 0, col: 0 }, { row: 1, col: 0 });
-      const ops = pickStrategy(analyseSelection(editor.state)).build(
-        analyseSelection(editor.state),
-        editor,
-      );
-      const tones = Object.fromEntries(
-        ops.filter(opIsAction).map((o) => [o.id, o.tone]),
-      );
-      expect(tones["add-column-before"]).toBe("primary");
-      expect(tones["add-column-after"]).toBe("primary");
-      expect(tones["move-column-left"]).toBe("neutral");
-      expect(tones["move-column-right"]).toBe("neutral");
-      expect(tones["delete-column"]).toBe("error");
-    } finally {
-      editor.destroy();
-    }
-  });
-
-  it("cell strategy: clear-cells is error", () => {
-    const editor = buildThreeByThreeTable();
-    try {
-      selectCells(editor, { row: 0, col: 0 }, { row: 1, col: 1 });
-      const ops = pickStrategy(analyseSelection(editor.state)).build(
-        analyseSelection(editor.state),
-        editor,
-      );
-      const clear = ops.find(
-        (o): o is Extract<BubbleMenuOp, { kind: "action" }> =>
-          o.kind === "action" && o.id === "clear-cells",
-      );
-      expect(clear?.tone).toBe("error");
     } finally {
       editor.destroy();
     }
