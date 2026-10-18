@@ -108,7 +108,7 @@ export const LoginPage: React.FC = () => {
             flex: "0 0 auto",
           }}
         >
-          <Title theme={defaultTheme} />
+          <Title theme={defaultTheme} animate />
         </Box>
         <Box
           sx={{

@@ -270,7 +270,7 @@ export const LoadingPage: React.FC = () => {
           }}
         >
           <Box sx={{ fontSize: isMobile ? "4rem" : "10vh" }}>
-            <Title theme={defaultTheme} />
+            <Title theme={defaultTheme} animate />
           </Box>
           <Box
             sx={{
