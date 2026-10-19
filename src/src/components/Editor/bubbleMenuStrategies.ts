@@ -30,18 +30,29 @@ export interface SelectionAnalysisFull {
   cell?: CellContext;
 }
 
-// One button the bubble menu renders. Icons stay neutral;
-// the bubble-menu component never applies a colour tint.
+// One button the bubble menu renders. Each op carries a
+// `group` so the renderer can lay them out as
+// `<table ops> | <common ops> | <copy>` with a single divider
+// between each pair. Strategies emit ops already sorted by
+// group; dividers belong to the renderer, not the strategy.
+export type BubbleMenuGroup = "table" | "common";
+
 export type BubbleMenuOp =
-  | { kind: "toggle"; mark: string; label: string; icon: string }
+  | {
+      kind: "toggle";
+      mark: string;
+      label: string;
+      icon: string;
+      group: BubbleMenuGroup;
+    }
   | {
       kind: "action";
       id: string;
       label: string;
       icon: string;
+      group: BubbleMenuGroup;
       run: (editor: Editor) => void;
     }
-  | { kind: "divider" }
   | {
       kind: "copy";
       mode: "html" | "text";
@@ -217,6 +228,7 @@ const tableWholeStrategy: BubbleMenuStrategy = {
     return [
       {
         kind: "action",
+        group: "table",
         id: "delete-table",
         label: "Delete table",
         icon: "table-remove",
@@ -234,11 +246,13 @@ const rowStrategy: BubbleMenuStrategy = {
     if (!a.cell) return [];
     const { rowIndices } = a.cell;
     const isMulti = rowIndices.length > 1;
+    // Table edits first, common formatting second. The
+    // renderer inserts the single `|` between groups; the
+    // intra-group ordering here drives button placement.
     return [
-      ...textFormattingOps(editor, a.state),
-      { kind: "divider" },
       {
         kind: "action",
+        group: "table",
         id: "add-row-before",
         label: "Add row above",
         icon: "row-insert-top",
@@ -247,15 +261,16 @@ const rowStrategy: BubbleMenuStrategy = {
       },
       {
         kind: "action",
+        group: "table",
         id: "add-row-after",
         label: "Add row below",
         icon: "row-insert-bottom",
 
         run: (e) => e.chain().focus().addRowAfter().run(),
       },
-      { kind: "divider" },
       {
         kind: "action",
+        group: "table",
         id: "move-row-up",
         label: "Move row up",
         icon: "row-move-up",
@@ -264,15 +279,16 @@ const rowStrategy: BubbleMenuStrategy = {
       },
       {
         kind: "action",
+        group: "table",
         id: "move-row-down",
         label: "Move row down",
         icon: "row-move-down",
 
         run: (e) => moveRowsByDelta(e, 1, rowIndices),
       },
-      { kind: "divider" },
       {
         kind: "action",
+        group: "table",
         // Pluralise for multi-row selections.
         id: "delete-row",
         label: isMulti ? "Delete rows" : "Delete row",
@@ -280,6 +296,7 @@ const rowStrategy: BubbleMenuStrategy = {
 
         run: (e) => e.chain().focus().deleteRow().run(),
       },
+      ...textFormattingOps(editor, a.state),
     ];
   },
 };
@@ -292,10 +309,9 @@ const columnStrategy: BubbleMenuStrategy = {
     const { columnIndices } = a.cell;
     const isMulti = columnIndices.length > 1;
     return [
-      ...textFormattingOps(editor, a.state),
-      { kind: "divider" },
       {
         kind: "action",
+        group: "table",
         id: "add-column-before",
         label: "Add column left",
         icon: "column-insert-left",
@@ -304,15 +320,16 @@ const columnStrategy: BubbleMenuStrategy = {
       },
       {
         kind: "action",
+        group: "table",
         id: "add-column-after",
         label: "Add column right",
         icon: "column-insert-right",
 
         run: (e) => e.chain().focus().addColumnAfter().run(),
       },
-      { kind: "divider" },
       {
         kind: "action",
+        group: "table",
         id: "move-column-left",
         label: "Move column left",
         icon: "column-move-left",
@@ -321,15 +338,16 @@ const columnStrategy: BubbleMenuStrategy = {
       },
       {
         kind: "action",
+        group: "table",
         id: "move-column-right",
         label: "Move column right",
         icon: "column-move-right",
 
         run: (e) => moveColumnsByDelta(e, 1, columnIndices),
       },
-      { kind: "divider" },
       {
         kind: "action",
+        group: "table",
         // Pluralise for multi-column selections.
         id: "delete-column",
         label: isMulti ? "Delete columns" : "Delete column",
@@ -337,6 +355,7 @@ const columnStrategy: BubbleMenuStrategy = {
 
         run: (e) => e.chain().focus().deleteColumn().run(),
       },
+      ...textFormattingOps(editor, a.state),
     ];
   },
 };
@@ -350,9 +369,9 @@ const cellStrategy: BubbleMenuStrategy = {
   build: (a, editor) => {
     return [
       ...textFormattingOps(editor, a.state),
-      { kind: "divider" },
       {
         kind: "action",
+        group: "common",
         id: "clear-cells",
         label: a.kind === "tableBlock" ? "Clear cell(s)" : "Clear cell",
         icon: "format-clear",
@@ -369,17 +388,18 @@ const textStrategy: BubbleMenuStrategy = {
   build: (a, editor) => {
     const { from, to, empty } = a.state.selection;
     if (empty || from === to) return [];
-    return textFormattingOps(editor, a.state).concat([
-      { kind: "divider" },
+    return [
+      ...textFormattingOps(editor, a.state),
       {
         kind: "action",
+        group: "common",
         id: "clear-formatting",
         label: "Clear formatting",
         icon: "format-clear",
 
         run: (e) => e.chain().focus().unsetAllMarks().clearNodes().run(),
       },
-    ]);
+    ];
   },
 };
 
@@ -407,17 +427,37 @@ function textFormattingOps(editor: Editor, state: EditorState): BubbleMenuOp[] {
   const { from, to } = state.selection;
   if (from === to) return [];
   return [
-    { kind: "toggle", mark: "bold", label: "Bold", icon: "format-bold" },
-    { kind: "toggle", mark: "italic", label: "Italic", icon: "format-italic" },
     {
       kind: "toggle",
+      group: "common",
+      mark: "bold",
+      label: "Bold",
+      icon: "format-bold",
+    },
+    {
+      kind: "toggle",
+      group: "common",
+      mark: "italic",
+      label: "Italic",
+      icon: "format-italic",
+    },
+    {
+      kind: "toggle",
+      group: "common",
       mark: "strike",
       label: "Strikethrough",
       icon: "format-strikethrough",
     },
-    { kind: "toggle", mark: "code", label: "Inline code", icon: "code" },
     {
       kind: "toggle",
+      group: "common",
+      mark: "code",
+      label: "Inline code",
+      icon: "code",
+    },
+    {
+      kind: "toggle",
+      group: "common",
       mark: "highlight",
       label: "Highlight",
       icon: "highlight",

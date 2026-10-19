@@ -6,10 +6,9 @@ import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import {
   Divider,
   Grow,
+  IconButton,
   Paper,
   Stack,
-  ToggleButton,
-  ToggleButtonGroup,
   Tooltip,
 } from "@mui/material";
 import FormatBoldIcon from "@mui/icons-material/FormatBold";
@@ -37,49 +36,35 @@ import {
   IconTransitionRight,
   IconTransitionTop,
 } from "@tabler/icons-react";
-import {
-  analyseSelection,
-  pickStrategy,
-  type BubbleMenuOp,
-} from "./bubbleMenuStrategies";
+import { analyseSelection, pickStrategy } from "./bubbleMenuStrategies";
 
-// Bubble-menu tooltips: arrow on, anchored above the row so the
-// tooltip points back down at the originating icon. Centralising the
-// defaults keeps every tooltip in lockstep -- changing the arrow or
-// placement in one place updates the whole menu.
+// Shared tooltip defaults: arrow on, anchored above.
 const BubbleTooltip = (
   props: Omit<React.ComponentProps<typeof Tooltip>, "arrow" | "placement">,
 ) => <Tooltip arrow placement="top" {...props} />;
+
+// Stagger between sibling icons on enter.
+const ICON_DELAY_MS = 12;
+// Enter easing has a slight overshoot so the menu pops in.
+const ENTER_DURATION_MS = 240;
+const ENTER_EASING = "cubic-bezier(0.34, 1.56, 0.64, 1)";
+const EXIT_DURATION_MS = 160;
+// Slide the menu between selection rects instead of jumping.
+const MOVE_DURATION_MS = 180;
 
 interface TextSelectionBubbleMenuProps {
   editor: Editor;
   enabled?: boolean;
 }
 
-// Symmetric enter/exit values used by the sx-prop transition. Enter
-// uses a slight overshoot so the menu pops in; exit uses a clean
-// ease-out so it does not bounce on the way out.
-const ENTER_DURATION_MS = 240;
-const ENTER_EASING = "cubic-bezier(0.34, 1.56, 0.64, 1)";
-const EXIT_DURATION_MS = 160;
-
-// The Tiptap BubbleMenu plugin writes `left`/`top` directly on its
-// wrapper `<div>` (the portal target). With a CSS transition applied
-// to that wrapper, position updates between selection rects slide
-// smoothly instead of jumping.
-const MOVE_DURATION_MS = 180;
-
-// Plain-text dump of the current selection, or "" when collapsed.
+// Plain-text dump of the current selection, or empty when collapsed.
 function getSelectionText(editor: Editor): string {
   const { from, to } = editor.state.selection;
   if (from === to) return "";
   return editor.state.doc.textBetween(from, to, "\n\n");
 }
 
-// HTML dump of the current selection, or "" when collapsed. We
-// serialize through ProseMirror's DOMSerializer so node-specific
-// markup (extensions like `codeBlock`, images, tables) round-trips
-// exactly like the editor renders it.
+// HTML dump of the current selection, or empty when collapsed.
 function getSelectionHtml(editor: Editor): string {
   if (!editor.view) return "";
   const { from, to } = editor.state.selection;
@@ -91,10 +76,7 @@ function getSelectionHtml(editor: Editor): string {
   return wrapper.innerHTML;
 }
 
-// Write `html` (+ `text`) to the clipboard as the rich clipboard
-// representation most rich-text targets honour (`text/html` +
-// `text/plain` simultaneously). Falls back to plain text via
-// `copyToClipboard` when the async Clipboard API is unavailable.
+// Write html and text to the clipboard; falls back to plain text only.
 async function writeFormattedClipboard(
   html: string,
   text: string,
@@ -125,46 +107,31 @@ export const TextSelectionBubbleMenu = ({
 }: TextSelectionBubbleMenuProps) => {
   const { theme } = useThemeStore();
 
-  // Track whether the user is mid-drag. Read directly from the
-  // store (not via useSyncExternalStore) so this component
-  // re-renders on pointer state changes; the bridge updates
-  // the store on every pointerdown/pointerup.
+  // Subscribe so the menu reactively collapses while the pointer is down.
   const isPointerDown = useEditorMenuStore((s) => s.isPointerDown);
 
-  // The active marks and the plain-text payload. The plain-text
-  // copy button seeds from `text` so callers never reach back
-  // into `editor.state` at click time.
-  const {
-    isBold,
-    isItalic,
-    isStrikethrough,
-    isCode,
-    isHighlight,
-    hasSelection,
-    plainSelection,
-  } = useEditorState({
+  const { activeMarks, hasSelection, plainSelection } = useEditorState({
     editor,
     selector: (ctx) => {
       const { from, to } = ctx.editor.state.selection;
       return {
-        isBold: ctx.editor.isActive("bold"),
-        isItalic: ctx.editor.isActive("italic"),
-        isStrikethrough: ctx.editor.isActive("strike"),
-        isCode: ctx.editor.isActive("code"),
-        isHighlight: ctx.editor.isActive("highlight"),
+        activeMarks: {
+          bold: ctx.editor.isActive("bold"),
+          italic: ctx.editor.isActive("italic"),
+          strike: ctx.editor.isActive("strike"),
+          code: ctx.editor.isActive("code"),
+          highlight: ctx.editor.isActive("highlight"),
+        },
         hasSelection: from !== to,
         plainSelection:
-          from !== to ? ctx.editor.state.doc.textBetween(from, to, "\n\n") : "",
+          from !== to
+            ? ctx.editor.state.doc.textBetween(from, to, "\n\n")
+            : "",
       };
     },
   });
 
-  // Pick the right strategy. Re-evaluates on every selection
-  // change because `useEditorState` triggers a re-render of
-  // subscribers when its selector output changes -- the analysis
-  // output is a fresh object, so reference changes always. The
-  // strategy itself is cheap; running it here keeps the
-  // component declarative.
+  // Pick the right strategy for the current selection shape.
   const analysis = useEditorState({
     editor,
     selector: (ctx) => analyseSelection(ctx.editor.state),
@@ -175,26 +142,18 @@ export const TextSelectionBubbleMenu = ({
     [strategy, analysis, editor],
   );
 
-  // Always-mounted: keep the wrapper in the DOM while the editor
-  // is editable so we can drive opacity / transform ourselves
-  // and let the exit transition play to completion.
+  // Keep the wrapper mounted so opacity and transform can animate both ways.
   const shouldShow = useCallback(
     ({ editor: viewEditor }: { editor: Editor }) =>
       enabled && viewEditor.isEditable,
     [enabled],
   );
 
-  // The menu only shows after the user has released the mouse.
-  // `hasSelection` keeps the menu out of the way when the
-  // selection is collapsed. `editor.isEditable` short-circuits
-  // the same condition the `shouldShow` callback uses, so the
-  // plugin's mount state and our opacity state stay in sync.
-  const isOpen = enabled && editor.isEditable && hasSelection && !isPointerDown;
+  // Menu only opens after the user releases the pointer over a real selection.
+  const isOpen =
+    enabled && editor.isEditable && hasSelection && !isPointerDown;
 
-  // Forward the plugin's `<div>` wrapper so we can attach the
-  // position transition directly to it -- that is the element
-  // the floating-ui plugin writes `left`/`top` to on every
-  // selection change.
+  // Forward the plugin wrapper so we can drive its position transition.
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   useLayoutEffect(() => {
     const el = wrapperRef.current;
@@ -225,23 +184,7 @@ export const TextSelectionBubbleMenu = ({
     [theme, isOpen],
   );
 
-  // The format toggles: bold / italic / strike / code / highlight.
-  // Active marks are reflected as `value` entries so the group
-  // renders them as depressed. Only rendered when the text
-  // formatting ops are present in the strategy output.
-  const formats = [
-    ...(isBold ? ["bold"] : []),
-    ...(isItalic ? ["italic"] : []),
-    ...(isStrikethrough ? ["strike"] : []),
-    ...(isCode ? ["code"] : []),
-    ...(isHighlight ? ["highlight"] : []),
-  ];
-
-  // `CopyButton` accepts `text` *or* `onCopy`; for the rich copy
-  // we skip `text` entirely and drive the clipboard write
-  // ourselves so `text/html` lands in the system clipboard
-  // (otherwise the html string would only be written as a
-  // plain-text blob).
+  // Drive the clipboard write ourselves so the html blob reaches the clipboard.
   const copyFormattedSelection = useCallback(async (): Promise<boolean> => {
     const html = getSelectionHtml(editor);
     if (!html) return false;
@@ -254,12 +197,8 @@ export const TextSelectionBubbleMenu = ({
         elevation={2}
         sx={{
           border: `1px solid ${theme.palette.divider}`,
-          // Keep the pill outer -- the rounded silhouette reads as
-          // a single floating surface, not a stacked toolbar.
+          // Pill silhouette so the surface reads as one floating chip.
           borderRadius: 50,
-          // Trim vertical chrome so the row hugs the selection;
-          // the inner Stack supplies the horizontal breathing
-          // room.
           py: 1,
           opacity: isOpen ? 1 : 0,
           transform: isOpen
@@ -272,23 +211,12 @@ export const TextSelectionBubbleMenu = ({
       >
         <Stack
           direction="row"
-          divider={
-            <Divider
-              orientation="vertical"
-              flexItem
-              sx={{ my: 1, borderColor: theme.palette.divider }}
-            />
-          }
           spacing={1}
-          sx={{
-            alignItems: "center",
-            px: 1,
-            borderRadius: 1,
-          }}
+          sx={{ alignItems: "center", px: 1, borderRadius: 1 }}
         >
           {renderOps(ops, {
             editor,
-            formats,
+            activeMarks,
             copyFormattedSelection,
             plainSelection,
             strategyName: strategy.name,
@@ -300,156 +228,171 @@ export const TextSelectionBubbleMenu = ({
   );
 };
 
-/** Map the strategy's op list to React nodes. Splitting this
- *  out keeps the main component focused on visibility / styling;
- *  the rendering rules per op kind live here.
- *
- *  `key` includes the strategy name so a strategy switch (e.g.
- *  row -> column) unmounts the old buttons and remounts fresh
- *  ones; combined with `<Grow appear>`, the new row slides in
- *  instead of swapping in place. */
+// Section each strategy op belongs to in the flat row.
+type Section = "table" | "normal" | "copy";
+function sectionOf(op: { kind: string; group?: string }): Section {
+  if (op.kind === "action" && op.group === "table") return "table";
+  if (op.kind === "copy") return "copy";
+  return "normal";
+}
+
+// Render ops as a flat stack: one button per item, dividers only at section changes.
 function renderOps(
-  ops: readonly BubbleMenuOp[],
+  ops: readonly import("./bubbleMenuStrategies").BubbleMenuOp[],
   ctx: {
     editor: Editor;
-    formats: string[];
+    activeMarks: Record<string, boolean>;
     copyFormattedSelection: () => Promise<boolean>;
     plainSelection: string;
     strategyName: string;
     isOpen: boolean;
   },
 ): React.ReactNode {
-  const {
-    editor,
-    formats,
-    copyFormattedSelection,
-    plainSelection,
-    strategyName,
-    isOpen,
-  } = ctx;
+  const { theme } = useThemeStore.getState();
   const out: React.ReactNode[] = [];
+  let index = 0;
+  let lastSection: Section | null = null;
 
-  // The legacy menu had two copy buttons (formatted + plain)
-  // plus the toggles + the clear-format action. Show them
-  // whenever any toggle is rendered (which is true for every
-  // strategy except `table-whole`).
-  const hasToggle = ops.some((o) => o.kind === "toggle");
+  const pushDivider = () =>
+    out.push(
+      <Divider
+        key={`${ctx.strategyName}:divider:${out.length}`}
+        orientation="vertical"
+        flexItem
+        sx={{ my: 1, borderColor: theme.palette.divider }}
+      />,
+    );
 
-  ops.forEach((op, index) => {
-    const key = `${strategyName}:${opKey(op, index)}`;
-    if (op.kind === "divider") {
-      return;
-    }
+  // Per-button entrance stagger shared across the whole menu.
+  const delayStyle = (): React.CSSProperties => ({
+    transformOrigin: "center",
+    transitionDelay: `${index++ * ICON_DELAY_MS}ms`,
+  });
+
+  const flushSection = (next: Section) => {
+    if (lastSection !== null && lastSection !== next) pushDivider();
+    lastSection = next;
+  };
+
+  ops.forEach((op) => {
+    flushSection(sectionOf(op));
+
     if (op.kind === "toggle") {
+      const isActive = !!ctx.activeMarks[op.mark];
       out.push(
         <Grow
-          key={key}
-          in={isOpen}
+          key={`${ctx.strategyName}:toggle-${op.mark}`}
+          in={ctx.isOpen}
           appear
-          style={{
-            transformOrigin: "center",
-            transitionDelay: `${index * 18}ms`,
-          }}
-        >
-          <ToggleButtonGroup
-            value={formats}
-            size="small"
-            color="secondary"
-            sx={{
-              "& .MuiToggleButtonGroup-root": { border: 0 },
-              "& .MuiToggleButton-root": { border: 0 },
-            }}
-          >
-            <BubbleTooltip title={op.label}>
-              <ToggleButton
-                value={op.mark}
-                aria-label={op.label}
-                onClick={() => toggleMark(editor, op.mark)}
-              >
-                {iconForMark(op.mark)}
-              </ToggleButton>
-            </BubbleTooltip>
-          </ToggleButtonGroup>
-        </Grow>,
-      );
-      return;
-    }
-    if (op.kind === "copy") {
-      const onCopy = op.mode === "html" ? copyFormattedSelection : undefined;
-      const text = op.mode === "html" ? undefined : op.text || plainSelection;
-      out.push(
-        <BubbleTooltip key={key} title={op.label}>
-          <span>
-            <CopyButton
-              {...(onCopy ? { onCopy } : {})}
-              {...(text !== undefined ? { text } : {})}
-              size="small"
-              aria-label={op.label}
-              icon={iconForName(op.icon)}
-            />
-          </span>
-        </BubbleTooltip>,
-      );
-      return;
-    }
-    if (op.kind === "action") {
-      out.push(
-        <Grow
-          key={key}
-          in={isOpen}
-          appear
-          style={{
-            transformOrigin: "center",
-            transitionDelay: `${index * 24}ms`,
-          }}
+          style={delayStyle()}
         >
           <BubbleTooltip title={op.label}>
-            <ToggleButton
-              value={op.id}
+            <IconButton
               size="small"
               aria-label={op.label}
-              onClick={() => op.run(editor)}
-              sx={{ border: 0 }}
+              color={isActive ? "secondary" : "default"}
+              onClick={() => toggleMark(ctx.editor, op.mark)}
             >
-              {iconForName(op.icon)}
-            </ToggleButton>
+              {iconForMark(op.mark)}
+            </IconButton>
           </BubbleTooltip>
         </Grow>,
       );
       return;
+    }
+
+    if (op.kind === "action") {
+      const paletteKey = actionPaletteKey(op.id);
+      out.push(
+        <Grow
+          key={`${ctx.strategyName}:action-${op.id}`}
+          in={ctx.isOpen}
+          appear
+          style={delayStyle()}
+        >
+          <BubbleTooltip title={op.label}>
+            <IconButton
+              size="small"
+              aria-label={op.label}
+              onClick={() => op.run(ctx.editor)}
+              sx={paletteKey ? { color: `${paletteKey}.main` } : undefined}
+            >
+              {iconForName(op.icon)}
+            </IconButton>
+          </BubbleTooltip>
+        </Grow>,
+      );
+      return;
+    }
+
+    if (op.kind === "copy") {
+      const onCopy =
+        op.mode === "html" ? ctx.copyFormattedSelection : undefined;
+      const text =
+        op.mode === "html" ? undefined : op.text || ctx.plainSelection;
+      out.push(
+        <Grow
+          key={`${ctx.strategyName}:copy-${op.mode}`}
+          in={ctx.isOpen}
+          appear
+          style={delayStyle()}
+        >
+          <BubbleTooltip title={op.label}>
+            <span>
+              <CopyButton
+                {...(onCopy ? { onCopy } : {})}
+                {...(text !== undefined ? { text } : {})}
+                size="small"
+                aria-label={op.label}
+                icon={iconForName(op.icon)}
+              />
+            </span>
+          </BubbleTooltip>
+        </Grow>,
+      );
     }
   });
 
+  // Legacy copy row: two plain copy buttons when the strategy has toggles.
+  const hasToggle = ops.some((o) => o.kind === "toggle");
   if (hasToggle) {
+    flushSection("copy");
     out.push(
       <Grow
-        key={`${strategyName}:legacy-copy`}
-        in={isOpen}
+        key={`${ctx.strategyName}:copy-format`}
+        in={ctx.isOpen}
         appear
-        style={{ transformOrigin: "center", transitionDelay: "120ms" }}
+        style={delayStyle()}
       >
-        <Stack direction="row" spacing={0.25} sx={{ alignItems: "center" }}>
-          <BubbleTooltip title="Copy with formatting">
-            <span>
-              <CopyButton
-                onCopy={copyFormattedSelection}
-                size="small"
-                aria-label="Copy with formatting"
-                icon={<ContentCopyIcon fontSize="small" />}
-              />
-            </span>
-          </BubbleTooltip>
-          <BubbleTooltip title="Copy as plain text">
-            <span>
-              <CopyButton
-                text={plainSelection}
-                size="small"
-                aria-label="Copy as plain text"
-                icon={<TextSnippetIcon fontSize="small" />}
-              />
-            </span>
-          </BubbleTooltip>
-        </Stack>
+        <BubbleTooltip title="Copy with formatting">
+          <span>
+            <CopyButton
+              onCopy={ctx.copyFormattedSelection}
+              size="small"
+              aria-label="Copy with formatting"
+              icon={<ContentCopyIcon fontSize="small" />}
+            />
+          </span>
+        </BubbleTooltip>
+      </Grow>,
+    );
+    out.push(
+      <Grow
+        key={`${ctx.strategyName}:copy-plain`}
+        in={ctx.isOpen}
+        appear
+        style={delayStyle()}
+      >
+        <BubbleTooltip title="Copy as plain text">
+          <span>
+            <CopyButton
+              text={ctx.plainSelection}
+              size="small"
+              aria-label="Copy as plain text"
+              icon={<TextSnippetIcon fontSize="small" />}
+            />
+          </span>
+        </BubbleTooltip>
       </Grow>,
     );
   }
@@ -457,17 +400,11 @@ function renderOps(
   return out;
 }
 
-function opKey(op: BubbleMenuOp, index: number): string {
-  switch (op.kind) {
-    case "divider":
-      return `divider-${index}`;
-    case "toggle":
-      return `toggle-${op.mark}`;
-    case "action":
-      return `action-${op.id}`;
-    case "copy":
-      return `copy-${op.mode}`;
-  }
+// add-* tints primary, delete-* tints error, otherwise neutral.
+function actionPaletteKey(id: string): "primary" | "error" | null {
+  if (id.startsWith("add-")) return "primary";
+  if (id.startsWith("delete-")) return "error";
+  return null;
 }
 
 function toggleMark(editor: Editor, mark: string): void {
@@ -487,10 +424,6 @@ function toggleMark(editor: Editor, mark: string): void {
       return;
     case "highlight":
       chain.toggleHighlight().run();
-      return;
-    default:
-      // Unknown mark: ignore. Adding a new mark requires
-      // updating this function.
       return;
   }
 }
@@ -512,11 +445,7 @@ function iconForMark(mark: string): React.ReactNode {
   }
 }
 
-/** Resolve a strategy's `icon` name to an icon component.
- *  Material icons cover the text-formatting ops; Tabler icons
- *  cover the table ops. The strategy layer only knows strings
- *  so it can stay presentation-agnostic; the mapping lives
- *  here. */
+// Resolve a strategy icon name to a component.
 function iconForName(name: string): React.ReactNode {
   switch (name) {
     case "format-bold":
@@ -531,7 +460,6 @@ function iconForName(name: string): React.ReactNode {
       return <CodeIcon fontSize="small" />;
     case "highlight":
       return <BorderColorIcon fontSize="small" />;
-    // Row ops -- Tabler icons.
     case "row-insert-top":
       return <IconRowInsertTop size={18} />;
     case "row-insert-bottom":
@@ -542,7 +470,6 @@ function iconForName(name: string): React.ReactNode {
       return <IconTransitionTop size={18} />;
     case "row-move-down":
       return <IconTransitionBottom size={18} />;
-    // Column ops -- Tabler icons.
     case "column-insert-left":
       return <IconColumnInsertLeft size={18} />;
     case "column-insert-right":
@@ -553,11 +480,9 @@ function iconForName(name: string): React.ReactNode {
       return <IconTransitionLeft size={18} />;
     case "column-move-right":
       return <IconTransitionRight size={18} />;
-    // Whole-table op.
     case "table-remove":
       return <IconTableOff size={18} />;
-    // Unknown -- fall through to a neutral icon so a typo in
-    // the strategy never silently renders nothing.
+    // Typo fallback renders a neutral icon instead of nothing.
     default:
       return <FormatClearIcon fontSize="small" />;
   }
