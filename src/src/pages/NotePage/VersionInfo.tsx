@@ -27,24 +27,17 @@ import {
 import type { WersuUser, WersuUserImpl } from "../../components/DiscordLogin";
 import { useUser, useUsers } from "../../api/queries/useUser";
 import { useLiveUsers, type LiveUser } from "../../zustand/useLiveUsersStore";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { NoteVersionSummaryReply } from "../../api/models/activity";
 import { NoteApi } from "../../api/NoteApi";
-import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { NoteVersionsDrawer } from "../../components/NoteVersionsDrawer";
-import { useNoteActivity } from "../../api/queries/recentActivity";
-import { useNote } from "../../api/queries/useNoteQueries";
 import { formatDistanceToNow } from "date-fns";
-import type { Note } from "../../api/models/search";
 import { queryClient } from "../../api/queryClient";
-import { useNoteVersion } from "../../api/queries/useNoteQueries";
-import { useActiveNoteStore } from "../../zustand/editorStore";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { color } from "@uiw/react-codemirror/esm/getDefaultExtensions.js";
 import { blendColors, hexToRgb, rgbToHex } from "../../utils/blendWithContrast";
 import { CollabStatusBadge } from "./CollabStatusBadge";
-import { rehydrateCollabSession } from "../../hooks/useNoteCollaboration";
-import { usePublicRouteReady } from "../../hooks/usePublicRouteReady";
+import { useVersionSelection, useVersionRestore } from "./VersionInfo.hooks";
 
 export interface VersionInfoProps {
   noteId: string | undefined;
@@ -52,152 +45,28 @@ export interface VersionInfoProps {
 
 export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
   const { theme } = useThemeStore();
-  const { setMessage } = useInfoStore();
-  const { setTitle, setContent, save } = useActiveNoteStore();
-  const { editMode, setWrite } = useEditorSettings();
+  const { setWrite } = useEditorSettings();
 
   const { data: user } = useUser();
 
   const liveUsers = useLiveUsers(noteId);
-  // const liveUsers: LiveUser[] = [
-  //   {
-  //     userId: "123",
-  //     color: "#ff0000",
-  //   },
-  // ];
   const userIds = useMemo(
     () => [...new Set(liveUsers.map((u) => u.userId))],
     [liveUsers],
   );
   const { data: usersById } = useUsers(userIds);
 
-  // Controls the version history drawer.
+  const { versions, selectedVersion, selectVersion, clearSelection } =
+    useVersionSelection(noteId);
+  const { isRestoringVersion, restoreVersion } = useVersionRestore(noteId);
+
   const [versionsOpen, setVersionsOpen] = useState(false);
-  // Currently selected version metadata + content snapshot.
-  const [selectedVersion, setSelectedVersion] =
-    useState<NoteVersionSummaryReply | null>(null);
-
-  const { data: versions } = useNoteActivity(noteId ?? "");
-
-  // Loading state for restore flow.
-  const [isRestoringVersion, setIsRestoringVersion] = useState(false);
-
-  // Loads the content for a selected version into the preview panel.
-  const handleSelectVersion = async (version: NoteVersionSummaryReply) => {
-    if (!noteId) {
-      return;
-    }
-    setSelectedVersion(version);
-  };
-
-  // The auto-select effect below picks the latest version in read mode;
-  // its content is already served by `useNote(noteId)`, so skip the
-  // per-version fetch when the selection matches the latest index.
-  const latestVersionIndex = versions?.[0]?.version_index;
-  const isLatestSelected =
-    selectedVersion?.version_index !== undefined &&
-    selectedVersion.version_index === latestVersionIndex;
-  const { data: fetchedSelectedVersionContent } = useNoteVersion(
-    noteId,
-    isLatestSelected ? undefined : selectedVersion?.version_index,
-  );
-  // Fall back to the `useNote(noteId)` cache for the latest version.
-  const { data: cachedNote } = useNote(noteId);
-  const selectedVersionContent: Note | undefined = isLatestSelected
-    ? (cachedNote ?? undefined)
-    : fetchedSelectedVersionContent;
-
-  /*   clear user from an old version as soon as he enters the edit window.
-  also select the latest version if he is not in editor mode e.g. read mode */
-  useEffect(() => {
-    console.log(
-      "Users by ID or user changed, checking if selected version needs update",
-    );
-    if (!usersById || !user) {
-      return;
-    }
-
-    const isEditing = usersById[user?.id] !== undefined;
-    if (isEditing && selectedVersion !== null) {
-      console.log("User is editing, clear selected version");
-      setSelectedVersion(null);
-      return;
-    }
-    // the user does not edit. if no version is selected, select the latest one for preview
-    if (!isEditing && !selectedVersion && versions && versions.length > 0) {
-      console.log("User is not editing, select latest version for preview");
-      if (!selectedVersion && versions.length > 0) {
-        setSelectedVersion(versions[0]);
-      }
-    }
-  }, [usersById, selectedVersion]);
-
-  // Loads a historical version into the editor for review. No server
-  // write happens here -- the user reviews the restored content in
-  // the editor and triggers an explicit save.
-  //
-  // Edit mode rebuilds the collab session (ydoc + provider) so the
-  // editor binds to a fresh doc and Hocuspocus pushes the user's
-  // future edits back to the server. View mode skips the rebuild:
-  // no collab session is open in read mode (Editor.tsx gates
-  // useNoteCollaboration on editMode), so writing a fresh entry to
-  // the cache would only leave it dangling until the user toggles
-  // to edit mode -- and at that point they want to see Live again,
-  // not the version preview. Instead, view mode just mirrors the
-  // historical title/content into the editor store so the user can
-  // preview the historical version without any side effects.
-  const { isPublic } = usePublicRouteReady({ timeoutMs: 0 });
-  const handleRestoreVersion = async (
-    version: NoteVersionSummaryReply,
-    note: Note | undefined,
-  ) => {
-    if (!noteId) {
-      console.error("Note ID is required to restore version");
-      return;
-    }
-    if (!note?.title || !note.content) {
-      console.error("Versioned note data is incomplete");
-      setMessage(
-        new SnackbarUpdateImpl("Versioned note data is incomplete", "error"),
-      );
-      return;
-    }
-    setIsRestoringVersion(true);
-    try {
-      if (editMode) {
-        // Rebuild the ydoc + provider so the editor picks up the
-        // historical content cleanly. IndexedDB is cleared so stale
-        // local updates do not rehydrate on the next open.
-        if (isPublic) {
-          const { rehydratePublicCollabSession } =
-            await import("../../hooks/usePublicNoteCollaboration");
-          await rehydratePublicCollabSession(noteId, note.content);
-        } else {
-          await rehydrateCollabSession(noteId, note.content);
-        }
-      }
-      // Mirror the restored title/content into the local store so
-      // the editor displays the historical version.
-      setTitle(note.title);
-      setContent(note.content);
-      setMessage(
-        new SnackbarUpdateImpl(`Restored v${version.version_index}`, "success"),
-      );
-    } catch (error) {
-      console.error("Restore failed", error);
-      setMessage(new SnackbarUpdateImpl("Failed to restore version", "error"));
-    } finally {
-      setIsRestoringVersion(false);
-    }
-  };
 
   // Clicking "Live" re-enters edit mode and drops any selected version
   // so the preview pane reflects what the live collab session is doing,
-  // not a historical snapshot. `setSelectedVersion(null)` triggers the
-  // "user is editing -> clear selected version" branch in the effect
-  // above, which keeps the rest of the panel consistent.
+  // not a historical snapshot.
   const handleLiveClick = () => {
-    setSelectedVersion(null);
+    clearSelection();
     setWrite(true);
   };
 
@@ -303,7 +172,7 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
                   >
                     <Button
                       onClick={async () => {
-                        setSelectedVersion(version);
+                        selectVersion(version);
                         const note = await queryClient.fetchQuery({
                           queryKey: ["versions", noteId, version.version_index],
                           queryFn: async () =>
@@ -312,7 +181,7 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
                               version.version_index,
                             ),
                         });
-                        await handleRestoreVersion(version, note);
+                        await restoreVersion(version, note);
                       }}
                       sx={{
                         backgroundColor: bg,
@@ -403,8 +272,8 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
         open={versionsOpen}
         noteId={noteId}
         onClose={() => setVersionsOpen(false)}
-        onSelectVersion={handleSelectVersion}
-        onRestoreVersion={handleRestoreVersion}
+        onSelectVersion={selectVersion}
+        onRestoreVersion={restoreVersion}
         selectedVersion={selectedVersion}
         isFetchingVersion={false}
         isRestoring={isRestoringVersion}
