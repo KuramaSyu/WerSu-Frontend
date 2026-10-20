@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig, type Plugin } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import { copyFileSync, mkdirSync } from "node:fs";
 import { resolve, dirname } from "node:path";
@@ -44,5 +44,12 @@ export default defineConfig({
   // Force a single resolution path so all `yjs` imports share one module.
   resolve: {
     dedupe: ["yjs"],
+  },
+  // copies from .env, so that CI on github works
+  test: {
+    env: {
+      VITE_BACKEND_URL: "http://localhost:8080",
+      VITE_HOCUSPOCUS_WS_URL: "ws://localhost:8666",
+    },
   },
 });
