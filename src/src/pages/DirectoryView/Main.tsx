@@ -113,23 +113,19 @@ export const DirectoryView: React.FC = () => {
       sx={{
         display: "flex",
         flexDirection: "column",
+        // Fill the AppShell main content box exactly; any overflow
+        // is handed to that box's overflowY: auto so the page scrolls.
         height: "100%",
-        // The inner Paper below owns the scrollbar
-        overflow: "hidden",
         width: `clamp(20rem, 100%, 90rem)`,
         alignSelf: "center",
       }}
     >
-      <Stack direction="row" spacing={M4} sx={{}}>
+      <Stack direction="row" spacing={M4} sx={{ alignItems: "stretch" }}>
         <TranslucentPaper
           elevation={0}
           sx={{
             flex: 1,
             p: M3,
-            // The directory/note content can grow tall (lots of
-            // children or an expanded accordion). Clip here
-            height: "100%",
-            overflow: "auto",
             borderRadius: theme.shape.borderRadius,
           }}
         >
