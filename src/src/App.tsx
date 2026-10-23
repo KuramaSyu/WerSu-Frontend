@@ -28,6 +28,7 @@ import "@fontsource/fira-sans/700.css";
 import { LayoutProvider } from "./LayoutProvider";
 import { AppShell } from "./AppShell";
 import { RequireAuth } from "./components/RequireAuth";
+import { RightClickMenuHost } from "./components/RightClick/RightClickMenuHost";
 import { PublicNotePage } from "./pages/PublicNotePage/Main";
 import SettingsPage from "./pages/Settings/Main";
 import { LoginPage } from "./pages/LoginPage/Main";
@@ -77,6 +78,7 @@ function App() {
           </Routes>
         </LayoutProvider>
         <InfoDisplay />
+        <RightClickMenuHost />
       </Router>
     </ThemeProvider>
   );
