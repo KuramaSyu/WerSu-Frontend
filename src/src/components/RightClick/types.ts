@@ -123,7 +123,7 @@ export interface ResolvedMenuDivider {
   key: string;
 }
 
-export type ResolvedMenuEntry =
-  | ResolvedMenuButtonRow
-  | ResolvedMenuCustomRow
-  | ResolvedMenuDivider;
+/** Any row that is not a divider, i.e. anything the user can click. */
+export type ResolvedMenuRow = ResolvedMenuButtonRow | ResolvedMenuCustomRow;
+
+export type ResolvedMenuEntry = ResolvedMenuRow | ResolvedMenuDivider;

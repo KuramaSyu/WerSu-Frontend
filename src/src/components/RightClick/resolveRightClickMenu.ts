@@ -20,7 +20,9 @@ function orderIndex(id: RightClickButtonId): number {
 }
 
 /** Canonical order wins over request order, and repeats collapse to one row. */
-function canonicalOrder(ids: readonly RightClickButtonId[]): RightClickButtonId[] {
+function canonicalOrder(
+  ids: readonly RightClickButtonId[],
+): RightClickButtonId[] {
   return [...new Set(ids)].sort((a, b) => orderIndex(a) - orderIndex(b));
 }
 
@@ -47,8 +49,7 @@ export function resolveRightClickMenu(
     const handler = override?.handler ?? definition?.handler;
     const canRun = definition?.canRun;
     // No handler at all means "waiting for a provider", so grey it out.
-    const isDisabled =
-      !handler || (canRun ? !canRun(request.targetId) : false);
+    const isDisabled = !handler || (canRun ? !canRun(request.targetId) : false);
 
     entries.push({
       kind: "button",
