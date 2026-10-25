@@ -51,5 +51,11 @@ export default defineConfig({
       VITE_BACKEND_URL: "http://localhost:8080",
       VITE_HOCUSPOCUS_WS_URL: "ws://localhost:8666",
     },
+    server: {
+      deps: {
+        // mui material brings nearly every test to crash
+        inline: ["@mui/material"],
+      },
+    },
   },
 });
