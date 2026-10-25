@@ -332,11 +332,19 @@ export const useNoteEditor = (params: UseNoteEditorParams): Editor | null => {
   // Seed the editor with note content. Keyed on note?.id (not note) so
   // a fresh Tanstack Note ref does not re-seed and feed the markdown
   // round-trip feedback loop that tripped the editor watchdog.
+  //
+  // Only seed when there is no live session (read mode). With a
+  // collab session open the Y.Doc holds the live state of the note,
+  // which can be ahead of the last save. Writing the saved markdown
+  // into it would reset the live doc to the last saved version every
+  // time the editor mounts. The `CollabSyncBridge` seeds a doc the
+  // server has no state for, once the sync landed.
   useEffect(() => {
     if (!note || !editor || editor.isDestroyed) return;
+    if (ydoc) return;
     useActiveNoteStore.getState().setContent(note.content);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editor, note?.id]);
+  }, [editor, note?.id, ydoc]);
 
   // Sync editMode with the editor's own editable state.
   useEffect(() => {

@@ -29,6 +29,7 @@ flowchart TD
 
 - **Read mode (default)**: empty Y.Doc, no Hocuspocus socket. `useEffect` in `NoteEditorCore` loads the note's markdown into the empty doc once, the editor renders it read-only.
 - **Write mode**: Hocuspocus WebSocket opens with `token: () => useAuthStore.getState().accessToken ?? ""`; updates sync both ways. The collab badge reflects the connection state.
+- **Live doc wins**: the Y.Doc is the live state of a note and can be ahead of the last save. The saved markdown is therefore never written into a doc that already holds content - only `CollabSyncBridge` seeds a doc the server has no state for, once the sync landed. Writing the saved version into a live doc would reset it to the last saved version on every mount.
 - **Toggle**: `NoteButtonActionRow` flips `useEditorSettings.editMode`. Toggling from write → read disconnects the provider; toggling back reconnects it.
 - **Save**: persists title + content via `NoteApi.patch`, refreshes note + activity caches on success.
 
