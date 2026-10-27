@@ -272,9 +272,8 @@ export async function rehydrateCollabSession(
       // ignore
     }
   }
-
-  // Always start a fresh ydoc + provider; IndexedDB will be
-  // re-attached lazily when the user goes offline again.
+  // Always start a fresh ydoc + provider and let the server supply
+  // the current shared document during synchronization.
   const ydoc = new Y.Doc();
   const provider = new HocuspocusProvider({
     url: `${HOCUSPOCUS_WS_URL}`,

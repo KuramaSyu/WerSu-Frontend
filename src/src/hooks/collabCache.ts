@@ -29,6 +29,7 @@ export interface CollabCacheEntry {
    * threaded into the editor as a `provider` prop.
    */
   provider: HocuspocusProvider;
+  /** IndexedDB persistence attached when the user enters offline mode. */
   persistence: IndexeddbPersistence | null;
   /** Local-only edits accumulated since we last synced with the server. */
   hasUnsyncedLocalEdits: boolean;
