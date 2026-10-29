@@ -5,6 +5,7 @@ import type { Editor } from "@tiptap/core";
 import { prosemirrorJSONToYXmlFragment } from "@tiptap/y-tiptap";
 import { useEditorSettings } from "./useEditorSettings";
 import { markdownToProsemirror } from "../utils/converters/toProsemirror/markdownToProsemirror";
+import { logContentSet, logCollabContent } from "../hooks/collabContentLog";
 import { NoteApi } from "../api/NoteApi";
 import { queryClient } from "../api/queryClient";
 import useInfoStore, { SnackbarUpdateImpl } from "./InfoStore";
@@ -100,6 +101,9 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => {
     },
 
     setContent: (markdown) => {
+      const _noteId = get().noteId;
+      // A silently-skipped write is the one shape of failure the
+      // content-set log cannot show, so the guard exits are logged too.
       // Log call count + caller stack so we can find the hammering site.
       // Gated: first call + every call once we cross 3 in the window.
       const _traceCount = callTimestamps.length;
@@ -130,6 +134,9 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => {
         // Suppress repeat snackbar/log spam while breaker is open for same markdown.
         if (now < trippedUntil && lastTrippedMarkdown === markdown) {
           set({ sourceMarkdown: markdown });
+          logCollabContent("content-set-skipped(watchdog)", _noteId, {
+            markdownLen: (markdown ?? "").length,
+          });
           return;
         }
         trippedUntil = now + WATCHDOG_COOLDOWN_MS;
@@ -181,14 +188,25 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => {
 
       // Same-content dedupe: guards Collaboration onSynced echo.
       if (lastWrittenMarkdown === markdown) {
+        logCollabContent("content-set-skipped(dedupe)", _noteId, {
+          markdownLen: (markdown ?? "").length,
+          editorBound: !!get().editor,
+          ydocBound: !!get().ydoc,
+        });
         return;
       }
       lastWrittenMarkdown = markdown;
 
       const editor = get().editor;
       const ydoc = get().ydoc;
+      const noteId = get().noteId;
       set({ sourceMarkdown: markdown });
-      if (!editor) return;
+      if (!editor) {
+        logCollabContent("content-set-skipped(no-editor)", noteId, {
+          markdownLen: markdown.length,
+        });
+        return;
+      }
       // normalize doc to prevent table errors
       const normalizedDoc = markdownToProsemirror(editor, markdown);
 
@@ -199,6 +217,7 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => {
         try {
           const fragment = ydoc.getXmlFragment("default");
           prosemirrorJSONToYXmlFragment(editor.schema, normalizedDoc, fragment);
+          logContentSet(noteId, markdown, ydoc, "ydoc-fragment");
           return;
         } catch (err) {
           // Fall through to legacy path if ydoc write fails.
@@ -211,6 +230,7 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => {
 
       // Legacy path: read mode (no ydoc bound yet) and ydoc-write fallback.
       // Deferred via queueMicrotask so the round-trip cannot trigger flushSync.
+      logContentSet(noteId, markdown, ydoc, "editor-cmd");
       queueMicrotask(() => {
         editor.commands.setContent(normalizedDoc);
       });

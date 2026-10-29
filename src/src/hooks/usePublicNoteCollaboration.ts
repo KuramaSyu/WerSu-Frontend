@@ -17,6 +17,11 @@ import {
   exitOfflineMode,
   type CollabCacheEntry,
 } from "./collabCache";
+import {
+  fragmentLength,
+  instrumentCollabSession,
+  logCollabContent,
+} from "./collabContentLog";
 
 type PublicCollabCacheEntry = CollabCacheEntry;
 const WS_OFFLINE_GRACE_MS = 5_000;
@@ -27,6 +32,7 @@ export function usePublicNoteCollaboration(
 ): PublicCollabCacheEntry | null {
   const shareAccessToken = useAuthStore((s) => s.shareAccessToken);
 
+  // what is this?
   const entry = useSyncExternalStore(
     (onChange) => publicCollabCache.subscribe(onChange),
     () => (noteId ? (publicCollabCache.get(noteId) ?? null) : null),
@@ -58,6 +64,12 @@ export function usePublicNoteCollaboration(
 
     if (publicCollabCache.has(noteId)) {
       const cached = publicCollabCache.get(noteId)!;
+      instrumentCollabSession(noteId, cached.ydoc, cached.provider);
+      logCollabContent("provider-reuse(public)", noteId, {
+        fragmentLen: fragmentLength(cached.ydoc),
+        providerSynced: cached.provider.synced ?? null,
+        offlineOrigin: cached.offlineOrigin,
+      });
       if (cached.offlineOrigin) return;
       cached.provider.connect();
       attachPublicWsFailureWatchers(noteId, cached);
@@ -83,6 +95,11 @@ export function usePublicNoteCollaboration(
       preOfflineCloudMarkdown: null,
     };
     publicCollabCache.set(noteId, entry);
+    logCollabContent("provider-create(public)", noteId, {
+      fragmentLen: fragmentLength(ydoc),
+      providerSynced: provider.synced ?? null,
+    });
+    instrumentCollabSession(noteId, ydoc, provider);
     attachPublicWsFailureWatchers(noteId, entry);
   }, [noteId, shareAccessToken]);
 
@@ -100,15 +117,17 @@ function attachPublicWsFailureWatchers(
   noteId: string,
   entry: PublicCollabCacheEntry,
 ): void {
-  const ws = (entry.provider as unknown as {
-    configuration: {
-      websocketProvider: {
-        on: (event: string, h: (...args: unknown[]) => void) => void;
-        off: (event: string, h: (...args: unknown[]) => void) => void;
-        status: string;
+  const ws = (
+    entry.provider as unknown as {
+      configuration: {
+        websocketProvider: {
+          on: (event: string, h: (...args: unknown[]) => void) => void;
+          off: (event: string, h: (...args: unknown[]) => void) => void;
+          status: string;
+        };
       };
-    };
-  }).configuration.websocketProvider;
+    }
+  ).configuration.websocketProvider;
   let graceTimer: ReturnType<typeof setTimeout> | null = null;
   const clearGrace = () => {
     if (graceTimer) {
@@ -169,17 +188,17 @@ export function goPublicOnline(noteId: string): void {
 
 /**
  * Mirror of `rehydrateCollabSession` for public-note restores. The
- * ydoc + provider are rebuilt from scratch; IndexedDB is cleared;
- * the next mount of `usePublicNoteCollaboration(noteId)` sees a
- * fresh entry. The Hocuspocus provider is created here so the call
- * site does not need to know which flow it is in.
+ * ydoc + provider are rebuilt from scratch, and the server supplies
+ * the shared Y.Doc state during synchronization.
  */
 export async function rehydratePublicCollabSession(
   noteId: string,
-  _seedMarkdown?: string,
 ): Promise<void> {
-  void _seedMarkdown;
   const existing = publicCollabCache.get(noteId);
+  logCollabContent("rehydrate(public)", noteId, {
+    hadEntry: !!existing,
+    fragmentLen: existing ? fragmentLength(existing.ydoc) : -1,
+  });
   if (existing) {
     try {
       existing.provider.disconnect();
@@ -215,5 +234,6 @@ export async function rehydratePublicCollabSession(
     lastLocalEditAt: null,
     preOfflineCloudMarkdown: null,
   });
+  instrumentCollabSession(noteId, ydoc, provider);
   attachPublicWsFailureWatchers(noteId, publicCollabCache.get(noteId)!);
 }

@@ -56,6 +56,11 @@ import UploadFileBuilder from "./UploadFileBuilder";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import type { ApplicationAttachmentBody } from "./AttachmentPanelSection";
 import { type LatexDialogOpenParams } from "./LatexDialogController.utils";
+import {
+  fragmentLength,
+  fragmentText,
+  logCollabContent,
+} from "../../hooks/collabContentLog";
 
 import "katex/dist/katex.min.css";
 import "../../styles/tiptap.css";
@@ -324,10 +329,20 @@ export const useNoteEditor = (params: UseNoteEditorParams): Editor | null => {
 
   // Mirror the active Y.Doc into the store so setContent can write
   // directly into the XmlFragment instead of editor.commands.setContent.
+  // The read -> write flip swaps `ydoc` from null to the live doc, so
+  // this effect also logs the fragment state at the moment of the bind.
   useEffect(() => {
     useActiveNoteStore.getState().setYDoc(ydoc ?? null);
+    logCollabContent("editor-bind", noteId, {
+      hasYdoc: !!ydoc,
+      hasProvider: !!provider,
+      providerSynced: provider?.synced ?? null,
+      wsStatus: provider?.configuration?.websocketProvider?.status ?? null,
+      fragmentLen: fragmentLength(ydoc),
+      fragmentHead: fragmentText(ydoc).slice(0, 200),
+    });
     return () => useActiveNoteStore.getState().setYDoc(null);
-  }, [ydoc]);
+  }, [noteId, ydoc, provider]);
 
   // Seed the editor with note content. Keyed on note?.id (not note) so
   // a fresh Tanstack Note ref does not re-seed and feed the markdown
@@ -337,10 +352,15 @@ export const useNoteEditor = (params: UseNoteEditorParams): Editor | null => {
   // collab session open the Y.Doc holds the live state of the note,
   // which can be ahead of the last save. Writing the saved markdown
   // into it would reset the live doc to the last saved version every
-  // time the editor mounts. The `CollabSyncBridge` seeds a doc the
-  // server has no state for, once the sync landed.
+  // time the editor mounts. The collaboration provider supplies the
+  // shared Y.Doc state from the server.
   useEffect(() => {
     if (!note || !editor || editor.isDestroyed) return;
+    logCollabContent("read-mode-seed", noteId, {
+      hasYdoc: !!ydoc,
+      noteContentLen: note.content?.length ?? 0,
+      noteContentHead: (note.content ?? "").slice(0, 120),
+    });
     if (ydoc) return;
     useActiveNoteStore.getState().setContent(note.content);
     // eslint-disable-next-line react-hooks/exhaustive-deps

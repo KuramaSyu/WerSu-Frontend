@@ -260,7 +260,7 @@ describe("useVersionRestore - edit mode", () => {
     });
 
     expect(rehydrateSpy).toHaveBeenCalledTimes(1);
-    expect(rehydrateSpy).toHaveBeenCalledWith("note-1", note.content);
+    expect(rehydrateSpy).toHaveBeenCalledWith("note-1");
     const setContent = useActiveNoteStore.getState().setContent;
     expect(setContent).toHaveBeenCalledWith(note.content);
   });

@@ -271,12 +271,12 @@ describe("useNoteCollaboration - WS failure watchers", () => {
 });
 
 describe("useNoteCollaboration - rehydrateCollabSession", () => {
-  it("destroys the old ydoc and provider and seeds a fresh entry", async () => {
+  it("rebuilds the session and waits for the server document", async () => {
     renderHook(() => useNoteCollaboration("n-rehydrate-1"));
     const before = getCollabEntry("n-rehydrate-1");
     expect(before).toBeDefined();
     await act(async () => {
-      await rehydrateCollabSession("n-rehydrate-1", "seed markdown");
+      await rehydrateCollabSession("n-rehydrate-1");
     });
     const after = getCollabEntry("n-rehydrate-1");
     expect(after).toBeDefined();

@@ -20,6 +20,9 @@ export interface CollabStatusBridgeProps {
   enabled: boolean;
 }
 
+/**
+ * keeps the collab status badge in sync with the provider (logic only)
+ */
 const CollabStatusBridgeImpl: React.FC<CollabStatusBridgeProps> = ({
   noteId,
   provider,
@@ -89,4 +92,7 @@ const CollabStatusBridgeImpl: React.FC<CollabStatusBridgeProps> = ({
   return null;
 };
 
+/**
+ * keeps the collab status badge in sync with the provider (logic only)
+ */
 export const CollabStatusBridge = memo(CollabStatusBridgeImpl);

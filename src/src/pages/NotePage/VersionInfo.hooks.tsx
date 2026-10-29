@@ -134,9 +134,9 @@ export function useVersionRestore(noteId: string | undefined): {
           if (isPublic) {
             const { rehydratePublicCollabSession } =
               await import("../../hooks/usePublicNoteCollaboration");
-            await rehydratePublicCollabSession(noteId, note.content);
+            await rehydratePublicCollabSession(noteId);
           } else {
-            await rehydrateCollabSession(noteId, note.content);
+            await rehydrateCollabSession(noteId);
           }
         }
         // Mirror the historical title/content into the local store.

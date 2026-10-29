@@ -11,11 +11,18 @@ import { useNoteCollaboration } from "../../hooks/useNoteCollaboration";
 import { usePublicNoteCollaboration } from "../../hooks/usePublicNoteCollaboration";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { NoteEditorCore, type NoteEditorProps } from "./NoteEditorCore";
+import { fragmentLength, logCollabContent } from "../../hooks/collabContentLog";
 
 const NoteEditorImpl: React.FC<NoteEditorProps> = (props) => {
   const { noteId } = props;
   const editMode = useEditorSettings((s) => s.editMode);
   const collaboration = useNoteCollaboration(editMode ? noteId : undefined);
+  logCollabContent("editor-wrapper", noteId, {
+    mode: editMode ? "write" : "read",
+    collabNoteId: editMode ? noteId : undefined,
+    hasEntry: !!collaboration,
+    fragmentLen: collaboration ? fragmentLength(collaboration.ydoc) : -1,
+  });
   return (
     <NoteEditorCore
       {...props}

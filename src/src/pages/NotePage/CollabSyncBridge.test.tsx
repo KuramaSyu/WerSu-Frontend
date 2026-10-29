@@ -18,7 +18,7 @@ import "../../test/setup";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 import * as Y from "yjs";
-import { Schema } from "prosemirror-model";
+import { Schema } from "@tiptap/pm/model";
 import type { Editor } from "@tiptap/core";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
 import { CollabSyncBridge } from "./CollabSyncBridge";

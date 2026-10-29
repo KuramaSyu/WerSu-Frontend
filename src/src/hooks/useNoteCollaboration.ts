@@ -27,6 +27,11 @@ import {
   exitOfflineMode,
   type CollabCacheEntry,
 } from "./collabCache";
+import {
+  fragmentLength,
+  instrumentCollabSession,
+  logCollabContent,
+} from "./collabContentLog";
 
 export type { CollabCacheEntry };
 
@@ -74,6 +79,12 @@ export function useNoteCollaboration(noteId?: string): CollabCacheEntry | null {
     if (collabCache.has(noteId)) {
       console.debug("Re-using cached Hocuspocus provider for note", noteId);
       const cached = collabCache.get(noteId)!;
+      instrumentCollabSession(noteId, cached.ydoc, cached.provider);
+      logCollabContent("provider-reuse", noteId, {
+        fragmentLen: fragmentLength(cached.ydoc),
+        providerSynced: cached.provider.synced ?? null,
+        offlineOrigin: cached.offlineOrigin,
+      });
       if (cached.offlineOrigin) {
         // Stay offline; do not reconnect.
         return;
@@ -102,6 +113,11 @@ export function useNoteCollaboration(noteId?: string): CollabCacheEntry | null {
       preOfflineCloudMarkdown: null,
     };
     collabCache.set(noteId, entry);
+    logCollabContent("provider-create", noteId, {
+      fragmentLen: fragmentLength(ydoc),
+      providerSynced: provider.synced ?? null,
+    });
+    instrumentCollabSession(noteId, ydoc, provider);
     attachWsFailureWatchers(noteId, entry);
   }, [noteId, accessToken]);
 
@@ -233,26 +249,17 @@ export function clearLocalEditsFor(noteId: string): void {
 
 /**
  * Full rehydrate of a note's collab session. Used by the version
- * restore path so the local ydoc, IndexedDB, and Hocuspocus
- * subscription are all rebuilt from scratch. The next reader of
- * `useNoteCollaboration(noteId)` will see a fresh entry; the next
- * mount of the editor will recreate the prosemirror view against
- * the new ydoc.
- *
- * Steps:
- *   1. Disconnect the old provider (if any).
- *   2. Destroy the old ydoc so any pending transactions drop.
- *   3. Detach the IndexedDB persistence (if any) and remove the
- *      stored data so we don't rehydrate stale state.
- *   4. Build a new ydoc + provider, seed it with the server-side
- *      markdown the caller passed in, and let Hocuspocus sync
- *      once the WS opens.
+ * restore path so the provider and Y.Doc are rebuilt from scratch.
+ * The server remains the source of truth for the shared Y.Doc.
  */
 export async function rehydrateCollabSession(
   noteId: string,
-  seedMarkdown: string,
 ): Promise<CollabCacheEntry> {
   const existing = collabCache.get(noteId);
+  logCollabContent("rehydrate", noteId, {
+    hadEntry: !!existing,
+    fragmentLen: existing ? fragmentLength(existing.ydoc) : -1,
+  });
   if (existing) {
     try {
       existing.provider.disconnect();
@@ -291,31 +298,7 @@ export async function rehydrateCollabSession(
     preOfflineCloudMarkdown: null,
   };
   collabCache.set(noteId, entry);
+  instrumentCollabSession(noteId, ydoc, provider);
   attachWsFailureWatchers(noteId, entry);
-
-  // Seed the new ydoc with the server-side markdown so the editor
-  // (when it remounts) has a non-empty doc to render before
-  // Hocuspocus's first sync lands. The ydoc-direct write uses the
-  // legacy `editor.commands.setContent` path because we don't have
-  // an editor in this context.
-  if (seedMarkdown) {
-    ydoc.transact(() => {
-      // Use the same JSON shape that the legacy path produced:
-      // a single top-level doc node holding the markdown parsed
-      // by the markdown extension. We can't call the markdown
-      // parser here (it lives in the Tiptap editor), so we write
-      // a single text-bearing paragraph that the editor's markdown
-      // extension can re-parse on mount.
-      const fragment = ydoc.getXmlFragment("default");
-      // The editor's `Markdown` extension parses markdown strings
-      // into prosemirror JSON; on remount it will re-render this
-      // via `editor.storage.markdown.manager.parse(seedMarkdown)`.
-      // For now we leave the fragment empty and rely on the
-      // editor's own `onBeforeCreate` to do the parse from
-      // `content: seedMarkdown` if we ever pass that in. The
-      // Hocuspocus sync will populate the ydoc once it lands.
-      void fragment;
-    });
-  }
   return entry;
 }
