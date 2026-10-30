@@ -1,10 +1,9 @@
 // The built-in button catalogue.
 //
-// copy / paste / cut get their real handlers in Phase 3 (T11-T14), so
-// they ship with icons and shortcuts but no handler yet: the
-// resolver renders them greyed out rather than hiding them.
-// edit / delete / favourite stay handlerless forever by design --
-// each page supplies its own via overrides.
+// copy / paste / cut ship with sensible editor defaults; providers
+// can override them per surface. edit / delete / favourite stay
+// handlerless forever by design -- each page supplies its own via
+// overrides.
 
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import ContentPasteIcon from "@mui/icons-material/ContentPaste";
@@ -14,16 +13,27 @@ import TableChartIcon from "@mui/icons-material/TableChart";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import StarIcon from "@mui/icons-material/Star";
-import type { Editor } from "@tiptap/core";
-import { useActiveNoteStore } from "../../zustand/editorStore";
+import {
+  copyEditorSelection,
+  currentEditor,
+  cutEditorSelection,
+  pasteIntoEditor,
+} from "./editorClipboard";
 import type { RightClickButtonRegistry, RightClickHandler } from "./types";
 
-/** Lazily resolves the live editor, so cards work with no editor mounted. */
-function currentEditor(): Editor | null {
-  return useActiveNoteStore.getState().editor;
-}
-
 const hasEditor: RightClickHandler = () => currentEditor() !== null;
+
+const hasSelection: RightClickHandler = () => {
+  const editor = currentEditor();
+  if (!editor) return false;
+  const { from, to } = editor.state.selection;
+  return from !== to;
+};
+
+const hasEditableEditor: RightClickHandler = () => {
+  const editor = currentEditor();
+  return editor !== null && editor.isEditable;
+};
 
 export const rightClickMenuButtons: RightClickButtonRegistry = {
   copy: {
@@ -31,20 +41,33 @@ export const rightClickMenuButtons: RightClickButtonRegistry = {
     label: "Copy",
     icon: <ContentCopyIcon fontSize="small" />,
     shortcut: "ctrl+c",
+    canRun: hasSelection,
+    handler: () => {
+      void copyEditorSelection();
+      return true;
+    },
   },
   paste: {
     id: "paste",
     label: "Paste",
     icon: <ContentPasteIcon fontSize="small" />,
     shortcut: "ctrl+v",
-    canRun: hasEditor,
+    canRun: hasEditableEditor,
+    handler: () => {
+      void pasteIntoEditor();
+      return true;
+    },
   },
   cut: {
     id: "cut",
     label: "Cut",
     icon: <ContentCutIcon fontSize="small" />,
     shortcut: "ctrl+x",
-    canRun: hasEditor,
+    canRun: (targetId) => hasEditableEditor(targetId) && hasSelection(targetId),
+    handler: () => {
+      void cutEditorSelection();
+      return true;
+    },
   },
   insert: {
     id: "insert",

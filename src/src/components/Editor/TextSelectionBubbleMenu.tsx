@@ -1,7 +1,6 @@
 import type { Editor } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
-import { DOMSerializer } from "prosemirror-model";
 import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
 import {
   Divider,
@@ -20,7 +19,7 @@ import FormatClearIcon from "@mui/icons-material/FormatClear";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import TextSnippetIcon from "@mui/icons-material/TextSnippet";
 import { CopyButton } from "../CopyButton";
-import { copyToClipboard } from "../../zustand/InfoStore";
+import { copyEditorSelection } from "../RightClick/editorClipboard";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useEditorMenuStore } from "../../zustand/editorMenuStore";
 import {
@@ -55,50 +54,6 @@ const MOVE_DURATION_MS = 180;
 interface TextSelectionBubbleMenuProps {
   editor: Editor;
   enabled?: boolean;
-}
-
-// Plain-text dump of the current selection, or empty when collapsed.
-function getSelectionText(editor: Editor): string {
-  const { from, to } = editor.state.selection;
-  if (from === to) return "";
-  return editor.state.doc.textBetween(from, to, "\n\n");
-}
-
-// HTML dump of the current selection, or empty when collapsed.
-function getSelectionHtml(editor: Editor): string {
-  if (!editor.view) return "";
-  const { from, to } = editor.state.selection;
-  if (from === to) return "";
-  const slice = editor.state.doc.slice(from, to);
-  const serializer = DOMSerializer.fromSchema(editor.schema);
-  const wrapper = document.createElement("div");
-  wrapper.appendChild(serializer.serializeFragment(slice.content));
-  return wrapper.innerHTML;
-}
-
-// Write html and text to the clipboard; falls back to plain text only.
-async function writeFormattedClipboard(
-  html: string,
-  text: string,
-): Promise<boolean> {
-  if (typeof ClipboardItem === "undefined") {
-    return copyToClipboard(text);
-  }
-  const clipboard = navigator.clipboard;
-  if (!clipboard?.write) {
-    return copyToClipboard(text);
-  }
-  try {
-    await clipboard.write([
-      new ClipboardItem({
-        "text/html": new Blob([html], { type: "text/html" }),
-        "text/plain": new Blob([text], { type: "text/plain" }),
-      }),
-    ]);
-    return true;
-  } catch {
-    return copyToClipboard(text);
-  }
 }
 
 export const TextSelectionBubbleMenu = ({
@@ -185,11 +140,10 @@ export const TextSelectionBubbleMenu = ({
   );
 
   // Drive the clipboard write ourselves so the html blob reaches the clipboard.
-  const copyFormattedSelection = useCallback(async (): Promise<boolean> => {
-    const html = getSelectionHtml(editor);
-    if (!html) return false;
-    return writeFormattedClipboard(html, getSelectionText(editor));
-  }, [editor]);
+  const copyFormattedSelection = useCallback(
+    (): Promise<boolean> => copyEditorSelection(editor),
+    [editor],
+  );
 
   return (
     <BubbleMenu editor={editor} shouldShow={shouldShow} ref={wrapperRef}>
