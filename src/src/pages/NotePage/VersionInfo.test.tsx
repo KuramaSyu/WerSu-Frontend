@@ -50,7 +50,8 @@ vi.mock("@mui/material", () => ({
   Typography: (p: { children?: React.ReactNode }) => p.children ?? null,
   Badge: (p: { children?: React.ReactNode }) => p.children ?? null,
   Tooltip: (p: { children?: React.ReactNode }) => p.children ?? null,
-  Popover: (p: { children?: React.ReactNode }) => p.children ?? null,
+  Paper: (p: { children?: React.ReactNode }) => p.children ?? null,
+  Popper: (p: { children?: React.ReactNode }) => p.children ?? null,
   CircularProgress: () => null,
   ToggleButtonGroup: (p: { children?: React.ReactNode }) =>
     p.children ?? null,

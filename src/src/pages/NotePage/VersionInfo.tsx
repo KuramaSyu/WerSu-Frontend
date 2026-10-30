@@ -6,7 +6,8 @@ import {
   CircularProgress,
   Grow,
   IconButton,
-  Popover,
+  Paper,
+  Popper,
   Stack,
   ToggleButton,
   ToggleButtonGroup,
@@ -669,64 +670,65 @@ const UserHoverCard = ({
       >
         {children}
       </Box>
-      <Popover
+      {/* A non-modal Popper, not a Popover. A Popover's full-screen
+          invisible backdrop swallows pointer events, so the anchor
+          fires mouseleave as soon as the card opens, the close timer
+          runs, and the card flickers open/closed. Popper renders only
+          the surface, so hover intent stays on the anchor and card. */}
+      <Popper
         open={Boolean(anchorEl)}
         anchorEl={anchorEl}
-        onClose={scheduleClose}
-        disableAutoFocus
-        disableEnforceFocus
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-        transformOrigin={{ vertical: "top", horizontal: "center" }}
-        slotProps={{
-          paper: {
-            onMouseEnter: cancelClose,
-            onMouseLeave: scheduleClose,
-            sx: {
-              mt: 0.5,
-              px: 1.5,
-              py: 1,
-              borderRadius: 2,
-              boxShadow: 3,
-              minWidth: 160,
-            },
-          },
-        }}
+        placement="bottom"
+        modifiers={[{ name: "offset", options: { offset: [0, 4] } }]}
+        sx={{ zIndex: (theme) => theme.zIndex.modal + 1 }}
       >
-        <Stack spacing={0.75} sx={{ alignItems: "center" }}>
-          <Avatar
-            src={user.avatarUrl}
-            alt={user.name}
-            sx={{
-              width: 44,
-              height: 44,
-              fontSize: 16,
-              fontWeight: 600,
-              bgcolor: user.avatarUrl ? undefined : user.color,
-              color: user.avatarUrl ? undefined : "#fff",
-            }}
-          >
-            {user.avatarUrl ? null : user.initials}
-          </Avatar>
-          <Box sx={{ textAlign: "center" }}>
-            <Typography variant="subtitle2" sx={{ lineHeight: 1.3 }}>
-              {user.name}
-            </Typography>
-            {showId && (
-              <Typography
-                variant="caption"
-                sx={{
-                  color: "text.secondary",
-                  display: "block",
-                  fontFamily: "monospace",
-                  wordBreak: "break-all",
-                }}
-              >
-                {user.id}
+        <Paper
+          onMouseEnter={cancelClose}
+          onMouseLeave={scheduleClose}
+          sx={{
+            px: 1.5,
+            py: 1,
+            borderRadius: 2,
+            boxShadow: 3,
+            minWidth: 160,
+          }}
+        >
+          <Stack spacing={0.75} sx={{ alignItems: "center" }}>
+            <Avatar
+              src={user.avatarUrl}
+              alt={user.name}
+              sx={{
+                width: 44,
+                height: 44,
+                fontSize: 16,
+                fontWeight: 600,
+                bgcolor: user.avatarUrl ? undefined : user.color,
+                color: user.avatarUrl ? undefined : "#fff",
+              }}
+            >
+              {user.avatarUrl ? null : user.initials}
+            </Avatar>
+            <Box sx={{ textAlign: "center" }}>
+              <Typography variant="subtitle2" sx={{ lineHeight: 1.3 }}>
+                {user.name}
               </Typography>
-            )}
-          </Box>
-        </Stack>
-      </Popover>
+              {showId && (
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: "text.secondary",
+                    display: "block",
+                    fontFamily: "monospace",
+                    wordBreak: "break-all",
+                  }}
+                >
+                  {user.id}
+                </Typography>
+              )}
+            </Box>
+          </Stack>
+        </Paper>
+      </Popper>
     </>
   );
 };
