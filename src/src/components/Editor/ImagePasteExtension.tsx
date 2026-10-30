@@ -44,6 +44,11 @@ function findNodeById(
 export function getPasteUploadExtension(
   onUploadHook: (file: File) => Promise<string>,
   setMessage: (message: string, severity: "error" | "warning" | "info") => void,
+  // Public-share sessions authorize image reads with a per-attachment
+  // JWT that ImageNodeView fetches lazily. There is no SpiceDB tuple to
+  // wait for, and the raw URL will 401 until that happens, so skip the
+  // retry loop rather than stalling the insert for ~25s.
+  skipPermissionWait = false,
 ): Extension {
   const PateUploadExtension = Extension.create({
     name: "pasteUpload",
@@ -57,6 +62,7 @@ export function getPasteUploadExtension(
               editor.view,
               file,
               onUploadHook,
+              skipPermissionWait,
             ).catch((error) => {
               if (error instanceof Error) {
                 setMessage("test", "error");
@@ -101,6 +107,7 @@ export function getPasteUploadExtension(
                     view,
                     file,
                     onUploadHook,
+                    skipPermissionWait,
                   );
                 } catch (error) {
                   if (error instanceof Error) {
@@ -131,6 +138,7 @@ export function getPasteUploadExtension(
                     view,
                     file,
                     onUploadHook,
+                    skipPermissionWait,
                   );
                 } catch (error) {
                   if (error instanceof Error) {
@@ -160,6 +168,7 @@ export async function uploadAttachmentWithPlaceholder(
   view: EditorView,
   file: File,
   onUploadHook: (file: File) => Promise<string>,
+  skipPermissionWait = false,
 ): Promise<boolean> {
   const uploadID = crypto.randomUUID(); // generate UUID to later find the placeholder node to replace it
 
@@ -174,10 +183,12 @@ export async function uploadAttachmentWithPlaceholder(
 
   // make request to url and wait until no 403 is returned. if any other
   // error code than 403 is returned, raise this error. this is just for waiting permission insert
-  const response = await waitForImagePermission(url).catch((error) => {
-    console.error("Error while waiting for image permission:", error);
-    throw new Error("Failed to upload image.");
-  });
+  if (!skipPermissionWait) {
+    await waitForImagePermission(url).catch((error) => {
+      console.error("Error while waiting for image permission:", error);
+      throw new Error("Failed to upload image.");
+    });
+  }
 
   // create actual node. If it's an image, then an image node, else a link node
   var attachmentNode = getNodeByFileType(file.type, file.name, url, view);

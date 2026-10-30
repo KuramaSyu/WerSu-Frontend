@@ -10,7 +10,7 @@ import {
   TextField,
 } from "@mui/material";
 import type { AttachmentMetadata } from "../../api/models/attachment";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import FullscreenIcon from "@mui/icons-material/Fullscreen";
 import FullscreenExitIcon from "@mui/icons-material/FullscreenExit";
 import EditIcon from "@mui/icons-material/Edit";
@@ -19,9 +19,10 @@ import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import CloseIcon from "@mui/icons-material/Close";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import CloudDoneIcon from "@mui/icons-material/CloudDone";
-import { AttachmentApi } from "../../api/AttachmentApi";
+import { getAttachmentApi } from "../../api/AttachmentApi";
 import { AttachmentLinkBuilder } from "../../api/utils/AttachmentLInkBuilder";
 import { usePatchAttachment } from "../../api/queries/useAttachmentQueries";
+import { useAuthStore } from "../../zustand/useAuthStore";
 
 enum SavingState {
   Idle,
@@ -48,8 +49,20 @@ export const AttachmentView: React.FC<AttachmentViewProps> = ({
   const [savingState, setSavingState] = useState<SavingState>(SavingState.Idle);
   const patchAttachment = usePatchAttachment(noteId ?? "");
 
+  // Public-share viewers authenticate image requests with the scoped
+  // attachment JWT (passed as the `key` query parameter). Re-resolve
+  // whenever the token map changes so a late token still updates the URL.
+  const shareAttachmentTokens = useAuthStore((s) => s.shareAttachmentTokens);
+  const resolvedToken = useMemo(
+    () => useAuthStore.getState().resolveShareAttachmentToken(attachment.key),
+    // Recompute when the map changes; the resolver reads it via getState.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [attachment.key, shareAttachmentTokens],
+  );
+
   const handleDelete = () => {
-    const api = new AttachmentApi();
+    // Registered singleton so the public-share bearer is attached.
+    const api = getAttachmentApi();
     api
       .deleteAttachment(attachment.key)
       .then(() =>
@@ -62,9 +75,10 @@ export const AttachmentView: React.FC<AttachmentViewProps> = ({
       );
   };
 
-  const url = new AttachmentLinkBuilder(new AttachmentApi())
+  const url = new AttachmentLinkBuilder(getAttachmentApi())
     .setWidth(1080)
-    .getLink(attachment.key);
+    .setJwt(resolvedToken?.jwt ?? null)
+    .getLink(resolvedToken?.key ?? attachment.key);
 
   // Skip when nothing changed — the saved/saving icon only shows when we actually mutated.
   async function handleFilenameUpdate() {

@@ -29,6 +29,7 @@ import type { Editor } from "@tiptap/core";
 import type { Note } from "../../api/models/search";
 import { useActiveNoteStore } from "../../zustand/editorStore";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
+import { useAuthStore } from "../../zustand/useAuthStore";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useUser } from "../../api/queries/useUser";
 import { generatePublicUserName } from "../../utils/publicUserName";
@@ -51,7 +52,7 @@ import { CustomHtml } from "../../components/Editor/CustomHtml";
 import { CustomHardBreak } from "../../components/Editor/CustomHardBreak";
 import { CustomDetails } from "../../components/Editor/CustomDetails";
 import { SlashMenuStateExtension } from "../../components/Editor/SlashCommandMenu";
-import { AttachmentApi } from "../../api/AttachmentApi";
+import { getAttachmentApi } from "../../api/AttachmentApi";
 import { AttachmentLinkBuilder } from "../../api/utils/AttachmentLInkBuilder";
 import UploadFileBuilder from "./UploadFileBuilder";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
@@ -111,6 +112,9 @@ export const useNoteEditor = (params: UseNoteEditorParams): Editor | null => {
   const { theme } = useThemeStore();
   const { data: user } = useUser();
   const editMode = useEditorSettings((s) => s.editMode);
+  // A share JWT in the store means we're on a public share; image reads
+  // are token-authorized there, so the permission-poll isn't applicable.
+  const isPublicShare = useAuthStore((s) => s.shareAccessToken !== null);
 
   // Read-mode fallback: the Collaboration extension needs *some* Y.Doc
   // to attach to, even when there's no live collab session. The note's
@@ -141,12 +145,21 @@ export const useNoteEditor = (params: UseNoteEditorParams): Editor | null => {
   // noteId so a note flip swaps the upload's link target.
   const handlePasteAndUpload = useCallback(
     async (file: File): Promise<string> => {
-      const api = new AttachmentApi();
+      // Must be the registered singleton: `Bootstrap` installs the
+      // share-token provider on registered instances only, so a fresh
+      // `new AttachmentApi()` would send no Authorization header and
+      // 401 for public-share editors.
+      const api = getAttachmentApi();
       const builder = new UploadFileBuilder(api, postMessage)
         .setFile(file)
         .linkToNote(noteId!);
       const key = await builder.upload();
-      const link = new AttachmentLinkBuilder(api).setWidth(720).getLink(key!);
+      if (!key) {
+        // `upload()` already surfaced a snackbar; abort the paste flow
+        // instead of building a `?key=null` URL and polling it 50 times.
+        throw new Error("Attachment upload failed");
+      }
+      const link = new AttachmentLinkBuilder(api).setWidth(720).getLink(key);
       return link;
     },
     [noteId],
@@ -242,9 +255,13 @@ export const useNoteEditor = (params: UseNoteEditorParams): Editor | null => {
           },
         }),
 
-        getPasteUploadExtension(handlePasteAndUpload, (message, severity) => {
-          postMessage(new SnackbarUpdateImpl(message, severity));
-        }),
+        getPasteUploadExtension(
+          handlePasteAndUpload,
+          (message, severity) => {
+            postMessage(new SnackbarUpdateImpl(message, severity));
+          },
+          isPublicShare,
+        ),
         Placeholder.configure({
           showOnlyCurrent: true,
           includeChildren: true,
@@ -306,7 +323,7 @@ export const useNoteEditor = (params: UseNoteEditorParams): Editor | null => {
           const pos = view.posAtCoords(coords);
           if (!pos) return true;
 
-          const api = new AttachmentApi();
+          const api = getAttachmentApi();
           const link = new AttachmentLinkBuilder(api)
             .setWidth(720)
             .setContentType(

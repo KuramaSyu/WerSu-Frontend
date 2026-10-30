@@ -94,3 +94,50 @@ describe("AttachmentApi.getAttachmentToken", () => {
     expect(await api.getAttachmentToken("att-1")).toBeNull();
   });
 });
+
+// Metadata is fetched for the attachment rail and the preview modal. On a
+// public share the session cookie is absent, so the request must carry the
+// share JWT as `Authorization: Bearer` (and omit the cookie) or the backend
+// answers 401 before the handler runs.
+describe("AttachmentApi.getAttachmentMetadata share auth", () => {
+  it("attaches the share bearer token and omits cookies in public mode", async () => {
+    const { calls } = mockFetch({
+      json: async () => ({
+        key: "attachments/att-1",
+        filename: "a.png",
+        content_type: "image/png",
+        size: 1,
+        created_at: "2026-01-01T00:00:00Z",
+      }),
+    });
+    const api = new AttachmentApi();
+    api.setShareTokenProvider(() => "share-jwt-abc");
+
+    await api.getAttachmentMetadata("attachments/att-1");
+
+    expect(calls).toHaveLength(1);
+    const { url, init } = calls[0];
+    expect(url).toContain("/api/attachments/metadata/");
+    expect(url).toContain("key=attachments%2Fatt-1");
+    expect(init.credentials).toBe("omit");
+    expect(headersOf(init).Authorization).toBe("Bearer share-jwt-abc");
+  });
+
+  it("keeps session cookies when no share provider is installed", async () => {
+    const { calls } = mockFetch({
+      json: async () => ({
+        key: "att-1",
+        filename: "a.png",
+        content_type: "image/png",
+        size: 1,
+        created_at: "2026-01-01T00:00:00Z",
+      }),
+    });
+    const api = new AttachmentApi();
+
+    await api.getAttachmentMetadata("att-1");
+
+    expect(calls[0].init.credentials).toBe("include");
+    expect(headersOf(calls[0].init).Authorization).toBeUndefined();
+  });
+});

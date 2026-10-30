@@ -116,3 +116,35 @@ describe("AttachmentLinkBuilder.setJwt", () => {
     expect(builder.getLink("att-1")).not.toContain("jwt=");
   });
 });
+
+describe("AttachmentLinkBuilder public-share image auth", () => {
+  // The backend's GET /attachments/image resolves a per-attachment JWT
+  // passed as the `key` query parameter (unpacking its `att` claim and
+  // bypassing the permission check). `jwt` remains the caller-auth
+  // parameter read by `UserFromContext`. Regression guard: the old code
+  // put the JWT only in `jwt`, so public images hit the permission check
+  // with the raw key and failed.
+  it("replaces the key query parameter with the JWT for image links", () => {
+    const api = makeStubApi(
+      (key) =>
+        `${BACKEND_BASE}${ATTACHMENTS_API_PATH}/image?width=720&format=webp&key=${encodeURIComponent(key)}`,
+    );
+    const link = new AttachmentLinkBuilder(api).setJwt("tok").getLink("att-1");
+
+    const url = new URL(link);
+    expect(url.searchParams.get("key")).toBe("tok");
+    expect(url.searchParams.get("jwt")).toBe("tok");
+  });
+
+  it("keeps the raw key for non-image (download) links", () => {
+    const api = makeStubApi();
+    const link = new AttachmentLinkBuilder(api)
+      .setContentType("application/pdf")
+      .setJwt("tok")
+      .getLink("att-1");
+
+    const url = new URL(link);
+    expect(url.searchParams.get("key")).toBe("att-1");
+    expect(url.searchParams.get("jwt")).toBe("tok");
+  });
+});

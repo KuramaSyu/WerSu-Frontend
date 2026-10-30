@@ -194,9 +194,10 @@ export class AttachmentApi
       params.append("content_type", payload.content_type);
     }
     const url = `${BACKEND_BASE}${ATTACHMENTS_API_PATH}/metadata/?${params.toString()}`;
+    // `getFetchParameters` injects the public-share bearer token when a
+    // share is active; falls back to the session cookie otherwise.
     const result = await fetch(url, {
-      method: "PATCH",
-      credentials: "include",
+      ...(await this.getFetchParameters("PATCH")),
     });
     if (result.ok) {
       return (await result.json().catch((e) => {
@@ -240,8 +241,7 @@ export class AttachmentApi
     formData.append("file", file);
 
     const response = await fetch(`${BACKEND_BASE}${ATTACHMENTS_API_PATH}`, {
-      method: "POST",
-      credentials: "include",
+      ...(await this.getFetchParameters("POST")),
       body: formData,
     });
 
@@ -262,10 +262,7 @@ export class AttachmentApi
   async getAttachment(key: string): Promise<Blob | null> {
     const response = await fetch(
       `${BACKEND_BASE}${ATTACHMENTS_API_PATH}/${key}`,
-      {
-        method: "GET",
-        credentials: "include",
-      },
+      await this.getFetchParameters("GET"),
     );
 
     if (response.ok) {
@@ -283,10 +280,7 @@ export class AttachmentApi
     key = encodeURIComponent(key); // encode key to handle special characters
     const response = await fetch(
       `${BACKEND_BASE}${ATTACHMENTS_API_PATH}/metadata/?key=${key}`,
-      {
-        method: "GET",
-        credentials: "include",
-      },
+      await this.getFetchParameters("GET"),
     );
 
     if (response.ok) {
@@ -332,10 +326,7 @@ export class AttachmentApi
   ): Promise<DeleteAttachmentResponse | null> {
     const response = await fetch(
       `${BACKEND_BASE}${ATTACHMENTS_API_PATH}/?key=${encodeURIComponent(key)}`,
-      {
-        method: "DELETE",
-        credentials: "include",
-      },
+      await this.getFetchParameters("DELETE"),
     );
 
     if (response.ok) {
@@ -359,11 +350,9 @@ export class AttachmentApi
 
   async linkAttachment(payload: AttachmentLinkBody): Promise<string | null> {
     const response = await fetch(`${BACKEND_BASE}/api/attachment-links`, {
-      method: "POST",
-      credentials: "include",
-      headers: {
+      ...(await this.getFetchParameters("POST", {
         "Content-Type": "application/json",
-      },
+      })),
       body: JSON.stringify(payload),
     });
 
@@ -381,11 +370,9 @@ export class AttachmentApi
 
   async unlinkAttachment(payload: AttachmentLinkBody): Promise<boolean> {
     const response = await fetch(`${BACKEND_BASE}/api/attachment-links`, {
-      method: "DELETE",
-      credentials: "include",
-      headers: {
+      ...(await this.getFetchParameters("DELETE", {
         "Content-Type": "application/json",
-      },
+      })),
       body: JSON.stringify(payload),
     });
 

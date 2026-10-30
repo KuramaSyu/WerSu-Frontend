@@ -74,6 +74,27 @@ export class AttachmentLinkBuilder {
     return `${link}${separator}jwt=${encodeURIComponent(this.jwt)}`;
   }
 
+  /**
+   * The backend's `GET /attachments/image` accepts a per-attachment JWT
+   * as the `key` query parameter. It unpacks the token's `att` claim to
+   * resolve the real object and bypasses the SpiceDB permission check.
+   * That is what lets a public-share viewer, who has no `view` tuple on
+   * the attachment, load the image.
+   *
+   * `appendJwt` still adds the same token under `jwt=` so
+   * `UserFromContext` can authenticate the request before `GetImage`
+   * reaches the `key` handling. Passing it in only one of the two
+   * parameters (the old behaviour) made public images fail: the raw key
+   * triggered the permission check while the token sat unused in
+   * `jwt`.
+   */
+  private replaceKeyWithJwt(link: string): string {
+    if (!this.jwt) return link;
+    const keyParam = /([?&])key=[^&]*/;
+    if (!keyParam.test(link)) return link;
+    return link.replace(keyParam, `$1key=${encodeURIComponent(this.jwt)}`);
+  }
+
   public getLink(key: string): string {
     /**builds the link with the given parameters */
     var link: string;
@@ -84,6 +105,10 @@ export class AttachmentLinkBuilder {
         this.height,
         this.format,
       );
+      // Images get the JWT as the `key` so the backend bypasses the
+      // permission check for public viewers; the raw key is recoverable
+      // from the token's `att` claim.
+      link = this.replaceKeyWithJwt(link);
     } else {
       link = `${BACKEND_BASE}${ATTACHMENTS_API_PATH}/?key=${encodeURIComponent(key)}`;
     }
