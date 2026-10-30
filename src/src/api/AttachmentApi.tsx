@@ -3,11 +3,13 @@ import { BACKEND_BASE } from "../statics";
 import type {
   AttachmentLinkBody,
   AttachmentMetadata,
+  AttachmentTokenResponse,
   CreateAttachmentBody,
   DeleteAttachmentResponse,
   UpdateAttachmentRequest,
 } from "./models/attachment";
 import { apiRegistry, type ApiToken } from "./apiRegistry";
+import { ShareTokenBearerMixin } from "./shareToken";
 
 /**
  * Interface for managing attachment operations.
@@ -47,6 +49,17 @@ export interface IAttachmentApi {
    * @returns metadata of the attachment or null if not found
    */
   getAttachmentMetadata(key: string): Promise<AttachmentMetadata | null>;
+
+  /**
+   * Fetches a per-attachment JWT for a key that was not part of the
+   * initial note token map (e.g. an attachment uploaded by another
+   * collaborator while the note is open). The public image route and
+   * `/attachments/<key>` link accept this token as the `jwt` query
+   * parameter.
+   * @param key - The unique identifier for the attachment.
+   * @returns the scoped JWT or null if it could not be retrieved
+   */
+  getAttachmentToken(key: string): Promise<string | null>;
 
   /**
    * Deletes an attachment identified by its unique key.
@@ -125,6 +138,10 @@ export class TestAttachmentApi implements IAttachmentApi {
     };
   }
 
+  async getAttachmentToken(): Promise<string> {
+    return "test-attachment-jwt";
+  }
+
   async deleteAttachment(): Promise<DeleteAttachmentResponse> {
     return { success: true };
   }
@@ -149,7 +166,14 @@ export class TestAttachmentApi implements IAttachmentApi {
 
 export const ATTACHMENTS_API_PATH = "/api/attachments";
 
-export class AttachmentApi implements IAttachmentApi {
+// Extends `ShareTokenBearerMixin` so the anonymous share JWT (installed
+// on `/public/*` by `useShareTokenMode`) reaches the token endpoint.
+// Logged-in users keep using the session cookie; the mixin collapses to
+// `credentials: "include"` when no share provider is installed.
+export class AttachmentApi
+  extends ShareTokenBearerMixin
+  implements IAttachmentApi
+{
   private logError(urlPart: string, error: any): void {
     console.error(
       `Error fetching ${BACKEND_BASE}${urlPart}:`,
@@ -277,6 +301,27 @@ export class AttachmentApi implements IAttachmentApi {
 
     this.logError(
       `${BACKEND_BASE}${ATTACHMENTS_API_PATH}/metadata?key=${key}`,
+      `Response not ok: ${response.status}; ${response.statusText}`,
+    );
+    return null;
+  }
+
+  async getAttachmentToken(key: string): Promise<string | null> {
+    const encodedKey = encodeURIComponent(key);
+    const url = `${BACKEND_BASE}${ATTACHMENTS_API_PATH}/token?key=${encodedKey}`;
+    const params = await this.getFetchParameters("GET", {});
+    const response = await fetch(url, params);
+
+    if (response.ok) {
+      const data = (await response.json().catch((e) => {
+        this.logError(url, String(e));
+        return null;
+      })) as AttachmentTokenResponse | null;
+      return data?.token ?? null;
+    }
+
+    this.logError(
+      url,
       `Response not ok: ${response.status}; ${response.statusText}`,
     );
     return null;

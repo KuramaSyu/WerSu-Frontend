@@ -26,6 +26,9 @@ function makeStubApi(
     async getAttachmentMetadata() {
       return null;
     },
+    async getAttachmentToken() {
+      return null;
+    },
     async deleteAttachment() {
       return null;
     },

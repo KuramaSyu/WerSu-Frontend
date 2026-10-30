@@ -28,6 +28,16 @@ export interface DeleteAttachmentResponse {
   success: boolean;
 }
 
+/**
+ * Response of `GET /api/attachments/token?key=<key>`. The `token` is an
+ * HS256 JWT scoped to a single attachment (iss="WerSu gRPC", sub=<user id>,
+ * att=<key>, 15 min TTL). The public image route accepts it as the `jwt`
+ * query parameter.
+ */
+export interface AttachmentTokenResponse {
+  token: string;
+}
+
 export interface UpdateAttachmentRequest {
   key: string;
   filename?: string;
