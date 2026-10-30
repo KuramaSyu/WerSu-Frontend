@@ -546,15 +546,25 @@ appears, and that ⌘C / ⌘V still work natively.
 
 ## Definition of done
 
-- [ ] Right-click anywhere opens the MUI menu; the browser menu never shows
-- [ ] Copy and paste present in **every** menu (requirement 3)
-- [ ] Shortcut hints render via `KeyboardShortcut` (requirement 2)
-- [ ] Store allows configuring buttons, overriding callbacks, injecting
+- [x] Right-click anywhere opens the MUI menu; the browser menu never shows
+- [x] Copy and paste present in **every** menu (requirement 3)
+- [x] Shortcut hints render via `KeyboardShortcut` (requirement 2)
+- [x] Store allows configuring buttons, overriding callbacks, injecting
       arbitrary components (requirement 4)
-- [ ] Table right-click shows table operations (requirement 5.1)
-- [ ] Insert opens a hover submenu with table / image / latex / codeblock
+- [x] Table right-click shows table operations (requirement 5.1)
+      (delivered as the Table submenu)
+- [x] Insert opens a hover submenu with table / image / latex / codeblock
       (requirement 5.2)
-- [ ] Directory rows have delete + edit (requirement 6.1)
-- [ ] Home and Main cards have delete + edit (requirement 7)
+- [x] Directory rows have delete + edit (requirement 6.1)
+- [x] Home and Main cards have delete + edit (requirement 7)
 - [ ] No new `flushSync` warnings; no editor re-render storm
 - [ ] `pnpm lint` and `pnpm vitest run` both clean
+
+Remaining:
+
+- The `flushSync` / re-render item needs the manual pass (T31); the
+  stable `contextMenuOpenerRef` and the absence of any per-transaction
+  subscription in the editor menu are the design guards.
+- `pnpm vitest run` is green (76 files / 762 tests) and the build passes.
+  Repo-wide `pnpm lint` still reports roughly 450 pre-existing errors in
+  files unrelated to this feature; every file touched here lints clean.
