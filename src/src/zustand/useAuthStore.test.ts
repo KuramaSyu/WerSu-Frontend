@@ -75,3 +75,28 @@ describe("useAuthStore.resolveShareAttachmentToken", () => {
     ).toBeUndefined();
   });
 });
+
+describe("useAuthStore.addShareAttachmentToken", () => {
+  beforeEach(() => {
+    useAuthStore.getState().setShareAttachmentTokens({});
+  });
+
+  it("merges a new token without dropping existing entries", () => {
+    useAuthStore.getState().setShareAttachmentTokens({ "att-1": "jwt-a" });
+    useAuthStore.getState().addShareAttachmentToken("att-2", "jwt-b");
+
+    expect(useAuthStore.getState().shareAttachmentTokens).toEqual({
+      "att-1": "jwt-a",
+      "att-2": "jwt-b",
+    });
+    expect(
+      useAuthStore.getState().resolveShareAttachmentToken("att-2"),
+    ).toEqual({ jwt: "jwt-b", key: "att-2" });
+  });
+
+  it("ignores empty keys or tokens", () => {
+    useAuthStore.getState().addShareAttachmentToken("", "jwt-a");
+    useAuthStore.getState().addShareAttachmentToken("att-1", "");
+    expect(useAuthStore.getState().shareAttachmentTokens).toEqual({});
+  });
+});

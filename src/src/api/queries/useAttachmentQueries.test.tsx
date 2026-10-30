@@ -23,13 +23,16 @@
 import "../../test/setup";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { renderHook } from "@testing-library/react";
+import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AttachmentMetadata } from "../models/attachment";
+import { getAttachmentApi } from "../AttachmentApi";
+import { useAuthStore } from "../../zustand/useAuthStore";
 import {
   type AttachmentMetadataList,
   useAttachmentMetadata,
+  useShareAttachmentToken,
 } from "./useAttachmentQueries";
 
 const NOTE_ID = "note-public-1";
@@ -143,5 +146,44 @@ describe("useAttachmentMetadata - initialData null-safety", () => {
     );
 
     expect(result.current.data).toBeUndefined();
+  });
+});
+
+describe("useShareAttachmentToken", () => {
+  beforeEach(() => {
+    useAuthStore.getState().setShareAttachmentTokens({});
+  });
+
+  it("fetches the missing JWT and merges it into the auth store", async () => {
+    const api = getAttachmentApi();
+    const spy = vi
+      .spyOn(api, "getAttachmentToken")
+      .mockResolvedValue("jwt-new-attachment");
+
+    renderHook(() => useShareAttachmentToken(KEYS.hiddenImage, true), {
+      wrapper,
+    });
+
+    await waitFor(() => {
+      expect(
+        useAuthStore.getState().resolveShareAttachmentToken(KEYS.hiddenImage),
+      ).toEqual({ jwt: "jwt-new-attachment", key: KEYS.hiddenImage });
+    });
+    expect(spy).toHaveBeenCalledWith(KEYS.hiddenImage);
+    spy.mockRestore();
+  });
+
+  it("does not fetch when disabled", () => {
+    const api = getAttachmentApi();
+    const spy = vi
+      .spyOn(api, "getAttachmentToken")
+      .mockResolvedValue("jwt-unused");
+
+    renderHook(() => useShareAttachmentToken(KEYS.hiddenImage, false), {
+      wrapper,
+    });
+
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
   });
 });
