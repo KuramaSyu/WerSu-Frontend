@@ -13,6 +13,12 @@ interface AuthState {
   shareAttachmentTokens: Record<string, string>;
   setShareAttachmentTokens: (tokens: Record<string, string>) => void;
 
+  // Merge a single per-attachment JWT into the map. Used when live
+  // collab surfaces an attachment that wasn't in the initial note
+  // token map (e.g. another collaborator just uploaded an image) and
+  // the backend is asked for a fresh scoped token.
+  addShareAttachmentToken: (key: string, token: string) => void;
+
   // Resolves a JWT and the URL-safe key for an attachment id.
   // Tries bare id, then attachments/ prefix, then any suffix match.
   resolveShareAttachmentToken: (
@@ -68,6 +74,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       ),
     });
     set({ shareAttachmentTokens: tokens, shareAttachmentTokensLoaded: true });
+  },
+
+  addShareAttachmentToken: (key: string, token: string) => {
+    if (!key || !token) return;
+    set((state) => ({
+      shareAttachmentTokens: {
+        ...state.shareAttachmentTokens,
+        [key]: token,
+      },
+    }));
   },
 
   shareAttachmentTokensLoaded: false,
