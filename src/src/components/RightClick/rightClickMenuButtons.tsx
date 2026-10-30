@@ -13,6 +13,7 @@ import TableChartIcon from "@mui/icons-material/TableChart";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import StarIcon from "@mui/icons-material/Star";
+import { copyToClipboard } from "../../zustand/InfoStore";
 import {
   copyEditorSelection,
   currentEditor,
@@ -21,13 +22,21 @@ import {
 } from "./editorClipboard";
 import type { RightClickButtonRegistry, RightClickHandler } from "./types";
 
+// The plain-text selection on the page, used when no editor is mounted.
+function windowSelectionText(): string {
+  if (typeof window === "undefined") return "";
+  return window.getSelection()?.toString() ?? "";
+}
+
 const hasEditor: RightClickHandler = () => currentEditor() !== null;
 
 const hasSelection: RightClickHandler = () => {
   const editor = currentEditor();
-  if (!editor) return false;
-  const { from, to } = editor.state.selection;
-  return from !== to;
+  if (editor) {
+    const { from, to } = editor.state.selection;
+    if (from !== to) return true;
+  }
+  return windowSelectionText() !== "";
 };
 
 const hasEditableEditor: RightClickHandler = () => {
@@ -43,7 +52,14 @@ export const rightClickMenuButtons: RightClickButtonRegistry = {
     shortcut: "ctrl+c",
     canRun: hasSelection,
     handler: () => {
-      void copyEditorSelection();
+      // Editor selection first; otherwise copy whatever the page has
+      // selected so the global fallback menu is still useful.
+      void (async () => {
+        const copied = await copyEditorSelection();
+        if (copied) return;
+        const text = windowSelectionText();
+        if (text) await copyToClipboard(text);
+      })();
       return true;
     },
   },

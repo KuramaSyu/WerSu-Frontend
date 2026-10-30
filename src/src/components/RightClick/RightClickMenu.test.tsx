@@ -34,7 +34,7 @@ function renderMenu(overrides?: Partial<RightClickMenuRequest>) {
   const rows = resolveRightClickMenu(merged, registry);
   return render(
     <RightClickMenu
-      anchorEl={document.body}
+      anchorPosition={{ top: 0, left: 0 }}
       rows={rows}
       getHandler={(row) =>
         row.kind === "button"
@@ -109,7 +109,7 @@ describe("RightClickMenu", () => {
     );
     render(
       <RightClickMenu
-        anchorEl={document.body}
+        anchorPosition={{ top: 0, left: 0 }}
         rows={rows}
         getHandler={(row) =>
           row.kind === "button" ? gated[row.buttonId]?.handler : undefined
@@ -137,7 +137,7 @@ describe("RightClickMenu", () => {
     const rows = resolveRightClickMenu(merged, withHandler);
     render(
       <RightClickMenu
-        anchorEl={document.body}
+        anchorPosition={{ top: 0, left: 0 }}
         rows={rows}
         getHandler={(row) =>
           row.kind === "button"

@@ -3,35 +3,13 @@
 // Subscribes to the store, resolves rows, renders the menu. Mounted
 // once in App.tsx next to InfoDisplay.
 
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { useRightClickMenuStore } from "../../zustand/useRightClickMenuStore";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { resolveRightClickMenu } from "./resolveRightClickMenu";
 import { rightClickMenuButtons } from "./rightClickMenuButtons";
 import { RightClickMenu } from "./RightClickMenu";
-import type { MenuPosition, ResolvedMenuRow, RightClickHandler } from "./types";
-
-/**
- * A context-menu position is a point, not an element, so MUI gets a
- * virtual element whose rect is the requested coordinate. That keeps
- * viewport-edge flipping inside MUI rather than hand-rolled here.
- */
-function virtualAnchor(position: MenuPosition): HTMLElement {
-  return {
-    getBoundingClientRect: () =>
-      ({
-        x: position.x,
-        y: position.y,
-        top: position.y,
-        left: position.x,
-        right: position.x,
-        bottom: position.y,
-        width: 0,
-        height: 0,
-        toJSON: () => ({}),
-      }) as DOMRect,
-  } as unknown as HTMLElement;
-}
+import type { ResolvedMenuRow, RightClickHandler } from "./types";
 
 export const RightClickMenuHost: React.FC = () => {
   const { isMobile } = useBreakpoint();
@@ -41,7 +19,42 @@ export const RightClickMenuHost: React.FC = () => {
   const disabledButtons = useRightClickMenuStore((s) => s.disabledButtons);
   const closeMenu = useRightClickMenuStore((s) => s.closeMenu);
 
-  const anchorEl = useMemo(() => virtualAnchor(position), [position]);
+  // Global fallback: right-clicking anywhere that a surface did not
+  // already handle opens the base copy/paste menu. Text fields keep
+  // their native menu (spellcheck, paste).
+  useEffect(() => {
+    if (isMobile) return;
+    const onDocumentContextMenu = (event: MouseEvent) => {
+      // Wired surfaces stop propagation, so reaching here means no
+      // surface handled it. Text fields keep the native menu.
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        target.closest(
+          "input, textarea, select, [contenteditable]:not([contenteditable='false']), .MuiModal-root",
+        )
+      ) {
+        return;
+      }
+      // Replaces any open menu, so right-clicking elsewhere moves it.
+      event.preventDefault();
+      useRightClickMenuStore.getState().openMenu({
+        position: { x: event.clientX, y: event.clientY },
+        buttons: ["copy", "paste"],
+      });
+    };
+    document.addEventListener("contextmenu", onDocumentContextMenu);
+    return () =>
+      document.removeEventListener("contextmenu", onDocumentContextMenu);
+  }, [isMobile]);
+
+  // A context-menu position is a point, not an element, so use MUI's
+  // anchorPosition reference. MUI still flips it away from viewport
+  // edges for us.
+  const anchorPosition = useMemo(
+    () => ({ top: position.y, left: position.x }),
+    [position],
+  );
 
   const rows = useMemo(
     () =>
@@ -76,7 +89,7 @@ export const RightClickMenuHost: React.FC = () => {
 
   return (
     <RightClickMenu
-      anchorEl={anchorEl}
+      anchorPosition={anchorPosition}
       rows={rows}
       getHandler={getHandler}
       onRun={handleRun}

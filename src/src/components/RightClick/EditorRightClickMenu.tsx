@@ -39,6 +39,8 @@ export const EditorRightClickMenu: React.FC<EditorRightClickMenuProps> = ({
 
     openerRef.current = (event) => {
       event.preventDefault();
+      // Stop the global fallback from also firing for this event.
+      event.stopPropagation();
       useRightClickMenuStore.getState().openMenu(
         buildEditorMenuRequest(editor, editMode, {
           x: event.clientX,

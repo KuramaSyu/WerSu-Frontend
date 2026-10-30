@@ -11,10 +11,10 @@ import {
   Menu,
   MenuItem,
   MenuList,
-  Paper,
   Popover,
   Typography,
 } from "@mui/material";
+import type { SxProps, Theme } from "@mui/material/styles";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { renderShortcut } from "../../utils/renderShortcut";
 import type {
@@ -27,8 +27,17 @@ import type {
 /** Lets the pointer travel diagonally into the submenu without losing it. */
 const SUBMENU_CLOSE_DELAY_MS = 150;
 
+/** One raised surface for the menu and its submenu. */
+const SURFACE_SX: SxProps<Theme> = {
+  minWidth: 200,
+  borderRadius: 2,
+  border: (theme) => `1px solid ${theme.palette.divider}`,
+  overflow: "hidden",
+};
+
 export interface RightClickMenuProps {
-  anchorEl: HTMLElement | null;
+  /** Viewport coordinate for the menu. MUI flips it away from edges. */
+  anchorPosition: { top: number; left: number };
   rows: ResolvedMenuEntry[];
   /** Same lookup the resolver gated on, so a row fires the handler it was enabled for. */
   getHandler: (row: ResolvedMenuRow) => RightClickHandler | undefined;
@@ -68,23 +77,21 @@ function SubmenuList({
       onMouseEnter={onEnter}
       onMouseLeave={onLeave}
       disableRestoreFocus
-      slotProps={{ paper: { sx: { mt: 0.5 } } }}
+      slotProps={{ paper: { elevation: 12, sx: SURFACE_SX } }}
     >
-      <Paper>
-        <MenuList autoFocusItem>
-          {submenu.items.map((item) => (
-            <MenuItem
-              key={item.id}
-              disabled={item.disabled}
-              onClick={() => onRun(item.handler)}
-            >
-              {item.icon && <ListItemIcon>{item.icon}</ListItemIcon>}
-              <ListItemText>{item.label}</ListItemText>
-              <ShortcutHint shortcut={item.shortcut} />
-            </MenuItem>
-          ))}
-        </MenuList>
-      </Paper>
+      <MenuList autoFocusItem>
+        {submenu.items.map((item) => (
+          <MenuItem
+            key={item.id}
+            disabled={item.disabled}
+            onClick={() => onRun(item.handler)}
+          >
+            {item.icon && <ListItemIcon>{item.icon}</ListItemIcon>}
+            <ListItemText>{item.label}</ListItemText>
+            <ShortcutHint shortcut={item.shortcut} />
+          </MenuItem>
+        ))}
+      </MenuList>
     </Popover>
   );
 }
@@ -173,28 +180,32 @@ function Row({
 }
 
 export const RightClickMenu: React.FC<RightClickMenuProps> = ({
-  anchorEl,
+  anchorPosition,
   rows,
   getHandler,
   onRun,
   onClose,
 }) => (
-  <Menu anchorEl={anchorEl} open onClose={onClose}>
-    <Paper>
-      <MenuList autoFocusItem>
-        {rows.map((row) =>
-          row.kind === "divider" ? (
-            <Divider key={row.key} />
-          ) : (
-            <Row
-              key={row.key}
-              row={row}
-              getHandler={getHandler}
-              onRun={onRun}
-            />
-          ),
-        )}
-      </MenuList>
-    </Paper>
+  <Menu
+    open
+    onClose={onClose}
+    anchorReference="anchorPosition"
+    anchorPosition={anchorPosition}
+    slotProps={{ paper: { elevation: 12, sx: SURFACE_SX } }}
+  >
+    <MenuList autoFocusItem>
+      {rows.map((row) =>
+        row.kind === "divider" ? (
+          <Divider key={row.key} />
+        ) : (
+          <Row
+            key={row.key}
+            row={row}
+            getHandler={getHandler}
+            onRun={onRun}
+          />
+        ),
+      )}
+    </MenuList>
   </Menu>
 );
