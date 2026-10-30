@@ -7,19 +7,16 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import { M1, M2, M3 } from "../../statics";
+import { M2, M3 } from "../../statics";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { blendWithContrast } from "../../utils/blendWithContrast";
 import { Note, type MinimalNote } from "../../api/models/search";
 import { useDraggable } from "@dnd-kit/react";
 import { useNavigate } from "react-router-dom";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
-import { useState } from "react";
-import { NoteEditorModal } from "../../components/Editor/NoteEditModal";
-import { NoteApi, type INoteApi } from "../../api/NoteApi";
-import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { formatDistance } from "date-fns";
 import { useMainPageStore } from "../../zustand/useMainPageStore";
+import { NoteCardMenu } from "../../components/RightClick/NoteCardMenu";
 
 export const NoteCard: React.FC<{
   note: MinimalNote;
@@ -35,7 +32,6 @@ export const NoteCard: React.FC<{
   });
   const { theme } = useThemeStore();
   const navigate = useNavigate();
-  const { setMessage } = useInfoStore();
   const { setNoteModalOpen: setModalOpen, setSelectedModalNote: setNote } =
     useMainPageStore();
 
@@ -84,7 +80,15 @@ export const NoteCard: React.FC<{
   }
 
   return (
-    <Box ref={ref} sx={{}}>
+    <NoteCardMenu note={note}>
+    <Box
+      ref={ref}
+      sx={{}}
+      // Right-click must not start a drag or reach the card's click.
+      onPointerDown={(event) => {
+        if (event.button !== 0) event.stopPropagation();
+      }}
+    >
       <Card
         ref={ref}
         sx={{
@@ -191,5 +195,6 @@ export const NoteCard: React.FC<{
         </CardContent>
       </Card>
     </Box>
+    </NoteCardMenu>
   );
 };

@@ -9,6 +9,7 @@ import { useDirectory } from "../../api/queries/useDirectoryQuery";
 import { useIsAuthenticated } from "../../api/queries/useUser";
 import { UserError } from "../../api/models/UserError";
 import { FolderCardView, type CardSize } from "./FolderCardView";
+import { FolderCardMenu } from "../../components/RightClick/FolderCardMenu";
 import type { NoteVersionSummaryReply } from "../../api/models/activity";
 
 export interface FolderCardProps {
@@ -97,20 +98,22 @@ export const FolderCard: React.FC<FolderCardProps> = ({
   );
 
   return (
-    <FolderCardView
-      displayName={displayName}
-      onClick={() => navigate(`/d/${directoryId}`)}
-      imageUrl={directory?.image_url}
-      lastModified={lastModified}
-      loading={isLoading}
-      hidden={isRoot || isMissing}
-      size={size}
-      isFavourite={isFavourite}
-      // stopPropagation keeps the click from also firing the card's own onClick and navigating into the directory.
-      onToggleFavourite={(event) => {
-        event.stopPropagation();
-        toggleDirectory(directoryId);
-      }}
-    />
+    <FolderCardMenu directoryId={directoryId} name={displayName}>
+      <FolderCardView
+        displayName={displayName}
+        onClick={() => navigate(`/d/${directoryId}`)}
+        imageUrl={directory?.image_url}
+        lastModified={lastModified}
+        loading={isLoading}
+        hidden={isRoot || isMissing}
+        size={size}
+        isFavourite={isFavourite}
+        // stopPropagation keeps the click from also firing the card's own onClick and navigating into the directory.
+        onToggleFavourite={(event) => {
+          event.stopPropagation();
+          toggleDirectory(directoryId);
+        }}
+      />
+    </FolderCardMenu>
   );
 };

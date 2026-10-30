@@ -8,6 +8,10 @@ import {
   useDirectorySelectionStore,
   type SelectionEntry,
 } from "../../zustand/useDirectorySelectionStore";
+import {
+  DirectoryItemMenu,
+  type DirectoryItemMenuTarget,
+} from "../../components/RightClick/DirectoryItemMenu";
 
 interface BaseProps {
   onClick: () => void;
@@ -75,7 +79,18 @@ export const DirectoryItem: React.FC<DirectoryItemProps> = (props) => {
     },
   });
 
+  const menuTarget: DirectoryItemMenuTarget =
+    variant === "directory"
+      ? {
+          kind: "directory",
+          directoryId: props.directoryId,
+          name: props.name,
+          isRoot: false,
+        }
+      : { kind: "note", noteId: props.note.id, title: props.note.title };
+
   return (
+    <DirectoryItemMenu target={menuTarget}>
     <ButtonBase
       {...bindings}
       onClick={() => {
@@ -153,5 +168,6 @@ export const DirectoryItem: React.FC<DirectoryItemProps> = (props) => {
         </Box>
       </Paper>
     </ButtonBase>
+    </DirectoryItemMenu>
   );
 };
