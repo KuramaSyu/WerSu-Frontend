@@ -1,12 +1,8 @@
 import { useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
 import { useAllDirectoriesQuery } from "../../api/queries/directoryQueries";
 import { useDirectoryNotesQuery } from "../../api/queries/useDirectoryNotesQuery";
-import {
-  DirectoryApi,
-  type ListDirectoryNotesQuery,
-} from "../../api/DirectoryApi";
+import { type ListDirectoryNotesQuery } from "../../api/DirectoryApi";
 import {
   DirectoryHierarchyBuilder,
   DirectoryHirarchyItem,
@@ -15,8 +11,7 @@ import {
 import type { MinimalNote } from "../../api/models/search";
 import { getNoteParentDirectoryIds } from "../../utils/fileGraphUtils";
 import { useLatestNotes } from "../../api/queries/useNoteQueries";
-import { useUserKey } from "../../api/queries/useUser";
-import { removeDirectory } from "../../api/queries/directoryQueries";
+import { useDirectoryDelete } from "../../api/queries/useDirectoryMutations";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 
 export interface UseDirectoryFeaturesOptions {
@@ -169,8 +164,7 @@ export function useDirectoryFeatures(
   const directoryId = id ?? "root";
   const { data: notes } = useLatestNotes();
   const { setMessage } = useInfoStore();
-  const queryClient = useQueryClient();
-  const userKey = useUserKey();
+  const deleteDirectory = useDirectoryDelete();
 
   useEffect(() => {
     console.log("DirectoryView: notes updated: ", notes);
@@ -336,17 +330,12 @@ export function useDirectoryFeatures(
       return false;
     }
 
-    const deleted = await new DirectoryApi().delete(targetId);
+    const deleted = await deleteDirectory(targetId);
     if (!deleted) {
       setMessage(new SnackbarUpdateImpl("Failed to delete directory", "error"));
       return false;
     }
 
-    removeDirectory(queryClient, targetId);
-    queryClient.invalidateQueries({ queryKey: ["directories"] });
-    queryClient.invalidateQueries({
-      queryKey: ["directory", targetId, userKey],
-    });
     setMessage(new SnackbarUpdateImpl("Directory deleted", "success"));
     return true;
   };

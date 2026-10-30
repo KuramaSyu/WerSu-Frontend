@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -6,12 +6,10 @@ import {
   useLocation,
 } from "react-router-dom";
 import { ThemeProvider } from "@mui/material/styles";
-import CssBaseline from "@mui/material/CssBaseline";
 import { useThemeStore } from "./zustand/useThemeStore";
 
 import "./App.css";
 import { HomePage } from "./pages/Home/Main";
-import { Box } from "@mui/material";
 import { SwaggerDocs } from "./pages/docs/Main";
 import InfoDisplay from "./pages/MainPage/InfoDisplay";
 import { NotePage } from "./pages/NotePage/Main";
@@ -29,6 +27,7 @@ import { LayoutProvider } from "./LayoutProvider";
 import { AppShell } from "./AppShell";
 import { RequireAuth } from "./components/RequireAuth";
 import { RightClickMenuHost } from "./components/RightClick/RightClickMenuHost";
+import { DirectoryDialogHost } from "./components/RightClick/DirectoryDialogHost";
 import { PublicNotePage } from "./pages/PublicNotePage/Main";
 import SettingsPage from "./pages/Settings/Main";
 import { LoginPage } from "./pages/LoginPage/Main";
@@ -79,6 +78,7 @@ function App() {
         </LayoutProvider>
         <InfoDisplay />
         <RightClickMenuHost />
+        <DirectoryDialogHost />
       </Router>
     </ThemeProvider>
   );
