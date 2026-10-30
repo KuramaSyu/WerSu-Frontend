@@ -3,6 +3,7 @@
 import type { Editor } from "@tiptap/core";
 import { CellSelection, TableMap } from "@tiptap/pm/tables";
 import type { EditorState } from "@tiptap/pm/state";
+import type { ResolvedPos } from "@tiptap/pm/model";
 import {
   tableCommandsFor,
   type TableCommandId,
@@ -190,8 +191,24 @@ export function analyseSelection(state: EditorState): SelectionAnalysisFull {
   return { kind: "text", editable, state };
 }
 
+// Table analysis for a point rather than a selection. The right-click
+// menu needs this because a collapsed selection inside a cell is
+// reported as "empty" by analyseSelection (which is correct for the
+// bubble menu, but useless for a context menu).
+export function analyseTableAtPos(
+  state: EditorState,
+  pos: number,
+): SelectionAnalysisFull {
+  const cell = cellContextAt(state.doc.resolve(pos));
+  if (!cell) return { kind: "empty", editable: false, state };
+  return { kind: "tableCell", editable: true, state, cell };
+}
+
 function inCellContext(state: EditorState): CellContext | null {
-  const { $from } = state.selection;
+  return cellContextAt(state.selection.$from);
+}
+
+function cellContextAt($from: ResolvedPos): CellContext | null {
   let tableDepth = -1;
   let cellDepth = -1;
   for (let d = $from.depth; d > 0; d -= 1) {

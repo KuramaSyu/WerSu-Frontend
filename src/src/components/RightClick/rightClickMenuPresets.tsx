@@ -19,7 +19,10 @@ import FunctionsIcon from "@mui/icons-material/Functions";
 import CodeIcon from "@mui/icons-material/Code";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { analyseSelection } from "../Editor/bubbleMenuStrategies";
+import {
+  analyseSelection,
+  analyseTableAtPos,
+} from "../Editor/bubbleMenuStrategies";
 import { iconForName } from "../Editor/editorIcons";
 import {
   tableCommandsFor,
@@ -93,6 +96,12 @@ export function buildEditorMenuRequest(
   };
 
   const isTable = target ? target.kind === "table" : Boolean(analysis.cell);
+  // A collapsed caret in a cell is "empty" for analyseSelection, so
+  // derive the cell context from the hit position instead.
+  const tableAnalysis =
+    isTable && !analysis.cell && target
+      ? analyseTableAtPos(editor.state, target.hitPos)
+      : analysis;
   // Element commands lead the menu; copy/paste/etc. follow a divider.
   const leadingComponents =
     target?.kind === "image"
@@ -100,7 +109,7 @@ export function buildEditorMenuRequest(
       : target?.kind === "codeBlock"
         ? buildCodeBlockCommands(editor, target.node, target)
         : isTable
-          ? buildTableMenuRows(editor, analysis)
+          ? buildTableMenuRows(editor, tableAnalysis)
           : undefined;
 
   return { position, buttons, overrides, submenus, leadingComponents };

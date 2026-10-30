@@ -69,8 +69,21 @@ export const ThemedEditorBox = ({
             padding: `0 ${M2}`,
           },
 
-          // Right-clicked image / code block / table highlight.
-          "& .editor-context-target": {
+          // Right-clicked element highlight. Each rule targets the real
+          // element, so the border matches its shape and width.
+          "& .editor-context-target-codeBlock": {
+            outline: `2px solid ${theme.palette.primary.main}`,
+            outlineOffset: "2px",
+            borderRadius: theme.shape.borderRadius,
+          },
+          // For tables the decoration lands on the table element itself,
+          // so outline it directly. No radius, to match the square table.
+          "& .editor-context-target-table": {
+            outline: `2px solid ${theme.palette.primary.main}`,
+            outlineOffset: "2px",
+            borderRadius: 0,
+          },
+          "& .editor-context-target-image img": {
             outline: `2px solid ${theme.palette.primary.main}`,
             outlineOffset: "2px",
             borderRadius: theme.shape.borderRadius,

@@ -105,15 +105,15 @@ export function resolveEditorContextTarget(
   return null;
 }
 
-// Put the editor selection on the target so the commands that run
-// later (clear cells, delete row, delete image) act on it.
+// Put the editor selection on the target when the table analysis needs
+// it. Images and code blocks are deliberately left unselected: their
+// commands act on the target range directly, so the editor should not
+// paint a selection background around the node.
 export function applyEditorContextTarget(
   editor: Editor,
   target: EditorContextTarget,
 ): void {
   if (target.kind === "table") {
     editor.commands.setTextSelection(target.hitPos);
-    return;
   }
-  editor.commands.setNodeSelection(target.from);
 }

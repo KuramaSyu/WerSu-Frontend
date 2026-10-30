@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@tiptap/extension-table";
-import { NodeSelection, TextSelection } from "@tiptap/pm/state";
+import { TextSelection } from "@tiptap/pm/state";
 import {
   applyEditorContextTarget,
   resolveEditorContextTarget,
@@ -113,14 +113,16 @@ describe("resolveEditorContextTarget", () => {
 });
 
 describe("applyEditorContextTarget", () => {
-  it("selects an image node", () => {
+  it("leaves the selection untouched for an image", () => {
     const editor = makeEditor('<img src="a.png"><p>x</p>');
     try {
       const from = findNodePos(editor, "image");
       hitAt(editor, from);
       const target = resolveEditorContextTarget(editor, { x: 1, y: 1 })!;
+      const before = editor.state.selection;
       applyEditorContextTarget(editor, target);
-      expect(editor.state.selection).toBeInstanceOf(NodeSelection);
+      // No new node selection: the image is marked only by the highlight.
+      expect(editor.state.selection).toBe(before);
     } finally {
       editor.destroy();
     }

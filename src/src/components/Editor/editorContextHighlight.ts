@@ -39,12 +39,15 @@ export const EditorContextHighlight = Extension.create({
             if (meta && typeof meta.from === "number") {
               const node = tr.doc.nodeAt(meta.from);
               if (node) {
+                // The kind suffix lets the CSS border the real element:
+                // the image itself, but the wrapper for tables/code.
+                const className =
+                  `editor-context-target editor-context-target-` +
+                  node.type.name;
                 return DecorationSet.create(tr.doc, [
-                  Decoration.node(
-                    meta.from,
-                    meta.from + node.nodeSize,
-                    { class: "editor-context-target" },
-                  ),
+                  Decoration.node(meta.from, meta.from + node.nodeSize, {
+                    class: className,
+                  }),
                 ]);
               }
             }
