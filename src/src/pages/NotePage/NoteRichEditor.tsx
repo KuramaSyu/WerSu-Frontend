@@ -16,6 +16,10 @@ import type { SlashCommand } from "../../components/Editor/SlashCommandMenu";
 import { TextSelectionBubbleMenu } from "../../components/Editor/TextSelectionBubbleMenu";
 import { SlashCommandMenu } from "../../components/Editor/SlashCommandMenu";
 import { ThemedEditorBox } from "../../components/Editor/ThemedEditorBox";
+import {
+  EditorRightClickMenu,
+  type EditorContextMenuOpener,
+} from "../../components/RightClick/EditorRightClickMenu";
 import { logRerender } from "./editorRenderLog";
 
 export interface NoteRichEditorProps {
@@ -23,6 +27,7 @@ export interface NoteRichEditorProps {
   editMode: boolean;
   editorWidth: number | string;
   extraCommands: SlashCommand[];
+  contextMenuOpenerRef: React.MutableRefObject<EditorContextMenuOpener | null>;
 }
 
 const NoteRichEditorImpl: React.FC<NoteRichEditorProps> = ({
@@ -30,6 +35,7 @@ const NoteRichEditorImpl: React.FC<NoteRichEditorProps> = ({
   editMode,
   editorWidth,
   extraCommands,
+  contextMenuOpenerRef,
 }) => {
   logRerender("NoteRichEditor", {
     editMode,
@@ -46,6 +52,11 @@ const NoteRichEditorImpl: React.FC<NoteRichEditorProps> = ({
           }),
       }}
     >
+      <EditorRightClickMenu
+        editor={editor}
+        editMode={editMode}
+        openerRef={contextMenuOpenerRef}
+      />
       <TextSelectionBubbleMenu editor={editor} enabled={editMode} />
       <SlashCommandMenu
         editor={editor}

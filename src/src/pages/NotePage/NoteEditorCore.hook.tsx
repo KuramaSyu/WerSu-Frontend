@@ -56,6 +56,7 @@ import UploadFileBuilder from "./UploadFileBuilder";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import type { ApplicationAttachmentBody } from "./AttachmentPanelSection";
 import { type LatexDialogOpenParams } from "./LatexDialogController.utils";
+import type { EditorContextMenuOpener } from "../../components/RightClick/EditorRightClickMenu";
 import {
   fragmentLength,
   fragmentText,
@@ -83,6 +84,9 @@ export interface UseNoteEditorParams {
   latexOpenerRef: React.MutableRefObject<
     ((params: LatexDialogOpenParams) => void) | null
   >;
+  /** Same idea for the right-click menu: EditorRightClickMenu keeps
+   *  this pointed at a handler that reads the live editor state. */
+  contextMenuOpenerRef: React.MutableRefObject<EditorContextMenuOpener | null>;
 }
 
 /** Snackbar message setter; module-level so paste handler closures stay small. */
@@ -100,6 +104,7 @@ export const useNoteEditor = (params: UseNoteEditorParams): Editor | null => {
     onNoteUpdated,
     updateNote,
     latexOpenerRef,
+    contextMenuOpenerRef,
   } = params;
 
   const { theme } = useThemeStore();
@@ -263,6 +268,16 @@ export const useNoteEditor = (params: UseNoteEditorParams): Editor | null => {
       content: undefined,
       contentType: "markdown",
       editorProps: {
+        handleDOMEvents: {
+          contextmenu(_view, event) {
+            const opener = contextMenuOpenerRef.current;
+            // No opener (mobile, or not mounted yet): leave the
+            // native menu to the browser.
+            if (!opener) return false;
+            opener(event);
+            return true;
+          },
+        },
         handleKeyDown(view, event) {
           // Indent / outdent inside a codeBlock. Reads the selection
           // ancestry straight from `view.state` -- see the comment on

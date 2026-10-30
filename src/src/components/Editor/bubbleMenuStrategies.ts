@@ -466,7 +466,8 @@ function textFormattingOps(editor: Editor, state: EditorState): BubbleMenuOp[] {
 }
 
 // Tiptap ships no clearCells, so walk forEachCell and replace each.
-function clearCells(editor: Editor): void {
+// Exported for the right-click table submenu.
+export function clearCells(editor: Editor): void {
   const sel = editor.state.selection;
   if (sel instanceof CellSelection) {
     const { tr } = editor.state;

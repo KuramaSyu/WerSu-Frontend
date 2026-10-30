@@ -42,6 +42,7 @@ import {
 } from "./NoteSourceEditor";
 import { useEditorSlashCommands } from "./EditorSlashCommands.hook";
 import { type LatexDialogOpenParams } from "./LatexDialogController.utils";
+import type { EditorContextMenuOpener } from "../../components/RightClick/EditorRightClickMenu";
 import { logRerender } from "./editorRenderLog";
 import { CollabConflictController } from "./CollabConflictController";
 
@@ -63,7 +64,6 @@ export interface NoteEditorCoreProps extends NoteEditorProps {
 const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
   note,
   noteId,
-  fetchError: _fetchError,
   onNoteUpdated,
   ydoc,
   provider,
@@ -99,6 +99,11 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
   const latexOpenerRef = useRef<
     ((params: LatexDialogOpenParams) => void) | null
   >(null);
+
+  // Stable ref the editor's contextmenu handler calls into. Kept
+  // pointed at a live handler by EditorRightClickMenu (rendered in
+  // NoteRichEditor) so the editor config never rebuilds.
+  const contextMenuOpenerRef = useRef<EditorContextMenuOpener | null>(null);
 
   const sourceEditorRef = useRef<NoteSourceEditorHandle | null>(null);
 
@@ -165,6 +170,7 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
     onNoteUpdated,
     updateNote,
     latexOpenerRef,
+    contextMenuOpenerRef,
   });
 
   return (
@@ -222,6 +228,7 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
               editMode={editMode}
               editorWidth={editorWidth}
               extraCommands={slashCommands}
+              contextMenuOpenerRef={contextMenuOpenerRef}
             />
           )}
 
