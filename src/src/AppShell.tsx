@@ -184,6 +184,10 @@ export const AppShell: React.FC = () => {
             sx={{
               display: "grid",
               gridTemplateColumns: `minmax(0, 1fr) ${rightColumnWidth}`,
+              // Mirror the outer grid's transition so the right rail
+              // animates open/closed instead of snapping (its width is
+              // driven by this nested grid track, not the outer one).
+              transition: `grid-template-columns ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
               overflow: "hidden",
               minWidth: 0,
               minHeight: 0,
