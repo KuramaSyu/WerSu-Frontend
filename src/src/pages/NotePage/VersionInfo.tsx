@@ -6,6 +6,7 @@ import {
   CircularProgress,
   Grow,
   IconButton,
+  Popover,
   Stack,
   ToggleButton,
   ToggleButtonGroup,
@@ -24,7 +25,7 @@ import { useThemeStore } from "../../zustand/useThemeStore";
 import { IconChevronDown, IconChevronUp } from "@tabler/icons-react";
 import { useUser, useUsers } from "../../api/queries/useUser";
 import { useLiveUsers } from "../../zustand/useLiveUsersStore";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { NoteApi } from "../../api/NoteApi";
 import { NoteVersionsDrawer } from "../../components/NoteVersionsDrawer";
 import { formatDistanceToNow } from "date-fns";
@@ -445,10 +446,20 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
                       label={relativeDate}
                     />
                     {isSelected && user && (
-                      <Avatar
-                        src={user.getAvatarUrl()}
-                        sx={{ width: 24, height: 24 }}
-                      />
+                      <UserHoverCard
+                        user={{
+                          id: user.id,
+                          name: user.username,
+                          color: theme.palette.primary.main,
+                          avatarUrl: user.getAvatarUrl(),
+                        }}
+                      >
+                        <Avatar
+                          src={user.getAvatarUrl()}
+                          alt={user.username}
+                          sx={{ width: 24, height: 24 }}
+                        />
+                      </UserHoverCard>
                     )}
                   </Stack>
                 </TimelineContent>
@@ -607,6 +618,120 @@ const DraftVersionItem = ({
 };
 
 /**
+ * Small hover card anchored to an avatar. Surfaces who the avatar
+ * belongs to: their display name plus the underlying id. Public
+ * users only carry a generated name (used as both), so the id is
+ * suppressed when it would just repeat the name.
+ */
+const UserHoverCard = ({
+  user,
+  children,
+}: {
+  user: LiveIdentity;
+  children: React.ReactElement;
+}) => {
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const closeTimer = useRef<number | null>(null);
+
+  const cancelClose = useCallback(() => {
+    if (closeTimer.current !== null) {
+      window.clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  }, []);
+
+  // A short grace period lets the pointer travel from the avatar into
+  // the card without the popover vanishing underneath it.
+  const scheduleClose = useCallback(() => {
+    cancelClose();
+    closeTimer.current = window.setTimeout(() => setAnchorEl(null), 120);
+  }, [cancelClose]);
+
+  const handleEnter = useCallback(
+    (event: React.MouseEvent<HTMLElement>) => {
+      cancelClose();
+      setAnchorEl(event.currentTarget);
+    },
+    [cancelClose],
+  );
+
+  useEffect(() => cancelClose, [cancelClose]);
+
+  const showId = user.id !== user.name;
+
+  return (
+    <>
+      <Box
+        component="span"
+        onMouseEnter={handleEnter}
+        onMouseLeave={scheduleClose}
+        sx={{ display: "inline-flex", borderRadius: "50%" }}
+      >
+        {children}
+      </Box>
+      <Popover
+        open={Boolean(anchorEl)}
+        anchorEl={anchorEl}
+        onClose={scheduleClose}
+        disableAutoFocus
+        disableEnforceFocus
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        transformOrigin={{ vertical: "top", horizontal: "center" }}
+        slotProps={{
+          paper: {
+            onMouseEnter: cancelClose,
+            onMouseLeave: scheduleClose,
+            sx: {
+              mt: 0.5,
+              px: 1.5,
+              py: 1,
+              borderRadius: 2,
+              boxShadow: 3,
+              minWidth: 160,
+            },
+          },
+        }}
+      >
+        <Stack spacing={0.75} sx={{ alignItems: "center" }}>
+          <Avatar
+            src={user.avatarUrl}
+            alt={user.name}
+            sx={{
+              width: 44,
+              height: 44,
+              fontSize: 16,
+              fontWeight: 600,
+              bgcolor: user.avatarUrl ? undefined : user.color,
+              color: user.avatarUrl ? undefined : "#fff",
+            }}
+          >
+            {user.avatarUrl ? null : user.initials}
+          </Avatar>
+          <Box sx={{ textAlign: "center" }}>
+            <Typography variant="subtitle2" sx={{ lineHeight: 1.3 }}>
+              {user.name}
+            </Typography>
+            {showId && (
+              <Typography
+                variant="caption"
+                sx={{
+                  color: "text.secondary",
+                  display: "block",
+                  fontFamily: "monospace",
+                  wordBreak: "break-all",
+                }}
+              >
+                {user.id}
+              </Typography>
+            )}
+          </Box>
+        </Stack>
+      </Popover>
+    </>
+  );
+};
+
+/**
  * Every live editor beside the draft entry. Logged-in users render
  * their avatar; public users render initials over their awareness
  * colour.
@@ -622,21 +747,22 @@ const LiveUserAvatars = ({ users }: { users: LiveIdentity[] }) => {
       sx={{ alignItems: "center", flexWrap: "wrap", rowGap: 0.5 }}
     >
       {users.map((user) => (
-        <Avatar
-          key={user.id}
-          src={user.avatarUrl}
-          alt={user.name}
-          sx={{
-            width: 28,
-            height: 28,
-            fontSize: 12,
-            fontWeight: 600,
-            bgcolor: user.avatarUrl ? undefined : user.color,
-            color: user.avatarUrl ? undefined : "#fff",
-          }}
-        >
-          {user.avatarUrl ? null : user.initials}
-        </Avatar>
+        <UserHoverCard key={user.id} user={user}>
+          <Avatar
+            src={user.avatarUrl}
+            alt={user.name}
+            sx={{
+              width: 28,
+              height: 28,
+              fontSize: 12,
+              fontWeight: 600,
+              bgcolor: user.avatarUrl ? undefined : user.color,
+              color: user.avatarUrl ? undefined : "#fff",
+            }}
+          >
+            {user.avatarUrl ? null : user.initials}
+          </Avatar>
+        </UserHoverCard>
       ))}
     </Stack>
   );

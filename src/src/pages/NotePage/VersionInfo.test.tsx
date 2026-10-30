@@ -50,6 +50,7 @@ vi.mock("@mui/material", () => ({
   Typography: (p: { children?: React.ReactNode }) => p.children ?? null,
   Badge: (p: { children?: React.ReactNode }) => p.children ?? null,
   Tooltip: (p: { children?: React.ReactNode }) => p.children ?? null,
+  Popover: (p: { children?: React.ReactNode }) => p.children ?? null,
   CircularProgress: () => null,
   ToggleButtonGroup: (p: { children?: React.ReactNode }) =>
     p.children ?? null,
@@ -91,6 +92,7 @@ vi.mock("../../zustand/useThemeStore", () => ({
   useThemeStore: () => ({
     theme: {
       palette: {
+        primary: { main: "#888", dark: "#444" },
         secondary: { main: "#888", dark: "#444" },
         background: { default: "#fff", paper: "#fff" },
         text: { primary: "#000" },
