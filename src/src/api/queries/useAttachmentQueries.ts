@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getAttachmentApi } from "../AttachmentApi";
 import type {
@@ -5,6 +6,7 @@ import type {
   UpdateAttachmentRequest,
 } from "../models/attachment";
 import type { MinimalNote } from "../models/search";
+import { useAuthStore } from "../../zustand/useAuthStore";
 
 // Use the registered singleton so the share-token provider installed on
 // `Bootstrap` reaches this instance. See `useNoteQueries` for rationale.
@@ -41,6 +43,18 @@ export const attachmentQueries = {
       return metadatas;
     },
   }),
+
+  /**
+   * Fetch a fresh per-attachment JWT for a key that wasn't in the
+   * initial note token map. Keyed independently of the metadata queries
+   * so a late-joining collaborator's upload doesn't invalidate the
+   * whole per-note array.
+   */
+  token: (key: string) => ({
+    queryKey: ["attachments", "token", key],
+    queryFn: (): Promise<string | null> =>
+      attachmentApi.getAttachmentToken(key),
+  }),
 };
 
 /**
@@ -62,6 +76,40 @@ export function useAttachments(
     ...attachmentQueries.byNote(noteId, attachmentKeys),
     enabled: enabled,
   });
+}
+
+/**
+ * Resolve a per-attachment JWT for a key the note's initial token map
+ * doesn't cover, then merge it into `useAuthStore.shareAttachmentTokens`
+ * so `resolveShareAttachmentToken` (and therefore `ImageNodeView`) picks
+ * it up on the next render.
+ *
+ * The motivating case is live collab on a public share: another
+ * collaborator uploads an image, the Yjs update inserts the `<img>`
+ * node, but the note token map was snapshotted at load time. Without a
+ * token the public image route rejects the request and the preview
+ * stays broken.
+ *
+ * Pass `enabled = false` (e.g. a token was already resolved, or the
+ * note isn't a public share) to skip the request entirely.
+ *
+ * @usage ```ts
+ * useShareAttachmentToken(attachmentKey, isPublic && !jwt);
+ * ```
+ */
+export function useShareAttachmentToken(key: string, enabled: boolean) {
+  const query = useQuery({
+    ...attachmentQueries.token(key),
+    enabled: enabled && Boolean(key),
+  });
+
+  useEffect(() => {
+    if (query.data) {
+      useAuthStore.getState().addShareAttachmentToken(key, query.data);
+    }
+  }, [query.data, key]);
+
+  return query;
 }
 
 /**
