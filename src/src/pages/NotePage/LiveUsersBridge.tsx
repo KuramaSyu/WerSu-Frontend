@@ -30,6 +30,8 @@ const LiveUsersBridgeImpl: React.FC<LiveUsersBridgeProps> = ({
           users.push({
             userId: state.user.id,
             color: state.user.color,
+            name: state.user.name,
+            avatar: state.user.avatar,
           });
         }
       }

@@ -1,9 +1,9 @@
 // Resolve what the pointer hit inside the editor.
 //
 // Browsers do not move the ProseMirror selection on right-click, so
-// the contextmenu handler has to look the element up itself. It tries
-// the pointer coordinates first, then falls back to the DOM event
-// target (the reliable path for node views like images).
+// the contextmenu handler has to look the element up itself. Leaf node
+// views (images, code blocks) come from the DOM event target; everything
+// else uses the pointer coordinates, then falls back to the DOM target.
 
 import type { Editor } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
@@ -44,16 +44,10 @@ function findTargetFromPos(
   const doc = editor.state.doc;
   const $pos = doc.resolve(pos);
 
-  // Innermost ancestor first: an image inside a table cell resolves as
-  // image, a cell resolves as the enclosing table.
-  for (let depth = $pos.depth; depth > 0; depth -= 1) {
-    const node = $pos.node(depth);
-    const target = asTarget(node, $pos.before(depth), pos);
-    if (target) return target;
-  }
-
-  // Leaves resolve at a block boundary, so also check the node whose
-  // edge the pointer is on.
+  // Leaves (images, code blocks) resolve at a block boundary and are
+  // not part of the ancestor chain, so check them first. This makes an
+  // image inside a table cell resolve as the image instead of the
+  // enclosing table.
   if ($pos.nodeAfter) {
     const target = asTarget($pos.nodeAfter, $pos.pos, pos);
     if (target) return target;
@@ -61,6 +55,14 @@ function findTargetFromPos(
   if ($pos.nodeBefore) {
     const edge = $pos.pos - $pos.nodeBefore.nodeSize;
     const target = asTarget($pos.nodeBefore, edge, pos);
+    if (target) return target;
+  }
+
+  // Then walk the ancestors innermost-first: a cell resolves as the
+  // enclosing table.
+  for (let depth = $pos.depth; depth > 0; depth -= 1) {
+    const node = $pos.node(depth);
+    const target = asTarget(node, $pos.before(depth), pos);
     if (target) return target;
   }
 
@@ -95,14 +97,22 @@ export function resolveEditorContextTarget(
   coords: { x: number; y: number },
   eventTarget?: EventTarget | null,
 ): EditorContextTarget | null {
+  const fromDom =
+    eventTarget instanceof Element
+      ? findTargetFromDom(editor, eventTarget)
+      : null;
+
+  // Leaf node views (images, code blocks) win outright: coordinate
+  // lookup can snap to the enclosing table when they sit inside a
+  // cell. Tables keep using the pointer hit position, because the DOM
+  // mapping only yields the table boundary, which loses the cell.
+  if (fromDom && (fromDom.kind === "image" || fromDom.kind === "codeBlock")) {
+    return fromDom;
+  }
+
   const hit = editor.view.posAtCoords({ left: coords.x, top: coords.y });
   const fromCoords = hit ? findTargetFromPos(editor, hit.pos) : null;
-  if (fromCoords) return fromCoords;
-
-  if (eventTarget instanceof Element) {
-    return findTargetFromDom(editor, eventTarget);
-  }
-  return null;
+  return fromCoords ?? fromDom;
 }
 
 // Put the editor selection on the target when the table analysis needs

@@ -33,28 +33,11 @@ export class UserApi implements UserApiInterface {
    * @param users array of userIds to fetch
    * */
   async fetchUsers(users: string[]): Promise<WersuUser[]> {
-    // currently not implemented
+    // currently not implemented: ignore the requested ids and return
+    // the authenticated user.
+    void users;
     const user = await this.fetchUser();
     return [user];
-
-    const response = await fetch(`${BACKEND_BASE}/api/auth/users`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: "include",
-      body: JSON.stringify({ users }),
-    });
-    var userData: WersuUser[] | null = null;
-    if (response.ok) {
-      userData = await response.json();
-    }
-    if (userData !== null) {
-      return userData as WersuUser[];
-    } else {
-      this.logError(`/api/auth/users`, response.json());
-      throw new Error("Failed to fetch user data");
-    }
   }
 
   /**

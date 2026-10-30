@@ -188,6 +188,9 @@ export const useNoteEditor = (params: UseNoteEditorParams): Editor | null => {
             name: user?.username ?? publicUserName,
             id: user?.id ?? publicUserName,
             color: randomMatchingColor(theme),
+            // Carried through awareness so other clients can show the
+            // avatar without an API lookup (which public notes cannot do).
+            avatar: user?.getAvatarUrl(),
           },
         }),
         CustomCodeBlock.configure({ lowlight, defaultLanguage: "plaintext" }),

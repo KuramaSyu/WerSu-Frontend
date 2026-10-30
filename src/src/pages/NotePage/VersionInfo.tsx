@@ -1,51 +1,147 @@
 import {
-  alpha,
   Avatar,
   Box,
   Button,
   Chip,
-  Grid,
+  CircularProgress,
   Grow,
   IconButton,
   Stack,
+  ToggleButton,
+  ToggleButtonGroup,
+  Typography,
 } from "@mui/material";
+import WifiIcon from "@mui/icons-material/Wifi";
+import WifiOffIcon from "@mui/icons-material/WifiOff";
 import { PanelSection } from "../../components/Panels/PanelSection";
 import Timeline from "@mui/lab/Timeline";
 import TimelineItem, { timelineItemClasses } from "@mui/lab/TimelineItem";
 import TimelineSeparator from "@mui/lab/TimelineSeparator";
 import TimelineConnector from "@mui/lab/TimelineConnector";
-import TimelineContent, {
-  timelineContentClasses,
-} from "@mui/lab/TimelineContent";
+import TimelineContent from "@mui/lab/TimelineContent";
 import TimelineDot from "@mui/lab/TimelineDot";
 import { useThemeStore } from "../../zustand/useThemeStore";
-import {
-  IconChevronDown,
-  IconChevronUp,
-  IconDropletFilled,
-} from "@tabler/icons-react";
-import type { WersuUser, WersuUserImpl } from "../../components/DiscordLogin";
+import { IconChevronDown, IconChevronUp } from "@tabler/icons-react";
 import { useUser, useUsers } from "../../api/queries/useUser";
-import { useLiveUsers, type LiveUser } from "../../zustand/useLiveUsersStore";
-import { useMemo, useState } from "react";
-import type { NoteVersionSummaryReply } from "../../api/models/activity";
+import { useLiveUsers } from "../../zustand/useLiveUsersStore";
+import { useCallback, useMemo, useState } from "react";
 import { NoteApi } from "../../api/NoteApi";
 import { NoteVersionsDrawer } from "../../components/NoteVersionsDrawer";
 import { formatDistanceToNow } from "date-fns";
 import { queryClient } from "../../api/queryClient";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
-import { color } from "@uiw/react-codemirror/esm/getDefaultExtensions.js";
 import { blendColors, hexToRgb, rgbToHex } from "../../utils/blendWithContrast";
-import { CollabStatusBadge } from "./CollabStatusBadge";
 import { useVersionSelection, useVersionRestore } from "./VersionInfo.hooks";
+import { displayInitials } from "../../utils/publicUserName";
+import {
+  useCollabStatus,
+  type CollabStatus,
+} from "../../zustand/useCollabStatusStore";
+import { usePublicRouteReady } from "../../hooks/usePublicRouteReady";
+import type { Note } from "../../api/models/search";
 
 export interface VersionInfoProps {
   noteId: string | undefined;
 }
 
+/** The two editing modes surfaced by the segmented control. */
+type EditingMode = "live" | "offline";
+
+/**
+ * Maps a collab connection status onto the color + label shown inside
+ * the Live segment. The icon is tinted from the theme palette and the
+ * label doubles as the tooltip note when the session isn't connected.
+ */
+function liveStatusVisual(status: CollabStatus): {
+  color: string;
+  label: string;
+  spinner: boolean;
+  connected: boolean;
+} {
+  switch (status) {
+    case "connected":
+      return {
+        color: "success.main",
+        label: "Connected to the collaboration server",
+        spinner: false,
+        connected: true,
+      };
+    case "connecting":
+      return {
+        color: "warning.main",
+        label: "Connecting to the collaboration server…",
+        spinner: true,
+        connected: false,
+      };
+    case "awaitingToken":
+      return {
+        color: "info.main",
+        label: "Awaiting login before connecting…",
+        spinner: true,
+        connected: false,
+      };
+    case "tokenFetchError":
+      return {
+        color: "error.main",
+        label: "Couldn't fetch an access token",
+        spinner: false,
+        connected: false,
+      };
+    case "authFailed":
+      return {
+        color: "error.main",
+        label: "Authentication failed",
+        spinner: false,
+        connected: false,
+      };
+    case "editingOffline":
+      return {
+        color: "warning.main",
+        label: "Editing offline. Changes save to this browser only",
+        spinner: false,
+        connected: false,
+      };
+    case "conflict":
+      return {
+        color: "error.main",
+        label: "Sync conflict. Resolve it to keep syncing",
+        spinner: false,
+        connected: false,
+      };
+    case "disconnected":
+      return {
+        color: "error.main",
+        label: "Disconnected from the collaboration server",
+        spinner: false,
+        connected: false,
+      };
+    case "idle":
+    default:
+      return {
+        color: "text.disabled",
+        label: "Collaboration is off",
+        spinner: false,
+        connected: false,
+      };
+  }
+}
+
+/** A live editor resolved for display beside the draft entry. */
+interface LiveIdentity {
+  id: string;
+  /** Awareness colour, used as the public-user avatar fill. */
+  color: string;
+  name: string;
+  /** Logged-in users only. */
+  avatarUrl?: string;
+  /** Public (not logged in) users only. */
+  initials?: string;
+}
+
 export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
   const { theme } = useThemeStore();
-  const { setWrite } = useEditorSettings();
+  const { setWrite, editMode } = useEditorSettings();
+  const { isPublic } = usePublicRouteReady({ timeoutMs: 0 });
 
   const { data: user } = useUser();
 
@@ -55,6 +151,46 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
     [liveUsers],
   );
   const { data: usersById } = useUsers(userIds);
+  // Resolve each awareness user for display. Logged-in users carry an
+  // avatar; public users fall back to initials from their id (their
+  // chosen name). Dedupe so a user only appears once.
+  const liveIdentities = useMemo<LiveIdentity[]>(() => {
+    const seen = new Set<string>();
+    const next: LiveIdentity[] = [];
+    for (const live of liveUsers) {
+      if (seen.has(live.userId)) continue;
+      seen.add(live.userId);
+      // Prefer what the sender put on the wire (works on public notes),
+      // then the API lookup, then initials from the id.
+      const profile = usersById?.[live.userId];
+      const name = live.name ?? profile?.username ?? live.userId;
+      const avatarUrl = live.avatar ?? profile?.getAvatarUrl();
+      next.push({
+        id: live.userId,
+        color: live.color,
+        name,
+        avatarUrl,
+        initials: avatarUrl ? undefined : displayInitials(name),
+      });
+    }
+    return next;
+  }, [liveUsers, usersById]);
+
+  const status = useCollabStatus(noteId);
+  const liveVisual = liveStatusVisual(status);
+  const isOffline =
+    status === "editingOffline" || status === "disconnected";
+  const editingMode: EditingMode = isOffline ? "offline" : "live";
+  // Only the selected segment tints its icon; the other stays neutral.
+  const isLiveSelected = editingMode === "live";
+  const isOfflineSelected = !isLiveSelected;
+  // Live is primary only when it is both selected and connected; a
+  // connecting/error state keeps its status colour.
+  const liveIconColor = !isLiveSelected
+    ? "inherit"
+    : liveVisual.connected
+      ? "primary.main"
+      : liveVisual.color;
 
   const { versions, selectedVersion, selectVersion, clearSelection } =
     useVersionSelection(noteId);
@@ -64,13 +200,57 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
 
   // Clicking "Live" re-enters edit mode and drops any selected version
   // so the preview pane reflects what the live collab session is doing,
-  // not a historical snapshot.
-  const handleLiveClick = () => {
+  // not a historical snapshot. When we were offline, also ask the
+  // provider to reconnect.
+  const handleLiveClick = useCallback(async () => {
     clearSelection();
     setWrite(true);
-  };
+    if (!noteId || !isOffline) {
+      return;
+    }
+    if (isPublic) {
+      const { goPublicOnline } = await import(
+        "../../hooks/usePublicNoteCollaboration"
+      );
+      goPublicOnline(noteId);
+    } else {
+      const { goOnline } = await import("../../hooks/useNoteCollaboration");
+      goOnline(noteId);
+    }
+  }, [clearSelection, setWrite, noteId, isOffline, isPublic]);
 
-  const showLiveVersion = true;
+  // Switch the segmented control between the live collab session and
+  // browser-only offline editing.
+  const handleEditingModeChange = useCallback(
+    async (_event: React.MouseEvent<HTMLElement>, next: string | null) => {
+      if (!next || next === editingMode) {
+        return;
+      }
+      if (next === "live") {
+        await handleLiveClick();
+        return;
+      }
+      if (!noteId) {
+        return;
+      }
+      // Snapshot the server's view of the note from the React Query
+      // cache so the conflict modal has a baseline to detect concurrent
+      // server-side edits against. Falls back to null when not cached.
+      const cached = queryClient.getQueryData<Note>(["note", noteId]);
+      const preOfflineCloudMarkdown =
+        cached?.content || cached?.stripped_content || null;
+      if (isPublic) {
+        const { goPublicOffline } = await import(
+          "../../hooks/usePublicNoteCollaboration"
+        );
+        await goPublicOffline(noteId, "manual", preOfflineCloudMarkdown);
+      } else {
+        const { goOffline } = await import("../../hooks/useNoteCollaboration");
+        await goOffline(noteId, "manual", preOfflineCloudMarkdown);
+      }
+    },
+    [editingMode, handleLiveClick, noteId, isPublic],
+  );
 
   // show only latest 3 Versions to keep view uncluttered
   const VISIBLE_LIMIT = 3;
@@ -88,9 +268,78 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
   // to the latest 3 even after V1 is already on screen. Collapsed, we
   // only show the toggle when there's more history to reveal.
   const showVersionToggle = versionsExpanded || hasMoreVersions;
+
   return (
     <>
       <PanelSection title="Versions" collapsible defaultExpanded bordered>
+        {editMode && (
+          <Box>
+            <Typography
+              variant="caption"
+              sx={{ color: "text.secondary", display: "block", mb: 0.5 }}
+            >
+              Currently editing
+            </Typography>
+            <Stack spacing={0.5} sx={{ alignItems: "flex-start" }}>
+              <ToggleButtonGroup
+                size="small"
+                exclusive
+                value={editingMode}
+                onChange={handleEditingModeChange}
+                aria-label="Editing mode"
+                sx={{
+                  // "Button gray": a neutral, filled segmented control.
+                  backgroundColor: "action.hover",
+                  borderRadius: 1,
+                  p: 0.25,
+                  "& .MuiToggleButton-root": {
+                    textTransform: "none",
+                    px: 2,
+                    py: 0.25,
+                    border: 0,
+                    borderRadius: 1,
+                    "&.Mui-selected": {
+                      backgroundColor: "background.paper",
+                      "&:hover": { backgroundColor: "background.paper" },
+                    },
+                  },
+                }}
+              >
+                <ToggleButton value="live" aria-label="Live" sx={{ gap: 1 }}>
+                  {liveVisual.spinner ? (
+                    <CircularProgress size={14} sx={{ color: liveIconColor }} />
+                  ) : (
+                    <WifiIcon
+                      fontSize="small"
+                      sx={{ color: liveIconColor }}
+                    />
+                  )}
+                  Live
+                </ToggleButton>
+                <ToggleButton
+                  value="offline"
+                  aria-label="Offline"
+                  sx={{ gap: 1 }}
+                >
+                  <WifiOffIcon
+                    fontSize="small"
+                    sx={{
+                      color: isOfflineSelected ? "primary.main" : "inherit",
+                    }}
+                  />
+                  offline
+                </ToggleButton>
+              </ToggleButtonGroup>
+              {/* The message describes the Live connection, so it only
+                  applies while Live is the selected segment. */}
+              {isLiveSelected && !liveVisual.connected && status !== "idle" && (
+                <Typography variant="caption" sx={{ color: liveVisual.color }}>
+                  {liveVisual.label}
+                </Typography>
+              )}
+            </Stack>
+          </Box>
+        )}
         <Timeline
           sx={{
             padding: 0,
@@ -102,12 +351,7 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
             },
           }}
         >
-          {showLiveVersion && (
-            <LiveVersionItem
-              users={Object.values(usersById ?? {})}
-              onClick={handleLiveClick}
-            />
-          )}
+          <DraftVersionItem users={liveIdentities} onClick={handleLiveClick} />
           {visibleVersions.map((version, index) => {
             // Blend ratio uses the full history so the chip color stays
             // stable as the user expands / collapses the timeline.
@@ -141,8 +385,8 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
               >
                 <TimelineSeparator>
                   {/* Top connector pairs with the bottom connector of the row
-                      above (or `Live`'s bottom connector for row 0) to draw a
-                      continuous line down to this dot. */}
+                      above (or the draft row's bottom connector for row 0) to
+                      draw a continuous line down to this dot. */}
                   <TimelineConnector />
                   <TimelineDot
                     color={isSelected ? "primary" : "grey"}
@@ -158,7 +402,7 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
                   {/* Bottom connector pairs with the top connector of the row
                       below to draw a continuous line down to the next dot;
                       the last visible row skips it so the timeline tail
-                      matches the first row's leading spacer on `Live`. */}
+                      matches the first row's leading spacer on `draft`. */}
                   {!isLastVisible && <TimelineConnector />}
                   {isLastVisible && !showVersionToggle && (
                     <Box sx={{ flexGrow: 1 }} />
@@ -282,22 +526,25 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
   );
 };
 
-const LiveVersionItem = ({
+/**
+ * The in-progress version entry. Renders the `draft` pill connected by
+ * the timeline to the live authors editing the note.
+ */
+const DraftVersionItem = ({
   users,
   onClick,
 }: {
-  users: WersuUser[];
+  users: LiveIdentity[];
   onClick: () => void;
 }) => {
   const { theme } = useThemeStore();
-  const { editMode } = useEditorSettings();
 
   return (
     <TimelineItem
       sx={{
         // Drop the 70px `TimelineItem` minimum so the row hugs the
         // content; the connector stretches to fill what remains so the
-        // `Live` dot aligns with the v0 dot below it.
+        // `draft` dot aligns with the version dots below it.
         minHeight: 0,
       }}
     >
@@ -333,29 +580,16 @@ const LiveVersionItem = ({
             }}
             sx={{
               cursor: "pointer",
-              backgroundColor: "transparent",
-              border: `2px dashed ${theme.palette.secondary.main}`,
+              backgroundColor: "action.hover",
+              border: `1px solid ${theme.palette.divider}`,
               width: "fit-content",
               height: "fit-content",
               padding: theme.spacing(0.5, 2),
               borderRadius: theme.shape.borderRadius,
             }}
           >
-            Live
+            draft
           </Box>
-          {/* Collab batch sits right next to the user icons in
-              the live row so a viewer can see the connection
-              status + live-user count at a glance. Hidden in
-              read mode: the provider is closed there, so the
-              status chip would always read "disconnected".
-
-              `Grow`'s child must be a single DOM element so the
-              ref lands on a real node -- otherwise `handleEnter`
-              reads `scrollTop` on `null` and crashes. The
-              component children (`AvatarOrAvatarGroup`,
-              `CollabStatusBadge`) are function components and
-              don't forward refs; wrap them in a `<Box>` so Grow
-              gets a DOM ref to measure. */}
           <Grow
             in={users.length > 0}
             mountOnEnter
@@ -363,17 +597,7 @@ const LiveVersionItem = ({
             timeout={theme.transitions.duration.complex}
           >
             <Box sx={{ display: "flex", alignItems: "center" }}>
-              <AvatarOrAvatarGroup users={users} />
-            </Box>
-          </Grow>
-          <Grow
-            in={editMode}
-            mountOnEnter
-            unmountOnExit
-            timeout={theme.transitions.duration.complex}
-          >
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <CollabStatusBadge />
+              <LiveUserAvatars users={users} />
             </Box>
           </Grow>
         </Stack>
@@ -382,48 +606,38 @@ const LiveVersionItem = ({
   );
 };
 
-const AvatarOrAvatarGroup = ({ users }: { users: WersuUser[] }) => {
+/**
+ * Every live editor beside the draft entry. Logged-in users render
+ * their avatar; public users render initials over their awareness
+ * colour.
+ */
+const LiveUserAvatars = ({ users }: { users: LiveIdentity[] }) => {
   if (users.length === 0) {
     return null;
   }
-  if (users.length === 1) {
-    return (
-      <Avatar
-        src={users[0].getAvatarUrl()}
-        sx={{
-          width: 40,
-          height: 40,
-        }}
-      />
-    );
-  }
-  return <AvatarGroup users={users} />;
-};
-
-/**
- * Gridlike rounded Icon displaying the a group of users
- * @param param0
- * @returns
- */
-const AvatarGroup = ({ users }: { users: WersuUser[] }) => {
   return (
-    <Grid
-      container
-      sx={{
-        gridTemplateColumns: "repeat(2, 1fr)",
-        width: 40,
-        height: 40,
-      }}
+    <Stack
+      direction="row"
+      spacing={0.5}
+      sx={{ alignItems: "center", flexWrap: "wrap", rowGap: 0.5 }}
     >
-      {users.slice(0, 4).map((user) => (
+      {users.map((user) => (
         <Avatar
-          src={user.getAvatarUrl()}
+          key={user.id}
+          src={user.avatarUrl}
+          alt={user.name}
           sx={{
-            width: 20,
-            height: 20,
+            width: 28,
+            height: 28,
+            fontSize: 12,
+            fontWeight: 600,
+            bgcolor: user.avatarUrl ? undefined : user.color,
+            color: user.avatarUrl ? undefined : "#fff",
           }}
-        />
+        >
+          {user.avatarUrl ? null : user.initials}
+        </Avatar>
       ))}
-    </Grid>
+    </Stack>
   );
 };

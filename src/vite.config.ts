@@ -53,8 +53,10 @@ export default defineConfig({
     },
     server: {
       deps: {
-        // mui material brings nearly every test to crash
-        inline: ["@mui/material"],
+        // mui material brings nearly every test to crash; the
+        // material-colour utilities ship extensionless deep imports
+        // that Node's ESM resolver cannot follow.
+        inline: ["@mui/material", "@material/material-color-utilities"],
       },
     },
   },

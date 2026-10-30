@@ -11,6 +11,19 @@ export interface ThemeCustomExtension {
 }
 
 declare module "@mui/material/styles" {
+  /**
+   * Readable tone of a semantic colour for text on paper surfaces. Set
+   * by `CustomThemeImpl`; not present on plain MUI themes, so consumers
+   * should fall back to `main`.
+   */
+  interface PaletteColor {
+    text?: string;
+  }
+
+  interface SimplePaletteColorOptions {
+    text?: string;
+  }
+
   interface Palette {
     vibrant: {
       main: string;

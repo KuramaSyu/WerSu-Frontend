@@ -36,6 +36,7 @@ function toCustomRow(row: RightClickMenuRow): ResolvedMenuCustomRow {
     icon: row.icon,
     shortcut: row.shortcut,
     disabled: row.disabled ?? false,
+    danger: row.danger ?? false,
     node: row.node,
     handler: row.handler,
     submenu: row.submenu,
@@ -88,6 +89,7 @@ export function resolveRightClickMenu(
           ? undefined
           : (override?.shortcut ?? definition?.shortcut),
       disabled: isDisabled,
+      danger: override?.danger ?? definition?.danger ?? false,
       submenu: request.submenus?.[id],
     });
   }

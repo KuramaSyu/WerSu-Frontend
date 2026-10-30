@@ -79,4 +79,31 @@ describe("editor table context menu", () => {
       editor.destroy();
     }
   });
+
+  it("keeps table rows when the DOM target is the table itself", () => {
+    const editor = makeEditor();
+    try {
+      editor.commands.insertTable({ rows: 2, cols: 2, withHeaderRow: false });
+      const hit = findTablePos(editor) + 3;
+      editor.view.posAtCoords = () => ({ pos: hit, inside: -1 });
+      const table = editor.view.dom.querySelector("table")!;
+
+      const target = resolveEditorContextTarget(editor, { x: 1, y: 1 }, table);
+      const request = buildEditorMenuRequest(
+        editor,
+        true,
+        { x: 1, y: 1 },
+        target,
+      );
+
+      expect(request.leadingComponents?.map((row) => row.label)).toEqual([
+        "Delete table",
+        "Rows",
+        "Columns",
+        "Clear cell",
+      ]);
+    } finally {
+      editor.destroy();
+    }
+  });
 });

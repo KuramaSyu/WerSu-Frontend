@@ -161,6 +161,11 @@ export function buildInsertSubmenu(editor: Editor): RightClickSubmenu {
   };
 }
 
+// Delete commands render red; everything else uses the default colour.
+function isDeleteCommand(command: TableCommand): boolean {
+  return command.id.startsWith("delete");
+}
+
 // One command as a runnable submenu item.
 function commandItem(
   command: TableCommand,
@@ -171,6 +176,7 @@ function commandItem(
     id: command.id,
     label: command.label(analysis),
     icon: iconForName(command.bubbleIcon),
+    danger: isDeleteCommand(command),
     handler: () => {
       command.run(editor, analysis);
       return true;
@@ -188,6 +194,7 @@ function commandRow(
     key: command.id,
     label: command.label(analysis),
     icon: iconForName(command.bubbleIcon),
+    danger: isDeleteCommand(command),
     handler: () => {
       command.run(editor, analysis);
       return true;
@@ -273,6 +280,7 @@ export function buildImageCommands(
     key: "image-delete",
     label: "Delete image",
     icon: <DeleteIcon fontSize="small" />,
+    danger: true,
     handler: () => {
       editor
         .chain()
@@ -307,6 +315,7 @@ export function buildCodeBlockCommands(
       key: "code-delete",
       label: "Delete code block",
       icon: <DeleteIcon fontSize="small" />,
+      danger: true,
       handler: () => {
         editor
           .chain()

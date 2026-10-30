@@ -13,11 +13,9 @@ import {
   MenuList,
   Paper,
   Popper,
-  Typography,
 } from "@mui/material";
 import type { SxProps, Theme } from "@mui/material/styles";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import { renderShortcut } from "../../utils/renderShortcut";
 import type {
   ResolvedMenuEntry,
   ResolvedMenuRow,
@@ -37,10 +35,25 @@ const SURFACE_SX: SxProps<Theme> = {
 };
 
 /** Denser than the MUI default body1, so menus take less room. */
-const ITEM_TEXT_SX: SxProps<Theme> = {
+const ITEM_TEXT_SX = {
   fontSize: "0.8125rem",
   "& .MuiListItemText-primary": { fontSize: "inherit" },
 };
+
+/** Red tuned for the menu paper; plain themes fall back to `main`. */
+const dangerColor = (theme: Theme): string =>
+  theme.palette.error.text ?? theme.palette.error.main;
+
+/** Destructive rows are red, including their icon, even when disabled. */
+const DANGER_SX = {
+  color: dangerColor,
+  "& .MuiListItemIcon-root": { color: "inherit" },
+  "&.Mui-disabled": { color: dangerColor },
+};
+
+function itemSx(danger?: boolean): SxProps<Theme> {
+  return danger ? [ITEM_TEXT_SX, DANGER_SX] : ITEM_TEXT_SX;
+}
 
 export interface RightClickMenuProps {
   /** Viewport coordinate for the menu. MUI flips it away from edges. */
@@ -51,20 +64,6 @@ export interface RightClickMenuProps {
   /** Closes the menu, then invokes the handler with the request target. */
   onRun: (handler: RightClickHandler) => void;
   onClose: () => void;
-}
-
-function ShortcutHint({ shortcut }: { shortcut?: string }) {
-  if (!shortcut) return null;
-  return (
-    <Typography
-      variant="body2"
-      color="text.secondary"
-      component="span"
-      sx={{ fontSize: "0.75rem" }}
-    >
-      {renderShortcut(shortcut)}
-    </Typography>
-  );
 }
 
 function SubmenuList({
@@ -104,11 +103,10 @@ function SubmenuList({
               key={item.id}
               disabled={item.disabled}
               onClick={() => onRun(item.handler)}
-              sx={ITEM_TEXT_SX}
+              sx={itemSx(item.danger)}
             >
               {item.icon && <ListItemIcon>{item.icon}</ListItemIcon>}
               <ListItemText>{item.label}</ListItemText>
-              <ShortcutHint shortcut={item.shortcut} />
             </MenuItem>
           ))}
         </MenuList>
@@ -173,13 +171,12 @@ function Row({
         onClick={handleClick}
         onMouseEnter={hasSubmenu ? cancelClose : undefined}
         onMouseLeave={hasSubmenu ? scheduleClose : undefined}
-        sx={ITEM_TEXT_SX}
+        sx={itemSx(row.danger)}
       >
         <ListItemIcon>{row.icon ?? null}</ListItemIcon>
         <ListItemText>
           {row.kind === "custom" ? (row.node ?? row.label) : row.label}
         </ListItemText>
-        <ShortcutHint shortcut={row.shortcut} />
         {/* Right chevron marks a row that opens a submenu. */}
         {hasSubmenu && (
           <ChevronRightIcon

@@ -19,16 +19,13 @@ import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
 import LockIcon from "@mui/icons-material/Lock";
 import ErrorOutlineOutlinedIcon from "@mui/icons-material/ErrorOutlineOutlined";
 import PersonIcon from "@mui/icons-material/Person";
-import CloudOffIcon from "@mui/icons-material/CloudOff";
 import {
   getCollabEntry,
-  goOffline,
   goOnline,
   useNoteCollaboration,
 } from "../../hooks/useNoteCollaboration";
 import {
   getPublicCollabEntry,
-  goPublicOffline,
   goPublicOnline,
   usePublicNoteCollaboration,
 } from "../../hooks/usePublicNoteCollaboration";
@@ -44,7 +41,6 @@ import { useActiveNoteStore } from "../../zustand/editorStore";
 import { queryClient } from "../../api/queryClient";
 import { useLiveUsers } from "../../zustand/useLiveUsersStore";
 import { useUsers } from "../../api/queries/useUser";
-import type { Note } from "../../api/models/search";
 import { displayInitials } from "../../utils/publicUserName";
 import { M1, M2 } from "../../statics";
 import { usePublicRouteReady } from "../../hooks/usePublicRouteReady";
@@ -501,32 +497,7 @@ export const CollabStatusBadge: React.FC = () => {
     provider?.connect();
   };
 
-  const handleGoOffline = () => {
-    if (!noteId) return;
-    // Snapshot the server's view of the note from the React Query
-    // cache so the conflict modal has a baseline to detect concurrent
-    // server-side edits against. Falls back to null if we don't have
-    // the note cached (e.g. token-gated first open).
-    const cached = queryClient.getQueryData<Note>(["note", noteId]);
-    const preOfflineCloudMarkdown =
-      cached?.content || cached?.stripped_content || null;
-    if (isPublic) {
-      void goPublicOffline(noteId, "manual", preOfflineCloudMarkdown);
-    } else {
-      void goOffline(noteId, "manual", preOfflineCloudMarkdown);
-    }
-  };
-
   const showLiveUsersChip = status === "connected" && liveUserIds.length > 0;
-  // Manual "go offline" affordance: visible whenever we have a
-  // collab entry that isn't already offline. We do not show it
-  // while idle / awaiting token because there is no provider yet.
-  const showGoOfflineButton =
-    !!noteId &&
-    !!collab &&
-    status !== "editingOffline" &&
-    status !== "idle" &&
-    status !== "awaitingToken";
 
   return (
     <Stack direction="row" spacing={M1} sx={{ alignItems: "center" }}>
@@ -552,37 +523,6 @@ export const CollabStatusBadge: React.FC = () => {
           />
         </Box>
       </Tooltip>
-      {showGoOfflineButton && (
-        <Tooltip
-          title="Work offline. Edits save to this browser only until you reconnect."
-          arrow
-        >
-          <Box
-            role="button"
-            tabIndex={0}
-            onClick={handleGoOffline}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                handleGoOffline();
-              }
-            }}
-            sx={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: CHIP_HEIGHT,
-              height: CHIP_HEIGHT,
-              borderRadius: "50%",
-              cursor: "pointer",
-              color: "text.secondary",
-              "&:hover": { color: "warning.main" },
-            }}
-          >
-            <CloudOffIcon fontSize="small" />
-          </Box>
-        </Tooltip>
-      )}
       {showLiveUsersChip && (
         <Tooltip
           title={

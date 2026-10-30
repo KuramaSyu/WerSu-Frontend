@@ -58,6 +58,8 @@ export interface RightClickButtonOverride {
   shortcut?: string | null;
   handler?: RightClickHandler;
   hidden?: boolean;
+  /** Destructive action: rendered in the error colour. */
+  danger?: boolean;
 }
 
 export interface RightClickSubmenuItem {
@@ -67,6 +69,8 @@ export interface RightClickSubmenuItem {
   shortcut?: string;
   handler: RightClickHandler;
   disabled?: boolean;
+  /** Destructive action: rendered in the error colour. */
+  danger?: boolean;
 }
 
 export interface RightClickSubmenu {
@@ -86,6 +90,8 @@ export interface RightClickMenuRow {
   handler?: RightClickHandler;
   /** A hover submenu attached to the row. */
   submenu?: RightClickSubmenu;
+  /** Destructive action: rendered in the error colour. */
+  danger?: boolean;
 }
 
 export interface RightClickButtonDefinition {
@@ -97,6 +103,8 @@ export interface RightClickButtonDefinition {
   handler?: RightClickHandler;
   /** Lazy probe. False greys the row out rather than hiding it. */
   canRun?: (targetId: string | undefined) => boolean;
+  /** Destructive action: rendered in the error colour. */
+  danger?: boolean;
 }
 
 export type RightClickButtonRegistry = Partial<
@@ -111,6 +119,7 @@ export interface ResolvedMenuButtonRow {
   icon?: ReactNode;
   shortcut?: string;
   disabled: boolean;
+  danger: boolean;
   submenu?: RightClickSubmenu;
 }
 
@@ -121,6 +130,7 @@ export interface ResolvedMenuCustomRow {
   icon?: ReactNode;
   shortcut?: string;
   disabled: boolean;
+  danger: boolean;
   node?: ReactNode;
   handler?: RightClickHandler;
   submenu?: RightClickSubmenu;

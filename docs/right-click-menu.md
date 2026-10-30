@@ -107,16 +107,16 @@ assert on ordering without pulling in MUI.
 
 ## 3. Built-in buttons
 
-| id | Label | Shortcut | Default action |
-|---|---|---|---|
-| `copy` | Copy | `ctrl+c` | Editor selection (HTML + text); else the target's text |
-| `paste` | Paste | `ctrl+v` | Read clipboard → insert at cursor |
-| `cut` | Cut | `ctrl+x` | Copy, then delete the selection |
-| `insert` | Insert | — | Opens the hover submenu |
-| `table` | Table | — | Table operations (editor only) |
-| `edit` | Edit | — | Provided by the page |
-| `delete` | Delete | — | Provided by the page |
-| `favourite` | Favourite | — | `useFavouritesStore` |
+| id | Label | Default action |
+|---|---|---|
+| `copy` | Copy | Editor selection (HTML + text); else the target's text |
+| `paste` | Paste | Read clipboard → insert at cursor |
+| `cut` | Cut | Copy, then delete the selection |
+| `insert` | Insert | Opens the hover submenu |
+| `table` | Table | Table operations (editor only) |
+| `edit` | Edit | Provided by the page |
+| `delete` | Delete | Provided by the page (red) |
+| `favourite` | Favourite | `useFavouritesStore` |
 
 Each button carries a `handler` that returns a boolean. `false` means
 "nothing to do here" — the row renders **greyed out** rather than
@@ -131,12 +131,18 @@ but disabled.
 > Visible-but-disabled beats conditionally-absent: a menu whose contents
 > jump around on every right-click is disorienting.
 
-### Shortcut rendering
+### Shortcut hints
 
-Shortcut hints use the existing
-[`KeyboardShortcut`](src/src/utils/renderShortcut.tsx) component, so they
-render as key chips and respect macOS vs. Windows automatically. No new
-shortcut renderer.
+The menu deliberately does **not** render shortcut hints. The built-in
+buttons still carry a `shortcut` field for other consumers, but the
+renderer ignores it so the rows stay compact.
+
+### Destructive rows
+
+A row with `danger: true` renders in the theme error colour (including
+its icon) even when disabled. Every delete entry sets it: the built-in
+`delete` button, the editor element rows (Delete image / Delete code
+block), and the table command rows whose id starts with `delete`.
 
 ---
 

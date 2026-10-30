@@ -47,6 +47,13 @@ vi.mock("@mui/material", () => ({
   Stack: (p: { children?: React.ReactNode }) => p.children ?? null,
   Grow: (p: { children?: React.ReactNode }) => p.children ?? null,
   Grid: (p: { children?: React.ReactNode }) => p.children ?? null,
+  Typography: (p: { children?: React.ReactNode }) => p.children ?? null,
+  Badge: (p: { children?: React.ReactNode }) => p.children ?? null,
+  Tooltip: (p: { children?: React.ReactNode }) => p.children ?? null,
+  CircularProgress: () => null,
+  ToggleButtonGroup: (p: { children?: React.ReactNode }) =>
+    p.children ?? null,
+  ToggleButton: (p: { children?: React.ReactNode }) => p.children ?? null,
 }));
 vi.mock("@mui/lab/Timeline", () => ({
   default: (p: { children?: React.ReactNode }) => p.children ?? null,

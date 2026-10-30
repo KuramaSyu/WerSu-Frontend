@@ -69,6 +69,66 @@ describe("resolveEditorContextTarget", () => {
     }
   });
 
+  it("resolves an image inside a table cell as the image", () => {
+    const editor = makeEditor();
+    try {
+      editor.commands.insertTable({ rows: 2, cols: 2, withHeaderRow: false });
+      // Put an image in the first cell's paragraph.
+      const cellPos = findNodePos(editor, "table") + 3;
+      editor.commands.insertContentAt(cellPos, {
+        type: "image",
+        attrs: { src: "a.png" },
+      });
+      const imagePos = findNodePos(editor, "image");
+      hitAt(editor, imagePos);
+      const target = resolveEditorContextTarget(editor, { x: 1, y: 1 });
+      expect(target?.kind).toBe("image");
+      expect(target?.from).toBe(imagePos);
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("resolves a code block inside a table cell as the code block", () => {
+    const editor = makeEditor();
+    try {
+      editor.commands.insertTable({ rows: 2, cols: 2, withHeaderRow: false });
+      const cellPos = findNodePos(editor, "table") + 3;
+      editor.commands.insertContentAt(cellPos, {
+        type: "codeBlock",
+        content: [{ type: "text", text: "const a = 1;" }],
+      });
+      const codePos = findNodePos(editor, "codeBlock");
+      hitAt(editor, codePos);
+      const target = resolveEditorContextTarget(editor, { x: 1, y: 1 });
+      expect(target?.kind).toBe("codeBlock");
+      expect(target?.from).toBe(codePos);
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("prefers the image DOM target over a table coordinate hit", () => {
+    const editor = makeEditor();
+    try {
+      editor.commands.insertTable({ rows: 2, cols: 2, withHeaderRow: false });
+      const cellPos = findNodePos(editor, "table") + 3;
+      editor.commands.insertContentAt(cellPos, {
+        type: "image",
+        attrs: { src: "a.png" },
+      });
+      const imagePos = findNodePos(editor, "image");
+      // Coordinates snap to the enclosing table cell.
+      hitAt(editor, cellPos);
+      const img = editor.view.dom.querySelector("img")!;
+      const target = resolveEditorContextTarget(editor, { x: 1, y: 1 }, img);
+      expect(target?.kind).toBe("image");
+      expect(target?.from).toBe(imagePos);
+    } finally {
+      editor.destroy();
+    }
+  });
+
   it("resolves a table hit from a cell position", () => {
     const editor = makeEditor();
     try {
@@ -84,6 +144,25 @@ describe("resolveEditorContextTarget", () => {
     }
   });
 
+  it("keeps the cell hit position for a table DOM target", () => {
+    const editor = makeEditor();
+    try {
+      editor.commands.insertTable({ rows: 2, cols: 2, withHeaderRow: false });
+      const tablePos = findNodePos(editor, "table");
+      const cellHit = tablePos + 3;
+      // The pointer is in the cell, but the event target is the table
+      // itself (for example a wrapper). Coordinates must keep the cell
+      // position so the table commands can find the cell.
+      hitAt(editor, cellHit);
+      const table = editor.view.dom.querySelector("table")!;
+      const target = resolveEditorContextTarget(editor, { x: 1, y: 1 }, table);
+      expect(target?.kind).toBe("table");
+      expect(target?.hitPos).toBe(cellHit);
+    } finally {
+      editor.destroy();
+    }
+  });
+
   it("returns null over plain text", () => {
     const editor = makeEditor();
     try {
@@ -94,7 +173,7 @@ describe("resolveEditorContextTarget", () => {
     }
   });
 
-  it("falls back to the DOM target when coordinates miss", () => {
+  it("resolves from the DOM target when coordinates miss", () => {
     const editor = makeEditor('<img src="a.png"><p>x</p>');
     try {
       // Coordinates return nothing, so the DOM element must win.

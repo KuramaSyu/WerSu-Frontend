@@ -1,16 +1,11 @@
 // @vitest-environment jsdom
 
-// Renderer behaviour: preset rows, key-chip hints, greyed rows.
+// Renderer behaviour: preset rows, danger styling, greyed rows.
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ThemeProvider, createTheme } from "@mui/material/styles";
 import "../../test/setup";
-
-vi.mock("../../utils/renderShortcut", () => ({
-  renderShortcut: (shortcut: string) => (
-    <span data-testid="shortcut">{shortcut}</span>
-  ),
-}));
 
 import { RightClickMenu } from "./RightClickMenu";
 import { resolveRightClickMenu } from "./resolveRightClickMenu";
@@ -78,19 +73,93 @@ describe("RightClickMenu", () => {
     expect(screen.getByText("Paste")).toBeInTheDocument();
   });
 
-  it("renders key chips for the shortcut hints", () => {
+  it("never renders shortcut hints", () => {
     renderMenu();
-    const hints = screen.getAllByTestId("shortcut").map((n) => n.textContent);
-    expect(hints).toContain("ctrl+c");
-    expect(hints).toContain("ctrl+v");
+    expect(screen.queryByText("ctrl+c")).not.toBeInTheDocument();
+    expect(screen.queryByText("ctrl+v")).not.toBeInTheDocument();
   });
 
   it("renders denser text than the MUI body default", () => {
     renderMenu();
     expect(item("Copy")).toHaveStyle({ fontSize: "0.8125rem" });
+  });
 
-    const hint = screen.getAllByTestId("shortcut")[0];
-    expect(hint.parentElement).toHaveStyle({ fontSize: "0.75rem" });
+  it("renders delete rows in the error colour", () => {
+    const deleteRegistry: RightClickButtonRegistry = {
+      ...registry,
+      delete: { id: "delete", label: "Delete", danger: true, handler: ok },
+    };
+    const rows = resolveRightClickMenu(
+      { ...request, buttons: ["copy", "delete"] },
+      deleteRegistry,
+    );
+    render(
+      <RightClickMenu
+        anchorPosition={{ top: 0, left: 0 }}
+        rows={rows}
+        getHandler={(row) =>
+          row.kind === "button" ? deleteRegistry[row.buttonId]?.handler : undefined
+        }
+        onRun={(fn) => fn(undefined)}
+        onClose={() => {}}
+      />,
+    );
+    // MUI's default theme error.main is #d32f2f.
+    expect(item("Delete")).toHaveStyle({ color: "rgb(211, 47, 47)" });
+    expect(item("Copy")).not.toHaveStyle({ color: "rgb(211, 47, 47)" });
+  });
+
+  it("keeps a disabled delete row red", () => {
+    const deleteRegistry: RightClickButtonRegistry = {
+      ...registry,
+      delete: { id: "delete", label: "Delete", danger: true, handler: ok },
+    };
+    const rows = resolveRightClickMenu(
+      { ...request, buttons: ["delete"] },
+      { ...deleteRegistry, delete: { id: "delete", label: "Delete", danger: true } },
+    );
+    render(
+      <RightClickMenu
+        anchorPosition={{ top: 0, left: 0 }}
+        rows={rows}
+        getHandler={() => undefined}
+        onRun={(fn) => fn(undefined)}
+        onClose={() => {}}
+      />,
+    );
+    const row = item("Delete")!;
+    expect(row).toHaveAttribute("aria-disabled", "true");
+    expect(row).toHaveStyle({ color: "rgb(211, 47, 47)" });
+  });
+
+  it("prefers the theme error text tone over error main", () => {
+    const themed = createTheme({
+      palette: { error: { main: "#cf222e", text: "#7a0d17" } },
+    });
+    const deleteRegistry: RightClickButtonRegistry = {
+      ...registry,
+      delete: { id: "delete", label: "Delete", danger: true, handler: ok },
+    };
+    const rows = resolveRightClickMenu(
+      { ...request, buttons: ["delete"] },
+      deleteRegistry,
+    );
+    render(
+      <ThemeProvider theme={themed}>
+        <RightClickMenu
+          anchorPosition={{ top: 0, left: 0 }}
+          rows={rows}
+          getHandler={(row) =>
+            row.kind === "button"
+              ? deleteRegistry[row.buttonId]?.handler
+              : undefined
+          }
+          onRun={(fn) => fn(undefined)}
+          onClose={() => {}}
+        />
+      </ThemeProvider>,
+    );
+    expect(item("Delete")).toHaveStyle({ color: "rgb(122, 13, 23)" });
   });
 
   it("greys a disabled row instead of hiding it", () => {
@@ -103,11 +172,6 @@ describe("RightClickMenu", () => {
   it("leaves an enabled row not disabled", () => {
     renderMenu();
     expect(item("Copy")).not.toHaveAttribute("aria-disabled", "true");
-  });
-
-  it("omits the hint when the shortcut was cleared", () => {
-    renderMenu({ overrides: { copy: { shortcut: null } } });
-    expect(screen.getAllByTestId("shortcut")).toHaveLength(1);
   });
 
   it("runs the handler with the request target id", () => {

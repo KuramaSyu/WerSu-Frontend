@@ -3,6 +3,10 @@ import { create } from "zustand";
 export interface LiveUser {
   userId: string;
   color: string;
+  /** Display name from the awareness message, when the sender sent one. */
+  name?: string;
+  /** Resolved avatar URL from the awareness message, when sent. */
+  avatar?: string;
 }
 
 // just [] caused recursion
@@ -22,7 +26,12 @@ interface LiveUsersState {
 const sameLiveUsers = (a: LiveUser[], b: LiveUser[]): boolean => {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
-    if (a[i].userId !== b[i].userId || a[i].color !== b[i].color) {
+    if (
+      a[i].userId !== b[i].userId ||
+      a[i].color !== b[i].color ||
+      a[i].name !== b[i].name ||
+      a[i].avatar !== b[i].avatar
+    ) {
       return false;
     }
   }

@@ -107,6 +107,7 @@ export const rightClickMenuButtons: RightClickButtonRegistry = {
     id: "delete",
     label: "Delete",
     icon: <DeleteIcon fontSize="small" />,
+    danger: true,
   },
   favourite: {
     id: "favourite",

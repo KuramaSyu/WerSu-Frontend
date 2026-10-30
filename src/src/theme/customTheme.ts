@@ -15,6 +15,7 @@ import {
   hexToRgb,
   hslToHex,
   invertColor,
+  isDarkColored,
   rgbToHex,
 } from "../utils/blendWithContrast";
 import {
@@ -23,6 +24,26 @@ import {
   hexFromArgb,
 } from "@material/material-color-utilities";
 import { deepmerge } from "@mui/utils";
+
+// Pick the tone of `color` that reads as text on `background`. Blends
+// toward white on dark surfaces and black on light ones until the
+// contrast ratio reaches the target. Stops at 3.5 so the hue stays
+// saturated instead of washing out into near-white. Populates the
+// palette's semantic `.text` tones used by menus, alerts and chips.
+function readableTextTone(color: string, background: string): string {
+  const target = 3.5;
+  if (getContrastRatio(color, background) >= target) return color;
+  const toward = isDarkColored(background)
+    ? { r: 255, g: 255, b: 255 }
+    : { r: 0, g: 0, b: 0 };
+  const base = hexToRgb(color);
+  let candidate = color;
+  for (let step = 1; step <= 10; step += 1) {
+    candidate = rgbToHex(blendColors(base, toward, step / 10));
+    if (getContrastRatio(candidate, background) >= target) return candidate;
+  }
+  return candidate;
+}
 
 export type ColorInput =
   | string
@@ -379,6 +400,16 @@ export class CustomThemeImpl implements CustomTheme {
         ),
       };
     }
+
+    // Semantic text tones for paper surfaces (menus, alerts, chips).
+    // Computed after the recalculate step so they follow the final main
+    // colours, and against the elevated menu paper so right-click rows
+    // stay readable.
+    const paperSurface = this.elevate(this.palette.background.paper, 12);
+    (["success", "warning", "error", "info"] as const).forEach((key) => {
+      const color = this.palette[key];
+      if (color) color.text = readableTextTone(color.main, paperSurface);
+    });
 
     const RootColorAndRadius = deepmerge(
       this.colorTransition,
