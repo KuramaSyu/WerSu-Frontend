@@ -21,7 +21,10 @@ import { M1, M2, M3 } from "../../statics";
 import { useLayout } from "../../LayoutProvider";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useUser } from "../../api/queries/useUser";
+import { usePublicRouteReady } from "../../hooks/usePublicRouteReady";
+import { usePublicUserStore } from "../../zustand/usePublicUserStore";
 import { useSearchNotesStore } from "../../zustand/useSearchNotesStore";
+import { PublicUserAvatar } from "./PublicUserAvatar";
 import { SearchResultsOverlay } from "../search/Main";
 import { useServiceReachability } from "./useServiceReachability";
 import { UserMenu } from "./UserMenu";
@@ -82,6 +85,12 @@ export const MobileBottomBar: React.FC = () => {
   const { theme } = useThemeStore();
   const reachability = useServiceReachability();
   const { data: user } = useUser();
+  const { isPublic } = usePublicRouteReady({ timeoutMs: 0 });
+  // Anonymous viewers on a public share: no Discord profile, so the
+  // avatar falls back to the generated public handle's initials and
+  // the label shows that handle instead of "Not signed in".
+  const isAnonymousPublic = isPublic && !user;
+  const publicUserName = usePublicUserStore((s) => s.name);
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const isDialogOpen = useSearchNotesStore((s) => s.isDialogOpen);
@@ -223,17 +232,29 @@ export const MobileBottomBar: React.FC = () => {
         {/* Avatar: sits inside the bar (no upward overflow).
             Tap to open the user menu. */}
         <Box sx={{ flexShrink: 0 }}>
-          <Tooltip title={user ? user.username : "Open user menu"}>
+          <Tooltip
+            title={
+              isAnonymousPublic
+                ? publicUserName
+                : user
+                  ? user.username
+                  : "Open user menu"
+            }
+          >
             <IconButton
               onClick={(e) => setUserMenuAnchor(e.currentTarget)}
               size="small"
               sx={{ padding: 0 }}
             >
-              <Avatar
-                src={user ? user.getAvatarUrl() : undefined}
-                alt={user ? user.username : ""}
-                sx={{ width: 40, height: 40 }}
-              />
+              {isAnonymousPublic ? (
+                <PublicUserAvatar size={40} fontSize={15} />
+              ) : (
+                <Avatar
+                  src={user ? user.getAvatarUrl() : undefined}
+                  alt={user ? user.username : ""}
+                  sx={{ width: 40, height: 40 }}
+                />
+              )}
             </IconButton>
           </Tooltip>
         </Box>
@@ -261,7 +282,11 @@ export const MobileBottomBar: React.FC = () => {
               color: theme.palette.text.primary,
             }}
           >
-            {user ? user.username : "Not signed in"}
+            {isAnonymousPublic
+              ? publicUserName
+              : user
+                ? user.username
+                : "Not signed in"}
             <Box
               component="span"
               sx={{

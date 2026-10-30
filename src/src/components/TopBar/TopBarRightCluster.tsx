@@ -14,8 +14,10 @@ import React, { useState } from "react";
 import { M1 } from "../../statics";
 import { useLayout } from "../../LayoutProvider";
 import { useUser } from "../../api/queries/useUser";
+import { usePublicRouteReady } from "../../hooks/usePublicRouteReady";
 import { useServiceReachability } from "./useServiceReachability";
 import { UserMenu } from "./UserMenu";
+import { PublicUserAvatar } from "./PublicUserAvatar";
 import { NotificationsPanel } from "./NotificationsPanel";
 import { ServiceFailureDialog } from "./ServiceFailureDialog";
 import {
@@ -48,6 +50,10 @@ const TopBarRightClusterImpl: React.FC = () => {
   const { rightPanel } = useLayout();
   const reachability = useServiceReachability();
   const { data: user } = useUser();
+  const { isPublic } = usePublicRouteReady({ timeoutMs: 0 });
+  // Anonymous viewers on a public share: no Discord profile, so the
+  // avatar falls back to the generated public handle's initials.
+  const isAnonymousPublic = isPublic && !user;
 
   // Local anchors: opening / closing the user menu or notifications
   // popover only re-renders this subtree. Kept here (rather than
@@ -110,11 +116,15 @@ const TopBarRightClusterImpl: React.FC = () => {
           onClick={(e) => setUserMenuAnchor(e.currentTarget)}
           size="small"
         >
-          <Avatar
-            sx={{ width: 36, height: 36 }}
-            src={user ? user.getAvatarUrl() : undefined}
-            alt={user ? user.username : ""}
-          />
+          {isAnonymousPublic ? (
+            <PublicUserAvatar size={36} fontSize={14} />
+          ) : (
+            <Avatar
+              sx={{ width: 36, height: 36 }}
+              src={user ? user.getAvatarUrl() : undefined}
+              alt={user ? user.username : ""}
+            />
+          )}
         </IconButton>
       </Stack>
 

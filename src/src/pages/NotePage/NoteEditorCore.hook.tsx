@@ -32,8 +32,8 @@ import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { useAuthStore } from "../../zustand/useAuthStore";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useUser } from "../../api/queries/useUser";
-import { generatePublicUserName } from "../../utils/publicUserName";
-import { randomMatchingColor } from "../../utils/blendWithContrast";
+import { usePublicUserStore } from "../../zustand/usePublicUserStore";
+import { colorFromString, randomMatchingColor } from "../../utils/blendWithContrast";
 import { CustomCodeBlock } from "../../components/Editor/View/CustomCodeBlock";
 import { EditorContextHighlight } from "../../components/Editor/editorContextHighlight";
 import { handleCodeBlockTabKey } from "../../components/Editor/codeBlockTabKey";
@@ -137,9 +137,11 @@ export const useNoteEditor = (params: UseNoteEditorParams): Editor | null => {
   const stableProvider = provider ?? dummyProvider.current;
 
   // Public viewers have no Discord profile; awareness falls back to
-  // a generated handle for both the display name and the id so the
-  // live-users badge has the id to render directly.
-  const publicUserName = generatePublicUserName();
+  // the shared public handle for both the display name and the id so
+  // the live-users badge has the id to render directly. Reading it
+  // from the store keeps the caret label and the topbar in sync, and
+  // lets a rename from the user menu flow through to collaborators.
+  const publicUserName = usePublicUserStore((s) => s.name);
 
   // Stable ref the editor's paste-handler calls into. Closes over
   // noteId so a note flip swaps the upload's link target.
@@ -200,7 +202,9 @@ export const useNoteEditor = (params: UseNoteEditorParams): Editor | null => {
           user: {
             name: user?.username ?? publicUserName,
             id: user?.id ?? publicUserName,
-            color: randomMatchingColor(theme),
+            color: user
+              ? randomMatchingColor(theme)
+              : colorFromString(publicUserName, theme),
             // Carried through awareness so other clients can show the
             // avatar without an API lookup (which public notes cannot do).
             avatar: user?.getAvatarUrl(),
@@ -363,6 +367,20 @@ export const useNoteEditor = (params: UseNoteEditorParams): Editor | null => {
     useActiveNoteStore.getState().setEditor(editor ?? null);
     return () => useActiveNoteStore.getState().setEditor(null);
   }, [editor]);
+
+  // Push a public viewer's renamed handle into the awareness state so
+  // collaborators see the new label without the editor re-mounting.
+  // Logged-in users keep their fixed Discord identity.
+  useEffect(() => {
+    if (!editor || user) {
+      return;
+    }
+    editor.commands.updateUser({
+      name: publicUserName,
+      id: publicUserName,
+      color: colorFromString(publicUserName, theme),
+    });
+  }, [editor, user, publicUserName, theme]);
 
   // Mirror the active Y.Doc into the store so setContent can write
   // directly into the XmlFragment instead of editor.commands.setContent.

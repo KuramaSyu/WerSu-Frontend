@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Avatar,
   Box,
@@ -10,11 +10,15 @@ import {
   MenuItem,
   Select,
   Stack,
+  TextField,
   Tooltip,
   Typography,
 } from "@mui/material";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
+import CheckIcon from "@mui/icons-material/Check";
+import CloseIcon from "@mui/icons-material/Close";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
+import EditIcon from "@mui/icons-material/Edit";
 import HomeIcon from "@mui/icons-material/Home";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import Logout from "@mui/icons-material/Logout";
@@ -23,6 +27,12 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import { useNavigate } from "react-router-dom";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useUser } from "../../api/queries/useUser";
+import { usePublicRouteReady } from "../../hooks/usePublicRouteReady";
+import {
+  PUBLIC_USER_NAME_MAX_LENGTH,
+  usePublicUserStore,
+} from "../../zustand/usePublicUserStore";
+import { PublicUserAvatar } from "./PublicUserAvatar";
 import { M1, M2, M4 } from "../../statics";
 import { ThemeColorCircles } from "../ThemeColorCircles";
 import { Pages } from "./Pages";
@@ -50,8 +60,29 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
     lastDarkTheme,
   } = useThemeStore();
   const { data: user } = useUser();
+  const { isPublic } = usePublicRouteReady({ timeoutMs: 0 });
   const navigate = useNavigate();
   const selectedShelfId = useSelectedShelfStore((s) => s.selectedShelfId);
+
+  // Anonymous viewers on a public share can rename their generated
+  // handle inline. Logged-in users keep the read-only Discord name.
+  const isAnonymousPublic = isPublic && !user;
+  const publicUserName = usePublicUserStore((s) => s.name);
+  const setPublicUserName = usePublicUserStore((s) => s.setName);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState(publicUserName);
+
+  const startEditingName = () => {
+    setNameDraft(publicUserName);
+    setIsEditingName(true);
+  };
+
+  const commitName = () => {
+    setPublicUserName(nameDraft);
+    setIsEditingName(false);
+  };
+
+  const cancelEditingName = () => setIsEditingName(false);
 
   // Drop identity on the backend (best-effort) and clear every
   // identity-shaped zustand store + the React Query cache so the
@@ -143,21 +174,88 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
           py: M1,
         }}
       >
-        <Avatar
-          sx={{ width: 36, height: 36 }}
-          src={user?.getAvatarUrl()}
-          alt={user?.username ?? ""}
-        />
-        <Typography
-          variant="body1"
-          sx={{
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {user?.username ?? "Guest"}
-        </Typography>
+        {isAnonymousPublic ? (
+          <PublicUserAvatar size={36} fontSize={14} />
+        ) : (
+          <Avatar
+            sx={{ width: 36, height: 36 }}
+            src={user?.getAvatarUrl()}
+            alt={user?.username ?? ""}
+          />
+        )}
+        {isAnonymousPublic && isEditingName ? (
+          <TextField
+            value={nameDraft}
+            onChange={(event) =>
+              setNameDraft(event.target.value.slice(0, PUBLIC_USER_NAME_MAX_LENGTH))
+            }
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                commitName();
+              } else if (event.key === "Escape") {
+                event.preventDefault();
+                cancelEditingName();
+              }
+            }}
+            size="small"
+            autoFocus
+            fullWidth
+            slotProps={{
+              htmlInput: { "aria-label": "Public display name" },
+            }}
+            sx={{ flex: 1, minWidth: 0 }}
+          />
+        ) : (
+          <Typography
+            variant="body1"
+            sx={{
+              flex: 1,
+              minWidth: 0,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {isAnonymousPublic ? publicUserName : (user?.username ?? "Guest")}
+          </Typography>
+        )}
+        {isAnonymousPublic && isEditingName && (
+          <>
+            <Tooltip title="Save name">
+              <IconButton
+                size="small"
+                aria-label="Save display name"
+                onClick={commitName}
+                sx={{ flexShrink: 0 }}
+              >
+                <CheckIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Cancel">
+              <IconButton
+                size="small"
+                aria-label="Cancel display name edit"
+                onClick={cancelEditingName}
+                sx={{ flexShrink: 0 }}
+              >
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </>
+        )}
+        {isAnonymousPublic && !isEditingName && (
+          <Tooltip title="Edit display name">
+            <IconButton
+              size="small"
+              aria-label="Edit display name"
+              onClick={startEditingName}
+              sx={{ flexShrink: 0 }}
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        )}
       </Stack>
 
       <Divider />

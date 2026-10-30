@@ -126,6 +126,11 @@ const storeSpecs: Record<string, StoreSpec> = {
     pick: (mod) =>
       (mod as { useSelectedShelfStore?: StoreHandle }).useSelectedShelfStore,
   },
+  publicUser: {
+    module: () => import("../zustand/usePublicUserStore"),
+    pick: (mod) =>
+      (mod as { usePublicUserStore?: StoreHandle }).usePublicUserStore,
+  },
   directoryTree: {
     module: () => import("../zustand/useDirectoryTreeStore"),
     pick: (mod) =>
@@ -180,6 +185,7 @@ beforeEach(async () => {
         "shortcutModifier",
         "topBar",
         "selectedShelf",
+        "publicUser",
         "directoryTree",
       ] as const
     ).map(loadStore),
