@@ -32,6 +32,13 @@ export interface PanelSectionProps {
   collapsible?: boolean;
   /** Initial expanded state when `collapsible`. Defaults to true. */
   defaultExpanded?: boolean;
+  /**
+   * Wrap the section in a thin outlined card with no fill, so the page
+   * background shows through. Used by the right rail, where each section
+   * reads as its own bordered block rather than part of one big shell.
+   * Defaults to false.
+   */
+  bordered?: boolean;
 }
 
 interface PanelSectionTitleProps {
@@ -141,12 +148,24 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
   showDivider,
   collapsible = false,
   defaultExpanded = true,
+  bordered = false,
 }) => {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [hovered, setHovered] = useState(false);
   const renderDivider = showDivider ?? title !== undefined;
 
   const theme = useTheme();
+
+  // Thin, transparent outline for the `bordered` card. Padding keeps the
+  // title / body from pressing against the border.
+  const frameSx = bordered
+    ? {
+        border: `1px solid ${theme.palette.divider}`,
+        borderRadius: `${theme.shape.borderRadius}px`,
+        backgroundColor: "transparent",
+        p: M1,
+      }
+    : undefined;
 
   // dim function which dimms given color
   const dim = (color: string) =>
@@ -184,7 +203,7 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
   if (title === undefined) {
     return (
       <ThemeProvider theme={activeTheme}>
-        <Box {...hoverHandlers}>
+        <Box {...hoverHandlers} sx={frameSx}>
           {renderDivider && (
             <Divider sx={{ opacity: dividerOpacity, mb: 1.5 }} />
           )}
@@ -207,6 +226,7 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
           elevation={0}
           square
           sx={{
+            ...frameSx,
             zindex: 10,
             // adjust accordion paddings to
             // spare a lot of otherwise wasted space
@@ -259,7 +279,7 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
   return (
     // px used to allign with padding of accordion
     <ThemeProvider theme={activeTheme}>
-      <Box {...hoverHandlers} sx={{ px: M2 }}>
+      <Box {...hoverHandlers} sx={{ ...frameSx, px: M2 }}>
         <PanelSectionTitle
           inAccordion={false}
           title={title}

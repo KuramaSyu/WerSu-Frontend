@@ -67,7 +67,7 @@ export const RightClickMenuHost: React.FC = () => {
   // Same precedence the resolver used, so an enabled row always has a callable.
   const getHandler = useCallback(
     (row: ResolvedMenuRow): RightClickHandler | undefined => {
-      if (row.kind === "custom") return undefined;
+      if (row.kind === "custom") return row.handler;
       return (
         request?.overrides?.[row.buttonId]?.handler ??
         rightClickMenuButtons[row.buttonId]?.handler

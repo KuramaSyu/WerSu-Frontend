@@ -28,7 +28,10 @@ import {
   useShares,
   useUpdateShare,
 } from "../../api/queries/sharingQueries";
-import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
+import useInfoStore, {
+  SnackbarUpdateImpl,
+  copyToClipboard,
+} from "../../zustand/InfoStore";
 import { ShareFormSection } from "./ShareFormSection";
 import {
   blankShareFormValue,
@@ -38,6 +41,7 @@ import {
 } from "./shareFormModel";
 import type { NoteShareReply } from "../../api/models/sharing";
 import { ShareCard } from "./ShareCard";
+import { buildShareUrl } from "./shareUrl";
 import { useActiveNoteStore } from "../../zustand/editorStore";
 import ModalShell from "../../components/ModalShell";
 
@@ -187,6 +191,25 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
     setFormValue(valueFromBaseline(base));
   };
 
+  /**
+   * Copy a share's public link to the clipboard and report the outcome.
+   *
+   * Used right after a successful create/update so the user can paste
+   * the link without a second click. Failure is non-fatal — we still
+   * surface the share id so the link isn't lost entirely.
+   */
+  const copyShareLink = async (share: NoteShareReply, action: string) => {
+    const copied = await copyToClipboard(buildShareUrl(share.id));
+    setMessage(
+      new SnackbarUpdateImpl(
+        copied
+          ? `Share ${action} — link copied to clipboard`
+          : `Share ${action}. Link: ${buildShareUrl(share.id)}`,
+        copied ? "success" : "warning",
+      ),
+    );
+  };
+
   // Resolve the share we're editing, derived purely from props + state +
   // the current shares list. If the user-selected id no longer exists
   // in the list (e.g. it was deleted elsewhere), we transparently fall
@@ -213,8 +236,10 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
   // ─── Mutations ──────────────────────────────────────────────────────
   const createShare = useCreateShare({
     onSuccess: (reply) => {
-      setMessage(new SnackbarUpdateImpl(`Share created with ID: ${reply.id}`));
-      enterCreateMode();
+      // Bind the form (and the right-hand card) to the new share so it
+      // auto-expands in the "Existing shares" list.
+      enterEditMode(reply);
+      void copyShareLink(reply, "created");
     },
     onError: (error) => {
       setMessage(
@@ -228,12 +253,10 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
 
   const updateShare = useUpdateShare({
     onSuccess: (reply) => {
-      setMessage(new SnackbarUpdateImpl(`Share updated`));
-      // Drop back into create mode so the next operation starts fresh.
-      enterCreateMode();
-      // The reply also closes the edit cycle by virtue of invalidating
-      // the shares list.
-      void reply;
+      // Re-enter edit mode with the server's canonical reply so the
+      // card stays expanded in the "Existing shares" list.
+      enterEditMode(reply);
+      void copyShareLink(reply, "updated");
     },
     onError: (error) => {
       setMessage(

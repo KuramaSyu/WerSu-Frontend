@@ -26,6 +26,7 @@ import { M1, M2 } from "../../statics";
 import { CopyButton } from "../../components/CopyButton";
 import { formatDistanceToNowStrict } from "date-fns";
 import type { NoteShareReply } from "../../api/models/sharing";
+import { DEFAULT_SHARE_URL_BASE, buildShareUrl } from "./shareUrl";
 
 export interface ShareCardProps {
   share: NoteShareReply;
@@ -146,17 +147,16 @@ const formatExpiryTooltip = (iso?: string): string => {
  */
 export const ShareCard: React.FC<ShareCardProps> = ({
   share,
-  shareUrlBase = typeof window !== "undefined" ? window.location.origin : "",
+  shareUrlBase = DEFAULT_SHARE_URL_BASE,
   expanded,
   onExpandedChange,
   isEditing = false,
   onRequestDelete,
 }) => {
-  const shareUrl = useMemo(() => {
-    if (!share.id) return "";
-    const base = shareUrlBase.replace(/\/$/, "");
-    return `${base}/public/n/${share.id}`;
-  }, [share.id, shareUrlBase]);
+  const shareUrl = useMemo(
+    () => buildShareUrl(share.id, shareUrlBase),
+    [share.id, shareUrlBase],
+  );
 
   const permission = formatPermission(share.permission);
 
@@ -274,6 +274,23 @@ export const ShareCard: React.FC<ShareCardProps> = ({
             />
           )}
         </Stack>
+
+        {/* Quick-copy for the collapsed card — the URL itself is only
+            revealed once the accordion expands, so surface a copy action
+            here too. Suppressed while expanded to avoid duplicating the
+            copy button shown next to the URL in the details. */}
+        {!expanded && (
+          <Tooltip title="Copy share link">
+            <span>
+              <CopyButton
+                size="small"
+                aria-label="copy share url"
+                text={shareUrl}
+                onClick={(event) => event.stopPropagation()}
+              />
+            </span>
+          </Tooltip>
+        )}
 
         {/* Overflow menu — Delete lives here. Stays right-aligned
             outside the meta-column so it doesn't compete with the chips. */}

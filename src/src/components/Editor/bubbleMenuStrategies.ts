@@ -3,6 +3,14 @@
 import type { Editor } from "@tiptap/core";
 import { CellSelection, TableMap } from "@tiptap/pm/tables";
 import type { EditorState } from "@tiptap/pm/state";
+import {
+  tableCommandsFor,
+  type TableCommandId,
+} from "./tableCommands";
+
+// Re-exported so existing importers keep one import site for the
+// shared table operations. The implementation lives in tableOperations.
+export { clearCells } from "./tableOperations";
 
 export type SelectionKind =
   | "empty"
@@ -221,143 +229,65 @@ function inCellContext(state: EditorState): CellContext | null {
   };
 }
 
+// The command ids each strategy is allowed to surface. The actual
+// run/label/icon data comes from the shared command catalogue, so the
+// right-click menu and the bubble menu cannot drift apart.
+const ROW_COMMAND_IDS: readonly TableCommandId[] = [
+  "add-row-before",
+  "add-row-after",
+  "move-row-up",
+  "move-row-down",
+  "delete-row",
+];
+const COLUMN_COMMAND_IDS: readonly TableCommandId[] = [
+  "add-column-before",
+  "add-column-after",
+  "move-column-left",
+  "move-column-right",
+  "delete-column",
+];
+const CELL_COMMAND_IDS: readonly TableCommandId[] = ["clear-cells"];
+const WHOLE_TABLE_COMMAND_IDS: readonly TableCommandId[] = ["delete-table"];
+
+// Turn applicable commands into bubble-menu actions in catalogue order.
+function buildTableOps(
+  ids: readonly TableCommandId[],
+  analysis: SelectionAnalysisFull,
+): BubbleMenuOp[] {
+  return tableCommandsFor(analysis, ids).map((command) => ({
+    kind: "action" as const,
+    group: command.group,
+    id: command.id,
+    label: command.label(analysis),
+    icon: command.bubbleIcon,
+    run: (e: Editor) => command.run(e, analysis),
+  }));
+}
+
 const tableWholeStrategy: BubbleMenuStrategy = {
   name: "table-whole",
   matches: (a) => a.kind === "tableWhole",
-  build: () => {
-    return [
-      {
-        kind: "action",
-        group: "table",
-        id: "delete-table",
-        label: "Delete table",
-        icon: "table-remove",
-
-        run: (e) => e.chain().focus().deleteTable().run(),
-      },
-    ];
-  },
+  build: (a) => buildTableOps(WHOLE_TABLE_COMMAND_IDS, a),
 };
 
 const rowStrategy: BubbleMenuStrategy = {
   name: "table-row",
   matches: (a) => a.kind === "tableRow",
-  build: (a, editor) => {
-    if (!a.cell) return [];
-    const { rowIndices } = a.cell;
-    const isMulti = rowIndices.length > 1;
-    // Table edits first, common formatting second. The
-    // renderer inserts the single `|` between groups; the
-    // intra-group ordering here drives button placement.
-    return [
-      {
-        kind: "action",
-        group: "table",
-        id: "add-row-before",
-        label: "Add row above",
-        icon: "row-insert-top",
-
-        run: (e) => e.chain().focus().addRowBefore().run(),
-      },
-      {
-        kind: "action",
-        group: "table",
-        id: "add-row-after",
-        label: "Add row below",
-        icon: "row-insert-bottom",
-
-        run: (e) => e.chain().focus().addRowAfter().run(),
-      },
-      {
-        kind: "action",
-        group: "table",
-        id: "move-row-up",
-        label: "Move row up",
-        icon: "row-move-up",
-
-        run: (e) => moveRowsByDelta(e, -1, rowIndices),
-      },
-      {
-        kind: "action",
-        group: "table",
-        id: "move-row-down",
-        label: "Move row down",
-        icon: "row-move-down",
-
-        run: (e) => moveRowsByDelta(e, 1, rowIndices),
-      },
-      {
-        kind: "action",
-        group: "table",
-        // Pluralise for multi-row selections.
-        id: "delete-row",
-        label: isMulti ? "Delete rows" : "Delete row",
-        icon: "row-remove",
-
-        run: (e) => e.chain().focus().deleteRow().run(),
-      },
-      ...textFormattingOps(editor, a.state),
-    ];
-  },
+  // Table edits first, common formatting second. The renderer inserts
+  // the single `|` between groups; catalogue order drives placement.
+  build: (a, editor) => [
+    ...buildTableOps(ROW_COMMAND_IDS, a),
+    ...textFormattingOps(editor, a.state),
+  ],
 };
 
 const columnStrategy: BubbleMenuStrategy = {
   name: "table-column",
   matches: (a) => a.kind === "tableColumn",
-  build: (a, editor) => {
-    if (!a.cell) return [];
-    const { columnIndices } = a.cell;
-    const isMulti = columnIndices.length > 1;
-    return [
-      {
-        kind: "action",
-        group: "table",
-        id: "add-column-before",
-        label: "Add column left",
-        icon: "column-insert-left",
-
-        run: (e) => e.chain().focus().addColumnBefore().run(),
-      },
-      {
-        kind: "action",
-        group: "table",
-        id: "add-column-after",
-        label: "Add column right",
-        icon: "column-insert-right",
-
-        run: (e) => e.chain().focus().addColumnAfter().run(),
-      },
-      {
-        kind: "action",
-        group: "table",
-        id: "move-column-left",
-        label: "Move column left",
-        icon: "column-move-left",
-
-        run: (e) => moveColumnsByDelta(e, -1, columnIndices),
-      },
-      {
-        kind: "action",
-        group: "table",
-        id: "move-column-right",
-        label: "Move column right",
-        icon: "column-move-right",
-
-        run: (e) => moveColumnsByDelta(e, 1, columnIndices),
-      },
-      {
-        kind: "action",
-        group: "table",
-        // Pluralise for multi-column selections.
-        id: "delete-column",
-        label: isMulti ? "Delete columns" : "Delete column",
-        icon: "column-remove",
-
-        run: (e) => e.chain().focus().deleteColumn().run(),
-      },
-      ...textFormattingOps(editor, a.state),
-    ];
-  },
+  build: (a, editor) => [
+    ...buildTableOps(COLUMN_COMMAND_IDS, a),
+    ...textFormattingOps(editor, a.state),
+  ],
 };
 
 const cellStrategy: BubbleMenuStrategy = {
@@ -366,20 +296,10 @@ const cellStrategy: BubbleMenuStrategy = {
     a.kind === "tableCell" ||
     a.kind === "tableBlock" ||
     (a.kind === "text" && !!a.cell),
-  build: (a, editor) => {
-    return [
-      ...textFormattingOps(editor, a.state),
-      {
-        kind: "action",
-        group: "common",
-        id: "clear-cells",
-        label: a.kind === "tableBlock" ? "Clear cell(s)" : "Clear cell",
-        icon: "format-clear",
-
-        run: (e) => clearCells(e),
-      },
-    ];
-  },
+  build: (a, editor) => [
+    ...textFormattingOps(editor, a.state),
+    ...buildTableOps(CELL_COMMAND_IDS, a),
+  ],
 };
 
 const textStrategy: BubbleMenuStrategy = {
@@ -465,194 +385,3 @@ function textFormattingOps(editor: Editor, state: EditorState): BubbleMenuOp[] {
   ];
 }
 
-// Tiptap ships no clearCells, so walk forEachCell and replace each.
-// Exported for the right-click table submenu.
-export function clearCells(editor: Editor): void {
-  const sel = editor.state.selection;
-  if (sel instanceof CellSelection) {
-    const { tr } = editor.state;
-    const empty = editor.schema.nodes.paragraph?.create();
-    if (!empty) return;
-    const replacements: Array<{ from: number; to: number }> = [];
-    sel.forEachCell((cellNode, pos) => {
-      if (cellNode.content.size > 0) {
-        replacements.push({ from: pos + 1, to: pos + cellNode.nodeSize - 1 });
-      }
-    });
-    // Right-to-left so earlier positions stay valid.
-    for (const { from, to } of replacements.reverse()) {
-      tr.replaceWith(from, to, empty);
-    }
-    editor.view.dispatch(tr);
-    editor.view.focus();
-    return;
-  }
-  editor.chain().focus().deleteSelection().run();
-}
-
-// Tiptap's moveRow only handles a single row; do a full-table
-// replace. We swap row nodes in the table's row array and
-// reinstall a `CellSelection.rowSelection` on the new row so
-// the menu stays in place across the swap. Using
-// `rowSelection` (not `CellSelection.create`) is important:
-// the factory expands anchor/head to the full row band, which
-// avoids the last cell's text leaking into the selection rect.
-function moveRowsByDelta(
-  editor: Editor,
-  delta: -1 | 1,
-  indices: number[],
-): void {
-  const { state } = editor;
-  const { $from } = state.selection;
-  let tableDepth = -1;
-  for (let d = $from.depth; d > 0; d -= 1) {
-    if ($from.node(d).type.name === "table") {
-      tableDepth = d;
-      break;
-    }
-  }
-  if (tableDepth === -1) return;
-
-  const tableNode = $from.node(tableDepth);
-  const tablePos = (
-    $from as unknown as { before: (d: number) => number }
-  ).before(tableDepth);
-  const map = TableMap.get(tableNode);
-
-  // Bounds check. Bail out (no-op) when the band already
-  // touches the destination edge.
-  if (delta === -1 && indices[0] === 0) return;
-  if (delta === 1 && indices[indices.length - 1] === map.height - 1) return;
-
-  // Build a fresh row array with the band shifted by one.
-  // We use plain node references from `table.content.content`
-  // and only re-create the table itself; rows keep their
-  // internal `content` Fragment untouched.
-  const rows = tableNode.content.content.slice();
-  if (delta === -1) {
-    for (const idx of indices) {
-      [rows[idx - 1], rows[idx]] = [rows[idx], rows[idx - 1]];
-    }
-  } else {
-    for (const idx of [...indices].reverse()) {
-      [rows[idx + 1], rows[idx]] = [rows[idx], rows[idx + 1]];
-    }
-  }
-
-  const newTable = tableNode.type.create(
-    tableNode.attrs,
-    rows,
-    tableNode.marks,
-  );
-
-  // Compute where the band lands in the new table so we can
-  // pass the first and last cell positions to
-  // `CellSelection.rowSelection`, which expands the band to
-  // the full row extent.
-  const newMap = TableMap.get(newTable);
-  const newTopRow =
-    delta === -1 ? indices[0] - 1 : indices[indices.length - 1] + 1;
-  const newBotRow = newTopRow + indices.length - 1;
-  const firstCellPos =
-    tablePos + 1 + newMap.positionAt(newTopRow, 0, newTable);
-  const lastCellPos =
-    tablePos + 1 + newMap.positionAt(newBotRow, map.width - 1, newTable);
-
-  const tr = state.tr
-    .replaceWith(tablePos, tablePos + tableNode.nodeSize, newTable)
-    // Prevent the autolink plugin from re-scanning the new
-    // table -- the eq check on the new doc trips over a
-    // re-created Fragment slot when we re-create the table
-    // from raw node refs, and the link autolink isn't needed
-    // for a row swap anyway.
-    .setMeta("preventAutolink", true);
-  // Resolve against the new doc (post-`replaceWith`) so the
-  // positions point into the new table.
-  const newDoc = tr.doc;
-  tr.setSelection(
-    CellSelection.rowSelection(
-      newDoc.resolve(firstCellPos),
-      newDoc.resolve(lastCellPos),
-    ),
-  );
-
-  editor.view.dispatch(tr);
-  editor.view.focus();
-}
-
-function moveColumnsByDelta(
-  editor: Editor,
-  delta: -1 | 1,
-  indices: number[],
-): void {
-  const { state } = editor;
-  const { $from } = state.selection;
-  let tableDepth = -1;
-  for (let d = $from.depth; d > 0; d -= 1) {
-    if ($from.node(d).type.name === "table") {
-      tableDepth = d;
-      break;
-    }
-  }
-  if (tableDepth === -1) return;
-
-  const tableNode = $from.node(tableDepth);
-  const tablePos = (
-    $from as unknown as { before: (d: number) => number }
-  ).before(tableDepth);
-  const map = TableMap.get(tableNode);
-
-  if (delta === -1 && indices[0] === 0) return;
-  if (delta === 1 && indices[indices.length - 1] === map.width - 1) return;
-
-  // Build a fresh row array where each row's cells are
-  // re-ordered according to the band shift.
-  const rows = tableNode.content.content.map((row) => {
-    const cells = row.content.content.slice();
-    if (delta === -1) {
-      for (const idx of indices) {
-        [cells[idx - 1], cells[idx]] = [cells[idx], cells[idx - 1]];
-      }
-    } else {
-      for (const idx of [...indices].reverse()) {
-        [cells[idx + 1], cells[idx]] = [cells[idx], cells[idx + 1]];
-      }
-    }
-    return row.type.create(row.attrs, cells, row.marks);
-  });
-
-  const newTable = tableNode.type.create(
-    tableNode.attrs,
-    rows,
-    tableNode.marks,
-  );
-
-  // Restore the CellSelection on the moved band using the
-  // `colSelection` factory, which expands the band to the
-  // full column extent. Same rationale as `rowSelection`
-  // for rows above.
-  const newMap = TableMap.get(newTable);
-  const newLeftCol =
-    delta === -1 ? indices[0] - 1 : indices[indices.length - 1] + 1;
-  const newRightCol = newLeftCol + indices.length - 1;
-  const firstCellPos =
-    tablePos + 1 + newMap.positionAt(0, newLeftCol, newTable);
-  const lastCellPos =
-    tablePos +
-    1 +
-    newMap.positionAt(map.height - 1, newRightCol, newTable);
-
-  const tr = state.tr
-    .replaceWith(tablePos, tablePos + tableNode.nodeSize, newTable)
-    .setMeta("preventAutolink", true);
-  const newDoc = tr.doc;
-  tr.setSelection(
-    CellSelection.colSelection(
-      newDoc.resolve(firstCellPos),
-      newDoc.resolve(lastCellPos),
-    ),
-  );
-
-  editor.view.dispatch(tr);
-  editor.view.focus();
-}

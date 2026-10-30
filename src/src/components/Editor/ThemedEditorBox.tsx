@@ -69,6 +69,13 @@ export const ThemedEditorBox = ({
             padding: `0 ${M2}`,
           },
 
+          // Right-clicked image / code block / table highlight.
+          "& .editor-context-target": {
+            outline: `2px solid ${theme.palette.primary.main}`,
+            outlineOffset: "2px",
+            borderRadius: theme.shape.borderRadius,
+          },
+
           "& th": {
             backgroundColor: "var(--gray-1)",
             fontWeight: 600,

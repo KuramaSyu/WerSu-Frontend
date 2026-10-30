@@ -1,41 +1,46 @@
-// Pure(ish) request builders for the editor surface.
+// Request builders for the editor surface.
 //
 // These read the editor state at right-click time, so the menu only
-// ever shows operations that apply to the selection that was hit.
-// No React and no re-renders: the caller invokes these from the
+// ever shows operations that apply to the element that was hit. No
+// React state and no re-renders: the caller invokes these from the
 // contextmenu DOM handler.
+//
+// Every menu entry is a command object (id, label, icon, handler).
+// Table commands come from the shared catalogue so the bubble menu and
+// the right-click menu can never drift apart.
 
 import type { Editor } from "@tiptap/core";
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import TableChartIcon from "@mui/icons-material/TableChart";
+import TableRowsIcon from "@mui/icons-material/TableRows";
+import ViewColumnIcon from "@mui/icons-material/ViewColumn";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import FunctionsIcon from "@mui/icons-material/Functions";
 import CodeIcon from "@mui/icons-material/Code";
-import FormatClearIcon from "@mui/icons-material/FormatClear";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import DeleteIcon from "@mui/icons-material/Delete";
+import { analyseSelection } from "../Editor/bubbleMenuStrategies";
+import { iconForName } from "../Editor/editorIcons";
 import {
-  IconColumnInsertLeft,
-  IconColumnInsertRight,
-  IconColumnRemove,
-  IconRowInsertBottom,
-  IconRowInsertTop,
-  IconRowRemove,
-  IconTableOff,
-} from "@tabler/icons-react";
-import {
-  analyseSelection,
-  clearCells,
-  type SelectionAnalysisFull,
-} from "../Editor/bubbleMenuStrategies";
+  tableCommandsFor,
+  type TableCommand,
+  type TableCommandId,
+} from "../Editor/tableCommands";
+import type { EditorContextTarget } from "../Editor/editorContextTarget";
 import { useEditorMenuStore } from "../../zustand/editorMenuStore";
+import { copyToClipboard } from "../../zustand/InfoStore";
+import type { SelectionAnalysisFull } from "../Editor/bubbleMenuStrategies";
 import type {
   MenuPosition,
   RightClickButtonId,
   RightClickButtonOverride,
   RightClickMenuRequest,
+  RightClickMenuRow,
   RightClickSubmenu,
   RightClickSubmenuItem,
 } from "./types";
 
-/** Canonical editor rows, in catalogue order. Insert/table are submenu triggers. */
+/** Canonical editor rows. Insert is the only built-in submenu trigger. */
 const EDITOR_BUTTONS: readonly RightClickButtonId[] = [
   "copy",
   "paste",
@@ -43,15 +48,32 @@ const EDITOR_BUTTONS: readonly RightClickButtonId[] = [
   "insert",
 ];
 
+/** Row / column command groups for the nested table submenus. */
+const ROW_COMMAND_IDS: readonly TableCommandId[] = [
+  "add-row-before",
+  "add-row-after",
+  "move-row-up",
+  "move-row-down",
+  "delete-row",
+];
+const COLUMN_COMMAND_IDS: readonly TableCommandId[] = [
+  "add-column-before",
+  "add-column-after",
+  "move-column-left",
+  "move-column-right",
+  "delete-column",
+];
+
 /**
  * Build the full request for a right-click inside the editor.
- * Read mode (decision 3) is copy only: paste renders but is greyed
- * out by its canRun probe, and no table or insert row is requested.
+ * Read mode (decision 3) is copy only: paste renders but is greyed out
+ * by its canRun probe, and no element rows are requested.
  */
 export function buildEditorMenuRequest(
   editor: Editor,
   editMode: boolean,
   position: MenuPosition,
+  target?: EditorContextTarget | null,
 ): RightClickMenuRequest {
   if (!editMode) {
     return { position, buttons: ["copy", "paste"] };
@@ -70,14 +92,18 @@ export function buildEditorMenuRequest(
     insert: buildInsertSubmenu(editor),
   };
 
-  const table = buildTableSubmenu(editor, analysis);
-  if (table) {
-    buttons.push("table");
-    overrides.table = { handler: () => true };
-    submenus.table = table;
-  }
+  const isTable = target ? target.kind === "table" : Boolean(analysis.cell);
+  // Element commands lead the menu; copy/paste/etc. follow a divider.
+  const leadingComponents =
+    target?.kind === "image"
+      ? buildImageCommands(editor, target.node, target)
+      : target?.kind === "codeBlock"
+        ? buildCodeBlockCommands(editor, target.node, target)
+        : isTable
+          ? buildTableMenuRows(editor, analysis)
+          : undefined;
 
-  return { position, buttons, overrides, submenus };
+  return { position, buttons, overrides, submenus, leadingComponents };
 }
 
 /**
@@ -126,76 +152,160 @@ export function buildInsertSubmenu(editor: Editor): RightClickSubmenu {
   };
 }
 
+// One command as a runnable submenu item.
+function commandItem(
+  command: TableCommand,
+  editor: Editor,
+  analysis: SelectionAnalysisFull,
+): RightClickSubmenuItem {
+  return {
+    id: command.id,
+    label: command.label(analysis),
+    icon: iconForName(command.bubbleIcon),
+    handler: () => {
+      command.run(editor, analysis);
+      return true;
+    },
+  };
+}
+
+// One command as a root-level row.
+function commandRow(
+  command: TableCommand,
+  editor: Editor,
+  analysis: SelectionAnalysisFull,
+): RightClickMenuRow {
+  return {
+    key: command.id,
+    label: command.label(analysis),
+    icon: iconForName(command.bubbleIcon),
+    handler: () => {
+      command.run(editor, analysis);
+      return true;
+    },
+  };
+}
+
 /**
- * Hover submenu for the Table button. Returns null when the click did
- * not land in a table, so the caller can leave the button out.
+ * Root rows for a table right-click: Delete table, then nested Rows and
+ * Columns submenus, then Clear cell(s). Built from the shared command
+ * catalogue, so a new table operation appears here automatically.
  */
-export function buildTableSubmenu(
+export function buildTableMenuRows(
   editor: Editor,
   analysis: SelectionAnalysisFull = analyseSelection(editor.state),
-): RightClickSubmenu | null {
-  const cell = analysis.cell;
-  if (!cell) return null;
+): RightClickMenuRow[] {
+  const commands = tableCommandsFor(analysis);
+  const byId = new Map(commands.map((command) => [command.id, command]));
+  const pick = (ids: readonly TableCommandId[]): TableCommand[] =>
+    ids
+      .map((id) => byId.get(id))
+      .filter((command): command is TableCommand => Boolean(command));
 
-  const rowCount = cell.rowIndices.length;
-  const columnCount = cell.columnIndices.length;
-  const items: RightClickSubmenuItem[] = [
-    {
-      id: "add-row-before",
-      label: "Insert row above",
-      icon: <IconRowInsertTop size={18} />,
-      handler: () => editor.chain().focus().addRowBefore().run(),
-    },
-    {
-      id: "add-row-after",
-      label: "Insert row below",
-      icon: <IconRowInsertBottom size={18} />,
-      handler: () => editor.chain().focus().addRowAfter().run(),
-    },
-    {
-      id: "add-column-before",
-      label: "Insert column left",
-      icon: <IconColumnInsertLeft size={18} />,
-      handler: () => editor.chain().focus().addColumnBefore().run(),
-    },
-    {
-      id: "add-column-after",
-      label: "Insert column right",
-      icon: <IconColumnInsertRight size={18} />,
-      handler: () => editor.chain().focus().addColumnAfter().run(),
-    },
-    {
-      id: "delete-row",
-      label: rowCount > 1 ? "Delete rows" : "Delete row",
-      icon: <IconRowRemove size={18} />,
-      handler: () => editor.chain().focus().deleteRow().run(),
-    },
-    {
-      id: "delete-column",
-      label: columnCount > 1 ? "Delete columns" : "Delete column",
-      icon: <IconColumnRemove size={18} />,
-      handler: () => editor.chain().focus().deleteColumn().run(),
-    },
-    {
-      id: "clear-cells",
-      label: rowCount > 1 || columnCount > 1 ? "Clear cells" : "Clear cell",
-      icon: <FormatClearIcon fontSize="small" />,
+  const rows: RightClickMenuRow[] = [];
+  const deleteTable = byId.get("delete-table");
+  if (deleteTable) rows.push(commandRow(deleteTable, editor, analysis));
+
+  const rowCommands = pick(ROW_COMMAND_IDS);
+  if (rowCommands.length > 0) {
+    rows.push({
+      key: "table-rows",
+      label: "Rows",
+      icon: <TableRowsIcon fontSize="small" />,
+      submenu: {
+        items: rowCommands.map((command) =>
+          commandItem(command, editor, analysis),
+        ),
+      },
+    });
+  }
+
+  const columnCommands = pick(COLUMN_COMMAND_IDS);
+  if (columnCommands.length > 0) {
+    rows.push({
+      key: "table-columns",
+      label: "Columns",
+      icon: <ViewColumnIcon fontSize="small" />,
+      submenu: {
+        items: columnCommands.map((command) =>
+          commandItem(command, editor, analysis),
+        ),
+      },
+    });
+  }
+
+  const clearCells = byId.get("clear-cells");
+  if (clearCells) rows.push(commandRow(clearCells, editor, analysis));
+
+  return rows;
+}
+
+/** Commands shown when an image is right-clicked. */
+export function buildImageCommands(
+  editor: Editor,
+  node: ProseMirrorNode,
+  target: EditorContextTarget,
+): RightClickMenuRow[] {
+  const src =
+    typeof node.attrs.src === "string" && node.attrs.src ? node.attrs.src : "";
+  const rows: RightClickMenuRow[] = [];
+  if (src) {
+    rows.push({
+      key: "image-copy-link",
+      label: "Copy image link",
+      icon: <ContentCopyIcon fontSize="small" />,
       handler: () => {
-        clearCells(editor);
+        void copyToClipboard(src);
+        return true;
+      },
+    });
+  }
+  rows.push({
+    key: "image-delete",
+    label: "Delete image",
+    icon: <DeleteIcon fontSize="small" />,
+    handler: () => {
+      editor
+        .chain()
+        .focus()
+        .deleteRange({ from: target.from, to: target.to })
+        .run();
+      return true;
+    },
+  });
+  return rows;
+}
+
+/** Commands shown when a code block is right-clicked. */
+export function buildCodeBlockCommands(
+  editor: Editor,
+  node: ProseMirrorNode,
+  target: EditorContextTarget,
+): RightClickMenuRow[] {
+  const code = node.textContent;
+  const handler = (): boolean => {
+    if (code) void copyToClipboard(code);
+    return code.length > 0;
+  };
+  return [
+    {
+      key: "code-copy",
+      label: "Copy code",
+      icon: <ContentCopyIcon fontSize="small" />,
+      handler,
+    },
+    {
+      key: "code-delete",
+      label: "Delete code block",
+      icon: <DeleteIcon fontSize="small" />,
+      handler: () => {
+        editor
+          .chain()
+          .focus()
+          .deleteRange({ from: target.from, to: target.to })
+          .run();
         return true;
       },
     },
-    {
-      id: "delete-table",
-      label: "Delete table",
-      icon: <IconTableOff size={18} />,
-      handler: () => editor.chain().focus().deleteTable().run(),
-    },
   ];
-
-  // A whole-table selection cannot take row/column edits or a clear.
-  if (analysis.kind === "tableWhole") {
-    return { items: items.filter((item) => item.id === "delete-table") };
-  }
-  return { items };
 }

@@ -11,7 +11,8 @@ import {
   Menu,
   MenuItem,
   MenuList,
-  Popover,
+  Paper,
+  Popper,
   Typography,
 } from "@mui/material";
 import type { SxProps, Theme } from "@mui/material/styles";
@@ -35,6 +36,12 @@ const SURFACE_SX: SxProps<Theme> = {
   overflow: "hidden",
 };
 
+/** Denser than the MUI default body1, so menus take less room. */
+const ITEM_TEXT_SX: SxProps<Theme> = {
+  fontSize: "0.8125rem",
+  "& .MuiListItemText-primary": { fontSize: "inherit" },
+};
+
 export interface RightClickMenuProps {
   /** Viewport coordinate for the menu. MUI flips it away from edges. */
   anchorPosition: { top: number; left: number };
@@ -49,7 +56,12 @@ export interface RightClickMenuProps {
 function ShortcutHint({ shortcut }: { shortcut?: string }) {
   if (!shortcut) return null;
   return (
-    <Typography variant="body2" color="text.secondary" component="span">
+    <Typography
+      variant="body2"
+      color="text.secondary"
+      component="span"
+      sx={{ fontSize: "0.75rem" }}
+    >
       {renderShortcut(shortcut)}
     </Typography>
   );
@@ -69,30 +81,39 @@ function SubmenuList({
   onRun: (handler: RightClickHandler) => void;
 }) {
   return (
-    <Popover
+    // A non-modal Popper, not a Popover. A Popover brings a full-screen
+    // invisible backdrop that swallows outside clicks and makes the
+    // pointer never leave the submenu, so it stays open forever.
+    // Popper only renders the surface itself, so leaving it fires
+    // onMouseLeave and outside clicks reach the parent Menu backdrop.
+    <Popper
       open
       anchorEl={anchorEl}
-      anchorOrigin={{ vertical: "top", horizontal: "right" }}
-      transformOrigin={{ vertical: "top", horizontal: "left" }}
-      onMouseEnter={onEnter}
-      onMouseLeave={onLeave}
-      disableRestoreFocus
-      slotProps={{ paper: { elevation: 12, sx: SURFACE_SX } }}
+      placement="right-start"
+      sx={{ zIndex: (theme) => theme.zIndex.modal + 1 }}
     >
-      <MenuList autoFocusItem>
-        {submenu.items.map((item) => (
-          <MenuItem
-            key={item.id}
-            disabled={item.disabled}
-            onClick={() => onRun(item.handler)}
-          >
-            {item.icon && <ListItemIcon>{item.icon}</ListItemIcon>}
-            <ListItemText>{item.label}</ListItemText>
-            <ShortcutHint shortcut={item.shortcut} />
-          </MenuItem>
-        ))}
-      </MenuList>
-    </Popover>
+      <Paper
+        elevation={12}
+        sx={SURFACE_SX}
+        onMouseEnter={onEnter}
+        onMouseLeave={onLeave}
+      >
+        <MenuList>
+          {submenu.items.map((item) => (
+            <MenuItem
+              key={item.id}
+              disabled={item.disabled}
+              onClick={() => onRun(item.handler)}
+              sx={ITEM_TEXT_SX}
+            >
+              {item.icon && <ListItemIcon>{item.icon}</ListItemIcon>}
+              <ListItemText>{item.label}</ListItemText>
+              <ShortcutHint shortcut={item.shortcut} />
+            </MenuItem>
+          ))}
+        </MenuList>
+      </Paper>
+    </Popper>
   );
 }
 
@@ -117,7 +138,7 @@ function Row({
     [],
   );
 
-  const hasSubmenu = row.kind === "button" && Boolean(row.submenu);
+  const hasSubmenu = Boolean(row.submenu);
 
   const cancelClose = () => {
     if (closeTimer.current) clearTimeout(closeTimer.current);
@@ -152,29 +173,30 @@ function Row({
         onClick={handleClick}
         onMouseEnter={hasSubmenu ? cancelClose : undefined}
         onMouseLeave={hasSubmenu ? scheduleClose : undefined}
+        sx={ITEM_TEXT_SX}
       >
-        <ListItemIcon>
-          {row.icon ??
-            (hasSubmenu ? <ChevronRightIcon fontSize="small" /> : null)}
-        </ListItemIcon>
+        <ListItemIcon>{row.icon ?? null}</ListItemIcon>
         <ListItemText>
           {row.kind === "custom" ? (row.node ?? row.label) : row.label}
         </ListItemText>
         <ShortcutHint shortcut={row.shortcut} />
-      </MenuItem>
-      {hasSubmenu &&
-        openSubmenu &&
-        submenuAnchor &&
-        row.kind === "button" &&
-        row.submenu && (
-          <SubmenuList
-            submenu={row.submenu}
-            anchorEl={submenuAnchor}
-            onEnter={cancelClose}
-            onLeave={scheduleClose}
-            onRun={onRun}
+        {/* Right chevron marks a row that opens a submenu. */}
+        {hasSubmenu && (
+          <ChevronRightIcon
+            fontSize="small"
+            sx={{ ml: 1, color: "text.disabled" }}
           />
         )}
+      </MenuItem>
+      {hasSubmenu && openSubmenu && submenuAnchor && row.submenu && (
+        <SubmenuList
+          submenu={row.submenu}
+          anchorEl={submenuAnchor}
+          onEnter={cancelClose}
+          onLeave={scheduleClose}
+          onRun={onRun}
+        />
+      )}
     </>
   );
 }

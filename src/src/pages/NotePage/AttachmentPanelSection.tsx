@@ -47,7 +47,12 @@ export const AttachmentPanelSection: React.FC<AttachmentPanelSectionProps> = ({
 
   return (
     <>
-      <PanelSection title="Attachments" collapsible defaultExpanded={false}>
+      <PanelSection
+        title="Attachments"
+        collapsible
+        defaultExpanded={false}
+        bordered
+      >
         <Stack spacing={1}>
           <Typography
             component="span"

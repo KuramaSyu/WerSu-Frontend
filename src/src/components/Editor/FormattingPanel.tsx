@@ -28,9 +28,10 @@ import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { useEditorMenuStore } from "../../zustand/editorMenuStore";
 import { PanelSection } from "../Panels/PanelSection";
 
-// Wraps a ToggleButton in a Tooltip. Disabled ToggleButtons don't fire
-// pointer events in MUI, so the Tooltip needs `disableInteractive` to
-// remain dismissable when the button is disabled.
+// Wraps a ToggleButton in a Tooltip. A disabled button fires no events,
+// so MUI's Tooltip needs a span wrapper to still show its title. The
+// wrapper only exists while disabled; ToggleButtonGroup sees this
+// component (not the span), so selection still works.
 const TippedToggle: React.FC<{
   title: string;
   disabled?: boolean;
@@ -39,8 +40,8 @@ const TippedToggle: React.FC<{
   value: string;
   ariaLabel: string;
   children: React.ReactNode;
-}> = ({ title, disabled, selected, onClick, value, ariaLabel, children }) => (
-  <Tooltip title={title} disableInteractive>
+}> = ({ title, disabled, selected, onClick, value, ariaLabel, children }) => {
+  const button = (
     <ToggleButton
       value={value}
       selected={selected}
@@ -50,8 +51,17 @@ const TippedToggle: React.FC<{
     >
       {children}
     </ToggleButton>
-  </Tooltip>
-);
+  );
+  return (
+    <Tooltip title={title} disableInteractive>
+      {disabled ? (
+        <span style={{ display: "inline-flex" }}>{button}</span>
+      ) : (
+        button
+      )}
+    </Tooltip>
+  );
+};
 
 export const FormattingPanel: React.FC = () => {
   const editor = useActiveNoteStore((s) => s.editor);
@@ -99,7 +109,13 @@ export const FormattingPanel: React.FC = () => {
   const disabled = !editor.isEditable || viewMode !== "rich";
 
   return (
-    <PanelSection title="Formatting" collapsible defaultExpanded spacing={1}>
+    <PanelSection
+      title="Formatting"
+      collapsible
+      defaultExpanded
+      spacing={1}
+      bordered
+    >
       <ToggleButtonGroup size="small" color="secondary">
         <TippedToggle
           title="Bold"

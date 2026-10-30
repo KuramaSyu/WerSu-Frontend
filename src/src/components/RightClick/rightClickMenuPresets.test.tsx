@@ -16,10 +16,13 @@ vi.mock("../Editor/bubbleMenuStrategies", () => ({
 }));
 
 import {
+  buildCodeBlockCommands,
   buildEditorMenuRequest,
+  buildImageCommands,
   buildInsertSubmenu,
-  buildTableSubmenu,
+  buildTableMenuRows,
 } from "./rightClickMenuPresets";
+import type { EditorContextTarget } from "../Editor/editorContextTarget";
 import { useEditorMenuStore } from "../../zustand/editorMenuStore";
 import type {
   CellContext,
@@ -41,6 +44,7 @@ function makeChain() {
     "deleteRow",
     "deleteColumn",
     "deleteTable",
+    "deleteRange",
   ]) {
     chain[method] = vi.fn(() => chain);
   }
@@ -100,77 +104,149 @@ describe("buildEditorMenuRequest", () => {
     expect(request.overrides?.insert?.handler).toBeTypeOf("function");
   });
 
-  it("adds the table trigger when the click lands in a table", () => {
+  it("adds table rows when the click lands in a table", () => {
     mocks.analyseSelection.mockReturnValue(
       analysis({ kind: "tableCell", cell: cell([1], [2]) }),
     );
     const { editor } = makeEditor();
     const request = buildEditorMenuRequest(editor as never, true, position);
 
-    expect(request.buttons).toEqual([
-      "copy",
-      "paste",
-      "cut",
-      "insert",
-      "table",
+    expect(request.buttons).toEqual(["copy", "paste", "cut", "insert"]);
+    expect(request.leadingComponents?.map((row) => row.key)).toEqual([
+      "delete-table",
+      "table-rows",
+      "table-columns",
+      "clear-cells",
     ]);
-    expect(request.submenus?.table).toBeDefined();
-    expect(request.overrides?.table?.handler).toBeTypeOf("function");
   });
 });
 
-describe("buildTableSubmenu", () => {
-  it("returns null when the selection is not in a table", () => {
+describe("buildTableMenuRows", () => {
+  it("returns no rows outside a table", () => {
     const { editor } = makeEditor();
-    expect(buildTableSubmenu(editor as never, analysis())).toBeNull();
+    expect(buildTableMenuRows(editor as never, analysis())).toEqual([]);
   });
 
-  it("uses singular delete labels for a single cell", () => {
+  it("uses delete table, rows, columns, clear cell for a single cell", () => {
     const { editor } = makeEditor();
-    const submenu = buildTableSubmenu(
-      editor as never,
-      analysis({ kind: "tableCell", cell: cell([0], [1]) }),
-    );
-    const labels = submenu?.items.map((item) => item.label) ?? [];
+    const a = analysis({ kind: "tableCell", cell: cell([0], [1]) });
+    const rows = buildTableMenuRows(editor as never, a);
 
-    expect(labels).toContain("Delete row");
-    expect(labels).toContain("Delete column");
-    expect(labels).toContain("Clear cell");
+    expect(rows.map((row) => row.label)).toEqual([
+      "Delete table",
+      "Rows",
+      "Columns",
+      "Clear cell",
+    ]);
+    const rowLabels = rows[1].submenu?.items.map((item) => item.label) ?? [];
+    const colLabels = rows[2].submenu?.items.map((item) => item.label) ?? [];
+    expect(rowLabels).toContain("Delete row");
+    expect(colLabels).toContain("Delete column");
   });
 
   it("pluralises delete labels for a multi-row selection", () => {
     const { editor } = makeEditor();
-    const submenu = buildTableSubmenu(
-      editor as never,
-      analysis({ kind: "tableRow", cell: cell([0, 1], [0]) }),
-    );
-    const labels = submenu?.items.map((item) => item.label) ?? [];
+    const a = analysis({ kind: "tableRow", cell: cell([0, 1], [0]) });
+    const rows = buildTableMenuRows(editor as never, a);
 
-    expect(labels).toContain("Delete rows");
-    expect(labels).toContain("Delete column");
+    const rowLabels = rows[1].submenu?.items.map((item) => item.label) ?? [];
+    const colLabels = rows[2].submenu?.items.map((item) => item.label) ?? [];
+    expect(rowLabels).toContain("Delete rows");
+    expect(colLabels).toContain("Delete column");
   });
 
   it("offers only delete table for a whole-table selection", () => {
     const { editor } = makeEditor();
-    const submenu = buildTableSubmenu(
+    const rows = buildTableMenuRows(
       editor as never,
       analysis({ kind: "tableWhole", cell: cell([0], [0]) }),
     );
 
-    expect(submenu?.items.map((item) => item.label)).toEqual(["Delete table"]);
+    expect(rows.map((row) => row.label)).toEqual(["Delete table"]);
   });
 
-  it("runs the matching command for an item", () => {
+  it("runs the matching command from a submenu", () => {
     const { editor, chain } = makeEditor();
-    const submenu = buildTableSubmenu(
+    const rows = buildTableMenuRows(
       editor as never,
       analysis({ kind: "tableCell", cell: cell([0], [0]) }),
     );
-    const item = submenu?.items.find((entry) => entry.id === "add-row-before");
+    const item = rows[1].submenu?.items.find(
+      (entry) => entry.id === "add-row-before",
+    );
 
     item?.handler(undefined);
     expect(chain.addRowBefore).toHaveBeenCalled();
     expect(chain.run).toHaveBeenCalled();
+  });
+});
+
+describe("element commands", () => {
+  it("offers copy link then delete for an image with a src", () => {
+    const { editor } = makeEditor();
+    const node = { attrs: { src: "http://img/x.png" } } as never;
+    const target = {
+      kind: "image",
+      from: 1,
+      to: 2,
+    } as EditorContextTarget;
+    const rows = buildImageCommands(editor as never, node, target);
+    expect(rows.map((row) => row.label)).toEqual([
+      "Copy image link",
+      "Delete image",
+    ]);
+    expect(rows[0].handler).toBeTypeOf("function");
+  });
+
+  it("omits copy link when the image has no src", () => {
+    const { editor } = makeEditor();
+    const node = { attrs: {} } as never;
+    const target = {
+      kind: "image",
+      from: 1,
+      to: 2,
+    } as EditorContextTarget;
+    const rows = buildImageCommands(editor as never, node, target);
+    expect(rows.map((row) => row.label)).toEqual(["Delete image"]);
+  });
+
+  it("deletes a code block through deleteRange", () => {
+    const { editor, chain } = makeEditor();
+    const node = { textContent: "const a = 1;" } as never;
+    const target = {
+      kind: "codeBlock",
+      from: 5,
+      to: 21,
+    } as EditorContextTarget;
+    const rows = buildCodeBlockCommands(editor as never, node, target);
+    expect(rows.map((row) => row.label)).toEqual([
+      "Copy code",
+      "Delete code block",
+    ]);
+    rows[1].handler?.(undefined);
+    expect(chain.deleteRange).toHaveBeenCalledWith({ from: 5, to: 21 });
+  });
+
+  it("appends element rows when the request targets an image", () => {
+    const { editor } = makeEditor();
+    const node = { attrs: { src: "http://img/x.png" } } as never;
+    const target = {
+      kind: "image",
+      from: 1,
+      to: 2,
+      hitPos: 1,
+      node,
+    } as EditorContextTarget;
+    const request = buildEditorMenuRequest(
+      editor as never,
+      true,
+      position,
+      target,
+    );
+    expect(request.leadingComponents?.map((row) => row.key)).toEqual([
+      "image-copy-link",
+      "image-delete",
+    ]);
   });
 });
 

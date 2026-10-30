@@ -43,6 +43,8 @@ export interface RightClickMenuRequest {
   buttons: RightClickButtonId[];
   /** Per-button patch: relabel, swap icon, change shortcut, replace handler. */
   overrides?: Partial<Record<RightClickButtonId, RightClickButtonOverride>>;
+  /** Caller rows rendered before the built-in buttons. */
+  leadingComponents?: RightClickMenuRow[];
   /** Any rows appended after the built-ins. */
   extraComponents?: RightClickMenuRow[];
   /** A hover submenu attached to one button, used by Insert. */
@@ -80,6 +82,10 @@ export interface RightClickMenuRow {
   disabled?: boolean;
   /** Fully custom content, used instead of the label when present. */
   node?: ReactNode;
+  /** Runs the row. Custom rows without one render inert. */
+  handler?: RightClickHandler;
+  /** A hover submenu attached to the row. */
+  submenu?: RightClickSubmenu;
 }
 
 export interface RightClickButtonDefinition {
@@ -116,6 +122,8 @@ export interface ResolvedMenuCustomRow {
   shortcut?: string;
   disabled: boolean;
   node?: ReactNode;
+  handler?: RightClickHandler;
+  submenu?: RightClickSubmenu;
 }
 
 export interface ResolvedMenuDivider {

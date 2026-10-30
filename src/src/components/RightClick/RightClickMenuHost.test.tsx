@@ -5,7 +5,7 @@
 
 import "../../test/setup";
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../hooks/useBreakpoint", () => ({
@@ -63,6 +63,24 @@ describe("RightClickMenuHost", () => {
 
     expect(screen.getByText("Copy")).toBeInTheDocument();
     expect(screen.getByText("Paste")).toBeInTheDocument();
+  });
+
+  it("runs a caller-supplied command row and closes the menu", () => {
+    const handler = vi.fn(() => true);
+    render(<RightClickMenuHost />);
+    act(() => {
+      useRightClickMenuStore.getState().openMenu({
+        position: { x: 0, y: 0 },
+        buttons: [],
+        extraComponents: [
+          { key: "image-delete", label: "Delete image", handler },
+        ],
+      });
+    });
+
+    fireEvent.click(screen.getByText("Delete image"));
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(useRightClickMenuStore.getState().isOpen).toBe(false);
   });
 
   it("closes when the backdrop is clicked", () => {

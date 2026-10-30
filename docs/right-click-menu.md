@@ -72,6 +72,9 @@ interface RightClickMenuRequest {
   /** Per-button patch: relabel, swap icon, change shortcut, replace handler. */
   overrides?: Partial<Record<RightClickButtonId, RightClickButtonOverride>>;
 
+  /** Caller rows rendered before the built-in buttons. */
+  leadingComponents?: RightClickMenuRow[];
+
   /** Any React you want appended after the built-ins. */
   extraComponents?: RightClickMenuRow[];
 
@@ -204,20 +207,53 @@ mutation logic inside a component.
 
 ## Editor behaviour
 
+### Element menus and highlight
+
+The contextmenu handler resolves what the pointer is over
+(`resolveEditorContextTarget`), places the editor selection on it, and
+decorates it with a primary-colour outline via the
+`EditorContextHighlight` extension. The outline is cleared when the menu
+closes. Three kinds get their own entries:
+
+| Kind | Entries |
+|---|---|
+| Image | Copy image link, Delete image |
+| Code block | Copy code, Delete code block |
+| Table | every command in the shared table catalogue (below) |
+
+Element rows are caller rows (`leadingComponents`, so they sit at the
+top of the menu, above the generic copy/paste buttons) and carry a
+`handler`, so a command is just `{ id, label, icon, handler }`. Rows
+with a `submenu` also render a right chevron so it is obvious a nested
+menu is behind them.
+
+The contextmenu listener is attached to the editor DOM in the **capture
+phase**. That is the reliable path for node views (images, code blocks):
+the capture listener runs before Firefox's native menu, and
+`stopImmediatePropagation` keeps ProseMirror's bubble-phase handler from
+opening the menu a second time.
+
 ### Table options
 
 When you right-click a table, table buttons appear. Detection reuses
-`analyseSelection(editor.state)` from
+`resolveEditorContextTarget` plus `analyseSelection(editor.state)` from
 [`bubbleMenuStrategies.ts`](src/src/components/Editor/bubbleMenuStrategies.ts),
-which already reports the selection kind and which rows/columns are hit.
+which reports the selection kind and which rows/columns are hit.
 
-| Button | Tiptap command |
+The root table menu is:
+
+| Row | Contents |
 |---|---|
-| Insert row above / below | `addRowBefore()` / `addRowAfter()` |
-| Insert column left / right | `addColumnBefore()` / `addColumnAfter()` |
-| Delete row / column | `deleteRow()` / `deleteColumn()` |
 | Delete table | `deleteTable()` |
-| Clear cells | `clearCells(editor)` |
+| Rows ▸ | Insert above/below, move up/down, delete |
+| Columns ▸ | Insert left/right, move left/right, delete |
+| Clear cell(s) | `clearCells(editor)` |
+
+The menu is built from the single command catalogue in
+[`tableCommands.ts`](src/src/components/Editor/tableCommands.ts). The
+bubble menu and the right-click menu both consume it, so there is one
+run implementation per operation. Deleting a row/column pluralises from
+the selection, and a whole-table selection offers only **Delete table**.
 
 ### Insert submenu
 
@@ -328,6 +364,11 @@ state instead of four.
 - `src/src/components/RightClick/useRightClickMenu.ts`
 - `src/src/components/RightClick/EditorRightClickMenu.tsx`
 - `src/src/components/RightClick/editorClipboard.ts` (extracted, shared)
+- `src/src/components/Editor/tableCommands.ts` (shared command catalogue)
+- `src/src/components/Editor/tableOperations.ts` (clearCells + move helpers)
+- `src/src/components/Editor/editorIcons.tsx` (icon-name -> icon map)
+- `src/src/components/Editor/editorContextTarget.ts` (pointer -> element)
+- `src/src/components/Editor/editorContextHighlight.ts` (outline decoration)
 - `src/src/pages/DirectoryView/DirectoryItemMenu.tsx`
 - `src/src/pages/Home/FolderCardMenu.tsx`
 - `src/src/pages/MainPage/NoteCardMenu.tsx`

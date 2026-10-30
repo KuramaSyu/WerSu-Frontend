@@ -2,7 +2,7 @@
 
 // Renderer behaviour: preset rows, key-chip hints, greyed rows.
 
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import "../../test/setup";
 
@@ -21,6 +21,7 @@ const ok = () => true;
 const registry: RightClickButtonRegistry = {
   copy: { id: "copy", label: "Copy", shortcut: "ctrl+c", handler: ok },
   paste: { id: "paste", label: "Paste", shortcut: "ctrl+v", handler: ok },
+  insert: { id: "insert", label: "Insert", handler: ok },
   edit: { id: "edit", label: "Edit" },
 };
 
@@ -29,7 +30,10 @@ const request: RightClickMenuRequest = {
   buttons: ["copy", "paste", "edit"],
 };
 
-function renderMenu(overrides?: Partial<RightClickMenuRequest>) {
+function renderMenu(
+  overrides?: Partial<RightClickMenuRequest>,
+  onClose: () => void = () => {},
+) {
   const merged = { ...request, ...overrides };
   const rows = resolveRightClickMenu(merged, registry);
   return render(
@@ -43,9 +47,22 @@ function renderMenu(overrides?: Partial<RightClickMenuRequest>) {
           : undefined
       }
       onRun={(handler) => handler(merged.targetId)}
-      onClose={() => {}}
+      onClose={onClose}
     />,
   );
+}
+
+const submenuRequest: Partial<RightClickMenuRequest> = {
+  buttons: ["insert"],
+  submenus: {
+    insert: { items: [{ id: "table", label: "Table", handler: ok }] },
+  },
+};
+
+function renderSubmenu(onClose?: () => void) {
+  renderMenu(submenuRequest, onClose);
+  fireEvent.mouseEnter(item("Insert")!);
+  return screen.getByText("Table");
 }
 
 const item = (label: string) => screen.getByText(label).closest("li");
@@ -66,6 +83,14 @@ describe("RightClickMenu", () => {
     const hints = screen.getAllByTestId("shortcut").map((n) => n.textContent);
     expect(hints).toContain("ctrl+c");
     expect(hints).toContain("ctrl+v");
+  });
+
+  it("renders denser text than the MUI body default", () => {
+    renderMenu();
+    expect(item("Copy")).toHaveStyle({ fontSize: "0.8125rem" });
+
+    const hint = screen.getAllByTestId("shortcut")[0];
+    expect(hint.parentElement).toHaveStyle({ fontSize: "0.75rem" });
   });
 
   it("greys a disabled row instead of hiding it", () => {
@@ -122,6 +147,60 @@ describe("RightClickMenu", () => {
     expect(copyRow).toHaveAttribute("aria-disabled", "true");
     copyRow?.click();
     expect(handler).not.toHaveBeenCalled();
+  });
+
+  it("opens the submenu on hover and closes it when the pointer leaves it", async () => {
+    renderSubmenu();
+    expect(screen.getByText("Table")).toBeInTheDocument();
+
+    const paper = screen.getByText("Table").closest(".MuiPaper-root")!;
+    // A modal wrapper would cover the viewport and never report a leave.
+    expect(paper.closest(".MuiModal-root")).toBeNull();
+    fireEvent.mouseLeave(paper);
+
+    await waitFor(() =>
+      expect(screen.queryByText("Table")).not.toBeInTheDocument(),
+    );
+  });
+
+  it("marks submenu rows with a right chevron", () => {
+    renderMenu(submenuRequest);
+    const row = item("Insert");
+    expect(row?.querySelector("svg")).not.toBeNull();
+  });
+
+  it("opens a submenu attached to a custom row", () => {
+    const custom: RightClickMenuRequest = {
+      position: { x: 0, y: 0 },
+      buttons: [],
+      extraComponents: [
+        {
+          key: "table-rows",
+          label: "Rows",
+          submenu: {
+            items: [{ id: "delete-row", label: "Delete row", handler: ok }],
+          },
+        },
+      ],
+    };
+    renderMenu(custom);
+    expect(screen.queryByText("Delete row")).not.toBeInTheDocument();
+
+    fireEvent.mouseEnter(item("Rows")!);
+    expect(screen.getByText("Delete row")).toBeInTheDocument();
+  });
+
+  it("closes the whole menu when clicking outside while a submenu is open", () => {
+    const onClose = vi.fn();
+    renderSubmenu(onClose);
+
+    // The submenu must not add its own backdrop, otherwise the click
+    // would be swallowed and the parent menu would never close.
+    const backdrops = document.querySelectorAll(".MuiBackdrop-root");
+    expect(backdrops).toHaveLength(1);
+    fireEvent.click(backdrops[0]);
+
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it("enables and fires a row once the registry has a handler", () => {

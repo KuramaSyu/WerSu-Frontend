@@ -34,6 +34,7 @@ import { useUser } from "../../api/queries/useUser";
 import { generatePublicUserName } from "../../utils/publicUserName";
 import { randomMatchingColor } from "../../utils/blendWithContrast";
 import { CustomCodeBlock } from "../../components/Editor/View/CustomCodeBlock";
+import { EditorContextHighlight } from "../../components/Editor/editorContextHighlight";
 import { handleCodeBlockTabKey } from "../../components/Editor/codeBlockTabKey";
 import { lowlight } from "../../components/Editor/lowlight";
 import { TableWithControls } from "../../components/Editor/TableControlls/TableControlls";
@@ -190,6 +191,7 @@ export const useNoteEditor = (params: UseNoteEditorParams): Editor | null => {
           },
         }),
         CustomCodeBlock.configure({ lowlight, defaultLanguage: "plaintext" }),
+        EditorContextHighlight,
         TaskList,
         TaskItem.configure({ nested: true }),
         Youtube.configure({ inline: false, width: 480, height: 320 }),

@@ -15,27 +15,14 @@ import FormatItalicIcon from "@mui/icons-material/FormatItalic";
 import StrikeThroughIcon from "@mui/icons-material/FormatStrikethrough";
 import CodeIcon from "@mui/icons-material/Code";
 import BorderColorIcon from "@mui/icons-material/BorderColor";
-import FormatClearIcon from "@mui/icons-material/FormatClear";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import TextSnippetIcon from "@mui/icons-material/TextSnippet";
 import { CopyButton } from "../CopyButton";
 import { copyEditorSelection } from "../RightClick/editorClipboard";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useEditorMenuStore } from "../../zustand/editorMenuStore";
-import {
-  IconColumnInsertLeft,
-  IconColumnInsertRight,
-  IconColumnRemove,
-  IconRowInsertTop,
-  IconRowInsertBottom,
-  IconRowRemove,
-  IconTableOff,
-  IconTransitionBottom,
-  IconTransitionLeft,
-  IconTransitionRight,
-  IconTransitionTop,
-} from "@tabler/icons-react";
 import { analyseSelection, pickStrategy } from "./bubbleMenuStrategies";
+import { iconForName } from "./editorIcons";
 
 // Shared tooltip defaults: arrow on, anchored above.
 const BubbleTooltip = (
@@ -399,45 +386,3 @@ function iconForMark(mark: string): React.ReactNode {
   }
 }
 
-// Resolve a strategy icon name to a component.
-function iconForName(name: string): React.ReactNode {
-  switch (name) {
-    case "format-bold":
-      return <FormatBoldIcon fontSize="small" />;
-    case "format-italic":
-      return <FormatItalicIcon fontSize="small" />;
-    case "format-strikethrough":
-      return <StrikeThroughIcon fontSize="small" />;
-    case "format-clear":
-      return <FormatClearIcon fontSize="small" />;
-    case "code":
-      return <CodeIcon fontSize="small" />;
-    case "highlight":
-      return <BorderColorIcon fontSize="small" />;
-    case "row-insert-top":
-      return <IconRowInsertTop size={18} />;
-    case "row-insert-bottom":
-      return <IconRowInsertBottom size={18} />;
-    case "row-remove":
-      return <IconRowRemove size={18} />;
-    case "row-move-up":
-      return <IconTransitionTop size={18} />;
-    case "row-move-down":
-      return <IconTransitionBottom size={18} />;
-    case "column-insert-left":
-      return <IconColumnInsertLeft size={18} />;
-    case "column-insert-right":
-      return <IconColumnInsertRight size={18} />;
-    case "column-remove":
-      return <IconColumnRemove size={18} />;
-    case "column-move-left":
-      return <IconTransitionLeft size={18} />;
-    case "column-move-right":
-      return <IconTransitionRight size={18} />;
-    case "table-remove":
-      return <IconTableOff size={18} />;
-    // Typo fallback renders a neutral icon instead of nothing.
-    default:
-      return <FormatClearIcon fontSize="small" />;
-  }
-}

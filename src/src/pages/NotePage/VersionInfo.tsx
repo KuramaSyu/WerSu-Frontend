@@ -90,7 +90,7 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
   const showVersionToggle = versionsExpanded || hasMoreVersions;
   return (
     <>
-      <PanelSection title="Versions" collapsible defaultExpanded>
+      <PanelSection title="Versions" collapsible defaultExpanded bordered>
         <Timeline
           sx={{
             padding: 0,

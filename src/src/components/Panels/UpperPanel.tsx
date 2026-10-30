@@ -1,20 +1,5 @@
 import React from "react";
 import { Box, Stack } from "@mui/material";
-import { useThemeStore } from "../../zustand/useThemeStore";
-
-/**
- * Visual style for the panel shell.
- *
- *   - `"plain"` (default): transparent, no border, no shadow. Used on
- *     the LEFT rail, where the rail itself already paints the canvas
- *     (background.default) and content sits directly on it.
- *   - `"outlined"`: paper background with a 1px divider-coloured
- *     border and elevation 0. Used on the RIGHT rail, which is
- *     transparent and sits on the shell's paper canvas — the outlined
- *     shell groups the section children into one visible card so they
- *     read as outlined boxes rather than loose rows.
- */
-export type UpperPanelVariant = "plain" | "outlined";
 
 export interface UpperPanelProps {
   /** Sections stacked vertically inside the panel body. */
@@ -33,22 +18,18 @@ export interface UpperPanelProps {
    * without inheriting the body's padding.
    */
   header?: React.ReactNode;
-  /**
-   * Shell variant. Defaults to `"plain"` for backwards compatibility
-   * with the left rail. Right-rail callers pass `"outlined"` to get
-   * the bordered card grouping.
-   */
-  variant?: UpperPanelVariant;
 }
 
 /**
  * Canonical side-rail panel: section spacing and the scroll container.
  *
- * The default `"plain"` variant has no shell — content sits directly
- * on the rail's canvas. The `"outlined"` variant wraps the sections
- * in a paper-toned card with a 1px border, used by the right rail so
- * its content reads as outlined boxes against the shell's paper
- * canvas.
+ * The shell is intentionally transparent — it paints no background and
+ * no border, so content sits directly on the rail's canvas (the page
+ * background). Each child section owns its own surface: right-rail
+ * callers pass `bordered` to `PanelSection` to get an outlined card,
+ * while the left rail keeps plain, borderless rows. This keeps the
+ * shell layout (spacing / scroll) in one place without forcing a single
+ * surface style on every rail.
  *
  * Every side-rail call-site routes through this component so the
  * spacing and shape can never drift apart.
@@ -57,9 +38,7 @@ export const UpperPanel: React.FC<UpperPanelProps> = ({
   children,
   spacing = 2,
   header,
-  variant = "plain",
 }) => {
-  const { theme } = useThemeStore();
   return (
     <Box
       sx={{
@@ -67,14 +46,6 @@ export const UpperPanel: React.FC<UpperPanelProps> = ({
         flexDirection: "column",
         height: "100%",
         width: "100%",
-        ...(variant === "outlined" && {
-          // Right-rail outline: a single vertical line on the left
-          // edge (matches the visual "this section sits next to the
-          // canvas" reading) instead of a full 4-sided border. The
-          // left rail keeps the plain variant (no border at all).
-          backgroundColor: theme.palette.background.paper,
-          borderLeft: `1px solid ${theme.palette.divider}`,
-        }),
       }}
     >
       <Box sx={{ overflowY: "auto", flex: 1, minHeight: 0 }}>

@@ -327,3 +327,33 @@ describe("resolveRightClickMenu extra rows", () => {
     expect(row.disabled).toBe(true);
   });
 });
+
+describe("resolveRightClickMenu leading rows", () => {
+  const keyOf = (row: ResolvedMenuEntry) =>
+    row.kind === "button" ? row.buttonId : row.key;
+
+  it("renders leading rows before the buttons with a divider", () => {
+    const rows = resolveRightClickMenu(
+      request(["copy", "paste"], {
+        leadingComponents: [{ key: "delete-table", label: "Delete table" }],
+      }),
+      registry,
+    );
+    expect(rows.map(keyOf)).toEqual([
+      "delete-table",
+      "divider-leading",
+      "copy",
+      "paste",
+    ]);
+  });
+
+  it("omits the divider when there are no buttons", () => {
+    const rows = resolveRightClickMenu(
+      request([], {
+        leadingComponents: [{ key: "only", label: "Only" }],
+      }),
+      registry,
+    );
+    expect(rows.map(keyOf)).toEqual(["only"]);
+  });
+});

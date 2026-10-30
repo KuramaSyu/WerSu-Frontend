@@ -3,10 +3,12 @@
 
 import {
   RIGHT_CLOCK_BUTTON_ORDER,
+  type ResolvedMenuCustomRow,
   type ResolvedMenuEntry,
   type RightClickButtonId,
   type RightClickButtonRegistry,
   type RightClickMenuRequest,
+  type RightClickMenuRow,
 } from "./types";
 
 const ORDER_INDEX = new Map<RightClickButtonId, number>(
@@ -26,6 +28,20 @@ function canonicalOrder(
   return [...new Set(ids)].sort((a, b) => orderIndex(a) - orderIndex(b));
 }
 
+function toCustomRow(row: RightClickMenuRow): ResolvedMenuCustomRow {
+  return {
+    kind: "custom",
+    key: row.key,
+    label: row.label,
+    icon: row.icon,
+    shortcut: row.shortcut,
+    disabled: row.disabled ?? false,
+    node: row.node,
+    handler: row.handler,
+    submenu: row.submenu,
+  };
+}
+
 export function resolveRightClickMenu(
   request: RightClickMenuRequest,
   registry: RightClickButtonRegistry = {},
@@ -34,11 +50,21 @@ export function resolveRightClickMenu(
   const entries: ResolvedMenuEntry[] = [];
   let previousIndex: number | null = null;
 
-  for (const id of canonicalOrder(request.buttons)) {
+  const buttonIds = canonicalOrder(request.buttons).filter((id) => {
     const override = request.overrides?.[id];
-    if (override?.hidden) continue;
-    if (disabled.has(id)) continue;
+    return !override?.hidden && !disabled.has(id);
+  });
 
+  // Caller rows first (for example the right-clicked element commands),
+  // then a divider before the generic editor buttons.
+  const leading = request.leadingComponents ?? [];
+  for (const row of leading) entries.push(toCustomRow(row));
+  if (leading.length > 0 && buttonIds.length > 0) {
+    entries.push({ kind: "divider", key: "divider-leading" });
+  }
+
+  for (const id of buttonIds) {
+    const override = request.overrides?.[id];
     const index = orderIndex(id);
     if (previousIndex !== null && index - previousIndex > 1) {
       entries.push({ kind: "divider", key: `divider-${id}` });
@@ -67,15 +93,7 @@ export function resolveRightClickMenu(
   }
 
   for (const row of request.extraComponents ?? []) {
-    entries.push({
-      kind: "custom",
-      key: row.key,
-      label: row.label,
-      icon: row.icon,
-      shortcut: row.shortcut,
-      disabled: row.disabled ?? false,
-      node: row.node,
-    });
+    entries.push(toCustomRow(row));
   }
 
   return entries;
