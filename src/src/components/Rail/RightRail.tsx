@@ -1,8 +1,6 @@
 import type { ReactNode } from "react";
 import { Box } from "@mui/material";
-import { useThemeStore } from "../../zustand/useThemeStore";
-import { M2, RAIL_ELEVATION } from "../../statics";
-import { TranslucentPaper } from "../TranslucentPaper";
+import { M2 } from "../../statics";
 
 export interface RightRailProps {
   /** Mounted right-rail content (whatever the current route put there). */
@@ -10,28 +8,26 @@ export interface RightRailProps {
 }
 
 /**
- * Right side rail. Just renders the route's right panel content;
- * the collapse / expand toggle lives in the AppShell's top panel
+ * Right side rail. Just renders the route's right panel content; the
+ * collapse / expand toggle lives in the AppShell's top panel
  * (`<RightPanelToggle />`).
+ *
+ * The rail paints no surface of its own. Unlike the left rail (a
+ * separate grid column that has to paint its own canvas), the right
+ * rail lives inside the main `TranslucentPaper`, so staying transparent
+ * makes it share the exact same background as the main content. Each
+ * section provides its own thin outline instead of a rail-wide fill.
  *
  * Width is driven entirely by the parent grid track (AppShell's
  * `grid-template-columns`); this component does not animate its own
  * width.
  */
 export const RightRail: React.FC<RightRailProps> = ({ children }) => {
-  const { theme } = useThemeStore();
-
   return (
-    <TranslucentPaper
-      elevation={RAIL_ELEVATION}
-      square
+    <Box
       sx={{
         display: "flex",
         flexDirection: "column",
-        // The right rail's own paper-tinted shell sits on top of
-        // the parent's paper-toned canvas; both are translucent so
-        // the AppBackground still shows through.
-        backgroundColor: theme.palette.background.default,
         height: "100%",
         overflow: "hidden",
         minWidth: 0,
@@ -49,6 +45,6 @@ export const RightRail: React.FC<RightRailProps> = ({ children }) => {
       >
         {children}
       </Box>
-    </TranslucentPaper>
+    </Box>
   );
 };
