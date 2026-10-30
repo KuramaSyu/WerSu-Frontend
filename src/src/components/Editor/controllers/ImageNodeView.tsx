@@ -7,6 +7,7 @@ import { useEditorSettings } from "../../../zustand/useEditorSettings";
 import { useAuthStore } from "../../../zustand/useAuthStore";
 import { useAttachmentPreviewStore } from "../../../zustand/useAttachmentPreviewStore";
 import { AttachmentApi } from "../../../api/AttachmentApi";
+import { useShareAttachmentToken } from "../../../api/queries/useAttachmentQueries";
 import { AttachmentLinkBuilder } from "../../../api/utils/AttachmentLInkBuilder";
 import { extractAttachmentKeyFromUrl } from "../../../api/utils/request_helpers";
 import { prepareBackendLink } from "../../../utils/prepareBackendLink";
@@ -87,6 +88,15 @@ export function ImageNodeView({ node, selected, getPos }: NodeViewProps) {
     : undefined;
   const jwt = resolved?.jwt;
   const resolvedKey = resolved?.key;
+
+  // Live-collab rescue: another collaborator (or a public user) uploads
+  // an image, the node appears, but the note's initial token map was
+  // snapshotted before the upload. `tokensLoaded` marks a public-share
+  // session; if we still have no JWT for the key, ask the backend for a
+  // fresh scoped one. The hook merges it into the auth store, which
+  // re-renders this node view and appends it to the image `src` below.
+  const needsAttachmentToken = Boolean(attachmentKey) && !jwt && tokensLoaded;
+  useShareAttachmentToken(attachmentKey, needsAttachmentToken);
 
   // One-time diagnostic dump: list the map's keys vs the key the
   // nodeview is asking for, so a mismatch is visible without devtools
