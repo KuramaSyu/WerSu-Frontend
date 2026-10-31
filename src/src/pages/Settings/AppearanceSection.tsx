@@ -3,12 +3,14 @@ import {
   InputLabel,
   MenuItem,
   Select,
+  Slider,
   Stack,
   Switch,
   Typography,
 } from "@mui/material";
 import {
   CODE_BLOCK_THEMES,
+  MAX_NOTE_EDITOR_BLUR_AMOUNT,
   useAppearanceSettings,
   type CodeBlockTheme,
 } from "../../zustand/useAppearanceSettings";
@@ -42,11 +44,16 @@ export const AppearanceSection: React.FC = () => {
   const {
     codeBlockThemeLight,
     codeBlockThemeDark,
+    noteEditorBackgroundBlurAmount,
     setCodeBlockThemeLight,
     setCodeBlockThemeDark,
+    setNoteEditorBackgroundBlurAmount,
   } = useAppearanceSettings();
   const flatLayout = useFeatureStore(
     (state) => state.flags[FeatureFlagName.FlatLayout],
+  );
+  const noteEditorBackgroundBlur = useFeatureStore(
+    (state) => state.flags[FeatureFlagName.NoteEditorBackgroundBlur],
   );
   const developerMode = useFeatureStore(
     (state) => state.flags[FeatureFlagName.DeveloperMode],
@@ -81,6 +88,60 @@ export const AppearanceSection: React.FC = () => {
           }
           slotProps={{ input: { "aria-label": "Flat layout toggle" } }}
         />
+      </Stack>
+
+      <Stack
+        direction="column"
+        spacing={2}
+        sx={{
+          py: 1.5,
+          borderTop: 1,
+          borderBottom: 1,
+          borderColor: "divider",
+        }}
+      >
+        <Stack
+          direction="row"
+          spacing={2}
+          sx={{ alignItems: "center", justifyContent: "space-between" }}
+        >
+          <Stack direction="column" spacing={1}>
+            <Typography variant="subtitle1">
+              Note editor background blur
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Blur the theme background image behind the note editor. This is
+              only active when the current theme has a background image. Turn
+              it off for better performance on slower devices.
+            </Typography>
+          </Stack>
+          <Switch
+            checked={noteEditorBackgroundBlur}
+            onChange={(_, checked) =>
+              setFlag(FeatureFlagName.NoteEditorBackgroundBlur, checked)
+            }
+            slotProps={{
+              input: { "aria-label": "Note editor background blur toggle" },
+            }}
+          />
+        </Stack>
+        <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
+          <Typography variant="body2" sx={{ minWidth: 72 }}>
+            {Math.round(noteEditorBackgroundBlurAmount)} px
+          </Typography>
+          <Slider
+            value={noteEditorBackgroundBlurAmount}
+            min={0}
+            max={MAX_NOTE_EDITOR_BLUR_AMOUNT}
+            step={1}
+            disabled={!noteEditorBackgroundBlur}
+            onChange={(_, value) =>
+              setNoteEditorBackgroundBlurAmount(value as number)
+            }
+            aria-label="Note editor background blur amount"
+            sx={{ maxWidth: 320 }}
+          />
+        </Stack>
       </Stack>
 
       <Stack>

@@ -39,13 +39,19 @@ export enum FeatureFlagName {
    */
   BlurredBackgroundDebug = "BlurredBackgroundDebug",
   /**
-   * When true, the background-image upload pipeline and the
-   * IndexedDB blob cache dump a step-by-step trace (file pick,
-   * downscale timings, cache hits, IDB open/put timings, stuck
-   * writes) to the browser console. Filter by `[bg-debug]`.
-   * Surfaced under the developer settings, gated on `DeveloperMode`.
+   * When true, the image upload pipeline (theme generator + IndexedDB
+   * blob cache) dumps a step-by-step trace (file pick, downscale
+   * timings, cache hits, IDB open/put timings, stuck writes) to the
+   * browser console. Filter by `[bg-debug]`. Surfaced under the
+   * developer settings, gated on `DeveloperMode`.
    */
   BackgroundImageDebug = "BackgroundImageDebug",
+  /**
+   * When true, the note editor surface blurs the theme background image
+   * behind it. The amount is controlled by the Appearance settings
+   * slider. Disable this for better performance on low-end devices.
+   */
+  NoteEditorBackgroundBlur = "NoteEditorBackgroundBlur",
 }
 
 const FEATURE_FLAG_NAMES = Object.values(FeatureFlagName);
@@ -62,6 +68,7 @@ const DEFAULT_FEATURE_FLAGS: Record<FeatureFlagName, boolean> = {
   [FeatureFlagName.ThemeDebug]: false,
   [FeatureFlagName.BlurredBackgroundDebug]: false,
   [FeatureFlagName.BackgroundImageDebug]: false,
+  [FeatureFlagName.NoteEditorBackgroundBlur]: true,
 };
 
 const isBooleanRecord = (value: unknown): value is Record<string, boolean> =>

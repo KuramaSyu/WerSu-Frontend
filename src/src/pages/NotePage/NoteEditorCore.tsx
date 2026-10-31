@@ -17,6 +17,9 @@ import type { Note } from "../../api/models/search";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { useViewConfig } from "../../zustand/useViewConfig";
 import { useActiveNoteStore } from "../../zustand/editorStore";
+import { useThemeStore } from "../../zustand/useThemeStore";
+import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
+import { useAppearanceSettings } from "../../zustand/useAppearanceSettings";
 import { useUpdateNote } from "../../api/queries/useNoteQueries";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { useLayout } from "../../LayoutProvider";
@@ -90,6 +93,18 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
   const { isMobile } = useBreakpoint();
   const { leftPanelOpen, leftPanelUserOverride, setLeftPanelOpen } =
     useLayout();
+  const { theme } = useThemeStore();
+  const noteEditorBackgroundBlur = useFeatureStore(
+    (s) => s.flags[FeatureFlagName.NoteEditorBackgroundBlur],
+  );
+  const { noteEditorBackgroundBlurAmount } = useAppearanceSettings();
+  const themeHasBackgroundImage =
+    Boolean(theme.custom.chosenBackgroundImage) ||
+    theme.custom.backgroundImages.length > 0;
+  const showBackgroundBlur =
+    noteEditorBackgroundBlur &&
+    themeHasBackgroundImage &&
+    noteEditorBackgroundBlurAmount > 0;
   const forceFullWidth = isMobile;
   const editorWidth =
     a4Width && !forceFullWidth ? NOTE_EDITOR_A4_WIDTH : "100%";
@@ -182,6 +197,12 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
         sx={{
           backgroundColor: "transparent",
           borderRadius: 2,
+          ...(showBackgroundBlur
+            ? {
+                backdropFilter: `blur(${noteEditorBackgroundBlurAmount}px)`,
+                WebkitBackdropFilter: `blur(${noteEditorBackgroundBlurAmount}px)`,
+              }
+            : {}),
           // On mobile the outer Paper has no padding so the editor fills
           // the screen; AppShell's safe-area padding still applies below.
           px: forceFullWidth ? 0 : M3,

@@ -26,6 +26,12 @@ export const DEFAULT_CODE_BLOCK_THEME_LIGHT: CodeBlockTheme =
 export const DEFAULT_CODE_BLOCK_THEME_DARK: CodeBlockTheme =
   "material-palenight";
 
+/** Default CSS backdrop-blur amount (pixels) for the note editor background. */
+export const DEFAULT_NOTE_EDITOR_BLUR_AMOUNT = 12;
+
+/** Upper bound for the note-editor background blur slider. */
+export const MAX_NOTE_EDITOR_BLUR_AMOUNT = 40;
+
 /**
  * Appearance settings: code-block theme + future look-and-feel knobs.
  *
@@ -37,8 +43,11 @@ export const DEFAULT_CODE_BLOCK_THEME_DARK: CodeBlockTheme =
 interface AppearanceSettingsState {
   codeBlockThemeLight: CodeBlockTheme;
   codeBlockThemeDark: CodeBlockTheme;
+  /** CSS backdrop-blur amount in pixels for the note editor background. */
+  noteEditorBackgroundBlurAmount: number;
   setCodeBlockThemeLight: (theme: CodeBlockTheme) => void;
   setCodeBlockThemeDark: (theme: CodeBlockTheme) => void;
+  setNoteEditorBackgroundBlurAmount: (amount: number) => void;
 }
 
 const isCodeBlockTheme = (value: unknown): value is CodeBlockTheme =>
@@ -50,8 +59,16 @@ export const useAppearanceSettings = create<AppearanceSettingsState>()(
     (set) => ({
       codeBlockThemeLight: DEFAULT_CODE_BLOCK_THEME_LIGHT,
       codeBlockThemeDark: DEFAULT_CODE_BLOCK_THEME_DARK,
+      noteEditorBackgroundBlurAmount: DEFAULT_NOTE_EDITOR_BLUR_AMOUNT,
       setCodeBlockThemeLight: (theme) => set({ codeBlockThemeLight: theme }),
       setCodeBlockThemeDark: (theme) => set({ codeBlockThemeDark: theme }),
+      setNoteEditorBackgroundBlurAmount: (amount) =>
+        set({
+          noteEditorBackgroundBlurAmount: Math.max(
+            0,
+            Math.min(MAX_NOTE_EDITOR_BLUR_AMOUNT, amount),
+          ),
+        }),
     }),
     {
       name: PERSIST_KEYS.appearance,
@@ -60,6 +77,7 @@ export const useAppearanceSettings = create<AppearanceSettingsState>()(
       partialize: (state) => ({
         codeBlockThemeLight: state.codeBlockThemeLight,
         codeBlockThemeDark: state.codeBlockThemeDark,
+        noteEditorBackgroundBlurAmount: state.noteEditorBackgroundBlurAmount,
       }),
       merge: (persisted, current) => {
         // Defensive: an old/foreign shape must not crash the store.
@@ -72,6 +90,17 @@ export const useAppearanceSettings = create<AppearanceSettingsState>()(
           codeBlockThemeDark: isCodeBlockTheme(p.codeBlockThemeDark)
             ? p.codeBlockThemeDark
             : current.codeBlockThemeDark,
+          noteEditorBackgroundBlurAmount:
+            typeof p.noteEditorBackgroundBlurAmount === "number" &&
+            Number.isFinite(p.noteEditorBackgroundBlurAmount)
+              ? Math.max(
+                  0,
+                  Math.min(
+                    MAX_NOTE_EDITOR_BLUR_AMOUNT,
+                    p.noteEditorBackgroundBlurAmount,
+                  ),
+                )
+              : current.noteEditorBackgroundBlurAmount,
         };
       },
     },
