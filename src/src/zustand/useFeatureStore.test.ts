@@ -63,4 +63,11 @@ describe("useFeatureStore", () => {
       useFeatureStore.getState().flags[FeatureFlagName.BlurredBackgroundDebug],
     ).toBe(false);
   });
+
+  it("FlatLayout defaults to true", () => {
+    useFeatureStore.getState().resetFlags();
+    expect(
+      useFeatureStore.getState().flags[FeatureFlagName.FlatLayout],
+    ).toBe(true);
+  });
 });

@@ -21,6 +21,7 @@ import {
 } from "./components/Rail/useTopPanelScrollVisibility";
 import { useThemeStore } from "./zustand/useThemeStore";
 import { useScrollElementStore } from "./zustand/outlineStore";
+import { FeatureFlagName, useFeatureStore } from "./zustand/FeatureStore";
 import AppBackground from "./components/AppBackground";
 import { TranslucentPaper } from "./components/TranslucentPaper";
 
@@ -55,6 +56,9 @@ export const AppShell: React.FC = () => {
     Math.round(Math.random() * 100),
   );
   const { theme } = useThemeStore();
+  const flatLayout = useFeatureStore(
+    (state) => state.flags[FeatureFlagName.FlatLayout],
+  );
   const { isMobile } = useBreakpoint();
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(
     null,
@@ -180,6 +184,14 @@ export const AppShell: React.FC = () => {
           <TranslucentPaper
             elevation={MAIN_PANEL_ELEVATION}
             aria-label="Main content translucent wrapper"
+            // Flat layout: paint the main outlet + right rail with the
+            // base background instead of the paper tone. TranslucentPaper
+            // still applies the background-image alpha to whichever base
+            // is passed, so the flat surface stays translucent over an
+            // active background.
+            backgroundColor={
+              flatLayout ? theme.palette.background.default : undefined
+            }
             square
             sx={{
               display: "grid",

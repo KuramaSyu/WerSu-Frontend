@@ -45,6 +45,9 @@ export const AppearanceSection: React.FC = () => {
     setCodeBlockThemeLight,
     setCodeBlockThemeDark,
   } = useAppearanceSettings();
+  const flatLayout = useFeatureStore(
+    (state) => state.flags[FeatureFlagName.FlatLayout],
+  );
   const developerMode = useFeatureStore(
     (state) => state.flags[FeatureFlagName.DeveloperMode],
   );
@@ -52,6 +55,34 @@ export const AppearanceSection: React.FC = () => {
 
   return (
     <Stack direction="column" spacing={3}>
+      <Stack
+        direction="row"
+        spacing={2}
+        sx={{
+          pb: 1.5,
+          borderBottom: 1,
+          borderColor: "divider",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <Stack direction="column" spacing={1}>
+          <Typography variant="subtitle1">Flat layout</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Paint the main content and right panel with the base background
+            color instead of the paper tone, so the shell reads as one flat
+            surface.
+          </Typography>
+        </Stack>
+        <Switch
+          checked={flatLayout}
+          onChange={(_, checked) =>
+            setFlag(FeatureFlagName.FlatLayout, checked)
+          }
+          slotProps={{ input: { "aria-label": "Flat layout toggle" } }}
+        />
+      </Stack>
+
       <Stack>
         <Typography variant="subtitle1">Code blocks</Typography>
         <Typography variant="body2" color="text.secondary">
