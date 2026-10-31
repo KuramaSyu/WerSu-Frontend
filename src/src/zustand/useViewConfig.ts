@@ -8,7 +8,7 @@ import type { ViewConfig } from "../api/models/ViewConfig";
  */
 const DEFAULT_VIEW_CONFIG: ViewConfig = {
   readOnly: false,
-  a4Width: true,
+  widthMode: "normal",
 };
 
 interface ViewConfigState {

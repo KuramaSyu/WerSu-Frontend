@@ -21,6 +21,7 @@ import { getPublicCollabEntry } from "../../hooks/usePublicNoteCollaboration";
 import { clearLocalUserPresence } from "../../hooks/awarenessPresence";
 import { NoteLeftPanel } from "../NotePage/Panel/MainLeft";
 import { NoteRightPanel } from "../NotePage/Panel/MainRight";
+import { NoteActionsToolbar } from "../NotePage/Panel/NoteActionsToolbar";
 import { useScrollToSectionOnLoad } from "../../hooks/useScrollToSectionOnLoad";
 import { usePublicRouteReady } from "../../hooks/usePublicRouteReady";
 
@@ -161,6 +162,11 @@ export const PublicNotePage: React.FC = () => {
         height: "100%",
       }}
     >
+      {/* Mount-only registration: publishes the Save / overflow
+          toolbar into the desktop top bar for the public note route
+          too. Share is suppressed for public viewers inside
+          :class:`NoteActionsToolbarInner`. */}
+      <NoteActionsToolbar />
       <Fade
         in={!noteReady}
         timeout={{

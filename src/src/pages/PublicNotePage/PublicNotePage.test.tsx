@@ -198,6 +198,16 @@ vi.mock("../NotePage/NoteEditorSkeleton", () => ({
   NoteEditorSkeleton: () => <div data-testid="editor-skeleton" />,
 }));
 
+// The top-bar action toolbar is a mount-only slot registration whose
+// own hide-share rule is covered in
+// `noteActionVisibility.test.ts`. Stubbing it here keeps this
+// routing test from pulling in the share-dialog MUI subpath graph
+// (which the mocks above otherwise don't cover). The marker proves the
+// page still mounts the registration.
+vi.mock("../NotePage/Panel/NoteActionsToolbar", () => ({
+  NoteActionsToolbar: () => <div data-testid="note-actions-toolbar" />,
+}));
+
 vi.mock("./PublicShareUnavailable", () => ({
   PublicShareUnavailable: ({
     reason,
@@ -430,6 +440,12 @@ describe("PublicNotePage - note fetch error path", () => {
 });
 
 describe("PublicNotePage - note rendering", () => {
+  it("mounts the top-bar action toolbar for public viewers", () => {
+    renderAt("/public/n/share-1");
+
+    expect(screen.getByTestId("note-actions-toolbar")).toBeInTheDocument();
+  });
+
   it("passes the grant-resolved noteId to the editor", async () => {
     mockedPublicShare.mockReturnValue({
       data: {

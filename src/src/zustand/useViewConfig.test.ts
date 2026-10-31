@@ -32,6 +32,15 @@ describe("useViewConfig", () => {
     expect(useViewConfig.getState().config.readOnly).toBe(false);
   });
 
+  it("defaults the editor width to normal", () => {
+    expect(useViewConfig.getState().config.widthMode).toBe("normal");
+  });
+
+  it("setViewConfig flips the editor width mode", () => {
+    useViewConfig.getState().setViewConfig({ widthMode: "wide" });
+    expect(useViewConfig.getState().config.widthMode).toBe("wide");
+  });
+
   it("setViewConfig flips readOnly to true", () => {
     useViewConfig.getState().setViewConfig({ readOnly: true });
     expect(useViewConfig.getState().config.readOnly).toBe(true);
@@ -39,7 +48,9 @@ describe("useViewConfig", () => {
 
   it("resetViewConfig clears any flags back to the default", () => {
     useViewConfig.getState().setViewConfig({ readOnly: true });
+    useViewConfig.getState().setViewConfig({ widthMode: "full" });
     useViewConfig.getState().resetViewConfig();
     expect(useViewConfig.getState().config.readOnly).toBe(false);
+    expect(useViewConfig.getState().config.widthMode).toBe("normal");
   });
 });

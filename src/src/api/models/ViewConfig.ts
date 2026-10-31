@@ -7,6 +7,16 @@
  * store is for *editing* state (cursor mode, view mode), this one is for
  * *view configuration* (what controls to expose).
  */
+
+/**
+ * Editor body width preset, cycled by the top-bar width toggle.
+ *
+ *   - `normal` — A4-paper width, the default reading column.
+ *   - `wide`   — wider than paper, capped below the full canvas.
+ *   - `full`   — the entire available width.
+ */
+export type NoteWidthMode = "normal" | "wide" | "full";
+
 export interface ViewConfig {
   /**
    * When `true`, hide the read/write toggle and the save button. Used on
@@ -14,12 +24,10 @@ export interface ViewConfig {
    */
   readOnly: boolean;
   /**
-   * When `true` (the default), the note editor body is capped at
-   * `NOTE_EDITOR_A4_WIDTH` so it reads like a sheet of A4 paper. The
-   * 3-dot menu in the action row lets the viewer flip this off to
-   * expand the editor to the full canvas width.
+   * Current editor body width preset. The top-bar width toggle cycles
+   * `normal -> wide -> full -> normal`.
    */
-  a4Width: boolean;
+  widthMode: NoteWidthMode;
   // Future flags (not implemented yet):
   // - showLineNumbers
   // - allowedActions: ("share" | "rename" | "move")[]

@@ -52,7 +52,13 @@ export const TOP_BAR_HEIGHT = "3.5rem";
  * Default max-width for the note editor body
  */
 
-export const NOTE_EDITOR_A4_WIDTH = "52rem"; /**
+export const NOTE_EDITOR_A4_WIDTH = "52rem";
+/**
+ * Wider-than-paper reading width, capped below the full canvas so
+ * long lines stay comfortable. Used by the editor's "Wide" mode.
+ */
+export const NOTE_EDITOR_WIDE_WIDTH = "75rem";
+/**
  * Normally 48 which looks too small
  */
 export const COLLAPSED_PANEL_SIZE = "0px";

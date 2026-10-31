@@ -23,7 +23,8 @@ import { useAppearanceSettings } from "../../zustand/useAppearanceSettings";
 import { useUpdateNote } from "../../api/queries/useNoteQueries";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { useLayout } from "../../LayoutProvider";
-import { M2, M3, NOTE_EDITOR_A4_WIDTH } from "../../statics";
+import { M2, M3 } from "../../statics";
+import { getNoteEditorWidths } from "./Panel/noteWidthMode";
 import { DialogProvider } from "./InputDialog";
 import { LiveUsersBridge } from "./LiveUsersBridge";
 import { CollabStatusBridge } from "./CollabStatusBridge";
@@ -87,7 +88,7 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
 
   const viewMode = useEditorSettings((s) => s.viewMode);
   const editMode = useEditorSettings((s) => s.editMode);
-  const a4Width = useViewConfig((s) => s.config.a4Width);
+  const widthMode = useViewConfig((s) => s.config.widthMode);
 
   const { mutateAsync: updateNote } = useUpdateNote();
   const { isMobile } = useBreakpoint();
@@ -106,8 +107,10 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
     themeHasBackgroundImage &&
     noteEditorBackgroundBlurAmount > 0;
   const forceFullWidth = isMobile;
-  const editorWidth =
-    a4Width && !forceFullWidth ? NOTE_EDITOR_A4_WIDTH : "100%";
+  const { body: editorWidth, paper: paperWidth } = getNoteEditorWidths(
+    widthMode,
+    forceFullWidth,
+  );
 
   // Stable ref the math extension's onClick and slash commands call
   // into. LatexDialogController updates it on every render.
@@ -213,10 +216,7 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
             t.transitions.create("width", {
               duration: t.transitions.duration.complex,
             }),
-          width:
-            a4Width && !forceFullWidth
-              ? `calc(${NOTE_EDITOR_A4_WIDTH} + 1rem)`
-              : "100%",
+          width: paperWidth,
           display: "flex",
           flexDirection: "column",
         }}

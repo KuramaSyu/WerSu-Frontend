@@ -12,8 +12,6 @@ import ShareIcon from "@mui/icons-material/Share";
 import SaveIcon from "@mui/icons-material/Save";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import DeleteIcon from "@mui/icons-material/Delete";
-import FitScreenIcon from "@mui/icons-material/FitScreen";
-import AspectRatioIcon from "@mui/icons-material/AspectRatio";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useActiveNoteStore } from "../../../zustand/editorStore";
@@ -22,6 +20,9 @@ import { useDeleteNote } from "../../../api/queries/useNoteQueries";
 import { useEditorSettings } from "../../../zustand/useEditorSettings";
 import { useThemeStore } from "../../../zustand/useThemeStore";
 import { useTopBarStore } from "../../../zustand/useTopBarStore";
+import { usePublicRouteReady } from "../../../hooks/usePublicRouteReady";
+import { getNoteActionVisibility } from "./noteActionVisibility";
+import { NoteWidthToggle } from "./NoteWidthToggle";
 import { ShareDialog } from "../ShareDialog";
 import { ConfirmationModal } from "../../Settings/ConfirmationModal";
 
@@ -83,8 +84,16 @@ export const NoteActionsToolbarInner: React.FC = () => {
   const noteId = useActiveNoteStore((s) => s.noteId);
   const readOnly = useViewConfig((s) => s.config.readOnly);
   const editMode = useEditorSettings((s) => s.editMode);
-  const a4Width = useViewConfig((s) => s.config.a4Width);
-  const setViewConfig = useViewConfig((s) => s.setViewConfig);
+  // Public viewers (anonymous or signed-in) don't own the note, so
+  // sharing it again and deleting it are both off the table. Save
+  // stays available for write-granted shares; the 3-dot overflow
+  // remains for the local paper-width toggle.
+  const { isPublic } = usePublicRouteReady({ timeoutMs: 0 });
+  const { showSave, showShare, showDelete } = getNoteActionVisibility({
+    isPublic,
+    readOnly,
+    editMode,
+  });
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -98,11 +107,6 @@ export const NoteActionsToolbarInner: React.FC = () => {
   const openMenu = (event: React.MouseEvent<HTMLElement>) =>
     setMenuAnchor(event.currentTarget);
   const closeMenu = () => setMenuAnchor(null);
-
-  const handleToggleA4Width = () => {
-    setViewConfig({ a4Width: !a4Width });
-    closeMenu();
-  };
 
   // Delete is gated to non-readOnly sessions (logged-in note
   // owners) -- public viewers can't mutate the note, so the
@@ -146,7 +150,7 @@ export const NoteActionsToolbarInner: React.FC = () => {
             animates the icon so the user sees the new affordance
             appear instead of having it blink into existence. */}
         <Grow
-          in={!readOnly && editMode}
+          in={showSave}
           timeout={theme.transitions.duration.complex}
           mountOnEnter
           unmountOnExit
@@ -158,53 +162,53 @@ export const NoteActionsToolbarInner: React.FC = () => {
           </Tooltip>
         </Grow>
 
-        <Tooltip title="Share">
-          <IconButton onClick={() => setShareDialogOpen(true)}>
-            <ShareIcon />
-          </IconButton>
-        </Tooltip>
+        {showShare && (
+          <Tooltip title="Share">
+            <IconButton onClick={() => setShareDialogOpen(true)}>
+              <ShareIcon />
+            </IconButton>
+          </Tooltip>
+        )}
 
-        {/* Overflow menu -- Delete + A4/full-width toggle */}
-        <Tooltip title="More actions">
-          <IconButton
-            aria-label="more actions"
-            aria-haspopup="menu"
-            aria-expanded={menuAnchor !== null}
-            onClick={openMenu}
-            disabled={deleteNote.isPending}
-          >
-            <MoreVertIcon />
-          </IconButton>
-        </Tooltip>
-        <Menu
-          anchorEl={menuAnchor}
-          open={Boolean(menuAnchor)}
-          onClose={closeMenu}
-          slotProps={{ list: { dense: true } }}
-        >
-          <MenuItem onClick={handleToggleA4Width}>
-            <ListItemIcon>
-              {a4Width ? (
-                <FitScreenIcon fontSize="small" />
-              ) : (
-                <AspectRatioIcon fontSize="small" />
-              )}
-            </ListItemIcon>
-            <ListItemText>
-              {a4Width ? "Use full width" : "Use Paper width"}
-            </ListItemText>
-          </MenuItem>
-          {!readOnly && (
-            <MenuItem onClick={handleMenuDelete}>
-              <ListItemIcon sx={{ color: "error.main" }}>
-                <DeleteIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText sx={{ color: "error.main" }}>
-                Delete note
-              </ListItemText>
-            </MenuItem>
-          )}
-        </Menu>
+        {/* Editor width preset: a single button that cycles through
+            normal -> wide -> full, with the current preset in the
+            tooltip. Sits left of the overflow so the preset is a
+            one-tap affordance instead of a menu item. */}
+        <NoteWidthToggle />
+
+        {/* Overflow menu -- Delete only. Hidden entirely when there
+            is nothing to put in it (public viewers), so we don't
+            render an empty menu button. */}
+        {showDelete && (
+          <>
+            <Tooltip title="More actions">
+              <IconButton
+                aria-label="more actions"
+                aria-haspopup="menu"
+                aria-expanded={menuAnchor !== null}
+                onClick={openMenu}
+                disabled={deleteNote.isPending}
+              >
+                <MoreVertIcon />
+              </IconButton>
+            </Tooltip>
+            <Menu
+              anchorEl={menuAnchor}
+              open={Boolean(menuAnchor)}
+              onClose={closeMenu}
+              slotProps={{ list: { dense: true } }}
+            >
+              <MenuItem onClick={handleMenuDelete}>
+                <ListItemIcon sx={{ color: "error.main" }}>
+                  <DeleteIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText sx={{ color: "error.main" }}>
+                  Delete note
+                </ListItemText>
+              </MenuItem>
+            </Menu>
+          </>
+        )}
       </Stack>
       <ShareDialog
         noteId={noteId ?? ""}

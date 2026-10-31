@@ -10,8 +10,6 @@ import { Box, TextField } from "@mui/material";
 import { logRerender } from "./editorRenderLog";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { useThemeStore } from "../../zustand/useThemeStore";
-import { useViewConfig } from "../../zustand/useViewConfig";
-import { M2 } from "../../statics";
 
 export interface NoteSourceEditorProps {
   sourceMarkdown: string;
@@ -31,7 +29,6 @@ const NoteSourceEditorImpl = forwardRef<
   logRerender("NoteSourceEditor", { sourceLen: sourceMarkdown.length });
   const [textarea, setTextarea] = useState<HTMLTextAreaElement | null>(null);
   const editMode = useEditorSettings((s) => s.editMode);
-  const forceFullWidth = useViewConfig((s) => !s.config.a4Width);
   const { theme } = useThemeStore();
 
   useImperativeHandle(
