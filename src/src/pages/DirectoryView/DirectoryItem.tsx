@@ -111,6 +111,7 @@ export const DirectoryItem: React.FC<DirectoryItemProps> = (props) => {
         textAlign: "left",
         borderRadius: 2,
         overflow: "hidden",
+        mb: variant === "note" ? 1 : 0,
         outline: isSelected
           ? `2px solid ${theme.palette.primary.main}`
           : "none",

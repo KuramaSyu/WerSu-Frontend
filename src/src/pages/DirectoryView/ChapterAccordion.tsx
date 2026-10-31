@@ -308,6 +308,8 @@ const NoteRowWithSelection: React.FC<{
       }}
       sx={{
         width: "100%",
+        mt: 0.5,
+        mb: 1,
         borderRadius: 2,
         overflow: "hidden",
         outline: isSelected
@@ -329,7 +331,6 @@ const NoteRowWithSelection: React.FC<{
           gap: 2,
           px: 2,
           py: 1,
-          my: 0.5,
           width: "100%",
           borderRadius: 2,
           minWidth: 0,
