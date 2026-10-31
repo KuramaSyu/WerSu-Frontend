@@ -63,7 +63,14 @@ const TippedToggle: React.FC<{
   );
 };
 
-export const FormattingPanel: React.FC = () => {
+export interface FormattingPanelProps {
+  /** Optional control rendered on the section's left border. */
+  leftEdgeHandle?: React.ReactNode;
+}
+
+export const FormattingPanel: React.FC<FormattingPanelProps> = ({
+  leftEdgeHandle,
+}) => {
   const editor = useActiveNoteStore((s) => s.editor);
   const viewMode = useEditorSettings((s) => s.viewMode);
   const editMode = useEditorSettings((s) => s.editMode);
@@ -115,6 +122,7 @@ export const FormattingPanel: React.FC = () => {
       defaultExpanded
       spacing={1}
       bordered
+      leftEdgeHandle={leftEdgeHandle}
     >
       <ToggleButtonGroup size="small" color="secondary">
         <TippedToggle

@@ -39,6 +39,12 @@ export interface PanelSectionProps {
    * Defaults to false.
    */
   bordered?: boolean;
+  /**
+   * Optional control rendered on the section's left border, vertically
+   * centred. Used by the right rail to host the panel collapse handle on
+   * the first section.
+   */
+  leftEdgeHandle?: React.ReactNode;
 }
 
 interface PanelSectionTitleProps {
@@ -149,6 +155,7 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
   collapsible = false,
   defaultExpanded = true,
   bordered = false,
+  leftEdgeHandle,
 }) => {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [hovered, setHovered] = useState(false);
@@ -203,7 +210,11 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
   if (title === undefined) {
     return (
       <ThemeProvider theme={activeTheme}>
-        <Box {...hoverHandlers} sx={frameSx}>
+        <Box
+          {...hoverHandlers}
+          sx={{ position: "relative", ...frameSx }}
+        >
+          {leftEdgeHandle}
           {renderDivider && (
             <Divider sx={{ opacity: dividerOpacity, mb: 1.5 }} />
           )}
@@ -226,6 +237,7 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
           elevation={0}
           square
           sx={{
+            position: "relative",
             ...frameSx,
             zindex: 10,
             // adjust accordion paddings to
@@ -258,6 +270,7 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
             },
           }}
         >
+          {leftEdgeHandle}
           <AccordionSummary expandIcon={<ExpandMoreIcon fontSize="small" />}>
             <PanelSectionTitle
               inAccordion
@@ -279,7 +292,8 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
   return (
     // px used to allign with padding of accordion
     <ThemeProvider theme={activeTheme}>
-      <Box {...hoverHandlers} sx={{ ...frameSx, px: M2 }}>
+      <Box {...hoverHandlers} sx={{ position: "relative", ...frameSx, px: M2 }}>
+        {leftEdgeHandle}
         <PanelSectionTitle
           inAccordion={false}
           title={title}

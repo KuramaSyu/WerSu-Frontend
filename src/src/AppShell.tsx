@@ -194,12 +194,10 @@ export const AppShell: React.FC = () => {
             }
             square
             sx={{
-              display: "grid",
-              gridTemplateColumns: `minmax(0, 1fr) ${rightColumnWidth}`,
-              // Mirror the outer grid's transition so the right rail
-              // animates open/closed instead of snapping (its width is
-              // driven by this nested grid track, not the outer one).
-              transition: `grid-template-columns ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
+              // Flex (not grid) so the right rail can animate its own
+              // `width` -- a plain width transition is more reliable
+              // than a nested `grid-template-columns` one.
+              display: "flex",
               overflow: "hidden",
               minWidth: 0,
               minHeight: 0,
@@ -210,6 +208,7 @@ export const AppShell: React.FC = () => {
               aria-label="Main content"
               ref={setScrollElement}
               sx={{
+                flex: 1,
                 overflowY: "auto",
                 display: "flex",
                 flexDirection: "column",
@@ -220,6 +219,7 @@ export const AppShell: React.FC = () => {
                   ? `calc(env(safe-area-inset-bottom, 0px) + ${MOBILE_BOTTOM_BAR_CLEARANCE})`
                   : M2,
                 transition: `padding-top ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
+                minWidth: 0,
                 minHeight: 0,
               }}
             >
@@ -228,7 +228,7 @@ export const AppShell: React.FC = () => {
               which looked nasty in the loginscreen */}
             </Box>
 
-            <RightRail>{rightPanel}</RightRail>
+            <RightRail width={rightColumnWidth}>{rightPanel}</RightRail>
           </TranslucentPaper>
         </Box>
       </Box>

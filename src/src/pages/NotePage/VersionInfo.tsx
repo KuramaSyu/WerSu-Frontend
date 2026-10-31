@@ -47,6 +47,8 @@ import type { Note } from "../../api/models/search";
 
 export interface VersionInfoProps {
   noteId: string | undefined;
+  /** Optional control rendered on the section's left border. */
+  leftEdgeHandle?: React.ReactNode;
 }
 
 /** The two editing modes surfaced by the segmented control. */
@@ -143,7 +145,10 @@ interface LiveIdentity {
   initials?: string;
 }
 
-export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
+export const VersionInfo: React.FC<VersionInfoProps> = ({
+  noteId,
+  leftEdgeHandle,
+}) => {
   const { theme } = useThemeStore();
   const { setWrite, editMode } = useEditorSettings();
   const { isPublic } = usePublicRouteReady({ timeoutMs: 0 });
@@ -309,7 +314,13 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
 
   return (
     <>
-      <PanelSection title="Versions" collapsible defaultExpanded bordered>
+      <PanelSection
+        title="Versions"
+        collapsible
+        defaultExpanded
+        bordered
+        leftEdgeHandle={leftEdgeHandle}
+      >
         {editMode && (
           <Box>
             <Typography
