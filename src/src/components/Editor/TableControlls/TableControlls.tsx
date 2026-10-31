@@ -1,4 +1,5 @@
 import { Box, Button, Fade, useTheme } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import {
   NodeViewWrapper,
   NodeViewContent,
@@ -145,23 +146,27 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
             ? {
                 opacity: "0 !important",
                 pointerEvents: "none !important",
-                transition: "opacity 0.3s ease",
+                transition: "opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
               }
             : {
                 opacity: 1,
                 zIndex: 10,
                 pointerEvents: "auto",
-                transition: "opacity 0.3s ease",
+                transition: "opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
               },
           "& .hoverBox": {
             opacity: shouldHideTableControls ? "0 !important" : 0,
             pointerEvents: shouldHideTableControls ? "none !important" : "none",
-            transition: "opacity 0.3s ease",
+            transition: "opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
           },
         }}
       >
         {/* add column side button */}
-        <Fade in={isTableHovered && showAddColControl && editor.isEditable}>
+        <Fade
+          in={isTableHovered && showAddColControl && editor.isEditable}
+          easing={theme.transitions.easing.easeInOut}
+          timeout={200}
+        >
           <Box className="table-col-control">
             <Button
               className="hoverBox"
@@ -173,12 +178,17 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
                 flexDirection: "column",
                 top: 0,
                 left: "100%",
-                width: "30px",
+                width: "24px",
                 height: "100% !important",
                 zIndex: 10,
                 minWidth: "0",
-                backgroundColor: theme.palette.background.paper,
+                backgroundColor: alpha(theme.palette.background.paper, 0.5),
                 border: `1px solid ${theme.palette.divider}`,
+                borderRadius: 1,
+                "&:hover": {
+                  borderRadius: 1,
+                  backgroundColor: alpha(theme.palette.background.paper, 0.5),
+                },
               })}
             >
               <AddIcon />
@@ -187,7 +197,11 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
         </Fade>
 
         {/* add row bottom button */}
-        <Fade in={isTableHovered && showAddRowControl && editor.isEditable}>
+        <Fade
+          in={isTableHovered && showAddRowControl && editor.isEditable}
+          easing={theme.transitions.easing.easeInOut}
+          timeout={200}
+        >
           <Box className="table-row-control">
             <Button
               className="hoverBox"
@@ -197,11 +211,17 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
                 position: "absolute",
                 display: "flex",
                 flexDirection: "row",
-                bottom: -30,
+                bottom: -24,
                 left: 0,
                 width: "100% !important",
-                backgroundColor: theme.palette.background.paper,
+                height: "24px !important",
+                backgroundColor: alpha(theme.palette.background.paper, 0.5),
                 border: `1px solid ${theme.palette.divider}`,
+                borderRadius: 1,
+                "&:hover": {
+                  borderRadius: 1,
+                  backgroundColor: alpha(theme.palette.background.paper, 0.5),
+                },
                 flexGrow: 1,
               }}
             >
