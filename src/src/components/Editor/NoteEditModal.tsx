@@ -59,6 +59,7 @@ import { TableWithControls } from "./TableControlls/TableControlls";
 import { CustomCodeBlock } from "./View/CustomCodeBlock";
 import { lowlight } from "./lowlight";
 import { handleCodeBlockTabKey } from "./codeBlockTabKey";
+import { handleTableBackspaceKey } from "./tableBackspaceKey";
 
 // Custom React component for demonstration
 const CustomReactComponent = ({ node }: any) => {
@@ -201,6 +202,10 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
     contentType: "markdown",
     editorProps: {
       handleKeyDown(view, event) {
+        // Delete an empty table / empty row when Backspace fires in
+        // its first cell; otherwise fall through to the codeBlock
+        // Tab handling below.
+        if (handleTableBackspaceKey(view, event)) return true;
         // Indent / outdent inside a codeBlock. Reads the selection
         // ancestry straight from `view.state` -- see the comment on
         // `codeBlockTabKey.ts` for why the previous

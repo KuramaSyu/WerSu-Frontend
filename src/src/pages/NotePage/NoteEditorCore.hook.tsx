@@ -37,6 +37,7 @@ import { colorFromString, randomMatchingColor } from "../../utils/blendWithContr
 import { CustomCodeBlock } from "../../components/Editor/View/CustomCodeBlock";
 import { EditorContextHighlight } from "../../components/Editor/editorContextHighlight";
 import { handleCodeBlockTabKey } from "../../components/Editor/codeBlockTabKey";
+import { handleTableBackspaceKey } from "../../components/Editor/tableBackspaceKey";
 import { lowlight } from "../../components/Editor/lowlight";
 import { TableWithControls } from "../../components/Editor/TableControlls/TableControlls";
 import {
@@ -305,6 +306,11 @@ export const useNoteEditor = (params: UseNoteEditorParams): Editor | null => {
           },
         },
         handleKeyDown(view, event) {
+          // Backspace in the first cell of a fully empty table deletes
+          // the table; in the first cell of an empty row it deletes
+          // the row. Must run before the default key handling so the
+          // otherwise-dead keystroke becomes structural.
+          if (handleTableBackspaceKey(view, event)) return true;
           // Indent / outdent inside a codeBlock. Reads the selection
           // ancestry straight from `view.state` -- see the comment on
           // `codeBlockTabKey.ts` for why the previous
