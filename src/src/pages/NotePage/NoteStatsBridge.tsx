@@ -1,7 +1,7 @@
 // NoteStatsBridge
-// Mirrors word / letter / row counts over `editor.state.doc.textContent`
-// into `useNoteStatsStore`. Pushes stats whenever the editor doc changes,
-// regardless of how the change got there:
+// Mirrors word / letter / row counts over the ProseMirror document
+// (`editor.state.doc`) into `useNoteStatsStore`. Pushes stats whenever
+// the editor doc changes, regardless of how the change got there:
 //   - Local edits fire `editor.on("transaction")` with `docChanged: true`.
 //   - The seed path in `setContent` writes the Y.Doc XmlFragment
 //     directly via `prosemirrorJSONToYXmlFragment`, bypassing ProseMirror
@@ -32,9 +32,7 @@ const NoteStatsBridgeImpl: React.FC<NoteStatsBridgeProps> = ({
     if (!editor) return;
 
     const push = () => {
-      useNoteStatsStore
-        .getState()
-        .setStats(computeStats(editor.state.doc.textContent));
+      useNoteStatsStore.getState().setStats(computeStats(editor.state.doc));
     };
 
     const onTransaction = ({
