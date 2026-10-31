@@ -36,10 +36,13 @@ import { blendColors, hexToRgb, rgbToHex } from "../../utils/blendWithContrast";
 import { useVersionSelection, useVersionRestore } from "./VersionInfo.hooks";
 import { displayInitials } from "../../utils/publicUserName";
 import {
+  collabStatusStore,
   useCollabStatus,
   type CollabStatus,
 } from "../../zustand/useCollabStatusStore";
 import { usePublicRouteReady } from "../../hooks/usePublicRouteReady";
+import { useActiveNoteStore } from "../../zustand/editorStore";
+import { shouldPromptMergeOnReconnect } from "../../hooks/collabReconcile";
 import type { Note } from "../../api/models/search";
 
 export interface VersionInfoProps {
@@ -210,6 +213,32 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
     if (!noteId || !isOffline) {
       return;
     }
+    // Do not silently copy offline edits into the live doc. When the
+    // local buffer diverged from the pre-offline server snapshot, hand
+    // off to the merge modal so the user chooses what wins.
+    const entry = isPublic
+      ? (await import("../../hooks/usePublicNoteCollaboration")).getPublicCollabEntry(
+          noteId,
+        )
+      : (await import("../../hooks/useNoteCollaboration")).getCollabEntry(
+          noteId,
+        );
+    if (
+      entry &&
+      shouldPromptMergeOnReconnect({
+        localMarkdown: useActiveNoteStore.getState().getContent(),
+        preOfflineCloud: entry.preOfflineCloudMarkdown,
+        hasUnsyncedLocalEdits: entry.hasUnsyncedLocalEdits,
+      })
+    ) {
+      collabStatusStore
+        .getState()
+        .setConflict(
+          noteId,
+          "Your offline edits differ from the live version. Choose how to merge them.",
+        );
+      return;
+    }
     if (isPublic) {
       const { goPublicOnline } = await import(
         "../../hooks/usePublicNoteCollaboration"
@@ -235,12 +264,19 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
       if (!noteId) {
         return;
       }
-      // Snapshot the server's view of the note from the React Query
-      // cache so the conflict modal has a baseline to detect concurrent
-      // server-side edits against. Falls back to null when not cached.
-      const cached = queryClient.getQueryData<Note>(["note", noteId]);
+      // Snapshot what is actually live right now so the conflict modal
+      // compares against the same source the editor writes back. The
+      // REST cache can be stale (live Y.Doc edits are never PATCHed on
+      // every keystroke), which previously made the reconnect prompt
+      // fire again for content the live doc already had. Fall back to
+      // the cached note only when no editor is bound.
+      const cached = queryClient.getQueryData<Note>(["notes", noteId]);
+      const liveMarkdown = useActiveNoteStore.getState().getContent();
       const preOfflineCloudMarkdown =
-        cached?.content || cached?.stripped_content || null;
+        liveMarkdown ||
+        cached?.content ||
+        cached?.stripped_content ||
+        null;
       if (isPublic) {
         const { goPublicOffline } = await import(
           "../../hooks/usePublicNoteCollaboration"

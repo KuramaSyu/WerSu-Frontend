@@ -2,7 +2,11 @@
 // `collabReconcile.ts`. Pure functions, no React, no Hocuspocus.
 
 import { describe, expect, it } from "vitest";
-import { buildLineDiff, computeReconnectDiff } from "./collabReconcile";
+import {
+  buildLineDiff,
+  computeReconnectDiff,
+  shouldPromptMergeOnReconnect,
+} from "./collabReconcile";
 
 describe("computeReconnectDiff", () => {
   it("returns clean when only the local side changed", () => {
@@ -59,6 +63,48 @@ describe("computeReconnectDiff", () => {
       lastLocalEditAt: 1234,
     });
     expect(diff.lastLocalEditAt).toBe(1234);
+  });
+});
+
+describe("shouldPromptMergeOnReconnect", () => {
+  it("prompts when the local buffer diverged from the pre-offline snapshot", () => {
+    expect(
+      shouldPromptMergeOnReconnect({
+        localMarkdown: "local edit",
+        preOfflineCloud: "old",
+        hasUnsyncedLocalEdits: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("does not prompt when there are no unsynced local edits", () => {
+    expect(
+      shouldPromptMergeOnReconnect({
+        localMarkdown: "local edit",
+        preOfflineCloud: "old",
+        hasUnsyncedLocalEdits: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("does not prompt when the local buffer equals the baseline", () => {
+    expect(
+      shouldPromptMergeOnReconnect({
+        localMarkdown: "same",
+        preOfflineCloud: "same",
+        hasUnsyncedLocalEdits: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("prompts on the auto-fallback path without a baseline", () => {
+    expect(
+      shouldPromptMergeOnReconnect({
+        localMarkdown: "local edit",
+        preOfflineCloud: null,
+        hasUnsyncedLocalEdits: true,
+      }),
+    ).toBe(true);
   });
 });
 

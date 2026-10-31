@@ -202,6 +202,24 @@ describe("useNoteCollaboration - lazy IndexedDB", () => {
     );
   });
 
+  it("reuses the warm persistence across an offline -> online -> offline cycle", async () => {
+    renderHook(() => useNoteCollaboration("n-offline-reuse"));
+    await act(async () => {
+      await goOffline("n-offline-reuse", "manual", "pre-offline");
+    });
+    act(() => {
+      goOnline("n-offline-reuse");
+    });
+    await act(async () => {
+      await goOffline("n-offline-reuse", "manual", "second-baseline");
+    });
+    // Only one IndexeddbPersistence is ever attached to the Y.Doc.
+    expect(mockedPersistence).toHaveBeenCalledTimes(1);
+    const entry = getCollabEntry("n-offline-reuse");
+    expect(entry?.persistence).not.toBeNull();
+    expect(entry?.preOfflineCloudMarkdown).toBe("second-baseline");
+  });
+
   it("goOffline is idempotent: a second call is a no-op", async () => {
     renderHook(() => useNoteCollaboration("n-offline-4"));
     await act(async () => {

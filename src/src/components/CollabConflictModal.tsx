@@ -152,11 +152,13 @@ export const CollabConflictModal: React.FC<CollabConflictModalProps> = ({
   onCancel,
 }) => {
   const [tab, setTab] = useState(0);
-  // Diff between the user's local markdown and the server's current
-  // markdown. We compute it once per open.
+  // Diff shown in the "Your version" tab. `buildLineDiff(current,
+  // selected)` marks lines unique to `selected` as `added`, so local
+  // must be the second argument for the user's own lines to render as
+  // green `+` rather than red `-`.
   const localVsCurrent = useMemo(
-    () => buildLineDiff(localMarkdown, currentCloud),
-    [localMarkdown, currentCloud],
+    () => buildLineDiff(currentCloud, localMarkdown),
+    [currentCloud, localMarkdown],
   );
   // Diff between the pre-offline cloud snapshot and the current
   // cloud markdown. Highlights what the server changed while we

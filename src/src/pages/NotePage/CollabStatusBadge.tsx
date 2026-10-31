@@ -38,6 +38,7 @@ import {
 } from "../../zustand/useCollabStatusStore";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { useActiveNoteStore } from "../../zustand/editorStore";
+import { shouldPromptMergeOnReconnect } from "../../hooks/collabReconcile";
 import { queryClient } from "../../api/queryClient";
 import { useLiveUsers } from "../../zustand/useLiveUsersStore";
 import { useUsers } from "../../api/queries/useUser";
@@ -452,12 +453,19 @@ export const CollabStatusBadge: React.FC = () => {
   const handleRetry = () => {
     if (!noteId) return;
     if (status === "editingOffline") {
-      // Hand off to the conflict resolver when we have local edits;
-      // otherwise just reconnect.
+      // Hand off to the conflict resolver when the local buffer
+      // diverged from the server; otherwise just reconnect.
       const entry = isPublic
         ? getPublicCollabEntry(noteId)
         : getCollabEntry(noteId);
-      if (entry?.hasUnsyncedLocalEdits) {
+      if (
+        entry &&
+        shouldPromptMergeOnReconnect({
+          localMarkdown: useActiveNoteStore.getState().getContent(),
+          preOfflineCloud: entry.preOfflineCloudMarkdown,
+          hasUnsyncedLocalEdits: entry.hasUnsyncedLocalEdits,
+        })
+      ) {
         collabStatusStore
           .getState()
           .setConflict(

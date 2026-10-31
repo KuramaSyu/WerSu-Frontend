@@ -66,6 +66,29 @@ export function computeReconnectDiff(args: {
   };
 }
 
+/**
+ * Decide whether leaving offline mode must surface the conflict/merge
+ * modal instead of silently reconnecting.
+ *
+ * A reconnect is only "clean" when the user made no net local edits
+ * (the local markdown still matches the pre-offline server snapshot).
+ * Whenever there is a net local change, the offline content would be
+ * copied into the live doc on reconnect, so we prompt the user first.
+ *
+ * `preOfflineCloud` is `null` on the auto-fallback path (no clean
+ * baseline was captured); in that case any unsynced local edit is
+ * treated as divergent so the user still gets to choose.
+ */
+export function shouldPromptMergeOnReconnect(args: {
+  localMarkdown: string;
+  preOfflineCloud: string | null;
+  hasUnsyncedLocalEdits: boolean;
+}): boolean {
+  if (!args.hasUnsyncedLocalEdits) return false;
+  if (args.preOfflineCloud === null) return true;
+  return args.localMarkdown !== args.preOfflineCloud;
+}
+
 export type DiffLineKind = "added" | "removed" | "unchanged";
 export interface DiffLine {
   kind: DiffLineKind;

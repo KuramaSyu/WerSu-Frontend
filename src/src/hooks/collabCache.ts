@@ -110,6 +110,11 @@ export function attachPersistence(
  * to push to the server.
  */
 export function markLocalEdits(entry: CollabCacheEntry): void {
+  // The afterTransaction listener stays attached for the lifetime of
+  // the entry, so it keeps firing after we leave offline mode. Only
+  // edits made while offline count as unsynced; otherwise a normal
+  // online edit would make the next reconnect look like a conflict.
+  if (!entry.offlineOrigin) return;
   entry.hasUnsyncedLocalEdits = true;
   entry.lastLocalEditAt = Date.now();
 }
@@ -123,14 +128,22 @@ export function clearLocalEdits(entry: CollabCacheEntry): void {
 }
 
 /**
+ * Y.Docs that already have the offline edit-marker listener attached.
+ * `exitOfflineMode` keeps the entry (and its afterTransaction
+ * listener) alive across online sessions, so without this guard every
+ * offline cycle would stack another listener on the same doc.
+ */
+const editListenersAttached = new WeakSet<Y.Doc>();
+
+/**
  * Helper used by both flows: transition a cache entry into offline
  * mode. Attaches IndexedDB if it isn't already, sets the status, and
  * returns the updated entry.
  *
- * `preOfflineCloudMarkdown` should be the server's current markdown
- * (from the active-note store / useNote query), captured at the
- * moment we go offline. It is the baseline the conflict modal uses
- * to detect concurrent server-side edits.
+ * `preOfflineCloudMarkdown` should be the live markdown captured at
+ * the moment we go offline (from the active-note store). It is the
+ * baseline `shouldPromptMergeOnReconnect` compares against to detect
+ * net local edits.
  */
 export async function enterOfflineMode(
   noteId: string,
@@ -151,12 +164,20 @@ export async function enterOfflineMode(
   } catch {
     // ignore — disconnect is best-effort during the auto-fallback path
   }
-  const { persistence } = attachPersistence(entry.ydoc, roomName);
-  entry.persistence = persistence;
+  // Reuse the warm persistence from a previous offline session instead
+  // of attaching a second IndexeddbPersistence to the same Y.Doc.
+  if (!entry.persistence) {
+    const { persistence } = attachPersistence(entry.ydoc, roomName);
+    entry.persistence = persistence;
+  }
   entry.offlineOrigin = origin;
   entry.preOfflineCloudMarkdown = preOfflineCloudMarkdown;
-  // Edits from this point on are local-only until we reconnect.
-  entry.ydoc.on("afterTransaction", () => markLocalEdits(entry));
+  // Edits from this point on are local-only until we reconnect. Attach
+  // the marker once per Y.Doc; the handler no-ops while online.
+  if (!editListenersAttached.has(entry.ydoc)) {
+    editListenersAttached.add(entry.ydoc);
+    entry.ydoc.on("afterTransaction", () => markLocalEdits(entry));
+  }
   collabStatusStore.getState().setEditingOffline(noteId, origin);
   return entry;
 }

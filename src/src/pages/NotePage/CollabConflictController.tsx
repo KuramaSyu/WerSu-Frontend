@@ -23,21 +23,26 @@ import { memo, useEffect, useState } from "react";
 import { CollabConflictModal } from "../../components/CollabConflictModal";
 import { useActiveNoteStore } from "../../zustand/editorStore";
 import { useUpdateNote, useNote } from "../../api/queries/useNoteQueries";
+import { useCollabStatus } from "../../zustand/useCollabStatusStore";
 import {
-  collabStatusStore,
-  useCollabStatus,
-} from "../../zustand/useCollabStatusStore";
-import {
-  clearLocalEditsFor,
   getCollabEntry,
   goOffline,
+  goOnline,
 } from "../../hooks/useNoteCollaboration";
+import {
+  getPublicCollabEntry,
+  goPublicOffline,
+  goPublicOnline,
+} from "../../hooks/usePublicNoteCollaboration";
+import { clearLocalEdits } from "../../hooks/collabCache";
+import { usePublicRouteReady } from "../../hooks/usePublicRouteReady";
 import type { Note } from "../../api/models/search";
 
 const CollabConflictControllerImpl: React.FC<{
   noteId: string | undefined;
 }> = ({ noteId }) => {
   const status = useCollabStatus(noteId);
+  const { isPublic } = usePublicRouteReady({ timeoutMs: 0 });
   const { mutateAsync: updateNote } = useUpdateNote();
   // Pull the latest server content from the React Query cache so the
   // modal has the most up-to-date cloud markdown. We also re-fetch
@@ -60,7 +65,11 @@ const CollabConflictControllerImpl: React.FC<{
   // The pre-offline snapshot is the markdown captured when we went
   // offline. Fall back to the current server content if we don't
   // have one (e.g. the auto-fallback path right after WS gave up).
-  const entry = getCollabEntry(noteId);
+  const entry = isPublic
+    ? getPublicCollabEntry(noteId)
+    : getCollabEntry(noteId);
+  const goOfflineForNote = isPublic ? goPublicOffline : goOffline;
+  const goOnlineForNote = isPublic ? goPublicOnline : goOnline;
   const preOfflineCloud =
     entry?.preOfflineCloudMarkdown ??
     serverNote?.content ??
@@ -76,8 +85,10 @@ const CollabConflictControllerImpl: React.FC<{
       // ydoc-direct path in setContent handles the conversion.
       useActiveNoteStore.getState().setContent(currentCloud);
       // Clear local-edit tracking so a future conflict check is honest.
-      clearLocalEditsFor(noteId);
-      collabStatusStore.getState().setStatus(noteId, "connected");
+      if (entry) clearLocalEdits(entry);
+      // Now that the local doc matches the cloud, reconnect and let
+      // the provider sync the chosen state.
+      goOnlineForNote(noteId);
     } finally {
       setResolving(false);
     }
@@ -92,8 +103,9 @@ const CollabConflictControllerImpl: React.FC<{
       // the next sync.
       const { sourceMarkdown, title } = useActiveNoteStore.getState();
       await updateNote({ noteId, title, content: sourceMarkdown });
-      clearLocalEditsFor(noteId);
-      collabStatusStore.getState().setStatus(noteId, "connected");
+      if (entry) clearLocalEdits(entry);
+      // Reconnect so the resolved local content becomes the live doc.
+      goOnlineForNote(noteId);
     } catch (err) {
       // Leave the conflict state up; the user can retry. (A
       // follow-up could open a snackbar with the error.)
@@ -107,7 +119,7 @@ const CollabConflictControllerImpl: React.FC<{
     // Stay offline. We re-attach (no-op if still attached) and flip
     // back to editingOffline so the user can keep working locally
     // while they think.
-    void goOffline(noteId, "manual", preOfflineCloud);
+    void goOfflineForNote(noteId, "manual", preOfflineCloud);
   };
 
   return (
