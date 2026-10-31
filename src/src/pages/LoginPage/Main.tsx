@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { Box } from "@mui/material";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { StaticCircleBackground } from "../LoadingPage/CircleBackground";
 import { AuthCard } from "./EmailLoginForm";
 import { Title } from "../LoadingPage/Title";
+import { DocumentSwirl } from "../LoadingPage/DocumentSwirl";
 import { LogoSvgComponent } from "../LoadingPage/Main";
 import { useLoadingStore } from "../../zustand/loadingStore";
 import { useUsersStore, useUserStore } from "../../zustand/userStore";
@@ -17,6 +18,7 @@ export const LoginPage: React.FC = () => {
   const [oldTheme, setOldTheme] = useState<string | null>();
   const { isMobile } = useBreakpoint();
   const { setLeftPanelOpen, setRightPanelOpen } = useLayout();
+  const logoAnchorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setLeftPanelOpen(false);
@@ -70,6 +72,22 @@ export const LoginPage: React.FC = () => {
         />
       </Box>
 
+      {/* Full-screen decorative swirl: above circle 1, below circle 2
+          and every real UI element. Centred on the logo via anchorRef. */}
+      <DocumentSwirl anchorRef={logoAnchorRef} sx={{ zIndex: 2 }} />
+
+      {/* Circle 2: a second, identical circle with a gradient-opacity
+          fill that dims the swirl beneath it and blends into circle 1. */}
+      <Box sx={{ position: "absolute", inset: 0, zIndex: 3 }}>
+        <StaticCircleBackground
+          fade
+          color={theme.palette.background.default}
+          atXPercent={isMobile ? 50 : -40}
+          atYPercent={isMobile ? 140 : 50}
+          sizePercent={100}
+        />
+      </Box>
+
       <Box
         sx={{
           display: "flex",
@@ -77,7 +95,7 @@ export const LoginPage: React.FC = () => {
           width: isMobile ? "100%" : "40%",
           height: isMobile ? "auto" : "100%",
           minHeight: 0,
-          zIndex: "inherit",
+          zIndex: 4,
           justifyContent: "center",
           alignItems: "center",
           overflow: "hidden",
@@ -96,7 +114,7 @@ export const LoginPage: React.FC = () => {
           justifyContent: "space-between",
           alignItems: "center",
           py: 4,
-          zIndex: 0,
+          zIndex: 4,
           overflow: "hidden",
         }}
       >
@@ -108,12 +126,14 @@ export const LoginPage: React.FC = () => {
             flex: "0 0 auto",
           }}
         >
-          <Title theme={defaultTheme} animate />
+          <Title theme={defaultTheme} />
         </Box>
         <Box
+          ref={logoAnchorRef}
           sx={{
             // Cap the logo to the smaller of the pane's width / height
             // so the page never overflows regardless of viewport.
+            position: "relative",
             width: "min(100%, 60vh, 60vw)",
             height: "min(100%, 60vh, 60vw)",
             aspectRatio: "1 / 1",

@@ -81,6 +81,11 @@ export interface StaticCircleBackgroundProps {
   atXPercent?: number; // X position for "at"
   atYPercent?: number; // Y position for "at"
   opacity?: number;
+  /**
+   * Fade the fill out toward the circle's edge (radial gradient) instead
+   * of a flat colour. Used as an overlay to dim things beneath it.
+   */
+  fade?: boolean;
 }
 
 export const StaticCircleBackground: React.FC<StaticCircleBackgroundProps> = ({
@@ -89,6 +94,7 @@ export const StaticCircleBackground: React.FC<StaticCircleBackgroundProps> = ({
   atXPercent = 50,
   atYPercent = 50,
   opacity = 1,
+  fade = false,
 }) => (
   <Box
     sx={{
@@ -97,7 +103,9 @@ export const StaticCircleBackground: React.FC<StaticCircleBackgroundProps> = ({
       left: 0,
       width: "100%",
       height: "100%",
-      backgroundColor: color,
+      background: fade
+        ? `radial-gradient(circle at ${atXPercent}% ${atYPercent}%, ${color} 10%, ${color} 20%, transparent 300%)`
+        : color,
       opacity,
       clipPath: `circle(${sizePercent}% at ${atXPercent}% ${atYPercent}%)`,
       WebkitClipPath: `circle(${sizePercent}% at ${atXPercent}% ${atYPercent}%)`,

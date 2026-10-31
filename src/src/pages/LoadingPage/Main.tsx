@@ -24,6 +24,7 @@ import {
 } from "./CircleBackground";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { Title } from "./Title";
+import { DocumentSwirl } from "./DocumentSwirl";
 import { useMinSquareSize } from "./minSquareSize";
 import { defaultTheme } from "../../theme/themes";
 import { useUser } from "../../api/queries/useUser";
@@ -130,6 +131,7 @@ export const LoadingPage: React.FC = () => {
   const [startTime, setStartTime] = React.useState(Date.now());
   const { isLoading, setLoading } = useLoadingStore();
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const logoAnchorRef = React.useRef<HTMLDivElement>(null);
   const size = useMinSquareSize(containerRef);
   const MIN_STARTUP_TIME = DISABLE_LOADING_ANIMATION ? 0 : 1000;
   const MIN_STARTUP_TIME_S = MIN_STARTUP_TIME / 1000;
@@ -215,6 +217,7 @@ export const LoadingPage: React.FC = () => {
     <ThemeProvider theme={defaultTheme}>
       <Box
         sx={{
+          position: "relative",
           display: "flex",
           flexDirection: isMobile ? "column" : "row",
           justifyContent: "center",
@@ -224,6 +227,7 @@ export const LoadingPage: React.FC = () => {
           padding: 2,
           backgroundColor: defaultTheme.palette.background.paper,
           zIndex: 5,
+          overflow: "hidden",
         }}
       >
         <Box
@@ -231,7 +235,7 @@ export const LoadingPage: React.FC = () => {
             position: "absolute",
             top: 0,
             left: 0,
-            zIndex: 4,
+            zIndex: 1,
             width: "100vw",
             height: "100vh",
           }}
@@ -255,6 +259,22 @@ export const LoadingPage: React.FC = () => {
             opacity={1}
           />
         </Box>
+
+        {/* Full-screen swirl: above circle 1, below circle 2 and the UI. */}
+        <DocumentSwirl anchorRef={logoAnchorRef} sx={{ zIndex: 2 }} />
+
+        {/* Circle 2: gradient-opacity twin that dims the swirl and blends
+            into circle 1. */}
+        <Box sx={{ position: "absolute", inset: 0, zIndex: 3 }}>
+          <StaticCircleBackground
+            fade
+            color={defaultTheme.palette.background.paper}
+            sizePercent={isMobile ? 60 : 50}
+            atXPercent={isMobile ? 50 : 100}
+            atYPercent={isMobile ? 100 : 50}
+          />
+        </Box>
+
         <Box
           ref={containerRef}
           sx={{
@@ -265,22 +285,33 @@ export const LoadingPage: React.FC = () => {
             alignItems: "center",
             width: isMobile ? "100%" : 2 / 3,
             height: "100%",
-            zIndex: 5,
+            zIndex: 4,
             pb: isMobile ? 10 : 0, // to keep the icon away from the table
           }}
         >
           <Box sx={{ fontSize: isMobile ? "4rem" : "10vh" }}>
-            <Title theme={defaultTheme} animate />
+            <Title theme={defaultTheme} />
           </Box>
           <Box
+            ref={logoAnchorRef}
             sx={{
+              position: "relative",
               width: (size * 2) / 3,
               height: (size * 2) / 3,
               display: "flex",
-              zIndex: 5,
+              zIndex: 1,
             }}
           >
-            <LogoSvgComponent />
+            <Box
+              sx={{
+                position: "relative",
+                width: "100%",
+                height: "100%",
+                display: "flex",
+              }}
+            >
+              <LogoSvgComponent />
+            </Box>
           </Box>
         </Box>
 
@@ -293,7 +324,7 @@ export const LoadingPage: React.FC = () => {
             maxHeight: isMobile ? "50%" : undefined,
 
             padding: isMobile ? 1 : 2,
-            zIndex: 5,
+            zIndex: 4,
             border: `2px solid ${defaultTheme.palette.background.paper}`,
           }}
         >
