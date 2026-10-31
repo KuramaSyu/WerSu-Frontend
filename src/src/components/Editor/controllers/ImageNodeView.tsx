@@ -1,6 +1,12 @@
 import { Box } from "@mui/material";
 import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
-import { useEffect, useRef } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import { useThemeStore } from "../../../zustand/useThemeStore";
 import { M2 } from "../../../statics";
 import { useEditorSettings } from "../../../zustand/useEditorSettings";
@@ -11,6 +17,14 @@ import { useShareAttachmentToken } from "../../../api/queries/useAttachmentQueri
 import { AttachmentLinkBuilder } from "../../../api/utils/AttachmentLInkBuilder";
 import { extractAttachmentKeyFromUrl } from "../../../api/utils/request_helpers";
 import { prepareBackendLink } from "../../../utils/prepareBackendLink";
+import { defaultImageResizeStrategy, styleStringToSx } from "../imageResizeStrategy";
+import {
+  IMAGE_RESIZE_HANDLES,
+  computeResize,
+  geometryFromPixels,
+  type ImageResizeHandle,
+} from "../imageResize";
+import { useImageResizeStore } from "../../../zustand/useImageResizeStore";
 
 // ---------------------------------------------------------------------------
 // ImageNodeView diagnostics
@@ -53,29 +67,50 @@ useAuthStore.subscribe((state, prev) => {
   }
 });
 
-// Parse a CSS declaration string like "width: 200px; height: 100px" into
-// an object MUI's sx understands. Splits on ; and : and trims.
-function parseInlineStyle(style: string): Record<string, string | number> {
-  const out: Record<string, string | number> = {};
-  for (const decl of style.split(";")) {
-    const colon = decl.indexOf(":");
-    if (colon === -1) continue;
-    const key = decl.slice(0, colon).trim();
-    const value = decl.slice(colon + 1).trim();
-    if (key && value) {
-      // MUI sx requires camelCase for hyphenated CSS props
-      const camel = key.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
-      out[camel] = value;
-    }
-  }
-  return out;
-}
-
-export function ImageNodeView({ node, selected, getPos }: NodeViewProps) {
+export function ImageNodeView({
+  node,
+  selected,
+  getPos,
+  editor,
+  updateAttributes,
+}: NodeViewProps) {
   const { theme } = useThemeStore();
 
   // use zustand selectors to reduce per-render work
   const editMode = useEditorSettings((s) => s.editMode);
+  const aspectLocked = useImageResizeStore((s) => s.locked);
+
+  // Live size while a handle is being dragged. Kept in local state so
+  // the document is only updated once, on pointer up. Cleared before
+  // committing so the persisted style takes over without a flash.
+  const [previewSize, setPreviewSize] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
+  // Measured size of the rendered <img>; drives the handle positions so
+  // they always sit on the visible image edges (independent of whether
+  // the stored width is a px or % value).
+  const [measuredSize, setMeasuredSize] = useState<{
+    width: number;
+    height: number;
+  }>({ width: 0, height: 0 });
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const img = imgRef.current;
+    if (!img) return;
+    const update = () =>
+      setMeasuredSize({ width: img.offsetWidth, height: img.offsetHeight });
+    update();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(update);
+    observer.observe(img);
+    return () => observer.disconnect();
+    // Set up once per mounted <img>; the observer handles later size and
+    // source changes, so no reactive deps are needed here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const openPreview = useAttachmentPreviewStore((s) => s.open);
   const shareAttachmentTokens = useAuthStore((s) => s.shareAttachmentTokens);
   const tokensLoaded = useAuthStore((s) => s.shareAttachmentTokensLoaded);
@@ -210,11 +245,139 @@ export function ImageNodeView({ node, selected, getPos }: NodeViewProps) {
           .setJwt(jwt)
           .getLink(linkKey);
 
-  // Click opens the preview modal for our own attachments; external URLs keep browser default.
+  // Single click selects the node so its handles appear. In read mode
+  // the editor has no selection to show, so fall back to the preview.
   const handleClick = () => {
-    if (linkKey) {
-      openPreview(linkKey);
+    if (!editMode) {
+      if (linkKey) openPreview(linkKey);
+      return;
     }
+    if (selected) return;
+    const pos = getPos();
+    if (typeof pos === "number") {
+      editor.commands.setNodeSelection(pos);
+    }
+  };
+
+  // Double click opens the preview modal for our own attachments;
+  // external URLs keep the browser default.
+  const handleDoubleClick = (event: ReactMouseEvent) => {
+    if (!linkKey) return;
+    event.preventDefault();
+    openPreview(linkKey);
+  };
+
+  const previousStyle = node.attrs.style as string | null;
+  const beginResize = useCallback(
+    (handle: ImageResizeHandle) => (event: PointerEvent) => {
+      const img = imgRef.current;
+      if (!img) return;
+      event.preventDefault();
+      event.stopPropagation();
+
+      const rect = img.getBoundingClientRect();
+      const startWidth = rect.width;
+      const startHeight = rect.height;
+      const aspectRatio =
+        img.naturalWidth > 0 && img.naturalHeight > 0
+          ? img.naturalWidth / img.naturalHeight
+          : startWidth / Math.max(startHeight, Number.EPSILON);
+      const startX = event.clientX;
+      const startY = event.clientY;
+      let last = { width: startWidth, height: startHeight };
+
+      const onMove = (moveEvent: PointerEvent) => {
+        last = computeResize({
+          handle,
+          dx: moveEvent.clientX - startX,
+          dy: moveEvent.clientY - startY,
+          startWidth,
+          startHeight,
+          aspectRatio,
+          locked: aspectLocked,
+        });
+        setPreviewSize(last);
+      };
+
+      const onUp = () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        window.removeEventListener("pointercancel", onUp);
+        setPreviewSize(null);
+        const geometry = geometryFromPixels(
+          defaultImageResizeStrategy,
+          { ...last, aspectRatio },
+          aspectLocked,
+        );
+        updateAttributes({
+          style: defaultImageResizeStrategy.serialize(geometry, previousStyle),
+        });
+      };
+
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", onUp);
+    },
+    [aspectLocked, previousStyle, updateAttributes],
+  );
+
+  const showHandles = selected && editMode;
+
+  // ProseMirror and the block drag-handle listen on ancestors of the
+  // handles, and React's delegated handlers fire too late to stop them.
+  // A capture-phase native listener on the container intercepts the
+  // event before it reaches either.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !showHandles) return;
+
+    const handleFromEvent = (event: Event): ImageResizeHandle | null => {
+      const target = event.target as HTMLElement | null;
+      const handleElement = target?.closest?.(
+        "[data-resize-handle]",
+      ) as HTMLElement | null;
+      return (
+        (handleElement?.dataset.resizeHandle as ImageResizeHandle) ?? null
+      );
+    };
+
+    const onPointerDown = (event: Event) => {
+      const handle = handleFromEvent(event);
+      if (!handle) return;
+      event.stopPropagation();
+      event.preventDefault();
+      beginResize(handle)(event as PointerEvent);
+    };
+
+    const stopHandleClick = (event: Event) => {
+      if (handleFromEvent(event)) event.stopPropagation();
+    };
+
+    container.addEventListener("pointerdown", onPointerDown, true);
+    container.addEventListener("click", stopHandleClick, true);
+    return () => {
+      container.removeEventListener("pointerdown", onPointerDown, true);
+      container.removeEventListener("click", stopHandleClick, true);
+    };
+  }, [beginResize, showHandles]);
+
+  // The container is a full-width positioning context; the <img> keeps
+  // its own width/height (px or %). Handle coordinates come from the
+  // measured image box so percentages can never misplace them.
+  const extraSx = styleStringToSx(node.attrs.style);
+  const handleSize = previewSize ?? measuredSize;
+  const handlePositions: Record<
+    ImageResizeHandle,
+    { left: number; top: number }
+  > = {
+    nw: { left: 0, top: 0 },
+    n: { left: handleSize.width / 2, top: 0 },
+    ne: { left: handleSize.width, top: 0 },
+    e: { left: handleSize.width, top: handleSize.height / 2 },
+    se: { left: handleSize.width, top: handleSize.height },
+    s: { left: handleSize.width / 2, top: handleSize.height },
+    sw: { left: 0, top: handleSize.height },
+    w: { left: 0, top: handleSize.height / 2 },
   };
 
   return (
@@ -223,30 +386,57 @@ export function ImageNodeView({ node, selected, getPos }: NodeViewProps) {
       contentEditable={false}
       className={selected ? "selected-image" : ""}
     >
-      <Box
-        sx={{
-          paddingY: M2,
-          width: "fit-content",
-          cursor: linkKey ? "zoom-in" : "default",
-        }}
-        onClick={handleClick}
-      >
+      <Box sx={{ paddingY: M2 }}>
         <Box
-          component={"img"}
-          src={src}
-          alt={src}
-          sx={{
-            display: "block",
-            outline:
-              selected && editMode
-                ? `2px solid ${theme.palette.primary.main}`
-                : "none",
-            outlineOffset: "2px",
-            transition: "outline 0.2s ease",
-            borderRadius: 1,
-            ...(node.attrs.style ? parseInlineStyle(node.attrs.style) : {}),
-          }}
-        ></Box>
+          ref={containerRef}
+          className="image-resize-container"
+          sx={{ cursor: linkKey ? "zoom-in" : "default" }}
+        >
+          <Box
+            component={"img"}
+            ref={imgRef}
+            src={src}
+            alt={src}
+            draggable={false}
+            onClick={handleClick}
+            onDoubleClick={handleDoubleClick}
+            sx={{
+              display: "block",
+              maxWidth: "100%",
+              outline:
+                selected && editMode
+                  ? `2px solid ${theme.palette.primary.main}`
+                  : "none",
+              outlineOffset: "2px",
+              transition: "outline 0.2s ease",
+              borderRadius: 1,
+              ...extraSx,
+              ...(previewSize
+                ? {
+                    width: `${previewSize.width}px`,
+                    height: `${previewSize.height}px`,
+                  }
+                : {}),
+            }}
+          ></Box>
+          {showHandles &&
+            IMAGE_RESIZE_HANDLES.map((handle) => {
+              const position = handlePositions[handle];
+              return (
+                <span
+                  key={handle}
+                  role="presentation"
+                  data-resize-handle={handle}
+                  className={`image-resize-handle image-resize-handle--${handle}`}
+                  style={{
+                    left: position.left,
+                    top: position.top,
+                    color: theme.palette.primary.main,
+                  }}
+                />
+              );
+            })}
+        </Box>
       </Box>
     </NodeViewWrapper>
   );

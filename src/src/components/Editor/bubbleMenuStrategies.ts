@@ -3,6 +3,7 @@
 import type { Editor } from "@tiptap/core";
 import { CellSelection, TableMap } from "@tiptap/pm/tables";
 import type { EditorState } from "@tiptap/pm/state";
+import { NodeSelection } from "@tiptap/pm/state";
 import type { ResolvedPos } from "@tiptap/pm/model";
 import {
   tableCommandsFor,
@@ -155,6 +156,11 @@ function collectCellSelectionContext(state: EditorState): CellContext | null {
 
 export function analyseSelection(state: EditorState): SelectionAnalysisFull {
   const { selection } = state;
+  // Node selections (images, embeds) carry their own toolbar; the text
+  // formatting menu must not open over them.
+  if (selection instanceof NodeSelection) {
+    return { kind: "empty", editable: false, state };
+  }
   const editable = state.doc && selection.from !== selection.to;
   if (selection.empty) return { kind: "empty", editable, state };
 

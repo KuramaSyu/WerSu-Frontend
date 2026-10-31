@@ -9,7 +9,7 @@ import {
 } from "@mui/material";
 import { ThemeProvider, useTheme } from "@mui/material/styles";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { M1, M2, M3 } from "../../statics";
 import { useThemeStore } from "../../zustand/useThemeStore";
 
@@ -62,8 +62,6 @@ interface PanelSectionTitleProps {
  * Title row used by `PanelSection`.
  *
  * Renders an optional icon, the title text, and an optional action slot.
- * The title color lightens/darkens on hover to mirror the section body's
- * hover treatment.
  */
 const PanelSectionTitle: React.FC<PanelSectionTitleProps> = ({
   title,
@@ -72,26 +70,12 @@ const PanelSectionTitle: React.FC<PanelSectionTitleProps> = ({
   inAccordion,
 }) => {
   const theme = useTheme();
-  const [hovered, setHovered] = useState(false);
-  // `iconTransition` is a static snippet per theme (doesn't change on
-  // hover), so reading it from the global store is fine.
+  // `iconTransition` is a static snippet per theme, so reading it from
+  // the global store is fine.
   const iconTransition = useThemeStore((s) => s.theme.iconTransition);
-
-  // dim function which dimms given color
-  // const dim = (color: string) =>
-  //   theme.palette.mode === "dark"
-  //     ? theme.darken(color, 0.3)
-  //     : theme.lighten(color, 0.3);
-
-  // const dimmedTextColor = useMemo(
-  //   () => dim(theme.palette.text.primary),
-  //   [theme],
-  // );
 
   return (
     <Box
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
       sx={{
         display: "flex",
         alignItems: "center",
@@ -158,7 +142,6 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
   leftEdgeHandle,
 }) => {
   const [expanded, setExpanded] = useState(defaultExpanded);
-  const [hovered, setHovered] = useState(false);
   const renderDivider = showDivider ?? title !== undefined;
 
   const theme = useTheme();
@@ -174,34 +157,9 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
       }
     : undefined;
 
-  // dim function which dimms given color
-  const dim = (color: string) =>
-    theme.palette.mode === "dark"
-      ? theme.darken(color, 0.3)
-      : theme.lighten(color, 0.3);
-
-  // dimmed theme for not hovered state
-  const dimmedTheme = useMemo(
-    () => ({
-      ...theme,
-      palette: {
-        ...theme.palette,
-        text: {
-          ...theme.palette.text,
-          primary: dim(theme.palette.text.primary),
-          secondary: dim(theme.palette.text.secondary),
-          disabled: dim(theme.palette.text.disabled),
-        },
-      },
-    }),
-    [theme],
-  );
-  const activeTheme = hovered ? theme : dimmedTheme;
-
-  const hoverHandlers = {
-    onMouseEnter: () => setHovered(true),
-    onMouseLeave: () => setHovered(false),
-  };
+  // The rail keeps a static appearance: sections no longer dim while the
+  // pointer is elsewhere or brighten on hover.
+  const activeTheme = theme;
 
   const body = <Stack spacing={spacing}>{children}</Stack>;
 
@@ -210,10 +168,7 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
   if (title === undefined) {
     return (
       <ThemeProvider theme={activeTheme}>
-        <Box
-          {...hoverHandlers}
-          sx={{ position: "relative", ...frameSx }}
-        >
+        <Box sx={{ position: "relative", ...frameSx }}>
           {leftEdgeHandle}
           {renderDivider && (
             <Divider sx={{ opacity: dividerOpacity, mb: 1.5 }} />
@@ -230,7 +185,6 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
     return (
       <ThemeProvider theme={activeTheme}>
         <Accordion
-          {...hoverHandlers}
           expanded={expanded}
           onChange={(_, isExpanded) => setExpanded(isExpanded)}
           disableGutters
@@ -251,9 +205,6 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
             "& .MuiAccordionSummary-root": {
               minHeight: 32,
               px: 0,
-              "&:hover": {
-                backgroundColor: "action.hover",
-              },
               "&.Mui-expanded": {
                 minHeight: 32,
               },
@@ -292,7 +243,7 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
   return (
     // px used to allign with padding of accordion
     <ThemeProvider theme={activeTheme}>
-      <Box {...hoverHandlers} sx={{ position: "relative", ...frameSx, px: M2 }}>
+      <Box sx={{ position: "relative", ...frameSx, px: M2 }}>
         {leftEdgeHandle}
         <PanelSectionTitle
           inAccordion={false}

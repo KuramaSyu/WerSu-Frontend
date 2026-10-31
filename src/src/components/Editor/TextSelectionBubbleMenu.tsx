@@ -21,6 +21,7 @@ import { CopyButton } from "../CopyButton";
 import { copyEditorSelection } from "../RightClick/editorClipboard";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useEditorMenuStore } from "../../zustand/editorMenuStore";
+import { TextSelection } from "@tiptap/pm/state";
 import { analyseSelection, pickStrategy } from "./bubbleMenuStrategies";
 import { iconForName } from "./editorIcons";
 
@@ -55,7 +56,9 @@ export const TextSelectionBubbleMenu = ({
   const { activeMarks, hasSelection, plainSelection } = useEditorState({
     editor,
     selector: (ctx) => {
-      const { from, to } = ctx.editor.state.selection;
+      const selection = ctx.editor.state.selection;
+      const { from, to } = selection;
+      const isTextSelection = selection instanceof TextSelection;
       return {
         activeMarks: {
           bold: ctx.editor.isActive("bold"),
@@ -64,9 +67,9 @@ export const TextSelectionBubbleMenu = ({
           code: ctx.editor.isActive("code"),
           highlight: ctx.editor.isActive("highlight"),
         },
-        hasSelection: from !== to,
+        hasSelection: isTextSelection && from !== to,
         plainSelection:
-          from !== to
+          isTextSelection && from !== to
             ? ctx.editor.state.doc.textBetween(from, to, "\n\n")
             : "",
       };
@@ -97,13 +100,40 @@ export const TextSelectionBubbleMenu = ({
 
   // Forward the plugin wrapper so we can drive its position transition.
   const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const hasSnappedRef = useRef(false);
   useLayoutEffect(() => {
     const el = wrapperRef.current;
     if (!el) return;
-    el.style.transition = [
+    const positionTransition = [
       `left ${MOVE_DURATION_MS}ms ease-out`,
       `top ${MOVE_DURATION_MS}ms ease-out`,
     ].join(", ");
+
+    if (!isOpen) {
+      hasSnappedRef.current = false;
+      el.style.transition = "";
+      return;
+    }
+
+    // First appearance: let floating-ui place the menu without animating
+    // from its previous position (the old cursor). Only animate once the
+    // menu is already on screen and the selection moves.
+    if (!hasSnappedRef.current) {
+      hasSnappedRef.current = true;
+      el.style.transition = "none";
+      let secondFrame = 0;
+      const firstFrame = window.requestAnimationFrame(() => {
+        secondFrame = window.requestAnimationFrame(() => {
+          el.style.transition = positionTransition;
+        });
+      });
+      return () => {
+        window.cancelAnimationFrame(firstFrame);
+        window.cancelAnimationFrame(secondFrame);
+      };
+    }
+
+    el.style.transition = positionTransition;
     return () => {
       el.style.transition = "";
     };
@@ -133,7 +163,7 @@ export const TextSelectionBubbleMenu = ({
   );
 
   return (
-    <BubbleMenu editor={editor} shouldShow={shouldShow} ref={wrapperRef}>
+    <BubbleMenu editor={editor} shouldShow={shouldShow} ref={wrapperRef} updateDelay={0} resizeDelay={0}>
       <Paper
         elevation={2}
         sx={{

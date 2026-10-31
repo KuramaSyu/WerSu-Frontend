@@ -14,6 +14,7 @@ import { EditorContent } from "@tiptap/react";
 import type { Editor } from "@tiptap/core";
 import type { SlashCommand } from "../../components/Editor/SlashCommandMenu";
 import { TextSelectionBubbleMenu } from "../../components/Editor/TextSelectionBubbleMenu";
+import { ImageBubbleMenu } from "../../components/Editor/ImageBubbleMenu";
 import { SlashCommandMenu } from "../../components/Editor/SlashCommandMenu";
 import { ThemedEditorBox } from "../../components/Editor/ThemedEditorBox";
 import {
@@ -58,6 +59,7 @@ const NoteRichEditorImpl: React.FC<NoteRichEditorProps> = ({
         openerRef={contextMenuOpenerRef}
       />
       <TextSelectionBubbleMenu editor={editor} enabled={editMode} />
+      <ImageBubbleMenu editor={editor} enabled={editMode} />
       <SlashCommandMenu
         editor={editor}
         enabled={editMode}

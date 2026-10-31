@@ -35,13 +35,38 @@ export const EditorBubbleMenu = ({
   const isOpen = enabled && editor.isEditable && !editor.isActive("table");
 
   const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const hasSnappedRef = useRef(false);
   useLayoutEffect(() => {
     const el = wrapperRef.current;
     if (!el) return;
-    el.style.transition = [
+    const positionTransition = [
       `left ${MOVE_DURATION_MS}ms ease-out`,
       `top ${MOVE_DURATION_MS}ms ease-out`,
     ].join(", ");
+
+    if (!isOpen) {
+      hasSnappedRef.current = false;
+      el.style.transition = "";
+      return;
+    }
+
+    // Snap into place on first appearance; animate only afterwards.
+    if (!hasSnappedRef.current) {
+      hasSnappedRef.current = true;
+      el.style.transition = "none";
+      let secondFrame = 0;
+      const firstFrame = window.requestAnimationFrame(() => {
+        secondFrame = window.requestAnimationFrame(() => {
+          el.style.transition = positionTransition;
+        });
+      });
+      return () => {
+        window.cancelAnimationFrame(firstFrame);
+        window.cancelAnimationFrame(secondFrame);
+      };
+    }
+
+    el.style.transition = positionTransition;
     return () => {
       el.style.transition = "";
     };
@@ -73,6 +98,8 @@ export const EditorBubbleMenu = ({
       options={{ placement: "bottom", offset: 8, flip: true }}
       editor={editor}
       shouldShow={shouldShow}
+      updateDelay={0}
+      resizeDelay={0}
       ref={wrapperRef}
     >
       <Paper

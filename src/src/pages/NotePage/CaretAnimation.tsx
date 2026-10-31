@@ -15,6 +15,7 @@
 import { Extension } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
+import { NodeSelection } from "@tiptap/pm/state";
 import { CellSelection } from "@tiptap/pm/tables";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { useThemeStore } from "../../zustand/useThemeStore";
@@ -151,6 +152,17 @@ export const CaretAnimation = Extension.create<CaretAnimationOptions>({
                 } catch {
                   selectionEl.style.display = "none";
                 }
+                return;
+              }
+
+              // A selected atom node (image, embed) draws its own
+              // outline in the node view; the translucent selection
+              // block would sit on top of it as an unwanted
+              // background highlight.
+              if (selection instanceof NodeSelection) {
+                caretEl.style.display = "none";
+                selectionEl.style.display = "none";
+                stopBlinkTimer();
                 return;
               }
 

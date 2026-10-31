@@ -3,12 +3,7 @@
 // formatting buttons as small clusters. Re-renders only when the
 // selected flags flip via useEditorState.
 
-import {
-  ToggleButton,
-  ToggleButtonGroup,
-  Tooltip,
-  Typography,
-} from "@mui/material";
+import { Divider, ToggleButtonGroup, Typography } from "@mui/material";
 import FormatBoldIcon from "@mui/icons-material/FormatBold";
 import FormatItalicIcon from "@mui/icons-material/FormatItalic";
 import StrikeThroughIcon from "@mui/icons-material/FormatStrikethrough";
@@ -27,41 +22,11 @@ import { useActiveNoteStore } from "../../zustand/editorStore";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { useEditorMenuStore } from "../../zustand/editorMenuStore";
 import { PanelSection } from "../Panels/PanelSection";
-
-// Wraps a ToggleButton in a Tooltip. A disabled button fires no events,
-// so MUI's Tooltip needs a span wrapper to still show its title. The
-// wrapper only exists while disabled; ToggleButtonGroup sees this
-// component (not the span), so selection still works.
-const TippedToggle: React.FC<{
-  title: string;
-  disabled?: boolean;
-  selected?: boolean;
-  onClick: () => void;
-  value: string;
-  ariaLabel: string;
-  children: React.ReactNode;
-}> = ({ title, disabled, selected, onClick, value, ariaLabel, children }) => {
-  const button = (
-    <ToggleButton
-      value={value}
-      selected={selected}
-      disabled={disabled}
-      onClick={onClick}
-      aria-label={ariaLabel}
-    >
-      {children}
-    </ToggleButton>
-  );
-  return (
-    <Tooltip title={title} disableInteractive>
-      {disabled ? (
-        <span style={{ display: "inline-flex" }}>{button}</span>
-      ) : (
-        button
-      )}
-    </Tooltip>
-  );
-};
+import {
+  FORMATTING_CONTEXTS,
+  TippedToggle,
+  pickFormattingContext,
+} from "./formattingPanelControls";
 
 export interface FormattingPanelProps {
   /** Optional control rendered on the section's left border. */
@@ -101,6 +66,7 @@ export const FormattingPanel: React.FC<FormattingPanelProps> = ({
         isOrderedList: e.isActive("orderedList"),
         isTaskList: e.isActive("taskList"),
         isBlockquote: e.isActive("blockquote"),
+        activeContextId: pickFormattingContext(e)?.id ?? null,
       };
     },
   });
@@ -115,6 +81,13 @@ export const FormattingPanel: React.FC<FormattingPanelProps> = ({
   }
   const disabled = !editor.isEditable || viewMode !== "rich";
 
+  const activeContext = flags.activeContextId
+    ? FORMATTING_CONTEXTS.find(
+        (context) => context.id === flags.activeContextId,
+      ) ?? null
+    : null;
+  const ContextTools = activeContext?.Component ?? null;
+
   return (
     <PanelSection
       title="Formatting"
@@ -124,6 +97,10 @@ export const FormattingPanel: React.FC<FormattingPanelProps> = ({
       bordered
       leftEdgeHandle={leftEdgeHandle}
     >
+      {ContextTools && <ContextTools editor={editor} disabled={disabled} />}
+
+      {ContextTools && <Divider sx={{ my: 0.5 }} />}
+
       <ToggleButtonGroup size="small" color="secondary">
         <TippedToggle
           title="Bold"

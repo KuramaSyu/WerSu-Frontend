@@ -25,6 +25,7 @@ import {
   TableRow,
 } from "@tiptap/extension-table";
 import { CellSelection, TableMap } from "@tiptap/pm/tables";
+import Image from "@tiptap/extension-image";
 import {
   analyseSelection,
   pickStrategy,
@@ -96,6 +97,26 @@ describe("analyseSelection", () => {
       editor.commands.focus("end");
       const analysis = analyseSelection(editor.state);
       expect(analysis.kind).toBe("empty");
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("returns 'empty' for a node selection (e.g. an image)", () => {
+    const editor = new Editor({ extensions: [StarterKit, Image] });
+    try {
+      editor.commands.setContent("<p>hello</p>");
+      editor.commands.insertContent({
+        type: "image",
+        attrs: { src: "http://x/a.png" },
+      });
+      let imagePos = -1;
+      editor.state.doc.descendants((node, pos) => {
+        if (node.type.name === "image") imagePos = pos;
+        return true;
+      });
+      editor.commands.setNodeSelection(imagePos);
+      expect(analyseSelection(editor.state).kind).toBe("empty");
     } finally {
       editor.destroy();
     }

@@ -6,6 +6,37 @@
 import Image from "@tiptap/extension-image";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 import { ImageNodeView } from "../controllers/ImageNodeView";
+import { parseStyleDeclarations } from "../imageResizeStrategy";
+
+/**
+ * True when a style string only expresses "full width, auto height"
+ * (`width: 100%; height: auto`). That is equivalent to an unsized image,
+ * so it is emitted as plain `![alt](src)` markdown rather than an
+ * `<img>` HTML block. Any other declaration keeps the HTML form so no
+ * styling is lost.
+ */
+function isDefaultFullWidthStyle(style: string): boolean {
+  const declarations = parseStyleDeclarations(style);
+  if (declarations.length === 0) return false;
+
+  let hasFullWidth = false;
+  for (const [key, value] of declarations) {
+    const normalizedValue = value.replace(/\s+/g, "").toLowerCase();
+    switch (key.toLowerCase()) {
+      case "width":
+        if (normalizedValue !== "100%") return false;
+        hasFullWidth = true;
+        break;
+      case "height":
+        if (normalizedValue !== "auto") return false;
+        break;
+      default:
+        return false;
+    }
+  }
+
+  return hasFullWidth;
+}
 
 export const CustomImage = Image.extend({
   inline: false,
@@ -34,7 +65,7 @@ export const CustomImage = Image.extend({
     const title = attrs.title ?? "";
     const style = attrs.style ?? "";
 
-    if (style) {
+    if (style && !isDefaultFullWidthStyle(style)) {
       const titleAttr = title ? ` title="${title}"` : "";
       return `<img src="${src}" alt="${alt}"${titleAttr} style="${style}"/>`;
     }
