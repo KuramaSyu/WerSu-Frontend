@@ -13,6 +13,13 @@ export interface PanelEdgeHandleProps {
   collapseTitle: string;
   /** Tooltip while the panel is closed (the action expands it). */
   expandTitle: string;
+  /**
+   * Centre the handle on the viewport (`50vh`, minus the top bar)
+   * instead of on its `position: relative` ancestor. Only safe when
+   * that ancestor spans the full rail (e.g. the left rail); handles
+   * mounted inside a single section must keep centring locally.
+   */
+  centerInViewport?: boolean;
 }
 
 // Tabler icons are flex items, so inside the narrow handle button they
@@ -42,6 +49,7 @@ export const PanelEdgeHandle: React.FC<PanelEdgeHandleProps> = ({
   onClick,
   collapseTitle,
   expandTitle,
+  centerInViewport = false,
 }) => {
   const theme = useTheme();
 
@@ -69,11 +77,15 @@ export const PanelEdgeHandle: React.FC<PanelEdgeHandleProps> = ({
         aria-label={open ? collapseTitle : expandTitle}
         sx={{
           position: "absolute",
-          // Centre on the viewport, not on the panel's own box. The panel
-          // sits below the top bar, so `50%` would land half a top-bar
-          // below the visual middle; `--panel-top-offset` (set by the
-          // AppShell grid) compensates for that push-down.
-          top: "calc(50vh - var(--panel-top-offset, 0px))",
+          // When requested, centre on the viewport rather than the
+          // panel's own box. The panel sits below the top bar, so `50%`
+          // would land half a top-bar below the visual middle;
+          // `--panel-top-offset` (set by the AppShell grid) compensates
+          // for that push-down. Handles rendered inside a single section
+          // keep the local `50%` centring.
+          top: centerInViewport
+            ? "calc(50vh - var(--panel-top-offset, 0px))"
+            : "50%",
           ...(side === "left"
             ? { right: 0, transform: "translate(50%, -50%)" }
             : { left: 0, transform: "translate(-50%, -50%)" }),

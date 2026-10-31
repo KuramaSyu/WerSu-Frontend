@@ -127,6 +127,7 @@ export const LeftRail: React.FC<LeftRailProps> = ({ children }) => {
           onClick={handleToggle}
           collapseTitle="Collapse left panel"
           expandTitle="Expand left panel"
+          centerInViewport
         />
       )}
     </Box>
