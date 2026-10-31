@@ -353,7 +353,13 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({ noteId }) => {
             },
           }}
         >
-          <DraftVersionItem users={liveIdentities} onClick={handleLiveClick} />
+          {/* Offline/disconnected means we are not a live editor any
+              more, so the draft entry must not list us (nor anyone
+              else stale in the awareness store). */}
+          <DraftVersionItem
+            users={isOffline ? [] : liveIdentities}
+            onClick={handleLiveClick}
+          />
           {visibleVersions.map((version, index) => {
             // Blend ratio uses the full history so the chip color stays
             // stable as the user expands / collapses the timeline.

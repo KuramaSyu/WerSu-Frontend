@@ -18,6 +18,7 @@ import { PublicNoteEditor } from "../NotePage/Editor";
 import { NoteEditorSkeleton } from "../NotePage/NoteEditorSkeleton";
 import { PublicShareUnavailable } from "./PublicShareUnavailable";
 import { getPublicCollabEntry } from "../../hooks/usePublicNoteCollaboration";
+import { clearLocalUserPresence } from "../../hooks/awarenessPresence";
 import { NoteLeftPanel } from "../NotePage/Panel/MainLeft";
 import { NoteRightPanel } from "../NotePage/Panel/MainRight";
 import { useScrollToSectionOnLoad } from "../../hooks/useScrollToSectionOnLoad";
@@ -106,7 +107,13 @@ export const PublicNotePage: React.FC = () => {
       useAuthStore.getState().setShareAccessToken(null);
       useAuthStore.getState().resetShareAttachmentTokens();
       if (noteIdFromGrant) {
-        getPublicCollabEntry(noteIdFromGrant)?.provider.disconnect();
+        const provider = getPublicCollabEntry(noteIdFromGrant)?.provider;
+        // Announce that this public viewer left before closing the
+        // socket. Public pages tear the provider down here on unmount,
+        // and a bare disconnect races the bridge's presence cleanup,
+        // leaving ghost avatars on the draft entry.
+        clearLocalUserPresence(provider);
+        provider?.disconnect();
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
