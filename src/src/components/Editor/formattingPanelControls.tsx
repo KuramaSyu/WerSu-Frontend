@@ -7,6 +7,7 @@
 // the panel itself.
 
 import type { Editor } from "@tiptap/core";
+import type { SxProps, Theme } from "@mui/material";
 import {
   Stack,
   ToggleButton,
@@ -20,6 +21,9 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import FormatIndentIncreaseIcon from "@mui/icons-material/FormatIndentIncrease";
 import FormatIndentDecreaseIcon from "@mui/icons-material/FormatIndentDecrease";
+import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
+import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
+import CallMergeIcon from "@mui/icons-material/CallMerge";
 import { useEditorState } from "@tiptap/react";
 import { useImageResizeStore } from "../../zustand/useImageResizeStore";
 import { defaultImageResizeStrategy } from "./imageResizeStrategy";
@@ -28,9 +32,24 @@ import {
   deleteSelectedImage,
   getSelectedImage,
 } from "./imageSelection";
-import { analyseSelection } from "./bubbleMenuStrategies";
+import { analyseSelection, analyseTableAtPos } from "./bubbleMenuStrategies";
 import { tableCommandsFor } from "./tableCommands";
 import { iconForName } from "./editorIcons";
+import {
+  canIndentCodeBlockIntoList,
+  indentCodeBlockIntoList,
+} from "./codeBlockListIndent";
+import {
+  canOutdentCodeBlockFromList,
+  outdentCodeBlockFromList,
+} from "./codeBlockListOutdent";
+import {
+  getListElementMergeState,
+  getListElementMoveState,
+  mergeListItem,
+  moveListElement,
+  type ListElementMoveState,
+} from "./listElementOperations";
 
 // Wraps a ToggleButton in a Tooltip. A disabled button fires no events,
 // so MUI's Tooltip needs a span wrapper to still show its title. The
@@ -43,8 +62,18 @@ export const TippedToggle: React.FC<{
   onClick: () => void;
   value: string;
   ariaLabel: string;
+  sx?: SxProps<Theme>;
   children: React.ReactNode;
-}> = ({ title, disabled, selected, onClick, value, ariaLabel, children }) => {
+}> = ({
+  title,
+  disabled,
+  selected,
+  onClick,
+  value,
+  ariaLabel,
+  sx,
+  children,
+}) => {
   const button = (
     <ToggleButton
       value={value}
@@ -52,6 +81,7 @@ export const TippedToggle: React.FC<{
       disabled={disabled}
       onClick={onClick}
       aria-label={ariaLabel}
+      sx={sx}
     >
       {children}
     </ToggleButton>
@@ -71,6 +101,41 @@ export interface FormattingContextProps {
   editor: Editor;
   disabled: boolean;
 }
+
+// Move-up / move-down toggles for an element inside a list. Rendered as
+// plain children so they live in the same ToggleButtonGroup as the rest
+// of a context's actions.
+const MoveUpToggle: React.FC<{
+  editor: Editor;
+  disabled: boolean;
+  state: ListElementMoveState;
+}> = ({ editor, disabled, state }) => (
+  <TippedToggle
+    title="Move up"
+    ariaLabel="move up"
+    value="move-up"
+    disabled={disabled || !state.canMoveUp}
+    onClick={() => moveListElement(editor, -1)}
+  >
+    <ArrowUpwardIcon fontSize="small" />
+  </TippedToggle>
+);
+
+const MoveDownToggle: React.FC<{
+  editor: Editor;
+  disabled: boolean;
+  state: ListElementMoveState;
+}> = ({ editor, disabled, state }) => (
+  <TippedToggle
+    title="Move down"
+    ariaLabel="move down"
+    value="move-down"
+    disabled={disabled || !state.canMoveDown}
+    onClick={() => moveListElement(editor, 1)}
+  >
+    <ArrowDownwardIcon fontSize="small" />
+  </TippedToggle>
+);
 
 export interface FormattingContext {
   id: string;
@@ -111,6 +176,14 @@ function enclosingNodeText(editor: Editor, typeName: string): string {
   return "";
 }
 
+// add-* tints primary, delete-* tints error, otherwise neutral. Matches
+// the palette convention used by the selection bubble menu.
+function commandPaletteKey(id: string): "primary" | "error" | null {
+  if (id.startsWith("add-")) return "primary";
+  if (id.startsWith("delete-")) return "error";
+  return null;
+}
+
 function copyToClipboard(text: string): void {
   if (!text || !navigator.clipboard?.writeText) return;
   void navigator.clipboard.writeText(text);
@@ -131,6 +204,11 @@ const ImageTools: React.FC<FormattingContextProps> = ({
     editor,
     selector: (ctx) =>
       (getSelectedImage(ctx.editor)?.attrs.style as string | null) ?? null,
+  });
+  // Offered only when the selected image sits inside a list item.
+  const moveState = useEditorState({
+    editor,
+    selector: (ctx) => getListElementMoveState(ctx.editor.state),
   });
 
   const currentWidth = defaultImageResizeStrategy.parse(style).width;
@@ -158,6 +236,16 @@ const ImageTools: React.FC<FormattingContextProps> = ({
             <LockOpenIcon fontSize="small" />
           )}
         </TippedToggle>
+        {moveState && (
+          <MoveUpToggle editor={editor} disabled={disabled} state={moveState} />
+        )}
+        {moveState && (
+          <MoveDownToggle
+            editor={editor}
+            disabled={disabled}
+            state={moveState}
+          />
+        )}
         <TippedToggle
           title="Delete image"
           ariaLabel="delete image"
@@ -204,7 +292,18 @@ const TableTools: React.FC<FormattingContextProps> = ({
 }) => {
   const analysis = useEditorState({
     editor,
-    selector: (ctx) => analyseSelection(ctx.editor.state),
+    selector: (ctx) => {
+      const state = ctx.editor.state;
+      const base = analyseSelection(state);
+      // A collapsed caret inside a cell is reported as "empty" by
+      // analyseSelection. The rail should still offer table actions
+      // whenever the caret sits in a table, so resolve the cell at the
+      // caret position in that case.
+      if (base.kind === "empty") {
+        return analyseTableAtPos(state, state.selection.from);
+      }
+      return base;
+    },
   });
   const commands = tableCommandsFor(analysis);
 
@@ -225,6 +324,7 @@ const TableTools: React.FC<FormattingContextProps> = ({
         >
           {row.map((command) => {
             const label = command.label(analysis);
+            const paletteKey = commandPaletteKey(command.id);
             return (
               <TippedToggle
                 key={command.id}
@@ -233,6 +333,7 @@ const TableTools: React.FC<FormattingContextProps> = ({
                 value={command.id}
                 disabled={disabled}
                 onClick={() => command.run(editor, analysis)}
+                sx={paletteKey ? { color: `${paletteKey}.main` } : undefined}
               >
                 {iconForName(command.bubbleIcon)}
               </TippedToggle>
@@ -251,28 +352,76 @@ const TableTools: React.FC<FormattingContextProps> = ({
 const CodeBlockTools: React.FC<FormattingContextProps> = ({
   editor,
   disabled,
-}) => (
-  <ToggleButtonGroup size="small" color="secondary">
-    <TippedToggle
-      title="Copy code"
-      ariaLabel="copy code"
-      value="copy-code"
-      disabled={disabled}
-      onClick={() => copyToClipboard(enclosingNodeText(editor, "codeBlock"))}
-    >
-      <ContentCopyIcon fontSize="small" />
-    </TippedToggle>
-    <TippedToggle
-      title="Delete code block"
-      ariaLabel="delete code block"
-      value="delete-code"
-      disabled={disabled}
-      onClick={() => deleteEnclosingNode(editor, "codeBlock")}
-    >
-      <DeleteOutlineIcon fontSize="small" color="error" />
-    </TippedToggle>
-  </ToggleButtonGroup>
-);
+}) => {
+  // Only offered when the code block's immediate previous sibling is a
+  // list, so the button reads as "fold this block into the list above".
+  const canIndent = useEditorState({
+    editor,
+    selector: (ctx) => canIndentCodeBlockIntoList(ctx.editor.state),
+  });
+  // Mirror image: offered when the block is nested in a list, so it can
+  // be split back out of the enumeration.
+  const canOutdent = useEditorState({
+    editor,
+    selector: (ctx) => canOutdentCodeBlockFromList(ctx.editor.state),
+  });
+  // Reorder controls, but only while the block lives inside a list item.
+  const moveState = useEditorState({
+    editor,
+    selector: (ctx) => getListElementMoveState(ctx.editor.state),
+  });
+
+  return (
+    <ToggleButtonGroup size="small" color="secondary">
+      {moveState && (
+        <MoveUpToggle editor={editor} disabled={disabled} state={moveState} />
+      )}
+      {moveState && (
+        <MoveDownToggle editor={editor} disabled={disabled} state={moveState} />
+      )}
+      {canIndent && (
+        <TippedToggle
+          title="Indent into list"
+          ariaLabel="indent code block into list"
+          value="indent-into-list"
+          disabled={disabled}
+          onClick={() => indentCodeBlockIntoList(editor)}
+        >
+          <FormatIndentIncreaseIcon fontSize="small" color="primary" />
+        </TippedToggle>
+      )}
+      {canOutdent && (
+        <TippedToggle
+          title="Split out of list"
+          ariaLabel="split code block out of list"
+          value="outdent-from-list"
+          disabled={disabled}
+          onClick={() => outdentCodeBlockFromList(editor)}
+        >
+          <FormatIndentDecreaseIcon fontSize="small" color="primary" />
+        </TippedToggle>
+      )}
+      <TippedToggle
+        title="Copy code"
+        ariaLabel="copy code"
+        value="copy-code"
+        disabled={disabled}
+        onClick={() => copyToClipboard(enclosingNodeText(editor, "codeBlock"))}
+      >
+        <ContentCopyIcon fontSize="small" />
+      </TippedToggle>
+      <TippedToggle
+        title="Delete code block"
+        ariaLabel="delete code block"
+        value="delete-code"
+        disabled={disabled}
+        onClick={() => deleteEnclosingNode(editor, "codeBlock")}
+      >
+        <DeleteOutlineIcon fontSize="small" color="error" />
+      </TippedToggle>
+    </ToggleButtonGroup>
+  );
+};
 
 // ---------------------------------------------------------------------------
 // Lists
@@ -289,9 +438,38 @@ const ListTools: React.FC<FormattingContextProps> = ({ editor, disabled }) => {
     },
   });
   const itemType = listType === "taskList" ? "taskItem" : "listItem";
+  const moveState = useEditorState({
+    editor,
+    selector: (ctx) => getListElementMoveState(ctx.editor.state),
+  });
+  const mergeState = useEditorState({
+    editor,
+    selector: (ctx) => getListElementMergeState(ctx.editor.state),
+  });
 
   return (
     <ToggleButtonGroup size="small" color="secondary">
+      {moveState && (
+        <MoveUpToggle editor={editor} disabled={disabled} state={moveState} />
+      )}
+      {moveState && (
+        <MoveDownToggle editor={editor} disabled={disabled} state={moveState} />
+      )}
+      {mergeState && (
+        <TippedToggle
+          title={
+            mergeState.direction === "down"
+              ? "Merge with next bullet"
+              : "Merge with previous bullet"
+          }
+          ariaLabel="merge with adjacent bullet"
+          value="merge"
+          disabled={disabled || !mergeState.canMerge}
+          onClick={() => mergeListItem(editor, mergeState.direction)}
+        >
+          <CallMergeIcon fontSize="small" />
+        </TippedToggle>
+      )}
       <TippedToggle
         title="Increase indent"
         ariaLabel="increase indent"

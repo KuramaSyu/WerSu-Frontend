@@ -1,6 +1,7 @@
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 import { CodeBlockNodeView } from "./CodeBlockNodeView";
+import { exitCodeBlockToList } from "../codeBlockListExit";
 
 /**
  * `CodeBlockLowlight` re-exported with a React node view that adds
@@ -31,6 +32,23 @@ import { CodeBlockNodeView } from "./CodeBlockNodeView";
 export const CustomCodeBlock = CodeBlockLowlight.extend({
   addNodeView() {
     return ReactNodeViewRenderer(CodeBlockNodeView);
+  },
+
+  // When a code block is the final child of a list item, Enter on the
+  // blank final line continues the enumeration instead of looping on
+  // newlines. Everything else falls through to the stock code-block
+  // keymap (newline, triple-enter exit, ...).
+  addKeyboardShortcuts() {
+    const parent = this.parent?.() ?? {};
+    return {
+      ...parent,
+      Enter: (props) => {
+        if (exitCodeBlockToList(props.editor)) {
+          return true;
+        }
+        return parent.Enter?.(props) ?? false;
+      },
+    };
   },
 
   // Canonicalize the language attr on the read side: a bare ``` fence

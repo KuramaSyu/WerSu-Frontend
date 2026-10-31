@@ -97,9 +97,19 @@ export const FormattingPanel: React.FC<FormattingPanelProps> = ({
       bordered
       leftEdgeHandle={leftEdgeHandle}
     >
+      {ContextTools && (
+        <Divider textAlign="left" sx={{ my: 0.5 }}>
+          {activeContext?.label}
+        </Divider>
+      )}
+
       {ContextTools && <ContextTools editor={editor} disabled={disabled} />}
 
-      {ContextTools && <Divider sx={{ my: 0.5 }} />}
+      {ContextTools && (
+        <Divider textAlign="left" sx={{ my: 0.5 }}>
+          General
+        </Divider>
+      )}
 
       <ToggleButtonGroup size="small" color="secondary">
         <TippedToggle
