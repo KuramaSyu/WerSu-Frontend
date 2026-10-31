@@ -169,6 +169,18 @@ export const AppShell: React.FC = () => {
             display: "grid",
             // Two-column layout: left rail | main+right wrapper
             gridTemplateColumns: `${leftColumnWidth} minmax(0, 1fr)`,
+            // Constrain the single implicit row to the grid's own height.
+            // Without an explicit `minmax(0, 1fr)` row the `auto` track
+            // sizes to its content, so a tall side panel grows the row
+            // past the viewport and its inner `overflow: auto` never
+            // engages (the shell just clips it). Pinning the row to the
+            // available height lets the rails scroll internally.
+            gridTemplateRows: "minmax(0, 1fr)",
+            // Exposed to the rail edge handles so they can centre on the
+            // viewport (50vh) rather than on the grid's own box, which is
+            // pushed down by the top bar.
+            "--panel-top-offset":
+              isMobile || !showTopPanel ? "0px" : TOP_BAR_HEIGHT,
             //transition: `grid-template-columns ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
             transition: `grid-template-columns ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}, margin-top ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
             marginTop: isMobile ? 0 : showTopPanel ? TOP_BAR_HEIGHT : 0,

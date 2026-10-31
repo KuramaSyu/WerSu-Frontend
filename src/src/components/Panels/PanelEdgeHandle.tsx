@@ -69,7 +69,11 @@ export const PanelEdgeHandle: React.FC<PanelEdgeHandleProps> = ({
         aria-label={open ? collapseTitle : expandTitle}
         sx={{
           position: "absolute",
-          top: "50%",
+          // Centre on the viewport, not on the panel's own box. The panel
+          // sits below the top bar, so `50%` would land half a top-bar
+          // below the visual middle; `--panel-top-offset` (set by the
+          // AppShell grid) compensates for that push-down.
+          top: "calc(50vh - var(--panel-top-offset, 0px))",
           ...(side === "left"
             ? { right: 0, transform: "translate(50%, -50%)" }
             : { left: 0, transform: "translate(-50%, -50%)" }),
