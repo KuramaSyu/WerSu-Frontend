@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Avatar,
   Box,
@@ -35,6 +35,8 @@ import {
 import { PublicUserAvatar } from "./PublicUserAvatar";
 import { M1, M2, M4 } from "../../statics";
 import { ThemeColorCircles } from "../ThemeColorCircles";
+import { ThemeEditModal } from "../ThemeEditModal";
+import type { GeneratedThemeRecord } from "../../theme/imageTheme";
 import { Pages } from "./Pages";
 import { useSelectedShelfStore } from "../../zustand/useSelectedShelfStore";
 import { handleLogout as performLogout } from "../../utils/logout";
@@ -56,6 +58,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
     themeName,
     setTheme,
     customThemes,
+    generatedThemes,
     lastLightTheme,
     lastDarkTheme,
   } = useThemeStore();
@@ -71,6 +74,18 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
   const setPublicUserName = usePublicUserStore((s) => s.setName);
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(publicUserName);
+  // Generated theme being edited from the picker; null closes the modal.
+  const [editingTheme, setEditingTheme] = useState<GeneratedThemeRecord | null>(
+    null,
+  );
+  // Control the theme Select so opening the edit modal closes its list.
+  const [themeSelectOpen, setThemeSelectOpen] = useState(false);
+
+  // Only generated themes are editable; look their records up by slug.
+  const generatedThemesByName = useMemo(
+    () => new Map(generatedThemes.map((r) => [r.name, r])),
+    [generatedThemes],
+  );
 
   const startEditingName = () => {
     setNameDraft(publicUserName);
@@ -151,12 +166,29 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
   const toggleTooltip =
     currentMode === "dark" ? "Switch to light theme" : "Switch to dark theme";
   const handleToggleMode = () => {
-    const next = lastUsedOther
-      ? customThemes.find((t) => t.custom.themeName === lastUsedOther)
-      : customThemes.find((t) => {
-          const m = t.palette.mode === "light" ? "light" : "dark";
-          return m === otherMode;
-        });
+    // 1. The generated theme's own sibling variant (same image, other
+    //    mode) is the most intuitive target.
+    // 2. Otherwise the last theme used in the other mode.
+    // 3. Otherwise any theme of that mode.
+    const activeGenerated = generatedThemesByName.get(themeName) ?? null;
+    const sibling = generatedThemes.find(
+      (r) =>
+        r.groupId === activeGenerated?.groupId && r.mode === otherMode,
+    );
+    if (sibling !== undefined) {
+      void setTheme(sibling.name);
+      return;
+    }
+    const lastUsed =
+      lastUsedOther !== null
+        ? customThemes.find((t) => t.custom.themeName === lastUsedOther)
+        : undefined;
+    const next =
+      lastUsed ??
+      customThemes.find((t) => {
+        const m = t.palette.mode === "light" ? "light" : "dark";
+        return m === otherMode;
+      });
     if (next) void setTheme(next.custom.themeName);
   };
 
@@ -290,6 +322,9 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
         <FormControl size="small" sx={{ flex: 1, minWidth: 0 }}>
           <Select
             value={selectValue}
+            open={themeSelectOpen}
+            onOpen={() => setThemeSelectOpen(true)}
+            onClose={() => setThemeSelectOpen(false)}
             onChange={(event) => setTheme(event.target.value)}
             sx={{ borderRadius: M4 }}
             inputProps={{ "aria-label": "Select theme" }}
@@ -313,16 +348,49 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
               );
             }}
           >
-            {filteredThemes.map((t) => (
-              <MenuItem
-                key={t.custom.themeName}
-                value={t.custom.themeName}
-                sx={{ gap: 1, minHeight: 52 }}
-              >
-                <ThemeColorCircles theme={t} circleSize={16} />
-                {t.custom.longName}
-              </MenuItem>
-            ))}
+            {filteredThemes.map((t) => {
+              const generatedRecord =
+                generatedThemesByName.get(t.custom.themeName) ?? null;
+              return (
+                <MenuItem
+                  key={t.custom.themeName}
+                  value={t.custom.themeName}
+                  sx={{ gap: 1, minHeight: 52 }}
+                >
+                  <ThemeColorCircles theme={t} circleSize={16} />
+                  <Box
+                    sx={{
+                      flex: 1,
+                      minWidth: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {t.custom.longName}
+                  </Box>
+                  {generatedRecord !== null ? (
+                    <Tooltip title="Edit theme">
+                      <IconButton
+                        size="small"
+                        aria-label={`Edit theme ${t.custom.longName}`}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          // Keep the Select from selecting this row and
+                          // close its list before the modal takes over.
+                          e.stopPropagation();
+                          e.preventDefault();
+                          setThemeSelectOpen(false);
+                          setEditingTheme(generatedRecord);
+                        }}
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  ) : null}
+                </MenuItem>
+              );
+            })}
           </Select>
         </FormControl>
       </Box>
@@ -397,6 +465,13 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
         </ListItemIcon>
         <ListItemText primary="Logout" />
       </MenuItem>
+
+      <ThemeEditModal
+        key={editingTheme?.id ?? "none"}
+        record={editingTheme}
+        open={editingTheme !== null}
+        onClose={() => setEditingTheme(null)}
+      />
     </Stack>
   );
 };

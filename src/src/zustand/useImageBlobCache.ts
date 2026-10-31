@@ -4,7 +4,6 @@ import {
   getAllCachedBlobs,
   putCachedBlob,
 } from "../utils/imageBlobCache";
-import { bgLog, bgLogWarn } from "../utils/bgDebug";
 
 // Image-blob cache backed by IndexedDB. Public methods are async; the
 // in-memory map mirrors IDB rows so the hot path is a single Map.get once hydrated.
@@ -61,7 +60,6 @@ export const useImageBlobCacheStore = create<ImageBlobCacheState>()(
       if (get().hydrated) return;
       try {
         const persisted = await getAllCachedBlobs();
-        bgLog(`hydrate: ${String(persisted.length)} entries read from IDB`);
         const byUrl = new Map<string, CacheEntry>();
         for (const [url, entry] of persisted) {
           byUrl.set(url, {
@@ -72,11 +70,13 @@ export const useImageBlobCacheStore = create<ImageBlobCacheState>()(
           });
         }
         set({ byUrl, hydrated: true });
-        bgLog(`hydrate: byUrl populated with ${String(byUrl.size)} entries`);
       } catch (err) {
         // IDB unavailable (private mode, SSR, test env): mark hydrated anyway
         // so reads stop returning a pending promise forever.
-        bgLogWarn(`hydrate: IDB read failed, hydrating empty: ${String(err)}`);
+        console.warn(
+          `[image-blob-cache] IDB read failed, hydrating empty:`,
+          err,
+        );
         set({ hydrated: true });
       }
     },
@@ -99,16 +99,13 @@ export const useImageBlobCacheStore = create<ImageBlobCacheState>()(
         const next = new Map(get().byUrl);
         next.set(url, entry);
         set({ byUrl: next });
-        bgLog(`put: in-memory byUrl set for url=${url}`);
         // Persist to IDB. A failure is logged but does not invalidate the
         // in-memory entry: the in-memory store is the source of truth for this session.
         try {
           await putCachedBlob(url, blob, contentType);
-          bgLog(`put: IDB persisted for url=${url}`);
         } catch (err) {
           // Real failure, not a verbose trace: in-memory cache will lose the row
           // on the next reload.
-          // eslint-disable-next-line no-console
           console.warn(`[image-blob-cache] IDB put failed for ${url}:`, err);
         }
         return entry;

@@ -71,7 +71,5 @@ export const MAIN_PANEL_ELEVATION = 1;
  * alues must match each store's persist name so the cross-tab listener in Bootstrap can match them.
  */
 export const PERSIST_KEYS = {
-  backgroundImageLibrary: "background-image-library",
-  selectedBackgroundImage: "selected-background-image",
   appearance: "appearance-storage",
 } as const;

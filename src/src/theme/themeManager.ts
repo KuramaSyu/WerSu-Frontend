@@ -1,99 +1,15 @@
-import { Vibrant } from "node-vibrant/browser";
-import {
-  CustomThemeImpl,
-  type CustomTheme,
-  type CustomThemeConfig,
-} from "./customTheme";
-import { createTheme } from "@mui/material";
-import useInfoStore, { SnackbarUpdateImpl } from "../zustand/InfoStore";
-import { useThemeStore } from "../zustand/useThemeStore";
+import type { CustomTheme } from "./customTheme";
 import { customThemes, defaultTheme } from "./themes";
 
-function isLocalOpeninaryBackground(url: string): boolean {
-  try {
-    const parsedUrl = new URL(url);
-    return (
-      parsedUrl.protocol === "http:" &&
-      parsedUrl.hostname === "localhost" &&
-      parsedUrl.port === "3001"
-    );
-  } catch {
-    return false;
-  }
-}
-
-function buildPaletteRequestUrl(url: string): string {
-  if (!import.meta.env.DEV || !isLocalOpeninaryBackground(url)) {
-    return url;
-  }
-
-  const parsedUrl = new URL(url);
-  parsedUrl.searchParams.set("_theme_cache_bust", Date.now().toString());
-  return parsedUrl.toString();
-}
-
-// Note: the MUI Theme / ThemeOptions augmentation for the `custom` field
-// lives in `./interfaces.ts`. Keeping it there avoids a TS2717 conflict
-// from declaring the same field with two different shapes.
-
-export function buildCustomTheme(
-  primaryMain: string,
-  lightVibrantHex: string,
-  darkVibrantHex: string,
-  secondaryMain: string,
-  lightMutedHex: string,
-  darkMutedHex: string,
-  vibrantHex: string,
-  mutedHex: string,
-  chosenBackground: string,
-  config: { name: string; longName: string },
-  isDark: boolean,
-): CustomTheme {
-  return createTheme({
-    palette: {
-      mode: isDark ? "dark" : "light",
-      primary: {
-        main: primaryMain,
-        light: lightVibrantHex,
-        dark: darkVibrantHex,
-      },
-      secondary: {
-        main: secondaryMain,
-        light: lightMutedHex,
-        dark: darkMutedHex,
-      },
-      // Extra vibrant palette values
-      vibrant: {
-        main: vibrantHex,
-        light: lightVibrantHex,
-        dark: darkVibrantHex,
-      },
-      // Extra muted palette values
-      muted: {
-        main: mutedHex,
-        light: lightMutedHex,
-        dark: darkMutedHex,
-      },
-    },
-    custom: {
-      backgroundImages: [chosenBackground],
-      chosenBackgroundImage: chosenBackground,
-      themeName: config.name,
-      longName: config.longName,
-    },
-    ...themechanges,
-  }) as unknown as CustomTheme;
-}
-
-// Helper function that selects the correct color based on mode.
-// const autoSelect = (light: string, dark: string, isDark: boolean) =>
-//   isDark ? dark : light;
+/**
+ * Registry of every theme the app knows about: the bundled themes from
+ * `themes.ts` plus any user-generated themes registered at runtime from
+ * the theme generator. The `useThemeStore` resolves a theme by name
+ * through this registry.
+ */
 export class ThemeManager {
   themes: Map<string, CustomTheme>;
   private static instance: ThemeManager | undefined;
-  private readonly THEME_LOADING_WARNING_TIMEOUT_MS = 4000;
-  // For now, we use a constant to choose dark mode; later this can be dynamically set.
-  private readonly isDark: boolean = true;
   /** Toggled by the developer-mode ThemeDebug switch in `DeveloperSection`.
    *  Read by callers (e.g. theme generation trace) to gate their output.
    *  Defaults to false so production builds stay silent. */
@@ -115,74 +31,29 @@ export class ThemeManager {
     return ThemeManager.instance;
   }
 
-  /**
-   * Asynchronously generates an MUI theme.
-   * Always runs Vibrant on the randomly chosen background.
-   * If config.primary/secondary are provided, they override Vibrant's primary result.
-   * The full extracted palette is used to populate primary, secondary, and extra palette keys.
-   */
+  /** Add (or replace) a theme by its `custom.themeName`. */
+  public registerTheme(theme: CustomTheme): void {
+    this.themes.set(theme.custom.themeName, theme);
+  }
+
+  public hasTheme(themeName: string): boolean {
+    return this.themes.has(themeName);
+  }
+
+  public removeTheme(themeName: string): void {
+    this.themes.delete(themeName);
+  }
+
+  /** Every registered theme, in insertion order. */
+  public getAllThemes(): CustomTheme[] {
+    return [...this.themes.values()];
+  }
+
   public async generateTheme(themeName: string): Promise<CustomTheme | null> {
     return this.themes.get(themeName) ?? defaultTheme;
   }
+
   public getThemeSync(themeName: string): CustomTheme | null {
     return this.themes.get(themeName) ?? defaultTheme;
   }
 }
-
-//   /**
-//    * Asynchronously generates an MUI theme.
-//    * Always runs Vibrant on the randomly chosen background.
-//    * If config.primary/secondary are provided, they override Vibrant's primary result.
-//    * The full extracted palette is used to populate primary, secondary, and extra palette keys.
-//    */
-//   public async generateTheme(themeName: string): Promise<CustomTheme | null> {
-//     // const background = useThemeStore.getState().theme.custom.backgroundImage;
-//     let theme;
-//     switch (themeName) {
-//       case "docsTheme":
-//         theme = docsTheme;
-//         break;
-//       case "github":
-//         theme = githubTheme;
-//         break;
-//       case "github-dark":
-//         theme = githubDarkTheme;
-//         break;
-//       case "bright":
-//         theme = brightTheme;
-//         break;
-//       case "midnight":
-//         theme = midnightTheme;
-//         break;
-//       case "default":
-//         theme = defaultTheme;
-//         break;
-//       default:
-//         theme = defaultTheme;
-//     }
-//     return createTheme({
-//       ...theme,
-//       ...themechanges,
-//     });
-//   }
-// }
-
-const themechanges = {
-  typography: {
-    fontFamily: '"Fira Sans", sans-serif',
-  },
-
-  // components: {
-  //   MuiOutlinedInput: {
-  //     styleOverrides: {
-  //       root: {
-  //         borderRadius: "4rem",
-  //       },
-  //       input: {
-  //         padding: "0.5rem 0.5rem",
-  //         //fontSize: "1.5rem",
-  //       },
-  //     },
-  //   },
-  // }
-};

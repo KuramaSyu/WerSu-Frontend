@@ -70,10 +70,10 @@ export const DeveloperSection: React.FC = () => {
       <Stack>
         <Typography variant="subtitle1">Blurred background debug</Typography>
         <Typography variant="body2" color="text.secondary">
-          Log a one-line summary to the browser console each time the
-          AppBackground blur pipeline starts, finishes, or falls back to the raw
-          URL. Per-frame cost is zero. Filter the DevTools console by{" "}
-          <code>[blur]</code> to see only these lines.
+          Log a one-line summary to the browser console each time a blurred
+          background variant is generated (theme save/edit). Per-frame cost is
+          zero. Filter the DevTools console by <code>[blur]</code> to see only
+          these lines.
         </Typography>
       </Stack>
 
@@ -95,13 +95,12 @@ export const DeveloperSection: React.FC = () => {
       </Stack>
 
       <Stack>
-        <Typography variant="subtitle1">Background image debug</Typography>
+        <Typography variant="subtitle1">Image upload debug</Typography>
         <Typography variant="body2" color="text.secondary">
-          Trace the background-image upload + IndexedDB blob cache
-          pipeline (file pick, downscale timing, cache hits, IDB
-          open/put timings, stuck writes) to the browser console.
-          Per-frame cost is zero. Filter the DevTools console by{" "}
-          <code>[bg-debug]</code> to see only these lines.
+          Trace the theme image upload + IndexedDB blob cache pipeline (file
+          pick, downscale timing, cache hits, IDB open/put timings, stuck
+          writes) to the browser console. Per-frame cost is zero. Filter the
+          DevTools console by <code>[bg-debug]</code> to see only these lines.
         </Typography>
       </Stack>
 
@@ -112,13 +111,13 @@ export const DeveloperSection: React.FC = () => {
             setFlag(FeatureFlagName.BackgroundImageDebug, e.target.checked)
           }
           slotProps={{
-            input: { "aria-label": "Background image debug" },
+            input: { "aria-label": "Image upload debug" },
           }}
         />
         <Typography>
           {backgroundImageDebug
-            ? "Background image debug is on"
-            : "Background image debug is off"}
+            ? "Image upload debug is on"
+            : "Image upload debug is off"}
         </Typography>
       </Stack>
 

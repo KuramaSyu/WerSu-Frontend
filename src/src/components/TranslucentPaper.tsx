@@ -1,7 +1,6 @@
 import { Paper, type PaperProps, type SxProps } from "@mui/material";
 import { alpha, useTheme, type Theme } from "@mui/material/styles";
 import type { ReactNode } from "react";
-import { useSelectedBackgroundImageStore } from "../zustand/useSelectedBackgroundImageStore";
 import { useThemeStore } from "../zustand/useThemeStore";
 
 // Opacity per elevation level (0..11). Elevation 1 is the main shell (50%),
@@ -81,16 +80,9 @@ function withoutBackgroundColor(
   }) as SxProps<Theme>;
 }
 
-// Match AppBackground: a URL is active when either the user picked one
-// or the theme supplies one.
-function pickBackgroundUrl(
-  userImage: string | null,
-  themeImage: string | undefined,
-): string | undefined {
-  if (userImage !== null && userImage.length > 0) {
-    return userImage;
-  }
-  if (themeImage !== undefined && themeImage !== "" && themeImage.length > 0) {
+// Match AppBackground: a URL is active when the theme supplies one.
+function pickBackgroundUrl(themeImage: string | undefined): string | undefined {
+  if (themeImage !== undefined && themeImage.length > 0) {
     return themeImage;
   }
   return undefined;
@@ -108,13 +100,11 @@ export const TranslucentPaper: React.FC<TranslucentPaperProps> = ({
   ...paperProps
 }) => {
   const theme = useTheme();
-  const userImage = useSelectedBackgroundImageStore((s) => s.userImage);
   const themeBackground = useThemeStore((s) => {
     const custom = s.theme.custom;
     return custom.chosenBackgroundImage ?? custom.backgroundImages[0] ?? "";
   });
-  const hasBackground =
-    pickBackgroundUrl(userImage, themeBackground) !== undefined;
+  const hasBackground = pickBackgroundUrl(themeBackground) !== undefined;
 
   const safeElevation = Math.max(0, Math.min(11, Math.round(elevation)));
   const opacity = ELEVATION_OPACITY[safeElevation] ?? DEFAULT_OPACITY;

@@ -18,11 +18,6 @@ import { useDirectoryTreeStore } from "./zustand/useDirectoryTreeStore";
 import { useSelectedShelfStore } from "./zustand/useSelectedShelfStore";
 import { useAllDirectoriesQuery } from "./api/queries/directoryQueries";
 import { useImageBlobCacheStore } from "./zustand/useImageBlobCache";
-import {
-  rehydrateCachedBackgroundImage,
-  useSelectedBackgroundImageStore,
-} from "./zustand/useSelectedBackgroundImageStore";
-import { useBackgroundImageLibraryStore } from "./zustand/useBackgroundImageLibraryStore";
 import { useAppearanceSettings } from "./zustand/useAppearanceSettings";
 import { PERSIST_KEYS } from "./statics";
 import { isPublicPathname } from "./utils/publicRoute";
@@ -315,14 +310,10 @@ export const Bootstrap: React.FC = () => {
   // Keep the shelf-scoped directory tree in sync with the directory cache.
   useDirectoryTreeSync();
 
-  // Hydrate the image blob cache and the persisted background image
-  // once at app boot so AppBackground can render via `blob:` on the
-  // first paint after a reload.
+  // Hydrate the IndexedDB blob cache once at app boot so generated
+  // themes with `local:` background images can render on first paint.
   useEffect(() => {
-    void (async () => {
-      await useImageBlobCacheStore.getState().hydrate();
-      await rehydrateCachedBackgroundImage();
-    })();
+    void useImageBlobCacheStore.getState().hydrate();
   }, []);
 
   return <></>;
@@ -353,20 +344,10 @@ function useCrossTabStorageSync(): void {
     const onStorage = (event: StorageEvent) => {
       if (event.key === null) {
         // null key: another tab called localStorage.clear(). Re-pull every store.
-        void useBackgroundImageLibraryStore.persist.rehydrate();
-        void useSelectedBackgroundImageStore.persist.rehydrate();
         void useAppearanceSettings.persist.rehydrate();
         return;
       }
       switch (event.key) {
-        case PERSIST_KEYS.backgroundImageLibrary:
-          void useBackgroundImageLibraryStore.persist.rehydrate();
-          break;
-        case PERSIST_KEYS.selectedBackgroundImage:
-          void useSelectedBackgroundImageStore.persist.rehydrate();
-          // Re-run the async upgrade so the cached blob URL is rebuilt for the new URL.
-          void rehydrateCachedBackgroundImage();
-          break;
         case PERSIST_KEYS.appearance:
           void useAppearanceSettings.persist.rehydrate();
           break;
