@@ -38,6 +38,8 @@ export interface SearchCommandDefinition {
   takesArg?: boolean;
   /** Strategy applied directly, for commands that take no argument. */
   searchType?: RestNotesSearchType;
+  /** Non-strategy action applied directly, e.g. clearing the filter. */
+  action?: "clear";
   /** Argument autocomplete options for argument-taking commands. */
   argOptions?: SearchModeOption[];
 }
@@ -52,6 +54,8 @@ export interface SearchCommandSuggestion {
   completion: string;
   /** Strategy applied when the suggestion is executed. */
   searchType?: RestNotesSearchType;
+  /** Non-strategy action applied when the suggestion is executed. */
+  action?: "clear";
   /** Id of the command being completed. */
   commandId: string;
   /** Argument value, present for `/mode <value>` suggestions. */
@@ -134,6 +138,14 @@ export const SEARCH_COMMANDS: SearchCommandDefinition[] = [
     label: "/fuzzy",
     description: "Tolerate typos / find similar (Fuzzy)",
     searchType: RestNotesSearchType.TYPO_TOLERANT,
+  },
+  {
+    id: "clear",
+    name: "clear",
+    aliases: ["reset", "x"],
+    label: "/clear",
+    description: "Clear the search filters",
+    action: "clear",
   },
 ];
 
@@ -227,6 +239,7 @@ const commandSuggestions = (head: string): SearchCommandSuggestion[] => {
     hint: command.description,
     completion: `/${command.name}${command.takesArg ? " " : ""}`,
     searchType: command.searchType,
+    action: command.action,
     commandId: command.id,
     // `/mode` can only be completed, not executed, until an argument
     // has been chosen; direct commands carry their own strategy.
@@ -283,8 +296,9 @@ export function getSearchCommandSuggestions(
 export interface ResolvedSearchCommand {
   commandId: string;
   label: string;
-  searchType: RestNotesSearchType;
+  searchType?: RestNotesSearchType;
   argValue?: string;
+  action?: "clear";
 }
 
 /**
@@ -303,6 +317,14 @@ export function resolveSearchCommand(
   const { head, tail, hasTail } = splitBody(body);
   const command = findSearchCommand(head);
   if (!command) return null;
+
+  if (command.action !== undefined) {
+    return {
+      commandId: command.id,
+      label: command.label,
+      action: command.action,
+    };
+  }
 
   if (command.searchType !== undefined && command.takesArg !== true) {
     return {

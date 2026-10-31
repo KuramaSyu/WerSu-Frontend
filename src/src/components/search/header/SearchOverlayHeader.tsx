@@ -27,6 +27,7 @@ export const SearchOverlayHeader: React.FC<Props> = () => {
   const searchType = useSearchFilterStore((s) => s.searchType);
   const setSearch = useSearchFilterStore((s) => s.setSearch);
   const setSearchType = useSearchFilterStore((s) => s.setSearchType);
+  const clearFilter = useSearchFilterStore((s) => s.clearFilter);
 
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -68,6 +69,11 @@ export const SearchOverlayHeader: React.FC<Props> = () => {
   // `/mode` command only completes to `/mode ` and waits for its arg.
   const applySuggestion = useCallback(
     (suggestion: SearchCommandSuggestion) => {
+      if (suggestion.action === "clear") {
+        clearFilter();
+        setSearch("");
+        return;
+      }
       if (suggestion.searchType && !suggestion.completesOnly) {
         setSearchType(suggestion.searchType);
         setSearch("");
@@ -75,7 +81,7 @@ export const SearchOverlayHeader: React.FC<Props> = () => {
       }
       setSearch(suggestion.completion);
     },
-    [setSearch, setSearchType],
+    [clearFilter, setSearch, setSearchType],
   );
 
   const moveSelection = (delta: number) => {
@@ -136,8 +142,15 @@ export const SearchOverlayHeader: React.FC<Props> = () => {
       if (resolved) {
         event.preventDefault();
         event.stopPropagation();
-        setSearchType(resolved.searchType);
-        setSearch("");
+        if (resolved.action === "clear") {
+          clearFilter();
+          setSearch("");
+          return;
+        }
+        if (resolved.searchType) {
+          setSearchType(resolved.searchType);
+          setSearch("");
+        }
       }
     }
   };

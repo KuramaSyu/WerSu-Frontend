@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Box, Fade, Grow, Portal, SwipeableDrawer, alpha } from "@mui/material";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useSearchFilterStore } from "../../zustand/useSearchFilterStore";
@@ -26,8 +27,26 @@ const SearchResultsOverlayInner: React.FC<SearchResultsOverlayProps> = ({
 }) => {
   const theme = useThemeStore((s) => s.theme);
   const resetAll = useSearchFilterStore((s) => s.resetAll);
+  const applyAutoFilter = useSearchFilterStore((s) => s.applyAutoFilter);
+  const location = useLocation();
   const { isInitialLoading, isFetchingNextPage } = useSearchResults();
   const { isMobile } = useBreakpoint();
+
+  // When the overlay opens while viewing a directory (or one of its
+  // sub-pages), prefill the filter to scope the search to that directory
+  // and its descendants.
+  useEffect(() => {
+    if (!open) return;
+    const match = /^\/d\/([^/]+)(?:\/|$)/.exec(location.pathname);
+    const directoryId = match?.[1];
+    if (!directoryId) return;
+    applyAutoFilter({
+      mode: "include",
+      selectedDirs: [directoryId],
+      scope: "subtree",
+    });
+  }, [open, location.pathname, applyAutoFilter]);
+
   // ESC closes the overlay and clears search state
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

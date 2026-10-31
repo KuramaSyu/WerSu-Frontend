@@ -177,6 +177,31 @@ describe("SearchOverlayHeader slash commands", () => {
     expect(useSearchFilterStore.getState().search).toBe("");
   });
 
+  it("Enter on /clear clears the filter and the input", () => {
+    useSearchFilterStore.setState({
+      filter: { selectedDirs: ["dir-1"], mode: "include", scope: "subtree" },
+      isAutoApplied: true,
+      filterBeforeAuto: {
+        selectedDirs: [],
+        mode: "all",
+        scope: "direct",
+      },
+    });
+    renderHeader();
+    const input = getInput();
+    fireEvent.change(input, { target: { value: "/clear" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    const state = useSearchFilterStore.getState();
+    expect(state.filter).toEqual({
+      selectedDirs: [],
+      mode: "all",
+      scope: "direct",
+    });
+    expect(state.isAutoApplied).toBe(false);
+    expect(state.search).toBe("");
+  });
+
   it("Enter on /mode context applies the mode and clears the input", () => {
     renderHeader();
     const input = getInput();

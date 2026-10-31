@@ -16,7 +16,13 @@ describe("getSearchCommandSuggestions", () => {
   it("lists every command for a bare slash", () => {
     const suggestions = getSearchCommandSuggestions("/");
     const labels = suggestions.map((s) => s.label);
-    expect(labels).toEqual(["/mode", "/context", "/keyword", "/fuzzy"]);
+    expect(labels).toEqual([
+      "/mode",
+      "/context",
+      "/keyword",
+      "/fuzzy",
+      "/clear",
+    ]);
   });
 
   it("ranks prefix matches first", () => {
@@ -28,6 +34,12 @@ describe("getSearchCommandSuggestions", () => {
   it("matches command aliases", () => {
     const suggestions = getSearchCommandSuggestions("/ctx");
     expect(suggestions[0].commandId).toBe("context");
+  });
+
+  it("exposes the clear command", () => {
+    const [clear] = getSearchCommandSuggestions("/cle");
+    expect(clear.commandId).toBe("clear");
+    expect(clear.action).toBe("clear");
   });
 
   it("marks the bare mode command as completion-only", () => {
@@ -83,6 +95,16 @@ describe("resolveSearchCommand", () => {
     expect(resolveSearchCommand("/fuzzy")?.searchType).toBe(
       RestNotesSearchType.TYPO_TOLERANT,
     );
+  });
+
+  it("resolves /clear to the clear action", () => {
+    expect(resolveSearchCommand("/clear")).toEqual({
+      commandId: "clear",
+      label: "/clear",
+      action: "clear",
+    });
+    expect(resolveSearchCommand("/reset")?.action).toBe("clear");
+    expect(resolveSearchCommand("/x")?.action).toBe("clear");
   });
 
   it("resolves direct commands via aliases", () => {

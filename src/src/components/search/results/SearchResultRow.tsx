@@ -1,111 +1,69 @@
-import React, { memo, useMemo } from "react";
+import React, { memo } from "react";
 import {
   Box,
-  Chip,
   Divider,
   Paper,
   Stack,
   Tooltip,
   Typography,
+  alpha,
 } from "@mui/material";
-import { formatDistanceToNowStrict } from "date-fns";
 import { useThemeStore } from "../../../zustand/useThemeStore";
-import { useAllDirectoriesQuery } from "../../../api/queries/directoryQueries";
-import { colorFromString } from "../../../utils/blendWithContrast";
 import { M2, M3 } from "../../../statics";
-import { highlightSearchMatch } from "../SearchResultHighlights";
-import { Note, type RestNotesSearchType } from "../../../api/models/search";
+import type { SearchResult, SearchResultContent } from "./SearchResult";
 
 interface Props {
-  note: Note;
+  result: SearchResult;
   index: number;
   isSelected: boolean;
   hoverEnabled: boolean;
-  searchQuery: string;
-  searchType: RestNotesSearchType;
   onSelect: (index: number) => void;
-  onNavigate: (noteId: string) => void;
+  onActivate: (result: SearchResult) => void;
 }
 
-// walk a directory id up to root, returning [root, ..., dir]; capped to
-// avoid pathological loops in malformed graphs
-const buildPath = (
-  startId: string,
-  directoriesById: Record<
-    string,
-    { parent_dir_ids?: string[]; display_name?: string; name?: string }
-  >,
-): string[] => {
-  const chain: string[] = [];
-  const seen = new Set<string>();
-  let id: string | undefined = startId;
-  while (id && !seen.has(id)) {
-    seen.add(id);
-    chain.unshift(id);
-    const dir: { parent_dir_ids?: string[] } | undefined = directoriesById[id];
-    if (!dir) break;
-    const parent: string | undefined = dir.parent_dir_ids?.[0];
-    id = parent;
-    if (chain.length > 32) break;
-  }
-  return chain;
-};
+// Interleave vertical dividers between snippets so multiple matches read as
+// separate columns in the horizontal content strip.
+const withDividers = (items: React.ReactNode[]): React.ReactNode => (
+  <>
+    {items.map((item, i) => (
+      <React.Fragment key={i}>
+        {i > 0 ? <Divider orientation="vertical" flexItem /> : null}
+        {item}
+      </React.Fragment>
+    ))}
+  </>
+);
 
-// label for a directory id: display_name preferred, else name, else id
-const directoryLabel = (
-  id: string,
-  directoriesById: Record<string, { display_name?: string; name?: string }>,
-): string => {
-  const dir = directoriesById[id];
-  if (!dir) return id;
-  return dir.display_name || dir.name || id;
+// Render the interface's content value: strings / string[] become text,
+// anything else (note highlight fragments, custom nodes) is dropped in.
+const renderContent = (content: SearchResultContent): React.ReactNode => {
+  if (typeof content === "string") {
+    return <Typography variant="body2">{content}</Typography>;
+  }
+  if (Array.isArray(content)) {
+    if (content.length > 0 && content.every((item) => typeof item === "string")) {
+      return withDividers(
+        content.map((line, i) => (
+          <Typography key={`line-${i}`} variant="body2">
+            {line}
+          </Typography>
+        )),
+      );
+    }
+    return withDividers(content as React.ReactNode[]);
+  }
+  return <>{content}</>;
 };
 
 // single result row; memoized so arrow-key navigation doesn't remount
-// the 14 neighbouring rows
+// the neighbouring rows. Renders only through the `SearchResult`
+// interface, so every result kind shares this layout.
 export const SearchResultRow: React.FC<Props> = memo(
-  ({
-    note,
-    index,
-    isSelected,
-    hoverEnabled,
-    searchQuery,
-    searchType,
-    onSelect,
-    onNavigate,
-  }) => {
+  ({ result, index, isSelected, hoverEnabled, onSelect, onActivate }) => {
     const theme = useThemeStore((s) => s.theme);
-    const { byId: directoriesById } = useAllDirectoriesQuery();
-
-    // root-level orphan note: no parent dirs, no path to walk
-    const dirId = note.get_dir() ?? "root";
-    const { chipLabel, pathTip } = useMemo(() => {
-      if (dirId === "root" || !directoriesById[dirId]) {
-        return { chipLabel: "root", pathTip: "root" };
-      }
-      const chain = buildPath(dirId, directoriesById);
-      return {
-        chipLabel: directoryLabel(dirId, directoriesById),
-        pathTip: chain
-          .map((id) => directoryLabel(id, directoriesById))
-          .join(" / "),
-      };
-    }, [dirId, directoriesById]);
-
-    const timestamp = formatDistanceToNowStrict(new Date(note.updated_at), {
-      addSuffix: true,
-    });
-    const highlight = useMemo(
-      () =>
-        highlightSearchMatch({
-          content: note.stripped_content,
-          query: searchQuery,
-          searchType,
-          contextChars: 100,
-          theme,
-        }),
-      [note.stripped_content, searchQuery, searchType, theme],
-    );
+    const content = renderContent(result.get_content());
+    const meta = result.get_meta?.();
+    const accent = result.get_accent_color();
 
     return (
       <Paper
@@ -114,41 +72,88 @@ export const SearchResultRow: React.FC<Props> = memo(
         onMouseEnter={() => {
           if (hoverEnabled) onSelect(index);
         }}
-        onClick={() => onNavigate(note.id)}
+        onClick={() => onActivate(result)}
         sx={{
-          p: M2,
-          pl: M3,
-          borderLeft: `5px solid ${colorFromString(note.get_dir() || "root", theme)}`,
+          borderLeft: `5px solid ${accent}`,
           cursor: "pointer",
           transition: "all 0.2s ease",
           transform: isSelected ? "translateX(6px)" : "none",
           display: "flex",
           flexDirection: "row",
-          gap: M2,
+          overflow: "hidden",
         }}
       >
-        <Box className="note.header" sx={{ minWidth: 3 / 8 }}>
-          <Typography
-            variant="h6"
+        {/* Kind strip: sits against the accent border and spans the full row
+            height, tinted with the accent so it reads as a lighter panel. */}
+        <Tooltip title={result.get_type_label()} placement="top" arrow>
+          <Box
+            aria-label={result.get_type_label()}
             sx={{
-              fontWeight: "bold",
-              mb: M2,
-              color: theme.palette.text.primary,
+              flexShrink: 0,
+              width: 44,
+              alignSelf: "stretch",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: alpha(accent, 0.12),
+              color: theme.palette.text.secondary,
+              boxShadow: `inset -1px 0 0 ${alpha(
+                theme.palette.divider,
+                0.5,
+              )}`,
             }}
           >
-            {note.title}
-          </Typography>
+            {result.get_type_icon()}
+          </Box>
+        </Tooltip>
 
-          <Stack direction="row" spacing={2} sx={{ mb: M2, minWidth: 5 / 8 }}>
-            <Tooltip title={pathTip} placement="top" arrow>
-              <Chip label={chipLabel} variant="outlined" size="small" />
-            </Tooltip>
-            <Chip label={timestamp} variant="outlined" size="small" />
-          </Stack>
+        {/* Actual content, kept on the row's elevated paper surface. */}
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "row",
+            gap: M2,
+            p: M2,
+            pl: M3,
+            flex: 1,
+            minWidth: 0,
+          }}
+        >
+          <Box className="note.header" sx={{ minWidth: 3 / 8 }}>
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: "bold",
+                mb: M2,
+                color: theme.palette.text.primary,
+              }}
+            >
+              {result.get_title()}
+            </Typography>
+
+            {meta ? (
+              <Stack direction="row" spacing={2} sx={{ minWidth: 5 / 8 }}>
+                {meta}
+              </Stack>
+            ) : null}
+          </Box>
+
+          <Divider orientation="vertical" flexItem />
+          {/* Keep multiple matched snippets side by side, matching the
+              original row layout instead of stacking them vertically. */}
+          <Box
+            sx={{
+              flex: 1,
+              minWidth: 0,
+              display: "flex",
+              flexDirection: "row",
+              gap: M2,
+              overflow: "hidden",
+            }}
+          >
+            {content}
+          </Box>
         </Box>
-
-        <Divider orientation="vertical" flexItem />
-        {highlight}
       </Paper>
     );
   },
