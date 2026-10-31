@@ -7,9 +7,6 @@ import type { NoteVersionSummaryReply } from "../../api/models/activity";
 import type { Note } from "../../api/models/search";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { useActiveNoteStore } from "../../zustand/editorStore";
-import { useEditorSettings } from "../../zustand/useEditorSettings";
-import { usePublicRouteReady } from "../../hooks/usePublicRouteReady";
-import { rehydrateCollabSession } from "../../hooks/useNoteCollaboration";
 
 // Hook: selection + content for a historical note version.
 // Latest uses the live cache; others fetch via useNoteVersion.
@@ -81,23 +78,29 @@ export function useVersionSelection(noteId: string | undefined): {
   };
 }
 
-// Loads a historical version into the editor for review. No server
-// write happens here -- the user reviews the restored content in
-// the editor and triggers an explicit save.
+// Loads a historical version into the editor for review. No explicit
+// server write happens here -- the version is mirrored into the
+// active-note store and `setContent` applies it to the editor.
 //
-// Edit mode rebuilds the collab session (ydoc + provider) so the
-// editor binds to a fresh doc and Hocuspocus pushes the user's
-// future edits back to the server. View mode skips the rebuild:
-// no collab session is open in read mode (Editor.tsx gates
-// useNoteCollaboration on editMode), so writing a fresh entry to
-// the cache would only leave it dangling until the user toggles
-// to edit mode -- and at that point they want to see Live again,
-// not the version preview. Instead, view mode just mirrors the
-// historical title/content into the editor store so the user can
-// preview the historical version without any side effects.
+// In edit mode the editor is already bound to the live, synced Y.Doc,
+// so `setContent`'s fast path diffs the shared XmlFragment down to the
+// historical content. That keeps the restore a normal collaborative
+// edit and the provider pushes it to the server like any other change.
+//
+// We deliberately do NOT rebuild the collab session here. Rebuilding
+// swapped in a fresh, empty Y.Doc and wrote the restore into it before
+// the provider's first sync landed. The local restore and the server's
+// live document then merged as concurrent CRDT inserts, duplicating
+// the whole doc. The live doc is the source of truth and already holds
+// the content to diff against, so there is nothing to rebuild.
+//
+// View mode has no live session (`ydoc` is null), so `setContent`
+// falls back to `editor.commands.setContent`, previewing the
+// historical content without touching any shared state.
 
-// Hook: restore a historical version into the editor.
-// Edit mode rebuilds collab; view mode only mirrors content.
+// Hook: restore a historical version into the editor. Applies the
+// version on top of the existing (already synced) session in both
+// modes.
 export function useVersionRestore(noteId: string | undefined): {
   isRestoringVersion: boolean;
   restoreVersion: (
@@ -108,8 +111,6 @@ export function useVersionRestore(noteId: string | undefined): {
   const [isRestoringVersion, setIsRestoringVersion] = useState(false);
   const { setMessage } = useInfoStore();
   const { setTitle, setContent } = useActiveNoteStore();
-  const { editMode } = useEditorSettings();
-  const { isPublic } = usePublicRouteReady({ timeoutMs: 0 });
 
   const restoreVersion = useCallback(
     async (
@@ -129,17 +130,9 @@ export function useVersionRestore(noteId: string | undefined): {
       }
       setIsRestoringVersion(true);
       try {
-        if (editMode) {
-          // Rebuild ydoc + provider so the editor binds to a fresh doc.
-          if (isPublic) {
-            const { rehydratePublicCollabSession } =
-              await import("../../hooks/usePublicNoteCollaboration");
-            await rehydratePublicCollabSession(noteId);
-          } else {
-            await rehydrateCollabSession(noteId);
-          }
-        }
         // Mirror the historical title/content into the local store.
+        // In edit mode this reconciles the live shared Y.Doc in place;
+        // in view mode it previews via the editor command path.
         setTitle(note.title);
         setContent(note.content);
         setMessage(
@@ -157,7 +150,7 @@ export function useVersionRestore(noteId: string | undefined): {
         setIsRestoringVersion(false);
       }
     },
-    [noteId, editMode, isPublic, setMessage, setTitle, setContent],
+    [noteId, setMessage, setTitle, setContent],
   );
 
   return { isRestoringVersion, restoreVersion };

@@ -2,12 +2,10 @@
 // test confirming `VersionInfo` wires the drawer's `onRestoreVersion`
 // to the hook.
 //
-// Restore flow:
-//   - edit mode: rebuilds the collab session (private or public
-//     depending on the route), then mirrors the historical title/
-//     content into the editor store.
-//   - view mode: skips the collab rebuild and only mirrors the
-//     historical title/content into the editor store.
+// Restore flow (both modes): mirror the historical title/content
+// into the editor store. In edit mode `setContent` reconciles the
+// live, synced Y.Doc; in view mode it previews through the editor.
+// Neither path rebuilds the collab session.
 
 // @vitest-environment jsdom
 
@@ -26,8 +24,6 @@ import { useActiveNoteStore } from "../../zustand/editorStore";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 
-const rehydrateSpy = vi.fn();
-const rehydratePublicSpy = vi.fn();
 const drawerCapture = vi.hoisted(() => ({
   onRestoreVersion: null as null | ((v: unknown, n: unknown) => Promise<void>),
 }));
@@ -108,19 +104,6 @@ vi.mock("../../zustand/useThemeStore", () => ({
   }),
 }));
 
-vi.mock("../../hooks/useNoteCollaboration", () => ({
-  rehydrateCollabSession: (...args: unknown[]) => {
-    rehydrateSpy(...args);
-    return Promise.resolve();
-  },
-}));
-vi.mock("../../hooks/usePublicNoteCollaboration", () => ({
-  rehydratePublicCollabSession: (...args: unknown[]) => {
-    rehydratePublicSpy(...args);
-    return Promise.resolve();
-  },
-}));
-
 vi.mock("../../zustand/useLiveUsersStore", () => ({
   useLiveUsers: () => [],
 }));
@@ -188,8 +171,6 @@ function renderRestore(noteId: string | undefined, pathname: string) {
 }
 
 beforeEach(() => {
-  rehydrateSpy.mockReset();
-  rehydratePublicSpy.mockReset();
   drawerCapture.onRestoreVersion = null;
   useEditorSettings.setState({ editMode: false, viewMode: "rich" });
   useActiveNoteStore.setState({
@@ -221,26 +202,6 @@ afterEach(() => {
 });
 
 describe("useVersionRestore - view mode", () => {
-  it("does not rebuild the private collab session", async () => {
-    const { result } = renderRestore("note-1", "/n/note-1");
-
-    await act(async () => {
-      await result.current.restoreVersion(makeVersion(), makeNote());
-    });
-
-    expect(rehydrateSpy).not.toHaveBeenCalled();
-  });
-
-  it("does not rebuild the public collab session", async () => {
-    const { result } = renderRestore("note-1", "/public/note-1");
-
-    await act(async () => {
-      await result.current.restoreVersion(makeVersion(), makeNote());
-    });
-
-    expect(rehydratePublicSpy).not.toHaveBeenCalled();
-  });
-
   it("mirrors the historical title and content into the editor store", async () => {
     const { result } = renderRestore("note-1", "/n/note-1");
     const note = makeNote({ title: "V3 title", content: "V3 body" });
@@ -260,31 +221,22 @@ describe("useVersionRestore - view mode", () => {
 });
 
 describe("useVersionRestore - edit mode", () => {
-  it("rebuilds the private collab session before mirroring content", async () => {
+  it("mirrors the historical content without rebuilding the collab session", async () => {
     useEditorSettings.setState({ editMode: true });
     const { result } = renderRestore("note-1", "/n/note-1");
-    const note = makeNote();
+    const note = makeNote({ title: "V3 title", content: "V3 body" });
 
     await act(async () => {
-      await result.current.restoreVersion(makeVersion(), note);
+      await result.current.restoreVersion(
+        makeVersion({ version_index: 3 }),
+        note,
+      );
     });
 
-    expect(rehydrateSpy).toHaveBeenCalledTimes(1);
-    expect(rehydrateSpy).toHaveBeenCalledWith("note-1");
+    const setTitle = useActiveNoteStore.getState().setTitle;
     const setContent = useActiveNoteStore.getState().setContent;
-    expect(setContent).toHaveBeenCalledWith(note.content);
-  });
-
-  it("rebuilds the public collab session before mirroring content", async () => {
-    useEditorSettings.setState({ editMode: true });
-    const { result } = renderRestore("note-1", "/public/note-1");
-    const note = makeNote();
-
-    await act(async () => {
-      await result.current.restoreVersion(makeVersion(), note);
-    });
-
-    expect(rehydratePublicSpy).toHaveBeenCalledTimes(1);
+    expect(setTitle).toHaveBeenCalledWith("V3 title");
+    expect(setContent).toHaveBeenCalledWith("V3 body");
   });
 });
 
@@ -296,7 +248,7 @@ describe("useVersionRestore - guards", () => {
       await result.current.restoreVersion(makeVersion(), makeNote());
     });
 
-    expect(rehydrateSpy).not.toHaveBeenCalled();
+    expect(useActiveNoteStore.getState().setContent).not.toHaveBeenCalled();
   });
 
   it("refuses when versioned note data is incomplete", async () => {
@@ -309,7 +261,6 @@ describe("useVersionRestore - guards", () => {
 
     const setContent = useActiveNoteStore.getState().setContent;
     expect(setContent).not.toHaveBeenCalled();
-    expect(rehydrateSpy).not.toHaveBeenCalled();
   });
 });
 
