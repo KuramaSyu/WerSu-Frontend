@@ -83,21 +83,29 @@ export const AppShell: React.FC = () => {
   // splash screen starts from a random direction because i like it
   const oneOrZero = Math.round(exitPercentage / 100) * 100;
 
-  // show spashscreen once per 10 minutes
+  // TEMP: force the splash on every load (and hold it longer) so the
+  // animation can be inspected. Flip this back to `false` to restore the
+  // normal "once per 20 minutes" behaviour.
+  const FORCE_SPLASH_SCREEN = false;
+
   useEffect(() => {
     const lastShown = sessionStorage.getItem("splashScreenShown");
     const now = Date.now();
+    const due = !lastShown || now - parseInt(lastShown) > 20 * 60 * 1000;
 
-    const shouldNow = !lastShown || now - parseInt(lastShown) > 10 * 60 * 1000; // 10 minutes
-
-    if (shouldNow) {
+    if (FORCE_SPLASH_SCREEN || due) {
       sessionStorage.setItem("splashScreenShown", now.toString());
       setShowSplashScreen(true);
     }
 
-    const timer = setTimeout(() => {
-      setShowSplashScreen(false);
-    }, 1200);
+    const timer = setTimeout(
+      () => {
+        setShowSplashScreen(false);
+      },
+      FORCE_SPLASH_SCREEN ? 3500 : 1200,
+    );
+
+    return () => clearTimeout(timer);
   }, []);
 
   // A panel whose content is `null` is not mounted at all -> its grid
