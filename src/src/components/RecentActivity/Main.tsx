@@ -13,6 +13,7 @@ import {
   HistoryListPanel,
   IconTitleSubtitleRow,
 } from "../Panels/HistoryListPanel";
+import { CopyNameMenu } from "../RightClick/CopyNameMenu";
 
 /**
  * Props for the RecentActivityPanel component.
@@ -62,14 +63,16 @@ export const RecentActivityPanel: React.FC<RecentActivityPanelProps> = ({
         const meta = getHistoryRowMeta(e);
         const Icon = meta.icon;
         return (
-          <IconTitleSubtitleRow
-            icon={<Icon fontSize="small" color={meta.color} />}
-            title={getHistoryRowVariantLabel(e)}
-            subtitle={e.at ? formatHistoryRowTimestamp(e.at) : undefined}
-            onClick={() => navigate(`/n/${e.note_id}`)}
-            iconTooltip={meta.label}
-            developerDebug={developerMode ? JSON.stringify(e) : undefined}
-          />
+          <CopyNameMenu text={e.title ?? ""} targetId={e.note_id}>
+            <IconTitleSubtitleRow
+              icon={<Icon fontSize="small" color={meta.color} />}
+              title={getHistoryRowVariantLabel(e)}
+              subtitle={e.at ? formatHistoryRowTimestamp(e.at) : undefined}
+              onClick={() => navigate(`/n/${e.note_id}`)}
+              iconTooltip={meta.label}
+              developerDebug={developerMode ? JSON.stringify(e) : undefined}
+            />
+          </CopyNameMenu>
         );
       }}
     />

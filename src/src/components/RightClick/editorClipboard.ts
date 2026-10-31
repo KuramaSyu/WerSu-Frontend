@@ -4,7 +4,7 @@
 // right-click menu use one implementation instead of two copies.
 
 import type { Editor } from "@tiptap/core";
-import { DOMSerializer } from "prosemirror-model";
+import { DOMSerializer, type Node as ProseMirrorNode } from "prosemirror-model";
 import { copyToClipboard } from "../../zustand/InfoStore";
 import { useActiveNoteStore } from "../../zustand/editorStore";
 
@@ -25,6 +25,22 @@ export function getSelectionHtml(editor: Editor): string {
   const wrapper = document.createElement("div");
   wrapper.appendChild(serializer.serializeFragment(slice.content));
   return wrapper.innerHTML;
+}
+
+// Copy a whole ProseMirror node (for example a table) as formatted
+// HTML plus plain text. Used by context menus when the pointer hit an
+// element rather than a text selection.
+export async function copyEditorNode(
+  editor: Editor | null,
+  node: ProseMirrorNode | null | undefined,
+): Promise<boolean> {
+  if (!editor || !node) return false;
+  const serializer = DOMSerializer.fromSchema(editor.schema);
+  const wrapper = document.createElement("div");
+  wrapper.appendChild(serializer.serializeNode(node));
+  const html = wrapper.innerHTML;
+  const text = node.textBetween(0, node.content.size, "\n", "\n");
+  return writeFormattedClipboard(html, text);
 }
 
 // Write html and text to the clipboard; falls back to plain text only.

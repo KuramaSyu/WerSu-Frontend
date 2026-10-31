@@ -11,6 +11,7 @@ import {
   HistoryListPanel,
   IconTitleSubtitleRow,
 } from "../Panels/HistoryListPanel";
+import { CopyNameMenu } from "../RightClick/CopyNameMenu";
 
 /**
  * Props for the FrequentlyUsedPanel component.
@@ -58,12 +59,14 @@ export const FrequentlyUsedPanel: React.FC<FrequentlyUsedPanelProps> = ({
       renderRow={(entry) => {
         const e = entry as HistoryRowEntry;
         return (
-          <IconTitleSubtitleRow
-            title={e.title ?? ""}
-            subtitle={e.description ?? undefined}
-            onClick={() => navigate(`/n/${e.note_id}`)}
-            developerDebug={developerMode ? JSON.stringify(e) : undefined}
-          />
+          <CopyNameMenu text={e.title ?? ""} targetId={e.note_id}>
+            <IconTitleSubtitleRow
+              title={e.title ?? ""}
+              subtitle={e.description ?? undefined}
+              onClick={() => navigate(`/n/${e.note_id}`)}
+              developerDebug={developerMode ? JSON.stringify(e) : undefined}
+            />
+          </CopyNameMenu>
         );
       }}
     />
@@ -113,13 +116,14 @@ export const LastUsedPanel: React.FC<LastUsedPanelProps> = ({
         const e = entry as HistoryRowEntry;
         const key = e.id ?? e.note_id;
         return (
-          <IconTitleSubtitleRow
-            key={key}
-            title={e.title ?? ""}
-            subtitle={e.at ? formatHistoryRowTimestamp(e.at) : undefined}
-            onClick={() => navigate(`/n/${e.note_id}`)}
-            developerDebug={developerMode ? JSON.stringify(e) : undefined}
-          />
+          <CopyNameMenu key={key} text={e.title ?? ""} targetId={e.note_id}>
+            <IconTitleSubtitleRow
+              title={e.title ?? ""}
+              subtitle={e.at ? formatHistoryRowTimestamp(e.at) : undefined}
+              onClick={() => navigate(`/n/${e.note_id}`)}
+              developerDebug={developerMode ? JSON.stringify(e) : undefined}
+            />
+          </CopyNameMenu>
         );
       }}
     />

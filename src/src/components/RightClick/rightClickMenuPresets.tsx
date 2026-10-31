@@ -32,6 +32,7 @@ import {
 import type { EditorContextTarget } from "../Editor/editorContextTarget";
 import { useEditorMenuStore } from "../../zustand/editorMenuStore";
 import { copyToClipboard } from "../../zustand/InfoStore";
+import { copyEditorNode } from "./editorClipboard";
 import type { SelectionAnalysisFull } from "../Editor/bubbleMenuStrategies";
 import type {
   MenuPosition,
@@ -79,7 +80,21 @@ export function buildEditorMenuRequest(
   target?: EditorContextTarget | null,
 ): RightClickMenuRequest {
   if (!editMode) {
-    return { position, buttons: ["copy", "paste"] };
+    // Read mode has no editing actions, but a right-click on a table
+    // should still copy the table itself rather than relying on a text
+    // selection the user did not make.
+    const overrides =
+      target?.kind === "table"
+        ? {
+            copy: {
+              handler: () => {
+                void copyEditorNode(editor, target.node);
+                return true;
+              },
+            },
+          }
+        : undefined;
+    return { position, buttons: ["copy", "paste"], overrides };
   }
 
   const analysis = analyseSelection(editor.state);
@@ -94,6 +109,18 @@ export function buildEditorMenuRequest(
   const submenus: Partial<Record<RightClickButtonId, RightClickSubmenu>> = {
     insert: buildInsertSubmenu(editor),
   };
+
+  if (target?.kind === "table") {
+    // The generic Copy action would be gated on a text selection and
+    // disabled for a plain table right-click. Copy the whole table when
+    // the pointer hit a table.
+    overrides.copy = {
+      handler: () => {
+        void copyEditorNode(editor, target.node);
+        return true;
+      },
+    };
+  }
 
   const isTable = target ? target.kind === "table" : Boolean(analysis.cell);
   // A collapsed caret in a cell is "empty" for analyseSelection, so

@@ -23,6 +23,7 @@ import { useThemeStore } from "../../zustand/useThemeStore";
 import type { CustomThemeImpl } from "../../theme/customTheme";
 import type { MinimalNote } from "../../api/models/search";
 import type { UseChapterAccordionResult } from "./ChapterAccordion.hook";
+import { CopyNameMenu } from "../../components/RightClick/CopyNameMenu";
 
 interface ChapterAccordionProps {
   /** Directory reply backing this chapter row. */
@@ -79,6 +80,12 @@ export const ChapterAccordion: React.FC<ChapterAccordionProps> = ({
     },
   });
 
+  const summaryName =
+    hydratedDirectory.display_name ??
+    hydratedDirectory.name ??
+    hydratedDirectory.slug ??
+    hydratedDirectory.id;
+
   return (
     <Accordion
       expanded={expanded}
@@ -109,8 +116,9 @@ export const ChapterAccordion: React.FC<ChapterAccordionProps> = ({
           }),
       }}
     >
-      <AccordionSummary
-        {...summaryBindings}
+      <CopyNameMenu text={summaryName} targetId={hydratedDirectory.id}>
+        <AccordionSummary
+          {...summaryBindings}
         expandIcon={
           <ExpandMoreIcon
             onClick={toggleExpanded}
@@ -152,23 +160,19 @@ export const ChapterAccordion: React.FC<ChapterAccordionProps> = ({
             aria-label="Select directory"
           />
         )}
-        <ChapterRowView
-          name={
-            hydratedDirectory.display_name ??
-            hydratedDirectory.name ??
-            hydratedDirectory.slug ??
-            hydratedDirectory.id
-          }
-          pages={
-            hydratedDirectory.child_note_ids &&
-            hydratedDirectory.child_note_ids.length >= 1
-              ? hydratedDirectory.child_note_ids.length - 1
-              : 0
-          }
-          subdirectories={hydratedDirectory.child_dir_ids?.length ?? 0}
-          accentColor={accentColor}
-        />
-      </AccordionSummary>
+          <ChapterRowView
+            name={summaryName}
+            pages={
+              hydratedDirectory.child_note_ids &&
+              hydratedDirectory.child_note_ids.length >= 1
+                ? hydratedDirectory.child_note_ids.length - 1
+                : 0
+            }
+            subdirectories={hydratedDirectory.child_dir_ids?.length ?? 0}
+            accentColor={accentColor}
+          />
+        </AccordionSummary>
+      </CopyNameMenu>
       <AccordionDetails sx={{ pt: 0, pb: 2, px: 2 }}>
         <Crossfade
           loading={isLoading}
@@ -292,20 +296,21 @@ const NoteRowWithSelection: React.FC<{
   });
 
   return (
-    <Box
-      {...bindings}
-      role="button"
-      tabIndex={0}
-      onClick={() => {
-        if (bindings.longPressFired.current) {
-          return;
-        }
-        if (active) {
-          toggle(entry);
-        } else {
-          onNavigate(`/n/${note.id}`);
-        }
-      }}
+    <CopyNameMenu text={note.title} targetId={note.id}>
+      <Box
+        {...bindings}
+        role="button"
+        tabIndex={0}
+        onClick={() => {
+          if (bindings.longPressFired.current) {
+            return;
+          }
+          if (active) {
+            toggle(entry);
+          } else {
+            onNavigate(`/n/${note.id}`);
+          }
+        }}
       sx={{
         width: "100%",
         mt: 0.5,
@@ -364,7 +369,8 @@ const NoteRowWithSelection: React.FC<{
             compact
           />
         </Box>
-      </Paper>
-    </Box>
+        </Paper>
+      </Box>
+    </CopyNameMenu>
   );
 };

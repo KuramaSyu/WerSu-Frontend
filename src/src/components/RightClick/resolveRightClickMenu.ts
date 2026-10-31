@@ -74,7 +74,12 @@ export function resolveRightClickMenu(
 
     const definition = registry[id];
     const handler = override?.handler ?? definition?.handler;
-    const canRun = definition?.canRun;
+    // A per-surface handler owns its own applicability. Falling back to
+    // the catalogue gate here would leave custom actions disabled unless
+    // the user happened to have text selected. An explicit override probe
+    // still wins so a surface can keep or tighten the gate deliberately.
+    const canRun =
+      override?.canRun ?? (override?.handler ? undefined : definition?.canRun);
     // No handler at all means "waiting for a provider", so grey it out.
     const isDisabled = !handler || (canRun ? !canRun(request.targetId) : false);
 

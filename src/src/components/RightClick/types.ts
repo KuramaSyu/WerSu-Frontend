@@ -59,6 +59,13 @@ export interface RightClickButtonOverride {
   /** null clears the hint, undefined keeps the catalogue default. */
   shortcut?: string | null;
   handler?: RightClickHandler;
+  /**
+   * Per-surface applicability probe. When omitted, supplying a handler
+   * replaces the catalogue handler *and* its gate: a custom action knows
+   * its own context (for example copying a note title when there is no
+   * text selection). Pass an explicit probe to keep a gate.
+   */
+  canRun?: (targetId: string | undefined) => boolean;
   hidden?: boolean;
   /** Destructive action: rendered in the error colour. */
   danger?: boolean;
