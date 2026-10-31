@@ -31,6 +31,17 @@ export interface ListElementMergeState {
   readonly direction: ListMergeDirection;
 }
 
+/** Absolute document ranges of the two bullets a merge would join. */
+export interface ListMergePreview {
+  readonly direction: ListMergeDirection;
+  /** The surviving bullet - highlighted with the primary colour. */
+  readonly primaryFrom: number;
+  readonly primaryTo: number;
+  /** The consumed bullet - highlighted with the secondary colour. */
+  readonly secondaryFrom: number;
+  readonly secondaryTo: number;
+}
+
 interface ListElementContext {
   readonly list: PMNode;
   readonly listPos: number;
@@ -219,6 +230,57 @@ export function getListElementMergeState(
   return { canMerge: false, direction: next ? "down" : "up" };
 }
 
+/**
+ * Document ranges for the merge hover preview, or `null` when the
+ * current bullet cannot be merged. The surviving bullet is `primary`,
+ * the consumed one `secondary`.
+ */
+export function getListElementMergePreview(
+  state: EditorState,
+): ListMergePreview | null {
+  const merge = getListElementMergeState(state);
+  if (!merge?.canMerge) return null;
+
+  const context = findListElementContext(state);
+  if (!context) return null;
+
+  const { list, listPos, listIndex } = context;
+  const targetIndex =
+    merge.direction === "down" ? listIndex + 1 : listIndex - 1;
+  if (targetIndex < 0 || targetIndex >= list.childCount) return null;
+
+  // Walk the list children to translate child indexes into absolute
+  // document positions (the list content starts one past `listPos`).
+  let offset = listPos + 1;
+  let currentFrom = -1;
+  let targetFrom = -1;
+  for (let index = 0; index < list.childCount; index += 1) {
+    if (index === listIndex) currentFrom = offset;
+    if (index === targetIndex) targetFrom = offset;
+    offset += list.child(index).nodeSize;
+  }
+  if (currentFrom < 0 || targetFrom < 0) return null;
+
+  const current = {
+    from: currentFrom,
+    to: currentFrom + list.child(listIndex).nodeSize,
+  };
+  const target = {
+    from: targetFrom,
+    to: targetFrom + list.child(targetIndex).nodeSize,
+  };
+  const primary = merge.direction === "down" ? current : target;
+  const secondary = merge.direction === "down" ? target : current;
+
+  return {
+    direction: merge.direction,
+    primaryFrom: primary.from,
+    primaryTo: primary.to,
+    secondaryFrom: secondary.from,
+    secondaryTo: secondary.to,
+  };
+}
+
 /** Appends `other`'s blocks onto `base`, joining the two lead paragraphs. */
 function mergeItemContent(
   base: PMNode,
@@ -266,7 +328,6 @@ export function mergeListItem(
   const targetIndex = direction === "down" ? listIndex + 1 : listIndex - 1;
   if (targetIndex < 0 || targetIndex >= items.length) return false;
 
-  const other = items[targetIndex];
   // The surviving item is whichever sits first; the other is folded in.
   const baseIndex = Math.min(listIndex, targetIndex);
   const consumedIndex = Math.max(listIndex, targetIndex);

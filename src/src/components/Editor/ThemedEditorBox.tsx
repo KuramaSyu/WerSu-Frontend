@@ -89,6 +89,42 @@ export const ThemedEditorBox = ({
             borderRadius: theme.shape.borderRadius,
           },
 
+          // Merge hover preview: the surviving bullet uses the primary
+          // colour, the consumed one the secondary colour, with a merge
+          // glyph sitting on the seam between them.
+          "& .editor-list-merge-primary": {
+            outline: `2px solid ${theme.palette.primary.main}`,
+            outlineOffset: "1px",
+            borderRadius: theme.shape.borderRadius,
+            backgroundColor: alpha(theme.palette.primary.main, 0.08),
+          },
+          "& .editor-list-merge-secondary": {
+            outline: `2px solid ${theme.palette.secondary.main}`,
+            outlineOffset: "1px",
+            borderRadius: theme.shape.borderRadius,
+            backgroundColor: alpha(theme.palette.secondary.main, 0.08),
+          },
+          "& .editor-list-merge-symbol": {
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            height: 0,
+            position: "relative",
+            zIndex: 5,
+            pointerEvents: "none",
+            color: theme.palette.primary.main,
+          },
+          "& .editor-list-merge-symbol svg": {
+            width: 20,
+            height: 20,
+            transform: "translateY(-50%)",
+            padding: "2px",
+            boxSizing: "content-box",
+            backgroundColor: theme.palette.background.paper,
+            border: `1px solid ${theme.palette.divider}`,
+            borderRadius: "50%",
+          },
+
           "& th": {
             backgroundColor: "var(--gray-1)",
             fontWeight: 600,

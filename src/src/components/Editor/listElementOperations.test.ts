@@ -8,6 +8,7 @@ import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import { NodeSelection } from "@tiptap/pm/state";
 import {
+  getListElementMergePreview,
   getListElementMergeState,
   getListElementMoveState,
   mergeListItem,
@@ -332,6 +333,57 @@ describe("mergeListItem", () => {
       const before = editor.getHTML();
       expect(mergeListItem(editor, "down")).toBe(false);
       expect(editor.getHTML()).toBe(before);
+    } finally {
+      editor.destroy();
+    }
+  });
+});
+
+describe("getListElementMergePreview", () => {
+  it("highlights the survivor as primary and the next bullet as secondary", () => {
+    const editor = makeEditor();
+    try {
+      setDoc(editor, [[paragraph("a")], [paragraph("b")], [paragraph("c")]]);
+      selectText(editor, "a");
+      const preview = getListElementMergePreview(editor.state);
+      const doc = editor.state.doc;
+      expect(preview?.direction).toBe("down");
+      expect(
+        doc.textBetween(preview!.primaryFrom, preview!.primaryTo),
+      ).toBe("a");
+      expect(
+        doc.textBetween(preview!.secondaryFrom, preview!.secondaryTo),
+      ).toBe("b");
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("swaps the roles when the merge would fold upward", () => {
+    const editor = makeEditor();
+    try {
+      setDoc(editor, [[paragraph("a")], [paragraph("b")]]);
+      selectText(editor, "b");
+      const preview = getListElementMergePreview(editor.state);
+      const doc = editor.state.doc;
+      expect(preview?.direction).toBe("up");
+      expect(
+        doc.textBetween(preview!.primaryFrom, preview!.primaryTo),
+      ).toBe("a");
+      expect(
+        doc.textBetween(preview!.secondaryFrom, preview!.secondaryTo),
+      ).toBe("b");
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("is null when there is nothing to merge", () => {
+    const editor = makeEditor();
+    try {
+      setDoc(editor, [[paragraph("only")]]);
+      selectText(editor, "only");
+      expect(getListElementMergePreview(editor.state)).toBeNull();
     } finally {
       editor.destroy();
     }

@@ -36,6 +36,7 @@ import { usePublicUserStore } from "../../zustand/usePublicUserStore";
 import { colorFromString, randomMatchingColor } from "../../utils/blendWithContrast";
 import { CustomCodeBlock } from "../../components/Editor/View/CustomCodeBlock";
 import { EditorContextHighlight } from "../../components/Editor/editorContextHighlight";
+import { EditorListMergePreview } from "../../components/Editor/editorListMergePreview";
 import { handleCodeBlockTabKey } from "../../components/Editor/codeBlockTabKey";
 import { handleTableBackspaceKey } from "../../components/Editor/tableBackspaceKey";
 import { lowlight } from "../../components/Editor/lowlight";
@@ -213,6 +214,7 @@ export const useNoteEditor = (params: UseNoteEditorParams): Editor | null => {
         }),
         CustomCodeBlock.configure({ lowlight, defaultLanguage: "plaintext" }),
         EditorContextHighlight,
+        EditorListMergePreview,
         TaskList,
         TaskItem.configure({ nested: true }),
         Youtube.configure({ inline: false, width: 480, height: 320 }),

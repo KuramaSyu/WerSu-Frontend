@@ -25,6 +25,7 @@ import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import CallMergeIcon from "@mui/icons-material/CallMerge";
 import { useEditorState } from "@tiptap/react";
+import { useEffect } from "react";
 import { useImageResizeStore } from "../../zustand/useImageResizeStore";
 import { defaultImageResizeStrategy } from "./imageResizeStrategy";
 import {
@@ -44,12 +45,17 @@ import {
   outdentCodeBlockFromList,
 } from "./codeBlockListOutdent";
 import {
+  getListElementMergePreview,
   getListElementMergeState,
   getListElementMoveState,
   mergeListItem,
   moveListElement,
   type ListElementMoveState,
 } from "./listElementOperations";
+import {
+  clearListMergePreview,
+  showListMergePreview,
+} from "./editorListMergePreview";
 
 // Wraps a ToggleButton in a Tooltip. A disabled button fires no events,
 // so MUI's Tooltip needs a span wrapper to still show its title. The
@@ -63,6 +69,8 @@ export const TippedToggle: React.FC<{
   value: string;
   ariaLabel: string;
   sx?: SxProps<Theme>;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
   children: React.ReactNode;
 }> = ({
   title,
@@ -72,6 +80,8 @@ export const TippedToggle: React.FC<{
   value,
   ariaLabel,
   sx,
+  onMouseEnter,
+  onMouseLeave,
   children,
 }) => {
   const button = (
@@ -82,6 +92,8 @@ export const TippedToggle: React.FC<{
       onClick={onClick}
       aria-label={ariaLabel}
       sx={sx}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
     >
       {children}
     </ToggleButton>
@@ -447,6 +459,15 @@ const ListTools: React.FC<FormattingContextProps> = ({ editor, disabled }) => {
     selector: (ctx) => getListElementMergeState(ctx.editor.state),
   });
 
+  // Drop any lingering preview if the panel leaves the list context
+  // while the pointer still rests on the merge button.
+  useEffect(() => () => clearListMergePreview(editor), [editor]);
+
+  const previewMerge = () => {
+    const preview = getListElementMergePreview(editor.state);
+    if (preview) showListMergePreview(editor, preview);
+  };
+
   return (
     <ToggleButtonGroup size="small" color="secondary">
       {moveState && (
@@ -466,6 +487,8 @@ const ListTools: React.FC<FormattingContextProps> = ({ editor, disabled }) => {
           value="merge"
           disabled={disabled || !mergeState.canMerge}
           onClick={() => mergeListItem(editor, mergeState.direction)}
+          onMouseEnter={previewMerge}
+          onMouseLeave={() => clearListMergePreview(editor)}
         >
           <CallMergeIcon fontSize="small" />
         </TippedToggle>
