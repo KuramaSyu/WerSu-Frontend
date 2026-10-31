@@ -28,6 +28,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useSelectedShelfStore } from "../../zustand/useSelectedShelfStore";
 import { ShelfMenu } from "./ShelfMenu";
 
+// The menu navigates to `/shelves/:id/rules`. Capture `useNavigate`
+// so we can assert the destination without wiring a full router.
+const routerMocks = vi.hoisted(() => ({ navigate: vi.fn() }));
+vi.mock("react-router-dom", async () => {
+  const actual =
+    await vi.importActual<typeof import("react-router-dom")>(
+      "react-router-dom",
+    );
+  return { ...actual, useNavigate: () => routerMocks.navigate };
+});
+
 // `useShelves` calls `getShelfApi()` at module scope. Replace it
 // with a stub so this test doesn't try to talk to the real backend.
 vi.mock("../../api/queries/shelfQueries", () => {
@@ -148,6 +159,20 @@ vi.mock("@mui/material", () => ({
   Typography: ({ children }: { children?: ReactNode }) => (
     <span>{children}</span>
   ),
+  IconButton: ({
+    children,
+    onClick,
+    ...rest
+  }: {
+    children?: ReactNode;
+    onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  }) => (
+    <button onClick={onClick} {...rest}>
+      {children}
+    </button>
+  ),
+  // Tooltip is a portal + transition beast; render the trigger only.
+  Tooltip: ({ children }: { children?: ReactNode }) => <>{children}</>,
 }));
 
 // Import the mocked hook *after* the mock is registered so the
@@ -241,6 +266,18 @@ describe("ShelfMenu", () => {
     fireEvent.click(screen.getByRole("button", { name: /select shelf/i }));
     fireEvent.click(screen.getByRole("menuitem", { name: /All shelves/ }));
 
+    expect(useSelectedShelfStore.getState().selectedShelfId).toBe("shelf-1");
+  });
+
+  it("opens that shelf's rules page from the hovered edit action", () => {
+    renderShelfMenu();
+    fireEvent.click(screen.getByRole("button", { name: /select shelf/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /Edit rules for Beta/i }),
+    );
+
+    expect(routerMocks.navigate).toHaveBeenCalledWith("/shelves/shelf-2/rules");
+    // The edit action must not double as a shelf pick.
     expect(useSelectedShelfStore.getState().selectedShelfId).toBe("shelf-1");
   });
 

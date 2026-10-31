@@ -74,6 +74,11 @@ export const RulesPage: React.FC = () => {
       isLoading={shelfQuery.isLoading}
       onBack={() => navigate("/")}
     />,
+    // The panel is mounted once; without these deps it keeps the
+    // pre-fetch snapshot (shelf=null) and appears to load forever
+    // on the first visit, until a cached second visit mounts it
+    // with data already available.
+    [shelfId, shelfQuery.data, shelfQuery.isLoading],
   );
 
   const onCreate = () => {

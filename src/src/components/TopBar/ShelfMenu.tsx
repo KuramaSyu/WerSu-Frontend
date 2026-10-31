@@ -1,24 +1,28 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
   Button,
   CircularProgress,
   Divider,
+  IconButton,
   ListItemIcon,
   ListItemText,
   Menu,
   MenuItem,
   Stack,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
+import EditIcon from "@mui/icons-material/Edit";
 import InboxIcon from "@mui/icons-material/Inbox";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import ShelvesIcon from "@mui/icons-material/Shelves";
 import { useShelves } from "../../api/queries/shelfQueries";
 import { useSelectedShelfStore } from "../../zustand/useSelectedShelfStore";
 import { useThemeStore } from "../../zustand/useThemeStore";
-import { M1, M2, M3 } from "../../statics";
+import { M1, M2 } from "../../statics";
 
 // Shelf selector next to the WerSu wordmark.
 // Reads shelves from useShelves, stores the pick in useSelectedShelfStore.
@@ -41,6 +45,26 @@ const ShelfMenuImpl: React.FC = () => {
   const handlePick = (id: string | null) => {
     setSelectedShelfId(id);
     handleClose();
+  };
+
+  const navigate = useNavigate();
+
+  // Rules are scoped to a single shelf (`/shelves/:id/rules`).
+  // The edit action on a hovered row jumps straight to that
+  // shelf's rules page.
+  const openRulesForShelf = (shelfId: string) => {
+    handleClose();
+    navigate(`/shelves/${shelfId}/rules`);
+  };
+
+  // The row's own select handler must not fire when the edit
+  // action is clicked, or picking rules would also pick the shelf.
+  const handleOpenRules = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    shelfId: string,
+  ) => {
+    event.stopPropagation();
+    openRulesForShelf(shelfId);
   };
 
   // Resolve the label through the query so a server-side rename updates on refresh.
@@ -146,6 +170,11 @@ const ShelfMenuImpl: React.FC = () => {
                 selected={isActive}
                 onClick={() => handlePick(shelf.id)}
                 title={label}
+                sx={{
+                  "& .shelf-menu-edit": { opacity: 0 },
+                  "&:hover .shelf-menu-edit, &:focus-within .shelf-menu-edit":
+                    { opacity: 1 },
+                }}
               >
                 <ListItemIcon sx={{ minWidth: 32 }}>
                   {isActive ? (
@@ -158,6 +187,17 @@ const ShelfMenuImpl: React.FC = () => {
                   primary={label}
                   secondary={bookCount > 0 ? `${bookCount} books` : undefined}
                 />
+                <Tooltip title="Edit rules" placement="right">
+                  <IconButton
+                    className="shelf-menu-edit"
+                    size="small"
+                    aria-label={`Edit rules for ${label}`}
+                    onClick={(event) => handleOpenRules(event, shelf.id)}
+                    sx={{ ml: 1 }}
+                  >
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
               </MenuItem>
             );
           })
