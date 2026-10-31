@@ -2,8 +2,9 @@
 //
 // Wraps the row so the handler can bubble, and owns the delete
 // confirmation. Directory rows edit through the shared directory
-// dialog; note rows open the full editor (decision 4). The synthetic
-// root disables edit and delete, matching DirectoryMenu.
+// dialog; note rows open the full editor (decision 4) or rename in
+// place. The synthetic root disables edit and delete, matching
+// DirectoryMenu.
 
 import { useCallback, useState, type ReactNode } from "react";
 import { Box } from "@mui/material";
@@ -14,6 +15,7 @@ import { useDirectoryDelete } from "../../api/queries/useDirectoryMutations";
 import { useDeleteNote } from "../../api/queries/useNoteQueries";
 import { ConfirmationModal } from "../../pages/Settings/ConfirmationModal";
 import { useRightClickMenu, type RightClickMenuSpec } from "./useRightClickMenu";
+import { NoteRenameDialog } from "./NoteRenameDialog";
 
 export type DirectoryItemMenuTarget =
   | { kind: "directory"; directoryId: string; name: string; isRoot: boolean }
@@ -31,6 +33,14 @@ const ROW_BUTTONS: RightClickMenuSpec["buttons"] = [
   "delete",
 ];
 
+const NOTE_ROW_BUTTONS: RightClickMenuSpec["buttons"] = [
+  "copy",
+  "paste",
+  "edit",
+  "rename",
+  "delete",
+];
+
 export const DirectoryItemMenu: React.FC<DirectoryItemMenuProps> = ({
   target,
   children,
@@ -43,6 +53,7 @@ export const DirectoryItemMenu: React.FC<DirectoryItemMenuProps> = ({
   const deleteDirectory = useDirectoryDelete();
   const deleteNote = useDeleteNote();
 
+  const [renameOpen, setRenameOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -87,10 +98,19 @@ export const DirectoryItemMenu: React.FC<DirectoryItemMenuProps> = ({
         };
       }
 
+      if (target.kind === "note") {
+        overrides.rename = {
+          handler: () => {
+            setRenameOpen(true);
+            return true;
+          },
+        };
+      }
+
       menu.onContextMenu(event, {
         targetId:
           target.kind === "directory" ? target.directoryId : target.noteId,
-        buttons: ROW_BUTTONS,
+        buttons: target.kind === "note" ? NOTE_ROW_BUTTONS : ROW_BUTTONS,
         overrides,
       });
     },
@@ -125,6 +145,14 @@ export const DirectoryItemMenu: React.FC<DirectoryItemMenuProps> = ({
   return (
     <Box sx={{ display: "contents" }} onContextMenu={onContextMenu}>
       {children}
+      {target.kind === "note" && (
+        <NoteRenameDialog
+          open={renameOpen}
+          noteId={target.noteId}
+          initialTitle={target.title}
+          onClose={() => setRenameOpen(false)}
+        />
+      )}
       <ConfirmationModal
         title={
           isDirectory ? "Delete this directory?" : "Delete this note?"

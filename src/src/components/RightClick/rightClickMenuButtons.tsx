@@ -1,9 +1,9 @@
 // The built-in button catalogue.
 //
 // copy / paste / cut ship with sensible editor defaults; providers
-// can override them per surface. edit / delete / favourite stay
-// handlerless forever by design -- each page supplies its own via
-// overrides.
+// can override them per surface. edit / rename / delete / favourite
+// stay handlerless forever by design -- each page supplies its own
+// via overrides.
 
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import ContentPasteIcon from "@mui/icons-material/ContentPaste";
@@ -11,6 +11,7 @@ import ContentCutIcon from "@mui/icons-material/ContentCut";
 import AddIcon from "@mui/icons-material/Add";
 import TableChartIcon from "@mui/icons-material/TableChart";
 import EditIcon from "@mui/icons-material/Edit";
+import DriveFileRenameOutlineIcon from "@mui/icons-material/DriveFileRenameOutline";
 import DeleteIcon from "@mui/icons-material/Delete";
 import StarIcon from "@mui/icons-material/Star";
 import { copyToClipboard } from "../../zustand/InfoStore";
@@ -102,6 +103,11 @@ export const rightClickMenuButtons: RightClickButtonRegistry = {
     id: "edit",
     label: "Edit",
     icon: <EditIcon fontSize="small" />,
+  },
+  rename: {
+    id: "rename",
+    label: "Rename",
+    icon: <DriveFileRenameOutlineIcon fontSize="small" />,
   },
   delete: {
     id: "delete",

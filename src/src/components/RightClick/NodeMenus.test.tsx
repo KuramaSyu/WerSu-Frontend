@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 // Surface menus: request shape, delete gating through the
-// confirmation dialog, root protection, and favourite/edit routing.
+// confirmation dialog, root protection, and favourite/edit/rename
+// routing.
 
 import "../../test/setup";
 
@@ -223,5 +224,30 @@ describe("DirectoryItemMenu", () => {
     await waitFor(() =>
       expect(mocks.deleteDirectory).toHaveBeenCalledWith("d1"),
     );
+  });
+
+  it("offers rename for a note row and opens the rename dialog", async () => {
+    renderWithProviders(
+      <DirectoryItemMenu
+        target={{ kind: "note", noteId: "n1", title: "Hello world" }}
+      >
+        <div>note-row</div>
+      </DirectoryItemMenu>,
+    );
+    const request = openMenu("note-row");
+
+    expect(request?.buttons).toEqual([
+      "copy",
+      "paste",
+      "edit",
+      "rename",
+      "delete",
+    ]);
+    expect(request?.overrides?.rename?.handler).toBeTypeOf("function");
+
+    act(() => {
+      request?.overrides?.rename?.handler?.(undefined);
+    });
+    expect(await screen.findByText("Rename note")).toBeInTheDocument();
   });
 });

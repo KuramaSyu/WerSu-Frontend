@@ -13,6 +13,7 @@ import { SearchNotesApi, type ISearchNotesApi } from "../SearchNotesApi";
 import { Note, RestNotesSearchType, type MinimalNote } from "../models/search";
 import { getNoteApi, type INoteApi } from "../NoteApi";
 import { updateNoteParentDirectory } from "../../utils/updateNoteParentDirectory";
+import { directoryNotesQueryKeys } from "./useDirectoryNotesQuery";
 import { usePublicRouteReady } from "../../hooks/usePublicRouteReady";
 import { useAuthStore } from "../../zustand/useAuthStore";
 import { useUserStore } from "../../zustand/userStore";
@@ -215,6 +216,12 @@ export function useUpdateNote() {
       // Refresh notes lists and searches
       queryClient.invalidateQueries({
         queryKey: ["notes"],
+      });
+
+      // Directory views keep their own query-key namespace, so a
+      // rename there needs its own invalidation.
+      queryClient.invalidateQueries({
+        queryKey: directoryNotesQueryKeys.all,
       });
     },
   });
