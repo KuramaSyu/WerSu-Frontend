@@ -194,12 +194,12 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({
   // Only the selected segment tints its icon; the other stays neutral.
   const isLiveSelected = editingMode === "live";
   const isOfflineSelected = !isLiveSelected;
-  // Live is primary only when it is both selected and connected; a
+  // Live is secondary only when it is both selected and connected; a
   // connecting/error state keeps its status colour.
   const liveIconColor = !isLiveSelected
     ? "inherit"
     : liveVisual.connected
-      ? "primary.main"
+      ? "secondary.main"
       : liveVisual.color;
 
   const { versions, selectedVersion, selectVersion, clearSelection } =
@@ -373,7 +373,7 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({
                   <WifiOffIcon
                     fontSize="small"
                     sx={{
-                      color: isOfflineSelected ? "primary.main" : "inherit",
+                      color: isOfflineSelected ? "secondary.main" : "inherit",
                     }}
                   />
                   offline

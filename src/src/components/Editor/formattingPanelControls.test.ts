@@ -102,4 +102,35 @@ describe("pickFormattingContext", () => {
       editor.destroy();
     }
   });
+
+  it("picks 'blockquote' when the cursor is inside a quote", () => {
+    const editor = makeEditor();
+    try {
+      editor.commands.setContent(
+        "<blockquote><p>quoted</p></blockquote>",
+      );
+      editor.commands.setTextSelection(3);
+      expect(pickFormattingContext(editor)?.id).toBe("blockquote");
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("prefers the list context over a surrounding quote", () => {
+    const editor = makeEditor();
+    try {
+      editor.commands.setContent(
+        "<blockquote><ul><li><p>one</p></li></ul></blockquote>",
+      );
+      let pos = -1;
+      editor.state.doc.descendants((node, nodePos) => {
+        if (node.isTextblock && node.textContent === "one") pos = nodePos;
+        return true;
+      });
+      editor.commands.setTextSelection(pos + 1);
+      expect(pickFormattingContext(editor)?.id).toBe("list");
+    } finally {
+      editor.destroy();
+    }
+  });
 });

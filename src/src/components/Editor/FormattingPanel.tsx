@@ -111,7 +111,7 @@ export const FormattingPanel: React.FC<FormattingPanelProps> = ({
         </Divider>
       )}
 
-      <ToggleButtonGroup size="small" color="secondary">
+      <ToggleButtonGroup size="small" color="primary">
         <TippedToggle
           title="Bold"
           ariaLabel="bold"
@@ -166,7 +166,7 @@ export const FormattingPanel: React.FC<FormattingPanelProps> = ({
 
       <ToggleButtonGroup
         size="small"
-        color="secondary"
+        color="primary"
         exclusive
         value={flags.headingLevel === 0 ? null : flags.headingLevel}
       >
@@ -211,7 +211,7 @@ export const FormattingPanel: React.FC<FormattingPanelProps> = ({
         </TippedToggle>
       </ToggleButtonGroup>
 
-      <ToggleButtonGroup size="small" color="secondary">
+      <ToggleButtonGroup size="small" color="primary">
         <TippedToggle
           title="Bullet list"
           ariaLabel="bullet list"
@@ -254,7 +254,7 @@ export const FormattingPanel: React.FC<FormattingPanelProps> = ({
         </TippedToggle>
       </ToggleButtonGroup>
 
-      <ToggleButtonGroup size="small" color="secondary">
+      <ToggleButtonGroup size="small" color="primary">
         <TippedToggle
           title="Insert table"
           ariaLabel="insert table"

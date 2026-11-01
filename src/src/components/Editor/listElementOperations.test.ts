@@ -45,6 +45,35 @@ function setDoc(editor: Editor, items: JSONContent[][]): void {
   } as never);
 }
 
+/** A list item whose lead paragraph is followed by a nested bullet list. */
+function nestedItem(label: string, children: string[]): JSONContent {
+  return {
+    type: "listItem",
+    content: [
+      paragraph(label),
+      {
+        type: "bulletList",
+        content: children.map((child) => ({
+          type: "listItem",
+          content: [paragraph(child)],
+        })),
+      },
+    ],
+  };
+}
+
+/** Lead-paragraph texts of every list item, in document order. */
+function itemTexts(editor: Editor): string[] {
+  const texts: string[] = [];
+  editor.state.doc.descendants((node) => {
+    if (node.type.name === "listItem" && node.firstChild?.isTextblock) {
+      texts.push(node.firstChild.textContent);
+    }
+    return true;
+  });
+  return texts;
+}
+
 /** Places the caret in the last text block matching `text`. */
 function selectText(editor: Editor, text: string): void {
   let found = -1;
@@ -208,6 +237,134 @@ describe("moveListElement - nested block", () => {
       expect(moveListElement(editor, -1)).toBe(false);
       expect(moveListElement(editor, 1)).toBe(false);
       expect(editor.getHTML()).toBe(before);
+    } finally {
+      editor.destroy();
+    }
+  });
+});
+
+describe("moveListElement - single element through depth", () => {
+  /** Bullet list wrapper for a set of top-level list items. */
+  function setTopLevel(editor: Editor, items: JSONContent[]): void {
+    editor.commands.setContent({
+      type: "doc",
+      content: [{ type: "bulletList", content: items }],
+    } as never);
+  }
+
+  const topItem = (label: string, children: string[] = []): JSONContent =>
+    children.length > 0
+      ? nestedItem(label, children)
+      : { type: "listItem", content: [paragraph(label)] };
+
+  it("lifts a lone nested item down past its parent", () => {
+    const editor = makeEditor();
+    try {
+      setTopLevel(editor, [topItem("a", ["a1"]), topItem("b")]);
+      selectText(editor, "a1");
+      // a1 can drop out of a (down) and also pop ahead of a (up).
+      expect(getListElementMoveState(editor.state)).toEqual({
+        canMoveUp: true,
+        canMoveDown: true,
+      });
+      expect(moveListElement(editor, 1)).toBe(true);
+      // Only a1 moved; its parent a stayed put without the nested list.
+      expect(itemTexts(editor)).toEqual(["a", "a1", "b"]);
+      expect(outline(editor)).toEqual([["a"], ["a1"], ["b"]]);
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("lifts a lone nested item up before its parent", () => {
+    const editor = makeEditor();
+    try {
+      setTopLevel(editor, [topItem("b"), topItem("a", ["a1"])]);
+      selectText(editor, "a1");
+      expect(moveListElement(editor, -1)).toBe(true);
+      expect(itemTexts(editor)).toEqual(["b", "a1", "a"]);
+      expect(outline(editor)).toEqual([["b"], ["a1"], ["a"]]);
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("reorders same-level siblings without touching the parent", () => {
+    const editor = makeEditor();
+    try {
+      setTopLevel(editor, [topItem("a", ["a1", "a2"]), topItem("b")]);
+      selectText(editor, "a1");
+      expect(moveListElement(editor, 1)).toBe(true);
+      expect(itemTexts(editor)).toEqual(["a", "a2", "a1", "b"]);
+      expect(outline(editor)).toEqual([["a", "bulletList"], ["b"]]);
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("walks a deeply nested item through several levels", () => {
+    const editor = makeEditor();
+    try {
+      // Three levels: a > a1 > a1x, followed by a top-level b.
+      editor.commands.setContent({
+        type: "doc",
+        content: [
+          {
+            type: "bulletList",
+            content: [
+              {
+                type: "listItem",
+                content: [
+                  paragraph("a"),
+                  {
+                    type: "bulletList",
+                    content: [
+                      {
+                        type: "listItem",
+                        content: [
+                          paragraph("a1"),
+                          {
+                            type: "bulletList",
+                            content: [
+                              { type: "listItem", content: [paragraph("a1x")] },
+                            ],
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+              topItem("b"),
+            ],
+          },
+        ],
+      } as never);
+
+      selectText(editor, "a1x");
+      expect(moveListElement(editor, -1)).toBe(true);
+      // a1x pops out one level to sit beside a1.
+      expect(itemTexts(editor)).toEqual(["a", "a1x", "a1", "b"]);
+
+      // Caret followed a1x, so moving down swaps it with a1.
+      expect(moveListElement(editor, 1)).toBe(true);
+      expect(itemTexts(editor)).toEqual(["a", "a1", "a1x", "b"]);
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("stays disabled for a lone top-level item", () => {
+    const editor = makeEditor();
+    try {
+      setTopLevel(editor, [topItem("only")]);
+      selectText(editor, "only");
+      expect(getListElementMoveState(editor.state)).toEqual({
+        canMoveUp: false,
+        canMoveDown: false,
+      });
+      expect(moveListElement(editor, -1)).toBe(false);
+      expect(moveListElement(editor, 1)).toBe(false);
     } finally {
       editor.destroy();
     }
