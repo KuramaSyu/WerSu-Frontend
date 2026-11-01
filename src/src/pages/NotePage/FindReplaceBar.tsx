@@ -59,6 +59,7 @@ import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { M4, MOBILE_BOTTOM_BAR_CLEARANCE } from "../../statics";
 import { useNoteFindStore } from "../../zustand/useNoteFindStore";
 import { useSearchNotesStore } from "../../zustand/useSearchNotesStore";
+import { useThemeStore } from "../../zustand/useThemeStore";
 
 export interface FindReplaceBarProps {
   editor: Editor | null;
@@ -111,6 +112,7 @@ export const FindReplaceBar: React.FC<FindReplaceBarProps> = ({
   sourceMarkdown,
   setSourceMarkdown,
 }) => {
+  const { theme } = useThemeStore();
   const { isMobile } = useBreakpoint();
 
   const [open, setOpen] = useState(false);
@@ -430,7 +432,9 @@ export const FindReplaceBar: React.FC<FindReplaceBarProps> = ({
           alignItems: "flex-start",
           gap: 0.5,
           p: 0.5,
-          borderRadius: 1,
+          // Follow the app theme's rounding convention (see
+          // ThemedEditorBox) so the widget matches the editor chrome.
+          borderRadius: theme.shape.borderRadius,
           border: 1,
           borderColor: "divider",
           maxWidth: "calc(100vw - 2rem)",
