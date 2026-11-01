@@ -96,25 +96,31 @@ export const LeftRail: React.FC<LeftRailProps> = ({ children }) => {
           </Stack>
         ) : null}
 
-        {!isCollapsed && (
-          <Box
-            sx={{
-              flex: 1,
-              overflowY: "auto",
-              minHeight: 0,
-              px: M2,
-              pb: M2,
-              scrollbarWidth: "thin",
-              scrollbarColor: `transparent transparent`,
-              "&:hover": {
-                scrollbarColor: `${theme.palette.secondary.dark} transparent`,
-              },
-              transition: theme.transitions.create(),
-            }}
-          >
-            {children}
-          </Box>
-        )}
+        {/* Keep the panel content mounted while the rail is collapsed.
+            Unmounting it here made expanding rebuild the whole subtree
+            (directory hierarchy, table of contents, attachments…) in the
+            same frame as the shell's grid transition, which blocked the
+            main thread for hundreds of ms on the note page. `display:
+            none` keeps the React tree alive without taking up space. */}
+        <Box
+          sx={{
+            display: isCollapsed ? "none" : "flex",
+            flexDirection: "column",
+            flex: 1,
+            overflowY: "auto",
+            minHeight: 0,
+            px: M2,
+            pb: M2,
+            scrollbarWidth: "thin",
+            scrollbarColor: `transparent transparent`,
+            "&:hover": {
+              scrollbarColor: `${theme.palette.secondary.dark} transparent`,
+            },
+            transition: theme.transitions.create(),
+          }}
+        >
+          {children}
+        </Box>
       </TranslucentPaper>
 
       {/* Vertically centred handle on the rail's right border. Only
