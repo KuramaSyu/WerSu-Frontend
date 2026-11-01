@@ -3,6 +3,7 @@ import { VersionInfo } from "../VersionInfo";
 import { UpperPanel } from "../../../components/Panels/UpperPanel";
 import { RightPanelEdgeToggle } from "../../../components/Panels/RightPanelEdgeToggle";
 import { FormattingPanel } from "../../../components/Editor/FormattingPanel";
+import { EditorShortcutsPanel } from "./EditorShortcutsPanel";
 import { useNote } from "../../../api/queries/useNoteQueries";
 import { useEditorSettings } from "../../../zustand/useEditorSettings";
 
@@ -38,6 +39,7 @@ export const NoteRightPanel: React.FC<NoteRightPanelProps> = ({ noteId }) => {
         noteId={noteId}
         leftEdgeHandle={editMode ? undefined : edgeHandle}
       />
+      <EditorShortcutsPanel />
       {note && <AttachmentPanelSection note={note} />}
     </UpperPanel>
   );

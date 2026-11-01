@@ -59,6 +59,12 @@ export const NOTE_EDITOR_A4_WIDTH = "52rem";
  */
 export const NOTE_EDITOR_WIDE_WIDTH = "75rem";
 /**
+ * Fixed size of the hold-to-run shortcut bar (shared with its
+ * completion pulse so the two read as the same surface).
+ */
+export const HOLD_BAR_HEIGHT = "3rem";
+export const HOLD_BAR_WIDTH = "16rem";
+/**
  * Normally 48 which looks too small
  */
 export const COLLAPSED_PANEL_SIZE = "0px";

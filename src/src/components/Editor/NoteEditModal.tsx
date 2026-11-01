@@ -46,6 +46,7 @@ import React, { useState } from "react";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { EditorBubbleMenu } from "./EditorBubbleMenu";
 import { EditorStaticMenu } from "./EditorStaticMenu";
+import { HoldKeyActionBar } from "../HoldKeyActionBar";
 import { ThemedEditorBox } from "./ThemedEditorBox";
 import { CustomHtml } from "./CustomHtml";
 import { CustomHardBreak } from "./CustomHardBreak";
@@ -284,7 +285,10 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
   return (
     <Dialog
       open={open}
-      onClose={() => {
+      onClose={(_event, reason) => {
+        // In source mode Escape is reserved for the hold-to-exit
+        // gesture, so stop MUI from closing the dialog on a tap.
+        if (reason === "escapeKeyDown" && isSourceMode) return;
         onClose();
       }}
       maxWidth="md"
@@ -412,6 +416,18 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
           </div>
         </div>
       </DialogContent>
+
+      <HoldKeyActionBar
+        active={isSourceMode}
+        actions={[
+          {
+            key: "Escape",
+            keyLabel: "ESC",
+            label: "exit source mode",
+            onTrigger: toggleSourceMode,
+          },
+        ]}
+      />
     </Dialog>
   );
 };

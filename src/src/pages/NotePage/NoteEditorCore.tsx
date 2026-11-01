@@ -50,6 +50,8 @@ import { type LatexDialogOpenParams } from "./LatexDialogController.utils";
 import type { EditorContextMenuOpener } from "../../components/RightClick/EditorRightClickMenu";
 import { logRerender } from "./editorRenderLog";
 import { CollabConflictController } from "./CollabConflictController";
+import { HoldKeyActionBar } from "../../components/HoldKeyActionBar";
+import { useEditorModeShortcuts } from "./Panel/useEditorModeShortcuts";
 
 export interface NoteEditorProps {
   note?: Note;
@@ -176,6 +178,10 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
     [viewMode, sourceMarkdown, setSourceMarkdown],
   );
 
+  // Hold-to-run editor shortcuts (shared with the right-rail
+  // Shortcuts panel). The floating bar is the visible feedback.
+  const { actions: holdShortcuts } = useEditorModeShortcuts();
+
   // Memoized slash command list. Without useMemo the array identity
   // changes per render and retriggers BubbleMenu plugin teardown.
   const slashCommands = useEditorSlashCommands({ latexOpenerRef });
@@ -286,6 +292,13 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
         readOnly={readOnly}
         sourceMarkdown={sourceMarkdown}
         setSourceMarkdown={setSourceMarkdown}
+      />
+
+      {/* Hold-to-run editor shortcuts; the right rail lists them. */}
+      <HoldKeyActionBar
+        active={holdShortcuts.length > 0}
+        capture={false}
+        actions={holdShortcuts}
       />
 
       {/* Imperative dialogs. Each owns its own state and re-renders

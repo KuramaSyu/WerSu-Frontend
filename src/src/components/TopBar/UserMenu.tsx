@@ -25,6 +25,7 @@ import Logout from "@mui/icons-material/Logout";
 import RuleFolderIcon from "@mui/icons-material/RuleFolder";
 import SettingsIcon from "@mui/icons-material/Settings";
 import ShareIcon from "@mui/icons-material/Share";
+import KeyboardIcon from "@mui/icons-material/Keyboard";
 import { useNavigate } from "react-router-dom";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useUser } from "../../api/queries/useUser";
@@ -115,6 +116,11 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
 
   const handleOpenGraph = () => {
     navigate(Pages.GRAPH);
+    onRequestClose();
+  };
+
+  const handleOpenShortcuts = () => {
+    navigate(Pages.SHORTCUTS);
     onRequestClose();
   };
 
@@ -462,6 +468,18 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
           <ShareIcon fontSize="small" />
         </ListItemIcon>
         <ListItemText primary="Shares" />
+      </MenuItem>
+      <MenuItem
+        onClick={handleOpenShortcuts}
+        sx={{
+          "&:hover": { backgroundColor: theme.palette.action.hover },
+          minHeight: 52,
+        }}
+      >
+        <ListItemIcon>
+          <KeyboardIcon fontSize="small" />
+        </ListItemIcon>
+        <ListItemText primary="Shortcuts" />
       </MenuItem>
 
       <Divider />

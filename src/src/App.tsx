@@ -12,6 +12,7 @@ import "./App.css";
 import { HomePage } from "./pages/Home/Main";
 import { SwaggerDocs } from "./pages/docs/Main";
 import InfoDisplay from "./pages/MainPage/InfoDisplay";
+import { ShortcutPulse } from "./components/ShortcutPulse";
 import { NotePage } from "./pages/NotePage/Main";
 import { DirectoryView } from "./pages/DirectoryView/Main";
 import { DirectoryEditPage } from "./pages/DirectoryEdit/Main";
@@ -33,6 +34,7 @@ import SettingsPage from "./pages/Settings/Main";
 import { LoginPage } from "./pages/LoginPage/Main";
 import { RulesPage } from "./pages/Rules/RulesPage";
 import { SharesPage } from "./pages/Shares/Main";
+import { ShortcutsPage } from "./pages/Shortcuts/Main";
 
 /**
  * records the navigation of the user, so that the back button works as expected
@@ -72,6 +74,7 @@ function App() {
                 <Route path="/d/:id/new" element={<CreateSubdirectoryPage />} />
                 <Route path="/graph" element={<FileGraphPage />} />
                 <Route path="/shares" element={<SharesPage />} />
+                <Route path="/shortcuts" element={<ShortcutsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/shelves/:shelfId/rules" element={<RulesPage />} />
               </Route>
@@ -79,6 +82,7 @@ function App() {
           </Routes>
         </LayoutProvider>
         <InfoDisplay />
+        <ShortcutPulse />
         <RightClickMenuHost />
         <DirectoryDialogHost />
       </Router>

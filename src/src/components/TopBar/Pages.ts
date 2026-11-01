@@ -13,6 +13,7 @@ export const Pages = {
   SETTINGSV2: "/settings-v2",
   GRAPH: "/graph",
   SHARES: "/shares",
+  SHORTCUTS: "/shortcuts",
 } as const;
 
 export type Page = (typeof Pages)[keyof typeof Pages];
