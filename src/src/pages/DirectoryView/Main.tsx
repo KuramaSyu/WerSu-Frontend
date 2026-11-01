@@ -12,6 +12,10 @@ import { useDirectoryFeatures } from "./DirectoryFeatures.hook";
 import { CreateNote } from "../MainPage/CreateNote";
 import { CreateDirectoryModal } from "../MainPage/CreateDirectory";
 import { useCreateModalsFromUrl } from "../../hooks/useCreateModalsFromUrl";
+import { useNavigateBack } from "../../hooks/useNavigateBack";
+import { usePageHoldShortcuts } from "../../hooks/usePageHoldShortcuts";
+import { useSearchNotesStore } from "../../zustand/useSearchNotesStore";
+import { HoldKeyActionBar } from "../../components/HoldKeyActionBar";
 import { M3, M4 } from "../../statics";
 import { DirectoryHirarchyItem } from "../../models/HirarchyItem";
 import { ChapterAccordion } from "./ChapterAccordion";
@@ -67,6 +71,20 @@ export const DirectoryView: React.FC = () => {
       setEditDirectoryId(directoryId);
       setCreateDirectoryOpen(true);
     },
+  });
+
+  const navigateBack = useNavigateBack();
+  const setIsSearchOpen = useSearchNotesStore((s) => s.setIsDialogOpen);
+
+  // Hold-to-run shortcuts for this page (see config/shortcuts.json).
+  // "Edit" always targets the directory in the URL (`currentNode`),
+  // never a hovered row.
+  const holdActions = usePageHoldShortcuts("directory", {
+    "directory.newDirectory": handleCreateSubdirectory,
+    "directory.newNote": handleCreateNote,
+    "directory.search": () => setIsSearchOpen(true),
+    "directory.edit": handleEditDirectory,
+    "directory.back": navigateBack,
   });
 
   // Match the home screen's left-panel sizing
@@ -225,6 +243,11 @@ export const DirectoryView: React.FC = () => {
       <DirectoryActions
         handleCreateNote={handleCreateNote}
         handleCreateSubdirectory={handleCreateSubdirectory}
+      />
+      <HoldKeyActionBar
+        active={holdActions.length > 0}
+        capture={false}
+        actions={holdActions}
       />
     </Box>
   );

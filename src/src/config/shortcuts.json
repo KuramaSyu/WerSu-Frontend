@@ -1,0 +1,119 @@
+{
+  "note": {
+    "label": "Note editor",
+    "path": "/n/:id",
+    "shortcuts": [
+      {
+        "id": "note.leaveSource",
+        "label": "Leave source editor",
+        "key": "Escape",
+        "keyLabel": "ESC",
+        "hold": true,
+        "allowInTextFields": true,
+        "when": { "viewMode": "source" }
+      },
+      {
+        "id": "note.enterInsert",
+        "label": "Enter insert mode",
+        "key": "i",
+        "keyLabel": "I",
+        "hold": true,
+        "when": { "editMode": false, "readOnly": false }
+      },
+      {
+        "id": "note.leaveInsert",
+        "label": "Leave insert mode",
+        "key": "Escape",
+        "keyLabel": "ESC",
+        "hold": true,
+        "allowInTextFields": true,
+        "when": { "editMode": true, "readOnly": false, "viewMode": "rich" }
+      },
+      {
+        "id": "note.openSource",
+        "label": "Open source editor",
+        "key": "s",
+        "keyLabel": "S",
+        "hold": true,
+        "when": { "viewMode": "rich" }
+      }
+    ]
+  },
+  "home": {
+    "label": "Home",
+    "path": "/",
+    "shortcuts": [
+      {
+        "id": "home.newDirectory",
+        "label": "New directory",
+        "key": "d",
+        "keyLabel": "D",
+        "hold": true
+      },
+      {
+        "id": "home.newNote",
+        "label": "New note",
+        "key": "n",
+        "keyLabel": "N",
+        "hold": true
+      },
+      {
+        "id": "home.search",
+        "label": "Search",
+        "key": "k",
+        "keyLabel": "K",
+        "hold": true
+      },
+      {
+        "id": "home.back",
+        "label": "Navigate back",
+        "key": "Escape",
+        "keyLabel": "ESC",
+        "hold": true,
+        "allowInTextFields": true
+      }
+    ]
+  },
+  "directory": {
+    "label": "Directory view",
+    "path": "/d/:id",
+    "shortcuts": [
+      {
+        "id": "directory.newDirectory",
+        "label": "New directory",
+        "key": "d",
+        "keyLabel": "D",
+        "hold": true
+      },
+      {
+        "id": "directory.newNote",
+        "label": "New note",
+        "key": "n",
+        "keyLabel": "N",
+        "hold": true
+      },
+      {
+        "id": "directory.search",
+        "label": "Search",
+        "key": "k",
+        "keyLabel": "K",
+        "hold": true
+      },
+      {
+        "id": "directory.edit",
+        "label": "Edit this directory",
+        "key": "e",
+        "keyLabel": "E",
+        "hold": true
+      },
+      {
+        "id": "directory.back",
+        "label": "Navigate back",
+        "key": "Escape",
+        "keyLabel": "ESC",
+        "hold": true,
+        "allowInTextFields": true
+      }
+    ]
+  }
+}

@@ -25,18 +25,22 @@ import {
   LastUsedPanel,
 } from "../../components/FrequentlyUsed/Main";
 import { CreateNote } from "../MainPage/CreateNote";
+import { CreateDirectoryModal } from "../MainPage/CreateDirectory";
 import { FavouriteDirectories } from "./FavouriteDirectories";
 import { AllDirectories } from "./AllDirectories";
 import { M3, M4 } from "../../statics";
 import { useCreateModalsFromUrl } from "../../hooks/useCreateModalsFromUrl";
+import { useNavigateBack } from "../../hooks/useNavigateBack";
+import { usePageHoldShortcuts } from "../../hooks/usePageHoldShortcuts";
+import { useSearchNotesStore } from "../../zustand/useSearchNotesStore";
+import { HoldKeyActionBar } from "../../components/HoldKeyActionBar";
 import CreateFab from "../../components/CreateFab";
 import { FabSlot } from "../../components/FabSlot";
 
 /** Home page: nav + recent activity on the left, favourites + all dirs in the body. */
 export const HomePage: React.FC = () => {
   const [createNoteOpen, setCreateNoteOpen] = useState(false);
-  // Directory modal isn't mounted here; setter exists for the URL branch.
-  const [, setCreateDirectoryOpen] = useState(false);
+  const [createDirectoryOpen, setCreateDirectoryOpen] = useState(false);
   const {
     rightPanelOpen,
     leftPanelOpen,
@@ -44,6 +48,16 @@ export const HomePage: React.FC = () => {
     setLeftPanelOpen,
   } = useLayout();
   const { isMobile } = useBreakpoint();
+  const navigateBack = useNavigateBack();
+  const setIsSearchOpen = useSearchNotesStore((s) => s.setIsDialogOpen);
+
+  // Hold-to-run shortcuts for this page (see config/shortcuts.json).
+  const holdActions = usePageHoldShortcuts("home", {
+    "home.newDirectory": () => setCreateDirectoryOpen(true),
+    "home.newNote": () => setCreateNoteOpen(true),
+    "home.search": () => setIsSearchOpen(true),
+    "home.back": navigateBack,
+  });
 
   useCreateModalsFromUrl({
     setCreateNoteOpen,
@@ -122,9 +136,22 @@ export const HomePage: React.FC = () => {
         </Stack>
       </Stack>
       <FabSlot>
-        <CreateFab onCreateNote={() => setCreateNoteOpen(true)} />
+        <CreateFab
+          onCreateNote={() => setCreateNoteOpen(true)}
+          onCreateDirectory={() => setCreateDirectoryOpen(true)}
+        />
       </FabSlot>
       <CreateNote open={createNoteOpen} onOpenChange={setCreateNoteOpen} />
+      <CreateDirectoryModal
+        open={createDirectoryOpen}
+        onOpenChange={setCreateDirectoryOpen}
+        mode="create"
+      />
+      <HoldKeyActionBar
+        active={holdActions.length > 0}
+        capture={false}
+        actions={holdActions}
+      />
     </Box>
   );
 };
