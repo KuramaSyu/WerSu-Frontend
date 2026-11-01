@@ -11,7 +11,8 @@ export interface HomeGreetingProps {
 
 /**
  * Personalised header for the Home page: a time-of-day greeting with the
- * viewer's username and a one-line summary of today's editing activity.
+ * viewer's username, plus a one-line summary of today's editing activity
+ * when there has been any.
  */
 export const HomeGreeting: React.FC<HomeGreetingProps> = ({ notes }) => {
   const username = useUserStore((s) => s.user?.username);
@@ -20,20 +21,20 @@ export const HomeGreeting: React.FC<HomeGreetingProps> = ({ notes }) => {
   const greeting = getGreeting(new Date().getHours());
   const editedToday = countNotesEditedToday(notes);
 
-  const summary =
-    editedToday === 0
-      ? "Nothing edited yet today — pick up where you left off below."
-      : `You edited ${editedToday} note${editedToday === 1 ? "" : "s"} today.`;
-
   return (
     <Stack spacing={0.5}>
       <Typography variant="h4" color="textPrimary">
         {greeting}
-        {username ? `, ${username}` : ""}.
+        {username ? `, ${username}` : ""}
       </Typography>
-      <Typography variant="body2" sx={{ color: theme.palette.text.secondary }}>
-        {summary}
-      </Typography>
+      {editedToday > 0 && (
+        <Typography
+          variant="body2"
+          sx={{ color: theme.palette.text.secondary }}
+        >
+          {`You edited ${editedToday} note${editedToday === 1 ? "" : "s"} today.`}
+        </Typography>
+      )}
     </Stack>
   );
 };
