@@ -72,6 +72,13 @@
         "hold": true
       },
       {
+        "id": "global.searchCombo",
+        "label": "Search",
+        "combo": "ctrl+k",
+        "keyLabel": "ctrl+k",
+        "hold": false
+      },
+      {
         "id": "global.home",
         "label": "Go home",
         "key": "h",

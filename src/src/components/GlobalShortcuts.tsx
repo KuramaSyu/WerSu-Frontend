@@ -17,6 +17,9 @@ const EXCLUDED_PREFIXES = ["/login", "/public", "/docs"];
  * App-wide shortcuts available on every authenticated page:
  *
  *   - hold `k` opens the search overlay
+ *   - `Ctrl + K` opens the search overlay (the rail's search button
+ *     and `SearchBar` handle it too; firing it here keeps the
+ *     catalogue the single source of truth)
  *   - hold `h` goes home
  *   - hold `Esc` navigates back
  *   - `Ctrl + /` opens the keyboard-shortcut modal
@@ -67,6 +70,7 @@ export const GlobalShortcuts: React.FC = () => {
     "global",
     {
       "global.shortcutsModal": () => setShortcutsOpen(true),
+      "global.searchCombo": () => setIsSearchOpen(true),
     },
     enabled,
   );

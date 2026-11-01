@@ -30,6 +30,18 @@ describe("useComboShortcuts", () => {
     expect(onOpen).toHaveBeenCalledTimes(1);
   });
 
+  it("fires the global Ctrl+K search handler", () => {
+    const onSearch = vi.fn();
+    renderHook(() =>
+      useComboShortcuts("global", { "global.searchCombo": onSearch }),
+    );
+
+    const event = press({ key: "k", ctrlKey: true });
+
+    expect(onSearch).toHaveBeenCalledTimes(1);
+    expect(event.defaultPrevented).toBe(true);
+  });
+
   it("preventDefaults the matched combo", () => {
     const onOpen = vi.fn();
     renderHook(() =>
