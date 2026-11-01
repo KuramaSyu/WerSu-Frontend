@@ -50,6 +50,7 @@ import {
   Node as ProseMirrorNode,
   type Schema,
 } from "@tiptap/pm/model";
+import DOMPurify from "dompurify";
 
 /** Attribute used to remember the raw HTML a node was parsed from. */
 export const HTML_SOURCE_ATTR = "htmlSource";
@@ -74,14 +75,19 @@ const shared = {
     };
   },
   renderMarkdown: (node: JSONContent) =>
-    formatCustomHtml((node.attrs?.html as string | undefined) ?? ""),
+    formatCustomHtml(
+      sanitizeCustomHtml((node.attrs?.html as string | undefined) ?? ""),
+    ),
   // Build a DOM node that injects the saved HTML. Atom + content:"" means
   // the children slot is unused; we own the inner markup entirely.
   addNodeView() {
     return ({ node }: { node: { attrs: { html?: string } } }) => {
       const dom = document.createElement("div");
       dom.className = "custom-html-node";
-      dom.innerHTML = node.attrs.html ?? "";
+      // Raw user HTML is rendered with innerHTML, so it must be
+      // sanitized first or an event-handler attribute (`<img
+      // onerror=...>`) would execute for every viewer of the note.
+      dom.innerHTML = sanitizeCustomHtml(node.attrs.html ?? "");
       return { dom };
     };
   },
@@ -391,6 +397,74 @@ function formatNode(node: ChildNode, depth: number): string {
     .map((child) => formatNode(child, depth + 1))
     .join("\n");
   return `${pad}${open}\n${inner}\n${pad}</${tag}>`;
+}
+
+// --- Sanitization --------------------------------------------------------
+
+// DOMPurify already strips `<script>`, every `on*` handler and
+// `javascript:` URIs. These extras close the embedding/framing/form
+// vectors that a note author could otherwise use against other viewers.
+const FORBIDDEN_HTML_TAGS = [
+  "script",
+  "style",
+  "iframe",
+  "frame",
+  "frameset",
+  "object",
+  "embed",
+  "applet",
+  "form",
+  "input",
+  "button",
+  "textarea",
+  "select",
+  "option",
+  "optgroup",
+  "link",
+  "meta",
+  "base",
+  "noscript",
+  "template",
+  "svg",
+  "math",
+  "audio",
+  "video",
+  "source",
+  "track",
+];
+
+const FORBIDDEN_HTML_ATTRS = [
+  "srcdoc",
+  "formaction",
+  "action",
+  "method",
+  "ping",
+  "xlink:href",
+  "xmlns",
+];
+
+/**
+ * Sanitize a custom HTML fragment before it is rendered or written back
+ * to markdown. Keeps the styling the feature is about (`style`, `class`,
+ * table/img attributes) while removing scripts, event handlers and
+ * embedding/forms. Returns the input unchanged when there is no DOM to
+ * sanitize against (SSR); fails closed (empty) if sanitizing throws.
+ */
+export function sanitizeCustomHtml(html: string): string {
+  if (!html) {
+    return html;
+  }
+  if (typeof window === "undefined" || !DOMPurify.isSupported) {
+    return html;
+  }
+  try {
+    return DOMPurify.sanitize(html, {
+      FORBID_TAGS: FORBIDDEN_HTML_TAGS,
+      FORBID_ATTR: FORBIDDEN_HTML_ATTRS,
+    });
+  } catch {
+    return "";
+  }
 }
 
 /**
@@ -724,15 +798,17 @@ export const HtmlSerialization = Extension.create({
       if (typeof rawHtml === "string" && rawHtml.length > 0) {
         const signature = node.attrs?.[HTML_SOURCE_SIGNATURE_ATTR];
         if (signature === signatureOfJson(node)) {
-          return formatCustomHtml(rawHtml);
+          return formatCustomHtml(sanitizeCustomHtml(rawHtml));
         }
         try {
           const pmNode = ProseMirrorNode.fromJSON(editor.schema, node);
           return formatCustomHtml(
-            regeneratePreservedHtml(rawHtml, pmNode, editor.schema),
+            sanitizeCustomHtml(
+              regeneratePreservedHtml(rawHtml, pmNode, editor.schema),
+            ),
           );
         } catch {
-          return formatCustomHtml(rawHtml);
+          return formatCustomHtml(sanitizeCustomHtml(rawHtml));
         }
       }
       return originalRenderNode(node, parentNode, index, level, meta);
