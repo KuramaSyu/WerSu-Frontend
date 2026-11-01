@@ -3,6 +3,7 @@ import {
   isGeneratedThemeRecord,
   normalizeGeneratedThemeRecord,
   type GeneratedThemeRecord,
+  type ImageThemePalette,
 } from "../theme/imageTheme";
 import { ThemePreferenceSchema, type ThemePreference } from "./Preferences";
 
@@ -79,6 +80,37 @@ export function parseCustomThemesData(
     themes,
     active: result.data.active ?? null,
   };
+}
+
+/**
+ * Compare the fields the theme editor can change (name, mode, blur, palette).
+ *
+ * The background image fields are intentionally excluded: a device keeps its
+ * own `local:` blob key or a width-capped URL for the same attachment, so
+ * comparing them would always look dirty — even right after a successful
+ * sync. Used to decide whether a published theme has unsynced edits.
+ */
+export function customThemeContentEqual(
+  a: GeneratedThemeRecord,
+  b: GeneratedThemeRecord,
+): boolean {
+  if (
+    a.name !== b.name ||
+    a.longName !== b.longName ||
+    a.mode !== b.mode ||
+    a.blur !== b.blur
+  ) {
+    return false;
+  }
+  const aKeys = Object.keys(a.palette) as (keyof ImageThemePalette)[];
+  const bKeys = Object.keys(b.palette) as (keyof ImageThemePalette)[];
+  if (aKeys.length !== bKeys.length) {
+    return false;
+  }
+  const bSet = new Set(bKeys);
+  return aKeys.every(
+    (key) => bSet.has(key) && a.palette[key] === b.palette[key],
+  );
 }
 
 /** Build the payload written to the `custom-themes` preferences row. */

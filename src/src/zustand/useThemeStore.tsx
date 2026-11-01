@@ -14,6 +14,10 @@ import {
 } from "../theme/imageTheme";
 import { useImageBlobCacheStore } from "./useImageBlobCache";
 import { slugify } from "../utils/slugify";
+import {
+  syncedBlurCacheKey,
+  syncedOriginalCacheKey,
+} from "../utils/syncedThemeImages";
 import type { ThemePreference } from "../models/Preferences";
 
 // Instantiate our ThemeManager with the custom configurations.
@@ -151,6 +155,13 @@ interface ThemeState {
   ) => void;
   /** Remove a generated theme and fall back to the default when active. */
   removeGeneratedTheme: (id: string) => void;
+  /**
+   * Delete a custom theme's local copy (record + every cached blob) so it
+   * can be fetched again from its source. Works for locally generated themes
+   * and themes synced from a `custom-themes` row; the synced ones reappear on
+   * the next sync/refetch with freshly downloaded images.
+   */
+  deleteThemeLocally: (id: string) => void;
   /** Remove every generated theme. */
   clearGeneratedThemes: () => void;
 }
@@ -192,6 +203,26 @@ function applyPendingThemePreference(
     return;
   }
   set({ pendingThemePreference: null });
+  void get().setTheme(themeName);
+}
+
+/**
+ * Re-apply the store's active `themeName` once a previously missing theme is
+ * registered.
+ *
+ * On reload a pinned (`themeLocked`) device skips the cloud preference via
+ * `applyThemePreference`, so a persisted synced custom theme name has no
+ * theme object until this source registers. Re-resolving `themeName` keeps
+ * the pinned choice instead of leaving the rehydration default in place.
+ */
+function resyncActiveTheme(get: () => ThemeState): void {
+  const { themeName, theme } = get();
+  if (themeName === theme.custom.themeName) {
+    return;
+  }
+  if (!themeManager.hasTheme(themeName)) {
+    return;
+  }
   void get().setTheme(themeName);
 }
 
@@ -282,8 +313,13 @@ export const useThemeStore = create<ThemeState>()(
         });
 
         // A cloud preference that referenced one of the themes we just
-        // registered can now be applied.
-        applyPendingThemePreference(get, set);
+        // registered can now be applied; otherwise restore the persisted
+        // (possibly pinned) active theme that rehydration could not resolve.
+        if (get().pendingThemePreference !== null) {
+          applyPendingThemePreference(get, set);
+        } else {
+          resyncActiveTheme(get);
+        }
       },
 
       applyThemePreference: async (
@@ -388,13 +424,19 @@ export const useThemeStore = create<ThemeState>()(
       },
 
       updateGeneratedTheme: (id, patch) => {
-        const record = get().generatedThemes.find((r) => r.id === id);
+        const state0 = get();
+        // Synced themes are editable too; they live in a separate list.
+        const isSynced = state0.syncedThemes.some((r) => r.id === id);
+        const sourceThemes = isSynced
+          ? state0.syncedThemes
+          : state0.generatedThemes;
+        const record = sourceThemes.find((r) => r.id === id);
         if (record === undefined) {
           return;
         }
         // Name and blur are shared by the whole dark/light pair; the
         // palette edit only touches the variant the user is editing.
-        const groupRecords = get().generatedThemes.filter(
+        const groupRecords = sourceThemes.filter(
           (r) => r.groupId === record.groupId,
         );
         const updatedRecords = groupRecords.map(
@@ -428,17 +470,46 @@ export const useThemeStore = create<ThemeState>()(
           themeManager.registerTheme(theme);
         }
 
-        set((state) => ({
-          generatedThemes: state.generatedThemes.map(
-            (r) => updatedById.get(r.id) ?? r,
-          ),
-          customThemes: state.customThemes.map(
-            (t) => updatedThemeByName.get(t.custom.themeName) ?? t,
-          ),
-        }));
-        // Re-apply so an active theme reflects the edit immediately.
-        if (get().themeName === record.name) {
-          void get().setTheme(record.name);
+        set((state) => {
+          if (!isSynced) {
+            return {
+              generatedThemes: state.generatedThemes.map(
+                (r) => updatedById.get(r.id) ?? r,
+              ),
+              customThemes: state.customThemes.map(
+                (t) => updatedThemeByName.get(t.custom.themeName) ?? t,
+              ),
+            };
+          }
+          // Editing a synced theme adopts it as a device-local user theme.
+          // It is persisted with `generatedThemes`, so the edit survives a
+          // reload (the server copy would otherwise replace it) and is
+          // eligible for the next publish, which pushes the new blur back.
+          const adopted = updatedRecords.map(
+            (r): GeneratedThemeRecord => ({ ...r, scope: "user" }),
+          );
+          const adoptedIds = new Set(adopted.map((r) => r.id));
+          return {
+            generatedThemes: [
+              ...state.generatedThemes.filter(
+                (r) => !adoptedIds.has(r.id),
+              ),
+              ...adopted,
+            ],
+            syncedThemes: state.syncedThemes.filter(
+              (r) => !adoptedIds.has(r.id),
+            ),
+            customThemes: state.customThemes.map(
+              (t) => updatedThemeByName.get(t.custom.themeName) ?? t,
+            ),
+          };
+        });
+        // Re-apply so an active theme reflects the edit immediately. Check
+        // the whole pair: blur/blurred-image are shared, so editing the
+        // inactive sibling must still refresh the active variant.
+        const activeName = get().themeName;
+        if (updatedRecords.some((r) => r.name === activeName)) {
+          void get().setTheme(activeName);
         }
       },
 
@@ -493,6 +564,73 @@ export const useThemeStore = create<ThemeState>()(
               : state.lastLightTheme,
           lastDarkTheme:
             state.lastDarkTheme !== null && removeNames.has(state.lastDarkTheme)
+              ? null
+              : state.lastDarkTheme,
+        }));
+        if (removeNames.has(get().themeName)) {
+          void get().setTheme("default");
+        }
+      },
+
+      deleteThemeLocally: (id) => {
+        const current = get();
+        const record =
+          current.generatedThemes.find((r) => r.id === id) ??
+          current.syncedThemes.find((r) => r.id === id);
+        if (record === undefined) {
+          return;
+        }
+
+        // A pair is one logical theme: drop both variants from either list.
+        const group = [
+          ...current.generatedThemes.filter(
+            (r) => r.groupId === record.groupId,
+          ),
+          ...current.syncedThemes.filter(
+            (r) => r.groupId === record.groupId,
+          ),
+        ];
+        const byId = new Map(group.map((r) => [r.id, r]));
+        const groupRecords = [...byId.values()];
+        const removeIds = new Set(groupRecords.map((r) => r.id));
+        const removeNames = new Set(groupRecords.map((r) => r.name));
+
+        for (const r of groupRecords) {
+          themeManager.removeTheme(r.name);
+          // Purge every blob this theme could have written so a re-fetch
+          // starts from clean bytes: render source, pre-rendered blur,
+          // full-resolution original, and the blur key for this amount.
+          const keys = new Set([
+            r.backgroundImage,
+            r.blurredBackgroundImage,
+            syncedOriginalCacheKey(r.backgroundImage),
+            syncedBlurCacheKey(r.backgroundImage, r.blur),
+          ]);
+          for (const key of keys) {
+            if (key.startsWith("local:")) {
+              void useImageBlobCacheStore.getState().remove(key);
+            }
+          }
+        }
+
+        set((state) => ({
+          generatedThemes: state.generatedThemes.filter(
+            (r) => !removeIds.has(r.id),
+          ),
+          syncedThemes: state.syncedThemes.filter(
+            (r) => !removeIds.has(r.id),
+          ),
+          customThemes: state.customThemes.filter(
+            (t) => !removeNames.has(t.custom.themeName),
+          ),
+          lastLightTheme:
+            state.lastLightTheme !== null &&
+            removeNames.has(state.lastLightTheme)
+              ? null
+              : state.lastLightTheme,
+          lastDarkTheme:
+            state.lastDarkTheme !== null &&
+            removeNames.has(state.lastDarkTheme)
               ? null
               : state.lastDarkTheme,
         }));

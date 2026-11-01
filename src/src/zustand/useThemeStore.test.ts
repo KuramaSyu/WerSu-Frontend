@@ -12,6 +12,7 @@ import "../test/setup";
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { useThemeStore } from "./useThemeStore";
+import { useImageBlobCacheStore } from "./useImageBlobCache";
 import {
   buildPaletteFromSwatches,
   type GeneratedThemeRecord,
@@ -183,6 +184,143 @@ describe("useThemeStore synced theme preference", () => {
       expect(useThemeStore.getState().themeName).toBe(record.name);
       expect(useThemeStore.getState().pendingThemePreference).toBeNull();
     } finally {
+      useThemeStore.getState().registerSyncedThemes("user:test", []);
+    }
+  });
+
+  it("re-applies a persisted synced theme once it registers while pinned", async () => {
+    const record = syncedRecord();
+    try {
+      // Simulate reload: the device is pinned and the persisted theme name
+      // points at the synced theme, but only the default theme object was
+      // resolvable during rehydration.
+      useThemeStore.setState({
+        themeLocked: true,
+        themeName: record.name,
+        pendingThemePreference: null,
+      });
+
+      useThemeStore.getState().registerSyncedThemes("user:test", [record]);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(useThemeStore.getState().themeName).toBe(record.name);
+      expect(useThemeStore.getState().theme.custom.themeName).toBe(
+        record.name,
+      );
+    } finally {
+      useThemeStore.getState().registerSyncedThemes("user:test", []);
+      useThemeStore.setState({ themeName: "default", themeLocked: false });
+      await useThemeStore.getState().setTheme("default");
+    }
+  });
+
+  it("deletes a synced theme locally so it can be re-fetched", () => {
+    const record = syncedRecord();
+    try {
+      useThemeStore.getState().registerSyncedThemes("user:test", [record]);
+      expect(
+        useThemeStore
+          .getState()
+          .syncedThemes.some((r) => r.id === record.id),
+      ).toBe(true);
+
+      useThemeStore.getState().deleteThemeLocally(record.id);
+      expect(
+        useThemeStore
+          .getState()
+          .syncedThemes.some((r) => r.id === record.id),
+      ).toBe(false);
+
+      // Re-registering from the source brings it back (the re-fetch path).
+      useThemeStore.getState().registerSyncedThemes("user:test", [record]);
+      expect(
+        useThemeStore
+          .getState()
+          .syncedThemes.some((r) => r.id === record.id),
+      ).toBe(true);
+    } finally {
+      useThemeStore.getState().registerSyncedThemes("user:test", []);
+    }
+  });
+
+  it("clears a deleted theme's cached blobs", () => {
+    const pair = addPair("Purge Me");
+    const srcKey = `local:src-${pair.dark.id}`;
+    const blurKey = `local:blur-${pair.dark.id}`;
+    useThemeStore.setState({
+      generatedThemes: useThemeStore.getState().generatedThemes.map((r) =>
+        r.id === pair.dark.id
+          ? {
+              ...r,
+              backgroundImage: srcKey,
+              blurredBackgroundImage: blurKey,
+              blur: 33,
+            }
+          : r,
+      ),
+    });
+    useImageBlobCacheStore.setState({
+      byUrl: new Map([
+        [
+          srcKey,
+          {
+            blob: new Blob(["s"]),
+            objectUrl: "blob:src",
+            contentType: "image/webp",
+            fetchedAt: 1,
+          },
+        ],
+        [
+          blurKey,
+          {
+            blob: new Blob(["b"]),
+            objectUrl: "blob:blur",
+            contentType: "image/webp",
+            fetchedAt: 1,
+          },
+        ],
+      ]),
+      inflight: new Map(),
+      hydrated: true,
+    });
+
+    useThemeStore.getState().deleteThemeLocally(pair.dark.id);
+
+    expect(
+      useThemeStore.getState().generatedThemes.some(
+        (r) => r.groupId === pair.dark.groupId,
+      ),
+    ).toBe(false);
+    expect(useImageBlobCacheStore.getState().byUrl.has(srcKey)).toBe(false);
+    expect(useImageBlobCacheStore.getState().byUrl.has(blurKey)).toBe(false);
+  });
+
+  it("adopts an edited synced theme as a local user theme", () => {
+    const record = syncedRecord();
+    try {
+      useThemeStore.getState().registerSyncedThemes("user:test", [record]);
+
+      useThemeStore.getState().updateGeneratedTheme(record.id, {
+        longName: "Renamed synced",
+        palette: { ...record.palette, primary: "#010203" },
+        blur: 40,
+      });
+
+      const local = useThemeStore
+        .getState()
+        .generatedThemes.find((r) => r.id === record.id);
+      expect(local?.longName).toBe("Renamed synced");
+      expect(local?.palette.primary).toBe("#010203");
+      expect(local?.blur).toBe(40);
+      expect(local?.scope).toBe("user");
+      // The read-only synced copy is replaced by the editable local one.
+      expect(
+        useThemeStore
+          .getState()
+          .syncedThemes.some((r) => r.id === record.id),
+      ).toBe(false);
+    } finally {
+      useThemeStore.getState().removeGeneratedTheme(record.id);
       useThemeStore.getState().registerSyncedThemes("user:test", []);
     }
   });

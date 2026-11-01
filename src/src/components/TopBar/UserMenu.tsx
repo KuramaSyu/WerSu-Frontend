@@ -67,6 +67,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
     selectTheme,
     customThemes,
     generatedThemes,
+    syncedThemes,
     lastLightTheme,
     lastDarkTheme,
     themeLocked,
@@ -99,10 +100,14 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
   // Control the theme Select so opening the edit modal closes its list.
   const [themeSelectOpen, setThemeSelectOpen] = useState(false);
 
-  // Only generated themes are editable; look their records up by slug.
-  const generatedThemesByName = useMemo(
-    () => new Map(generatedThemes.map((r) => [r.name, r])),
-    [generatedThemes],
+  // Generated and synced themes are editable; look their records up by slug.
+  const editableThemes = useMemo(
+    () => [...generatedThemes, ...syncedThemes],
+    [generatedThemes, syncedThemes],
+  );
+  const editableThemesByName = useMemo(
+    () => new Map(editableThemes.map((r) => [r.name, r])),
+    [editableThemes],
   );
 
   const startEditingName = () => {
@@ -221,8 +226,8 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
     //    mode) is the most intuitive target.
     // 2. Otherwise the last theme used in the other mode.
     // 3. Otherwise any theme of that mode.
-    const activeGenerated = generatedThemesByName.get(themeName) ?? null;
-    const sibling = generatedThemes.find(
+    const activeGenerated = editableThemesByName.get(themeName) ?? null;
+    const sibling = editableThemes.find(
       (r) =>
         r.groupId === activeGenerated?.groupId && r.mode === otherMode,
     );
@@ -464,7 +469,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
           >
             {filteredThemes.map((t) => {
               const generatedRecord =
-                generatedThemesByName.get(t.custom.themeName) ?? null;
+                editableThemesByName.get(t.custom.themeName) ?? null;
               return (
                 <MenuItem
                   key={t.custom.themeName}

@@ -20,6 +20,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import LightModeIcon from "@mui/icons-material/LightMode";
 import LinkIcon from "@mui/icons-material/Link";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import SaveIcon from "@mui/icons-material/Save";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
@@ -67,7 +68,10 @@ interface GeneratedThemeRowProps {
   isActive: boolean;
   onApply: () => void;
   onEdit: () => void;
-  onDelete: () => void;
+  /** Omitted for synced themes, which would just be restored on next sync. */
+  onDelete?: () => void;
+  /** Drop the local copy and re-download it from its source. */
+  onRefetch?: () => void;
 }
 
 const GeneratedThemeRow: React.FC<GeneratedThemeRowProps> = ({
@@ -76,6 +80,7 @@ const GeneratedThemeRow: React.FC<GeneratedThemeRowProps> = ({
   onApply,
   onEdit,
   onDelete,
+  onRefetch,
 }) => {
   // Backgrounds resolve through the IndexedDB blob cache; remote URLs are
   // downloaded and persisted on first render.
@@ -150,14 +155,26 @@ const GeneratedThemeRow: React.FC<GeneratedThemeRowProps> = ({
           <EditIcon />
         </IconButton>
       </Tooltip>
-      <Tooltip title="Delete theme">
-        <IconButton
-          aria-label={`Delete theme ${record.longName}`}
-          onClick={onDelete}
-        >
-          <DeleteIcon />
-        </IconButton>
-      </Tooltip>
+      {onRefetch !== undefined ? (
+        <Tooltip title="Remove the local copy and re-fetch it from the server">
+          <IconButton
+            aria-label={`Re-fetch theme ${record.longName}`}
+            onClick={onRefetch}
+          >
+            <RefreshIcon />
+          </IconButton>
+        </Tooltip>
+      ) : null}
+      {onDelete !== undefined ? (
+        <Tooltip title="Delete theme">
+          <IconButton
+            aria-label={`Delete theme ${record.longName}`}
+            onClick={onDelete}
+          >
+            <DeleteIcon />
+          </IconButton>
+        </Tooltip>
+      ) : null}
     </Card>
   );
 };
@@ -176,8 +193,20 @@ export const ThemeGeneratorSection: React.FC = () => {
   const { setMessage } = useInfoStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const generatedThemes = useThemeStore((s) => s.generatedThemes);
+  const syncedThemes = useThemeStore((s) => s.syncedThemes);
+  // Sync themes are editable but not deletable here (they'd return on the
+  // next sync), so the list merges both sources.
+  const editableThemes = useMemo(
+    () => [...generatedThemes, ...syncedThemes],
+    [generatedThemes, syncedThemes],
+  );
+  const syncedIds = useMemo(
+    () => new Set(syncedThemes.map((r) => r.id)),
+    [syncedThemes],
+  );
   const addGeneratedTheme = useThemeStore((s) => s.addGeneratedTheme);
   const removeGeneratedTheme = useThemeStore((s) => s.removeGeneratedTheme);
+  const deleteThemeLocally = useThemeStore((s) => s.deleteThemeLocally);
   const selectTheme = useThemeStore((s) => s.selectTheme);
   const themeName = useThemeStore((s) => s.themeName);
   const userId = useUserStore((s) => s.user?.id ?? null);
@@ -303,6 +332,23 @@ export const ThemeGeneratorSection: React.FC = () => {
     } finally {
       setAnalyzing(false);
     }
+  };
+
+  // Drop a theme's local record and cached blobs, then pull the published
+  // row again so a synced/published theme is re-registered and its image
+  // re-downloaded. Repairs a theme whose IndexedDB bytes went missing.
+  const handleRefetchTheme = (record: GeneratedThemeRecord) => {
+    deleteThemeLocally(record.id);
+    userThemes.refetch();
+    if (selectedShelfId !== null) {
+      shelfThemesData.refetch();
+    }
+    setMessage(
+      new SnackbarUpdateImpl(
+        `Removed the local copy of “${record.longName}”; re-fetching…`,
+        "success",
+      ),
+    );
   };
 
   const handleSave = async () => {
@@ -634,28 +680,33 @@ export const ThemeGeneratorSection: React.FC = () => {
       <Divider />
 
       <Stack>
-        <Typography variant="subtitle1">Your generated themes</Typography>
+        <Typography variant="subtitle1">Your themes</Typography>
         <Typography variant="body2" color="text.secondary">
-          Saved themes show up in the theme picker. Each image contributes a
-          dark and a light variant; removing either removes the pair.
+          Themes generated here and themes synced from your other devices show
+          up in the theme picker. Each image contributes a dark and a light
+          variant; removing either removes the pair.
         </Typography>
       </Stack>
 
-      {generatedThemes.length === 0 ? (
+      {editableThemes.length === 0 ? (
         <Typography variant="body2" color="text.secondary">
-          No generated themes yet. Upload an image or paste a URL to create
-          one.
+          No themes yet. Upload an image or paste a URL to create one.
         </Typography>
       ) : (
         <Stack spacing={1.5}>
-          {generatedThemes.map((record) => (
+          {editableThemes.map((record) => (
             <GeneratedThemeRow
               key={record.id}
               record={record}
               isActive={themeName === record.name}
               onApply={() => void selectTheme(record.name)}
               onEdit={() => setEditing(record)}
-              onDelete={() => removeGeneratedTheme(record.id)}
+              onRefetch={() => handleRefetchTheme(record)}
+              onDelete={
+                syncedIds.has(record.id)
+                  ? undefined
+                  : () => removeGeneratedTheme(record.id)
+              }
             />
           ))}
         </Stack>

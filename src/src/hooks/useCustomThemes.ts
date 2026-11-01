@@ -20,6 +20,7 @@ import { useSelectedShelfStore } from "../zustand/useSelectedShelfStore";
 import { useThemeStore } from "../zustand/useThemeStore";
 import { useUserStore } from "../zustand/userStore";
 import {
+  cacheSyncedThemeImage,
   ensureSyncedBlur,
   SYNCED_THEME_IMAGE_WIDTH_DESKTOP,
   SYNCED_THEME_IMAGE_WIDTH_MOBILE,
@@ -41,8 +42,16 @@ export function useCustomThemesPreference(
 ): {
   data: CustomThemesData | null;
   isLoading: boolean;
+  /**
+   * Timestamp of the last successful read. Advances on every `refetch` even
+   * when the payload is structurally unchanged, so effect deps can use it to
+   * re-register after a forced re-read.
+   */
+  dataUpdatedAt: number;
+  /** Re-read the row from the backend (e.g. after dropping a local copy). */
+  refetch: () => void;
 } {
-  const { data, isLoading } = usePreferences({
+  const { data, isLoading, refetch, dataUpdatedAt } = usePreferences({
     scope: owner.scope,
     target_id: owner.targetId,
     key: CUSTOM_THEMES_PREFERENCE_KEY,
@@ -51,7 +60,14 @@ export function useCustomThemesPreference(
     () => parseCustomThemesData(data?.preferences_json),
     [data],
   );
-  return { data: parsed, isLoading };
+  return {
+    data: parsed,
+    isLoading,
+    dataUpdatedAt,
+    refetch: () => {
+      void refetch();
+    },
+  };
 }
 
 /** Progress report emitted while publishing custom themes. */
@@ -226,7 +242,13 @@ function registerWithGeneratedBlur(
   register(sourceKey, records);
   let cancelled = false;
   void (async () => {
-    const withBlur = await Promise.all(records.map(ensureSyncedBlur));
+    const withBlur = await Promise.all(
+      // Persist each sharp source first so the background render is a cache
+      // hit, then (re)generate the blurred local variant.
+      records.map(async (record) =>
+        ensureSyncedBlur(await cacheSyncedThemeImage(record)),
+      ),
+    );
     if (cancelled) {
       return;
     }
@@ -286,7 +308,16 @@ export function useCustomThemesSync(): void {
       widthThemes(userQuery.data?.themes ?? []),
       registerSyncedThemes,
     );
-  }, [userId, userQuery.data, registerSyncedThemes, widthThemes]);
+    // `dataUpdatedAt` changes on every successful refetch (even when React
+    // Query's structural sharing keeps `data` referentially equal), so a
+    // local delete followed by `refetch()` re-registers the theme.
+  }, [
+    userId,
+    userQuery.data,
+    userQuery.dataUpdatedAt,
+    registerSyncedThemes,
+    widthThemes,
+  ]);
 
   useEffect(() => {
     if (shelfId === null) {
@@ -297,7 +328,13 @@ export function useCustomThemesSync(): void {
       widthThemes(shelfQuery.data?.themes ?? []),
       registerSyncedThemes,
     );
-  }, [shelfId, shelfQuery.data, registerSyncedThemes, widthThemes]);
+  }, [
+    shelfId,
+    shelfQuery.data,
+    shelfQuery.dataUpdatedAt,
+    registerSyncedThemes,
+    widthThemes,
+  ]);
 
   // Shelf fallback: only when the user has neither picked a theme nor
   // pinned the device. Picking a theme flips `themeUserSelected`.

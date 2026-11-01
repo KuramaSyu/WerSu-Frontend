@@ -9,6 +9,7 @@ import { ThemeProvider } from "@mui/material/styles";
 import { useThemeStore } from "./zustand/useThemeStore";
 import { useThemePreferenceSync } from "./hooks/useThemePreferenceSync";
 import { useCustomThemesSync } from "./hooks/useCustomThemes";
+import { useThemeImageRepair } from "./hooks/useThemeImageRepair";
 
 import "./App.css";
 import { HomePage } from "./pages/Home/Main";
@@ -65,6 +66,10 @@ function App() {
   // preference and apply the active shelf theme when the user has not
   // selected one of their own.
   useCustomThemesSync();
+
+  // Re-download corrupt sources and regenerate missing blurred blobs for
+  // device-local generated themes after a lost IndexedDB state.
+  useThemeImageRepair();
 
   // QueryClientProvider lives in main.tsx; do not add a second one here
   return (

@@ -9,14 +9,21 @@ import {
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import ImageIcon from "@mui/icons-material/Image";
-import { useState, type ChangeEvent } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { ModalShell } from "./ModalShell";
 import { useThemeStore } from "../zustand/useThemeStore";
 import { useImageBlobCacheStore } from "../zustand/useImageBlobCache";
 import { useCachedImageUrl } from "../hooks/useCachedImageUrl";
 import useInfoStore, { SnackbarUpdateImpl } from "../zustand/InfoStore";
-import { blurImageToWebp, fetchImageBlob } from "../utils/imageBlur";
-import { toAttachmentImageUrl } from "../utils/syncedThemeImages";
+import { blurImageToWebp } from "../utils/imageBlur";
+import {
+  cacheOriginalThemeImage,
+  cacheSyncedThemeImageFallback,
+  repairThemeImageCache,
+  resolveThemeSourceBlob,
+  syncedBlurCacheKey,
+  syncedOriginalCacheKey,
+} from "../utils/syncedThemeImages";
 import {
   DEFAULT_THEME_BLUR,
   MAX_THEME_NAME_LENGTH,
@@ -120,6 +127,15 @@ export const ThemeEditModal: React.FC<ThemeEditModalProps> = ({
   );
   const [blur, setBlur] = useState(record?.blur ?? DEFAULT_THEME_BLUR);
   const [saving, setSaving] = useState(false);
+  // True while the full-resolution original is being fetched for editing.
+  const [loadingOriginal, setLoadingOriginal] = useState(false);
+  // Set once the compressed sync image has been replaced by the original, so
+  // saving regenerates the blur from the original even if `blur` is unchanged.
+  const [sourceUpgraded, setSourceUpgraded] = useState(false);
+  // Set when the original could not be downloaded and only the compressed
+  // image-endpoint variant is available. Editing an existing blur needs the
+  // sharp pixels, so saving is blocked until the original can be fetched.
+  const [usingFallbackOnly, setUsingFallbackOnly] = useState(false);
 
   // Non-blurred source for the live preview, served from the IndexedDB
   // blob cache (remote URLs are downloaded and persisted on demand).
@@ -127,6 +143,48 @@ export const ThemeEditModal: React.FC<ThemeEditModalProps> = ({
   // Scale the full-size blur radius down to the preview box so the
   // slider gives a readable sense of the effect.
   const previewBlurPx = (blur / 100) * 13;
+
+  // Editing regenerates the blur from pixels, so upgrade a synced theme's
+  // compressed background to the full-size original before the user saves.
+  // When the original is gone the compressed image variant is re-fetched as a
+  // fallback so the theme still renders; the cache keeps the original slot
+  // empty so the next edit upgrades it again.
+  useEffect(() => {
+    if (!open || record === null) {
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      setLoadingOriginal(true);
+      try {
+        // Heal a corrupt/missing cache first so the preview and the
+        // regeneration below work from valid pixels.
+        await repairThemeImageCache(record);
+        const upgraded = await cacheOriginalThemeImage(record);
+        if (cancelled) {
+          return;
+        }
+        setSourceUpgraded(upgraded);
+        if (upgraded) {
+          setUsingFallbackOnly(false);
+          return;
+        }
+        const repaired = await cacheSyncedThemeImageFallback(
+          record.backgroundImage,
+        );
+        if (!cancelled) {
+          setUsingFallbackOnly(repaired);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingOriginal(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, record]);
 
   const setColor = (key: keyof ImageThemePalette, value: string) => {
     setPalette((prev) => (prev === null ? prev : { ...prev, [key]: value }));
@@ -141,38 +199,51 @@ export const ThemeEditModal: React.FC<ThemeEditModalProps> = ({
       const cache = useImageBlobCacheStore.getState();
       let blurredBackgroundImage = record.blurredBackgroundImage;
 
+      // The original and the blurred variant live under distinct keys. Never
+      // remove either when dropping the blur, and never overwrite the source
+      // with the blurred result.
+      const originalKey = syncedOriginalCacheKey(record.backgroundImage);
+      const isSourceKey =
+        blurredBackgroundImage === record.backgroundImage ||
+        blurredBackgroundImage === originalKey;
+
       if (blur === 0) {
         // No blur: drop the pre-rendered variant and fall back to the
         // original source.
-        if (blurredBackgroundImage.startsWith("local:")) {
+        if (blurredBackgroundImage.startsWith("local:") && !isSourceKey) {
           await cache.remove(blurredBackgroundImage);
         }
         blurredBackgroundImage = "";
       } else if (
+        sourceUpgraded ||
         blur !== record.blur ||
         blurredBackgroundImage.length === 0
       ) {
-        // Regenerate from the non-blurred source.
-        let sourceBlob: Blob | undefined;
-        if (record.backgroundImage.startsWith("local:")) {
-          const entry = await cache.resolve(record.backgroundImage);
-          sourceBlob = entry?.blob;
-        } else if (record.backgroundImage.length > 0) {
-          sourceBlob = await fetchImageBlob(
-            toAttachmentImageUrl(record.backgroundImage),
-          );
+        if (usingFallbackOnly && blur !== record.blur) {
+          // Regenerating a changed blur from the compressed variant would
+          // compound artifacts, so wait until the original is available.
+          throw new Error("the original image is no longer available");
         }
-        if (sourceBlob === undefined) {
+        // Regenerate from the sharpest available source (the full-resolution
+        // original when the editor loaded it), never from the blurred blob.
+        const sourceBlob = await resolveThemeSourceBlob(record);
+        if (sourceBlob === null) {
           throw new Error("the original image is no longer available");
         }
 
         const blurredBlob = await blurImageToWebp(sourceBlob, blur);
-        const key = blurredBackgroundImage.startsWith("local:")
-          ? blurredBackgroundImage
-          : `local:theme-bg-${Date.now().toString(36)}-${Math.floor(
-              Math.random() * 1_000_000,
-            ).toString(36)}-blur`;
+        // Key the rendered variant by source + blur so a later sync knows
+        // which blur the cached pixels were produced with; a changed blur
+        // therefore re-renders instead of reusing this blob.
+        const key = syncedBlurCacheKey(record.backgroundImage, blur);
         await cache.put(key, blurredBlob);
+        if (
+          blurredBackgroundImage.startsWith("local:") &&
+          !isSourceKey &&
+          blurredBackgroundImage !== key
+        ) {
+          await cache.remove(blurredBackgroundImage);
+        }
         blurredBackgroundImage = key;
       }
 
@@ -216,7 +287,11 @@ export const ThemeEditModal: React.FC<ThemeEditModalProps> = ({
           <Button
             variant="contained"
             disabled={
-              saving || name.trim().length === 0 || palette === null
+              saving ||
+              loadingOriginal ||
+              (usingFallbackOnly && blur !== record?.blur) ||
+              name.trim().length === 0 ||
+              palette === null
             }
             startIcon={saving ? <CircularProgress size={16} /> : undefined}
             onClick={() => void handleSave()}
@@ -304,6 +379,23 @@ export const ThemeEditModal: React.FC<ThemeEditModalProps> = ({
             )}
           </Box>
         </Stack>
+
+        {loadingOriginal ? (
+          <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+            <CircularProgress size={14} />
+            <Typography variant="caption" color="text.secondary">
+              Loading full-resolution original…
+            </Typography>
+          </Stack>
+        ) : null}
+
+        {!loadingOriginal && usingFallbackOnly ? (
+          <Typography variant="caption" color="warning.main">
+            The original image could not be loaded, so only a compressed copy
+            is available. Blur changes will be applied once the original can be
+            fetched again.
+          </Typography>
+        ) : null}
 
         {palette !== null ? (
           <Box

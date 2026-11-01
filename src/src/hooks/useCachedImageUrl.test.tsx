@@ -93,4 +93,25 @@ describe("useCachedImageUrl", () => {
     expect(result.current).toBeNull();
     expect(fetchImageBlob).not.toHaveBeenCalled();
   });
+
+  it("repairs a missing attachment image from the width-capped variant", async () => {
+    const url =
+      "http://localhost:8080/api/attachments/image?key=attachments%252Fabc";
+    const variant = blob();
+    // The first (background) fetch fails, so the hook retries through the
+    // image endpoint and caches the variant as the render fallback.
+    fetchImageBlob
+      .mockRejectedValueOnce(new Error("HTTP 404"))
+      .mockResolvedValue(variant);
+
+    renderHook(() => useCachedImageUrl(url));
+
+    await waitFor(() => {
+      expect(useImageBlobCacheStore.getState().byUrl.has(url)).toBe(true);
+    });
+    const retryUrl = fetchImageBlob.mock.calls[1]?.[0] as string;
+    expect(retryUrl).toContain("/api/attachments/image");
+    expect(retryUrl).toContain("width=1080");
+    expect(retryUrl).toContain("format=webp");
+  });
 });

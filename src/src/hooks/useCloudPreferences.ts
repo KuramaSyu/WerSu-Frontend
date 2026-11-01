@@ -4,6 +4,7 @@ import {
   usePreferences,
   useReplacePreferences,
 } from "../api/queries/preferencesQueries";
+import { customThemeContentEqual } from "../models/customThemes";
 import {
   PREFERENCES_VERSION,
   parseStoredPreferences,
@@ -113,14 +114,18 @@ export function useCloudPreferences(): CloudPreferencesController {
     [data],
   );
 
-  // A theme is already synced when its id exists in the cloud row; the
-  // stored record keeps its `local:` image key, so comparing the image
-  // fields would always look dirty.
+  // A theme is unsynced when it is missing from the cloud row or its
+  // editable fields (blur, palette, name) differ from the published copy.
+  // Image fields are ignored: the local record keeps its own `local:` blob
+  // key while the cloud row stores an attachment URL for the same image.
   const hasUnsyncedThemes = useMemo(() => {
-    const cloudIds = new Set(
-      (customThemesQuery.data?.themes ?? []).map((r) => r.id),
+    const cloudById = new Map(
+      (customThemesQuery.data?.themes ?? []).map((r) => [r.id, r]),
     );
-    return localUserThemes.some((r) => !cloudIds.has(r.id));
+    return localUserThemes.some((record) => {
+      const cloud = cloudById.get(record.id);
+      return cloud === undefined || !customThemeContentEqual(record, cloud);
+    });
   }, [localUserThemes, customThemesQuery.data]);
 
   const canUpload =
@@ -145,9 +150,20 @@ export function useCloudPreferences(): CloudPreferencesController {
           (cloudCustomThemes?.themes ?? []).map((r) => [r.id, r]),
         );
         for (const record of localUserThemes) {
-          if (!byId.has(record.id)) {
+          const cloud = byId.get(record.id);
+          if (cloud === undefined) {
             byId.set(record.id, record);
+            continue;
           }
+          // Push the edited (editable) fields but keep the already-published
+          // image URLs, so changing a theme's blur/palette does not upload
+          // its background again as a duplicate attachment.
+          byId.set(record.id, {
+            ...cloud,
+            ...record,
+            backgroundImage: cloud.backgroundImage,
+            blurredBackgroundImage: cloud.blurredBackgroundImage,
+          });
         }
         const themes = [...byId.values()];
         const imageCount = countLocalThemeImages(themes);

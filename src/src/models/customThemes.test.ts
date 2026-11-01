@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildCustomThemesData,
   CUSTOM_THEMES_VERSION,
+  customThemeContentEqual,
   parseCustomThemesData,
   serializeCustomThemesData,
 } from "./customThemes";
@@ -39,6 +40,47 @@ const makeRecord = (
   blur: 0,
   createdAt: 1,
   ...overrides,
+});
+
+describe("customThemeContentEqual", () => {
+  it("treats two records with the same content as equal", () => {
+    expect(
+      customThemeContentEqual(makeRecord(), makeRecord()),
+    ).toBe(true);
+  });
+
+  it("ignores background image differences (local blob vs published URL)", () => {
+    const local = makeRecord({
+      backgroundImage: "local:blob-1",
+      blurredBackgroundImage: "local:synced-blur-abc",
+    });
+    const cloud = makeRecord({
+      backgroundImage: "https://api.example.com/api/attachments/?key=abc",
+      blurredBackgroundImage: "",
+    });
+    expect(customThemeContentEqual(local, cloud)).toBe(true);
+  });
+
+  it("detects a changed blur", () => {
+    expect(
+      customThemeContentEqual(makeRecord({ blur: 20 }), makeRecord({ blur: 50 })),
+    ).toBe(false);
+  });
+
+  it("detects a changed palette color", () => {
+    const other = makeRecord();
+    other.palette = { ...other.palette, primary: "#ffffff" };
+    expect(customThemeContentEqual(makeRecord(), other)).toBe(false);
+  });
+
+  it("detects a changed name", () => {
+    expect(
+      customThemeContentEqual(
+        makeRecord({ longName: "Sunset" }),
+        makeRecord({ longName: "Sunrise" }),
+      ),
+    ).toBe(false);
+  });
 });
 
 describe("parseCustomThemesData", () => {

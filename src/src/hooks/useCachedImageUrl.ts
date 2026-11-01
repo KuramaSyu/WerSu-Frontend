@@ -1,7 +1,10 @@
 import { useEffect } from "react";
 import { useImageBlobCacheStore } from "../zustand/useImageBlobCache";
 import { fetchImageBlob } from "../utils/imageBlur";
-import { toAttachmentImageUrl } from "../utils/syncedThemeImages";
+import {
+  cacheSyncedThemeImageFallback,
+  toAttachmentImageUrl,
+} from "../utils/syncedThemeImages";
 
 /**
  * Resolve a theme background image to an object URL backed by IndexedDB.
@@ -51,10 +54,16 @@ export function useCachedImageUrl(url: string): string | null {
           await put(resolvedUrl, blob);
         }
       } catch (err) {
-        // CORS / offline / 404: keep the raw URL fallback. The effect will
-        // not retry on its own because `cached` stays null and the deps
-        // are unchanged.
+        // Direct download failed (CORS / offline / a stale/deformed source).
+        // Repair from the attachment image endpoint when the source is one of
+        // our attachments: the backend can regenerate a compressed variant
+        // from the stored object, so the theme still renders instead of
+        // showing nothing. The full-resolution original is left untouched, so
+        // opening the editor upgrades the pixels on the next edit.
         console.warn(`[image-cache] could not cache ${resolvedUrl}:`, err);
+        if (!cancelled) {
+          await cacheSyncedThemeImageFallback(resolvedUrl);
+        }
       }
     })();
     return () => {
