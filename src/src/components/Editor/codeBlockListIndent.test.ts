@@ -35,7 +35,11 @@ function selectFirstCodeBlock(editor: Editor): void {
 }
 
 /** Finds the code block node plus its parent/index info. */
-function findCodeBlock(editor: Editor) {
+function findCodeBlock(editor: Editor): {
+  parentType: string;
+  indexInParent: number;
+  parentCount: number;
+} | null {
   let found: {
     parentType: string;
     indexInParent: number;
