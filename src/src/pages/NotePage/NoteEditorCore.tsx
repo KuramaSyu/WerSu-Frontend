@@ -17,6 +17,7 @@ import type { Note } from "../../api/models/search";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { useViewConfig } from "../../zustand/useViewConfig";
 import { useActiveNoteStore } from "../../zustand/editorStore";
+import { useDraftStore } from "../../zustand/useDraftStore";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
 import { useAppearanceSettings } from "../../zustand/useAppearanceSettings";
@@ -35,6 +36,7 @@ import { imageLinkToBlock } from "./editorFormatUtils";
 import { useNoteEditor } from "./NoteEditorCore.hook";
 import { OutlineBridge } from "./OutlineBridge";
 import { NoteStatsBridge } from "./NoteStatsBridge";
+import { DraftTrackerBridge } from "./DraftTrackerBridge";
 import { CollabSyncBridge } from "./CollabSyncBridge";
 import { LatexDialogController } from "./LatexDialogController";
 import { FileUploadDialogController } from "./FileUploadDialogController";
@@ -130,6 +132,37 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
 
   const sourceEditorRef = useRef<NoteSourceEditorHandle | null>(null);
 
+  // User-facing setters that also flag the note as a draft. The seed
+  // effects below deliberately keep calling the raw store setters, so
+  // merely opening a note never creates a draft on its own.
+  const setTitleFromUser = useCallback(
+    (nextTitle: string) => {
+      // Read the previous value before writing so we can record the
+      // magnitude of the edit (length delta is a cheap proxy).
+      const previous = useActiveNoteStore.getState().title;
+      setTitle(nextTitle);
+      if (noteId) {
+        useDraftStore.getState().markDraft(noteId, {
+          changedChars: Math.abs(nextTitle.length - previous.length),
+        });
+      }
+    },
+    [setTitle, noteId],
+  );
+
+  const setSourceMarkdownFromUser = useCallback(
+    (markdown: string) => {
+      const previous = useActiveNoteStore.getState().sourceMarkdown;
+      setSourceMarkdown(markdown);
+      if (noteId) {
+        useDraftStore.getState().markDraft(noteId, {
+          changedChars: Math.abs(markdown.length - previous.length),
+        });
+      }
+    },
+    [setSourceMarkdown, noteId],
+  );
+
   // Honour hideLeftPanel on mount: when the caller asks for the left
   // rail to be hidden, close it unless the user explicitly toggled it.
   useEffect(() => {
@@ -174,9 +207,9 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
         sourceMarkdown.substring(0, start) +
         block +
         sourceMarkdown.substring(end);
-      setSourceMarkdown(newValue);
+      setSourceMarkdownFromUser(newValue);
     },
-    [viewMode, sourceMarkdown, setSourceMarkdown],
+    [viewMode, sourceMarkdown, setSourceMarkdownFromUser],
   );
 
   // Hold-to-run editor shortcuts (shared with the right-rail
@@ -251,7 +284,7 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
         >
           <NoteTitleBar
             title={title}
-            setTitle={setTitle}
+            setTitle={setTitleFromUser}
             forceFullWidth={forceFullWidth}
           />
 
@@ -269,7 +302,7 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
             <NoteSourceEditor
               ref={sourceEditorRef}
               sourceMarkdown={sourceMarkdown}
-              setSourceMarkdown={setSourceMarkdown}
+              setSourceMarkdown={setSourceMarkdownFromUser}
               editorWidth={editorWidth}
             />
           )}
@@ -283,7 +316,7 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
       {/* Floating editor actions */}
       <InsertSpeedDial
         editor={editor}
-        setSourceMarkdown={setSourceMarkdown}
+        setSourceMarkdown={setSourceMarkdownFromUser}
         sourceMarkdown={sourceMarkdown}
       />
 
@@ -295,7 +328,7 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
         editMode={editMode}
         readOnly={readOnly}
         sourceMarkdown={sourceMarkdown}
-        setSourceMarkdown={setSourceMarkdown}
+        setSourceMarkdown={setSourceMarkdownFromUser}
       />
 
       {/* Hold-to-run editor shortcuts; the right rail lists them. */}
@@ -320,6 +353,7 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
           the per-keystroke render path. */}
       <OutlineBridge editor={editor} />
       <NoteStatsBridge editor={editor} ydoc={ydoc} />
+      <DraftTrackerBridge editor={editor} noteId={noteId} />
       <CollabSyncBridge
         editor={editor}
         ydoc={ydoc}

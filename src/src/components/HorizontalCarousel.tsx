@@ -5,7 +5,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Box, IconButton, type SxProps, type Theme } from "@mui/material";
+import { Box, IconButton, Paper, type SxProps, type Theme } from "@mui/material";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
@@ -78,15 +78,28 @@ export const HorizontalCarousel: React.FC<HorizontalCarouselProps> = ({
       stepWidthRef.current = 0;
       return;
     }
-    const first = el.children[0] as HTMLElement;
-    stepWidthRef.current = first.offsetWidth + gap;
-  }, [gap]);
+    // Children can be wrapped in a `display: contents` node (e.g. a
+    // context-menu wrapper). Such a node generates no box, so its
+    // `offsetWidth` is 0 -- measuring it would make the arrows advance by
+    // the gap only. Walk down to the first child that actually renders a
+    // box before measuring.
+    let first = el.firstElementChild as HTMLElement | null;
+    while (first && getComputedStyle(first).display === "contents") {
+      first = first.firstElementChild as HTMLElement | null;
+    }
+    // The CSS column-gap is a resolved pixel value (MUI turns the numeric
+    // spacing prop into px), so read it back instead of using the raw prop
+    // -- `gap` is a spacing multiplier, not pixels.
+    const gapPx = parseFloat(getComputedStyle(el).columnGap) || 0;
+    const width = first ? first.offsetWidth : el.clientWidth;
+    stepWidthRef.current = (width || el.clientWidth) + gapPx;
+  }, []);
 
   // Re-measure step width whenever children or gap change.
   useEffect(() => {
     measureStep();
     recomputeScrollState();
-  }, [measureStep, recomputeScrollState, children]);
+  }, [measureStep, recomputeScrollState, children, gap]);
 
   // Wire up scroll + resize listeners for arrow visibility.
   useEffect(() => {
@@ -161,42 +174,50 @@ export const HorizontalCarousel: React.FC<HorizontalCarouselProps> = ({
       </Box>
 
       {arrows && canScrollLeft && (
-        <IconButton
-          aria-label="scroll left"
-          onClick={() => scrollOne(-1)}
+        <Paper
+          elevation={8}
           sx={{
             position: "absolute",
             top: "50%",
             left: 4,
             transform: "translateY(-50%)",
-            backgroundColor: "background.paper",
-            boxShadow: 2,
-            "&:hover": { backgroundColor: "background.paper" },
-            zIndex: 1,
-            ...arrowSx,
+            borderRadius: "50%",
+            display: "flex",
+            zIndex: 4,
           }}
         >
-          <ChevronLeftIcon />
-        </IconButton>
+          <IconButton
+            aria-label="scroll left"
+            onClick={() => scrollOne(-1)}
+            size="small"
+            sx={arrowSx}
+          >
+            <ChevronLeftIcon />
+          </IconButton>
+        </Paper>
       )}
       {arrows && canScrollRight && (
-        <IconButton
-          aria-label="scroll right"
-          onClick={() => scrollOne(1)}
+        <Paper
+          elevation={8}
           sx={{
             position: "absolute",
             top: "50%",
             right: 4,
             transform: "translateY(-50%)",
-            backgroundColor: "background.paper",
-            boxShadow: 2,
-            "&:hover": { backgroundColor: "background.paper" },
-            zIndex: 1,
-            ...arrowSx,
+            borderRadius: "50%",
+            display: "flex",
+            zIndex: 4,
           }}
         >
-          <ChevronRightIcon />
-        </IconButton>
+          <IconButton
+            aria-label="scroll right"
+            onClick={() => scrollOne(1)}
+            size="small"
+            sx={arrowSx}
+          >
+            <ChevronRightIcon />
+          </IconButton>
+        </Paper>
       )}
     </Box>
   );

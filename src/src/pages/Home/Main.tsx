@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { Box, Stack, Typography } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
-import CreateIcon from "@mui/icons-material/Create";
 import FolderIcon from "@mui/icons-material/Folder";
 import HistoryIcon from "@mui/icons-material/History";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import ScheduleIcon from "@mui/icons-material/Schedule";
 import StarIcon from "@mui/icons-material/Star";
+import NotesIcon from "@mui/icons-material/Notes";
 import {
   usePanelSize,
   useLeftPanel,
@@ -16,9 +15,7 @@ import {
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { UpperPanel } from "../../components/Panels/UpperPanel";
 import { PanelSection } from "../../components/Panels/PanelSection";
-import { PanelButtons } from "../../components/Panels/PanelButtons";
 import { NavigationSection } from "../../components/Panels/NavigationSection";
-import { DirectorySideView } from "../MainPage/DirectorySideView";
 import { RecentActivityPanel } from "../../components/RecentActivity/Main";
 import {
   FrequentlyUsedPanel,
@@ -28,7 +25,10 @@ import { CreateNote } from "../MainPage/CreateNote";
 import { CreateDirectoryModal } from "../MainPage/CreateDirectory";
 import { FavouriteDirectories } from "./FavouriteDirectories";
 import { AllDirectories } from "./AllDirectories";
-import { M3, M4 } from "../../statics";
+import { HomeGreeting } from "./HomeGreeting";
+import { RecentNotes } from "./RecentNotes";
+import { DraftNotes } from "./DraftNotes";
+import { useNotesByScope } from "../../api/queries/useNotesByScope";
 import { useCreateModalsFromUrl } from "../../hooks/useCreateModalsFromUrl";
 import { usePageHoldShortcuts } from "../../hooks/usePageHoldShortcuts";
 import { HoldKeyActionBar } from "../../components/HoldKeyActionBar";
@@ -39,12 +39,8 @@ import { FabSlot } from "../../components/FabSlot";
 export const HomePage: React.FC = () => {
   const [createNoteOpen, setCreateNoteOpen] = useState(false);
   const [createDirectoryOpen, setCreateDirectoryOpen] = useState(false);
-  const {
-    rightPanelOpen,
-    leftPanelOpen,
-    leftPanelUserOverride,
-    setLeftPanelOpen,
-  } = useLayout();
+  const { leftPanelOpen, leftPanelUserOverride, setLeftPanelOpen } =
+    useLayout();
   const { isMobile } = useBreakpoint();
 
   // Hold-to-run shortcuts for this page (see config/shortcuts.json).
@@ -59,6 +55,10 @@ export const HomePage: React.FC = () => {
     setCreateNoteOpen,
     setCreateDirectoryOpen,
   });
+
+  // Shared by the greeting (today-count) and the Recent notes row so the
+  // two sections resolve from a single cached request.
+  const { data: recentNotes } = useNotesByScope({ limit: 50 });
 
   useRightPanel(null);
   usePanelSize({ left: "clamp(20rem, 25vw, 30rem)" });
@@ -108,9 +108,16 @@ export const HomePage: React.FC = () => {
         height: "100%",
         p: 1,
         overflow: "auto",
+        // The app has no global border-box reset, so under the default
+        // `content-box` this `width: 100%` + padding would render 16px
+        // wider than the scroll container and make the page scroll
+        // horizontally. Keep padding inside the width.
+        boxSizing: "border-box",
       }}
     >
       <Stack spacing={3}>
+        <HomeGreeting notes={recentNotes} />
+
         <Stack direction="column" spacing={2}>
           <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
             <StarIcon color="primary" fontSize="small" />
@@ -129,6 +136,18 @@ export const HomePage: React.FC = () => {
             </Typography>
           </Stack>
           <AllDirectories />
+        </Stack>
+
+        <DraftNotes />
+
+        <Stack direction="column" spacing={2}>
+          <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+            <NotesIcon color="primary" fontSize="small" />
+            <Typography variant="h5" color="textPrimary">
+              Recent notes
+            </Typography>
+          </Stack>
+          <RecentNotes notes={recentNotes} />
         </Stack>
       </Stack>
       <FabSlot>

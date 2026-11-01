@@ -9,6 +9,7 @@ import { logContentSet, logCollabContent } from "../hooks/collabContentLog";
 import { NoteApi } from "../api/NoteApi";
 import { queryClient } from "../api/queryClient";
 import useInfoStore, { SnackbarUpdateImpl } from "./InfoStore";
+import { useDraftStore } from "./useDraftStore";
 
 interface ActiveNoteState {
   noteId: string | undefined;
@@ -250,6 +251,10 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => {
       try {
         const saved = await get().updateNote(finalTitle, finalContent);
         await onNoteUpdated?.(saved); // call hook
+        // The note now matches what is on the server, so it is no longer
+        // a draft. Cleared only on success so a failed save keeps the
+        // draft visible on Home.
+        useDraftStore.getState().clearDraft(noteId);
         set({ title: finalTitle });
         useInfoStore
           .getState()
