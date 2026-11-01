@@ -22,6 +22,7 @@ import { CustomHtml } from "./CustomHtml";
 import { CustomHardBreak } from "./CustomHardBreak";
 import { CustomDetails } from "./CustomDetails";
 import { DetailsContent, DetailsSummary } from "@tiptap/extension-details";
+import { markdownToProsemirror } from "../../utils/converters/toProsemirror/markdownToProsemirror";
 
 // Inline copy of the style-aware image so the test stays free of
 // @tiptap/react (which transitively pulls MUI and breaks ESM resolution
@@ -417,5 +418,208 @@ describe("CustomImage visual style", () => {
     expect(img).not.toBeNull();
     // Style is parsed and applied to the element directly.
     expect((img as HTMLImageElement).style.width).toBe("200px");
+  });
+});
+
+describe("CustomHtml preservation for schema-known tags", () => {
+  // A custom-styled table must stay a real, editable table in the rich
+  // view, but serialize back to the exact HTML the user typed. Rendering
+  // it as markdown would silently drop the style attribute the schema
+  // does not model.
+  const styledTable =
+    '<table style="width: 100%; border: 1px solid red"><tbody><tr><td>a</td><td>b</td></tr></tbody></table>';
+
+  it("parses a styled <table> into a real table node", () => {
+    const editor = freshEditor();
+    editor.commands.setContent(styledTable, { contentType: "markdown" });
+
+    const doc = editor.getJSON() as unknown as {
+      content?: Array<{ type?: string; attrs?: Record<string, unknown> }>;
+    };
+    expect(doc.content?.[0]?.type).toBe("table");
+    // The raw HTML is persisted on the node so serialization can use it.
+    expect(doc.content?.[0]?.attrs?.htmlSource).toBe(styledTable);
+
+    // And the rich view renders an actual <table> element.
+    const dom = editor.view.dom as HTMLElement;
+    expect(dom.querySelector("table")).not.toBeNull();
+  });
+
+  it("serializes the styled <table> back as HTML, not markdown", () => {
+    const editor = freshEditor();
+    editor.commands.setContent(styledTable, { contentType: "markdown" });
+
+    const out = editor.getMarkdown();
+
+    expect(out).toContain("<table");
+    expect(out).toContain('style="width: 100%; border: 1px solid red"');
+    // It must not have been rewritten to a markdown pipe table.
+    expect(out).not.toContain("| --- |");
+  });
+
+  it("survives a source -> rich -> source round-trip", () => {
+    const editor = freshEditor();
+    editor.commands.setContent(styledTable, { contentType: "markdown" });
+
+    const once = editor.getMarkdown();
+    editor.commands.setContent(once, { contentType: "markdown" });
+    const twice = editor.getMarkdown();
+
+    expect(once).toContain(styledTable);
+    expect(twice).toBe(once);
+  });
+
+  it("preserves other known block tags (<div>) as HTML", () => {
+    const editor = freshEditor();
+    const src = '<div class="note-box"><p>hello</p></div>';
+    editor.commands.setContent(src, { contentType: "markdown" });
+
+    const out = editor.getMarkdown();
+
+    expect(out).toContain('<div class="note-box">');
+    expect(out).toContain("<p>hello</p>");
+  });
+
+  it("keeps markdown tables that were not written as HTML as markdown", () => {
+    const editor = freshEditor();
+    editor.commands.setContent("| a | b |\n| --- | --- |\n| c | d |\n", {
+      contentType: "markdown",
+    });
+
+    const out = editor.getMarkdown();
+
+    expect(out).toContain("| --- |");
+    expect(out).not.toContain("<table");
+  });
+
+  it("does not leak the internal htmlSource attribute into the DOM", () => {
+    const editor = freshEditor();
+    editor.commands.setContent(styledTable, { contentType: "markdown" });
+
+    const dom = editor.view.dom as HTMLElement;
+    expect(dom.innerHTML).not.toContain("htmlSource");
+  });
+
+  it("preserves htmlSource when serializing the manager directly", () => {
+    const editor = freshEditor();
+    editor.commands.setContent(styledTable, { contentType: "markdown" });
+
+    // editor.getMarkdown() routes through manager.serialize; assert the
+    // manager itself also preserves, so a caller that bypasses
+    // getMarkdown cannot silently drop the raw HTML.
+    const direct = editor.storage.markdown.manager.serialize(editor.getJSON());
+
+    expect(direct).toContain("<table");
+    expect(direct).toContain('style="width: 100%; border: 1px solid red"');
+    expect(direct).not.toContain("| --- |");
+  });
+
+  it("keeps htmlSource through the collab normalization path", () => {
+    const editor = freshEditor();
+    // markdownToProsemirror runs normalizeTables/normalizeListInCells,
+    // which must not strip the preservation attribute off the table.
+    const doc = markdownToProsemirror(editor, styledTable) as unknown as {
+      content?: Array<{ type?: string; attrs?: Record<string, unknown> }>;
+    };
+
+    expect(doc.content?.[0]?.type).toBe("table");
+    expect(doc.content?.[0]?.attrs?.htmlSource).toBe(styledTable);
+  });
+});
+
+describe("CustomHtml regeneration after editing a preserved table", () => {
+  // Rich custom table with per-cell styles, so we can assert both the
+  // table-level and cell-level styling survive an edit.
+  const richTable =
+    '<table style="border:2px solid #7c3aed"><thead><tr><th style="background:#ede9fe">A</th><th>B</th></tr></thead><tbody><tr><td style="padding:8px">1</td><td>2</td></tr></tbody></table>';
+
+  it("keeps the original HTML byte-for-byte while unedited", () => {
+    const editor = freshEditor();
+    editor.commands.setContent(richTable, { contentType: "markdown" });
+
+    expect(editor.getMarkdown()).toContain(richTable);
+  });
+
+  it("regenerates the HTML when a row is added and keeps custom styles", () => {
+    const editor = freshEditor();
+    editor.commands.setContent(richTable, { contentType: "markdown" });
+    // Put the caret in the first cell, then add a row after it.
+    editor.commands.setTextSelection(4);
+    editor.chain().addRowAfter().run();
+
+    const out = editor.getMarkdown();
+
+    // Table- and cell-level styles survive the regeneration.
+    expect(out).toContain("border:2px solid #7c3aed");
+    expect(out).toContain("background:#ede9fe");
+    expect(out).toContain("padding:8px");
+    // Header + the original body row + the new body row.
+    expect((out.match(/<tr/g) ?? []).length).toBe(3);
+    // No schema `<colgroup>` noise was introduced.
+    expect(out).not.toContain("<colgroup");
+  });
+
+  it("keeps cell styles aligned when a row is inserted in the middle", () => {
+    const editor = freshEditor();
+    const src =
+      '<table style="border:2px solid #7c3aed"><thead><tr><th>H</th></tr></thead><tbody><tr><td style="padding:1px">1</td></tr><tr><td style="padding:2px">2</td></tr></tbody></table>';
+    editor.commands.setContent(src, { contentType: "markdown" });
+
+    let textPos = -1;
+    editor.state.doc.descendants((node, pos) => {
+      if (node.isText && node.text === "1") {
+        textPos = pos;
+        return false;
+      }
+      return true;
+    });
+    editor.commands.setTextSelection(textPos);
+    editor.chain().addRowAfter().run();
+
+    const parsed = new DOMParser().parseFromString(
+      editor.getMarkdown(),
+      "text/html",
+    );
+    const cells = Array.from(parsed.querySelectorAll("td"));
+    const cell1 = cells.find((cell) => cell.textContent?.trim() === "1");
+    const cell2 = cells.find((cell) => cell.textContent?.trim() === "2");
+
+    expect(cell1?.getAttribute("style")).toBe("padding:1px");
+    expect(cell2?.getAttribute("style")).toBe("padding:2px");
+  });
+
+  it("reflects a cell text edit and keeps the surrounding styles", () => {
+    const editor = freshEditor();
+    editor.commands.setContent(richTable, { contentType: "markdown" });
+
+    let textPos = -1;
+    editor.state.doc.descendants((node, pos) => {
+      if (node.isText && node.text === "1") {
+        textPos = pos;
+        return false;
+      }
+      return true;
+    });
+    expect(textPos).toBeGreaterThanOrEqual(0);
+    editor.commands.insertContentAt({ from: textPos, to: textPos + 1 }, "one");
+
+    const out = editor.getMarkdown();
+
+    expect(out).toContain("one");
+    expect(out).toContain("border:2px solid #7c3aed");
+    expect(out).toContain("padding:8px");
+  });
+
+  it("is stable across a regeneration round-trip", () => {
+    const editor = freshEditor();
+    editor.commands.setContent(richTable, { contentType: "markdown" });
+    editor.commands.setTextSelection(4);
+    editor.chain().addRowAfter().run();
+
+    const once = editor.getMarkdown();
+    editor.commands.setContent(once, { contentType: "markdown" });
+    const twice = editor.getMarkdown();
+
+    expect(twice).toBe(once);
   });
 });
