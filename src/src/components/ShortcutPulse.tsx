@@ -22,6 +22,21 @@ const pulseAnimation = keyframes`
 `;
 
 /**
+ * Whether the Web Animations API is available. jsdom (tests) does not
+ * implement it, so there we fall back to a declarative CSS animation.
+ */
+const supportsWaapi =
+  typeof Element !== "undefined" &&
+  typeof Element.prototype.animate === "function";
+
+/** Keyframes for the imperative sweep (Web Animations API). */
+const sweepKeyframes: Keyframe[] = [
+  { transform: "translateX(-130%)", opacity: 0 },
+  { opacity: 0.9, offset: 0.2 },
+  { transform: "translateX(130%)", opacity: 0 },
+];
+
+/**
  * App-root confirmation pulse for hold-to-run shortcuts. Rendered
  * outside the editor tree so an action that remounts the editor
  * (entering/leaving insert mode) can never cut the pulse short.
@@ -54,21 +69,43 @@ export const ShortcutPulse: React.FC = () => {
     return stopTimer;
   }, [pulse, clearPulse, stopTimer]);
 
-  const handleSweepEnd = useCallback(() => {
-    if (!pulse) return;
-    stopTimer();
-    clearPulse(pulse.id);
-  }, [pulse, clearPulse, stopTimer]);
-
-  // A native listener (not React's `onAnimationEnd`) is used so the
-  // event is observed regardless of how the environment synthesises
-  // `animationend`, matching the hold bar's own fill handling.
+  // Start the sweep *after* the element has been painted. A
+  // declarative CSS animation starts counting from the style recalc,
+  // which happens while the action that triggered the pulse is still
+  // remounting the editor. When the main thread unblocks the sweep is
+  // already near its end, so the user only catches the tail. Driving
+  // the animation imperatively from a passive effect (post-paint) makes
+  // it start from the beginning. jsdom falls back to the CSS animation.
   useEffect(() => {
     const node = sweepRef.current;
-    if (!node) return;
-    node.addEventListener("animationend", handleSweepEnd);
-    return () => node.removeEventListener("animationend", handleSweepEnd);
-  }, [pulse, handleSweepEnd]);
+    if (!node || !pulse) return;
+
+    const handleFinish = () => {
+      stopTimer();
+      clearPulse(pulse.id);
+    };
+
+    if (supportsWaapi) {
+      const animation = node.animate(sweepKeyframes, {
+        duration: SHORTCUT_PULSE_DURATION_MS,
+        easing: "ease-out",
+        fill: "forwards",
+      });
+      // A throttled/blocked tab can finish the sweep before we attach.
+      if (animation.playState === "finished") {
+        handleFinish();
+        return;
+      }
+      animation.addEventListener("finish", handleFinish);
+      return () => {
+        animation.removeEventListener("finish", handleFinish);
+        animation.cancel();
+      };
+    }
+
+    node.addEventListener("animationend", handleFinish);
+    return () => node.removeEventListener("animationend", handleFinish);
+  }, [pulse, clearPulse, stopTimer]);
 
   if (!pulse) {
     return null;
@@ -144,8 +181,13 @@ export const ShortcutPulse: React.FC = () => {
             position: "absolute",
             inset: 0,
             pointerEvents: "none",
+            // Hidden until the imperative animation starts (or until the
+            // CSS fallback's own first keyframe takes over).
+            opacity: 0,
             background: `linear-gradient(90deg, transparent, ${theme.palette.primary.main}, transparent)`,
-            animation: `${pulseAnimation} ${SHORTCUT_PULSE_DURATION_MS}ms ease-out forwards`,
+            ...(!supportsWaapi && {
+              animation: `${pulseAnimation} ${SHORTCUT_PULSE_DURATION_MS}ms ease-out forwards`,
+            }),
           }}
         />
       </Box>
