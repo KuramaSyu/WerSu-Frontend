@@ -141,3 +141,37 @@ describe("AttachmentApi.getAttachmentMetadata share auth", () => {
     expect(headersOf(calls[0].init).Authorization).toBeUndefined();
   });
 });
+
+// The attachment key is `attachments/<uuid>` (it contains a slash) and the
+// backend deliberately exposes it as a `key` query parameter, not a path
+// segment. `GET /api/attachments/attachments/<uuid>` matches no route and
+// 404s, so both the raw download and the persisted link must use the query
+// form.
+describe("AttachmentApi attachment URLs use the key query parameter", () => {
+  it("getAttachment fetches /api/attachments/?key=...", async () => {
+    const { calls } = mockFetch({ blob: async () => new Blob(["x"]) });
+    const api = new AttachmentApi();
+
+    const blob = await api.getAttachment("attachments/att-1");
+
+    expect(blob).not.toBeNull();
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toContain("/api/attachments/?key=");
+    expect(calls[0].url).toContain("attachments%2Fatt-1");
+    expect(calls[0].url).not.toContain("/api/attachments/attachments");
+  });
+
+  it("linkAttachment returns /api/attachments/?key=... for the persisted link", async () => {
+    mockFetch({ json: async () => ({}) });
+    const api = new AttachmentApi();
+
+    const url = await api.linkAttachment({
+      attachment_key: "attachments/att-1",
+      note_id: "note-1",
+    });
+
+    expect(url).not.toBeNull();
+    expect(url).toContain("/api/attachments/?key=attachments%2Fatt-1");
+    expect(url).not.toContain("/attachments/attachments");
+  });
+});

@@ -12,9 +12,10 @@ export const SYNCED_THEME_IMAGE_WIDTH_DESKTOP = 1080;
 export const SYNCED_THEME_IMAGE_WIDTH_MOBILE = 720;
 
 /**
- * True when `source` points at one of our attachment endpoints: either the
- * `linkAttachment` shape (`/attachments/<key>`) or an already-built image
- * URL (`/api/attachments/image?...`). An arbitrary remote image is not an
+ * True when `source` points at one of our attachment endpoints: the
+ * `linkAttachment` shape (`/api/attachments/?key=...`, or the legacy
+ * `/attachments/<key>`), or an already-built image URL
+ * (`/api/attachments/image?...`). An arbitrary remote image is not an
  * attachment and must be left alone — `extractAttachmentKeyFromUrl` would
  * otherwise mistake its last path segment for a key.
  */
@@ -32,13 +33,51 @@ function isAttachmentSource(source: string): boolean {
 }
 
 /**
+ * Rewrite an attachment reference to the backend's image endpoint.
+ *
+ * `linkAttachment`/preferences persist different shapes over time:
+ * the current `/api/attachments/?key=...` download URL and the legacy
+ * `/attachments/<key>` path. There is no backend route for the path
+ * form, so both are recovered to the raw key and fed through
+ * `AttachmentLinkBuilder`, which emits the fetchable
+ * `/api/attachments/image?[width=...&format=webp&]key=…` URL. Empty
+ * values, device-local `local:<id>` blobs and non-attachment URLs pass
+ * through untouched.
+ *
+ * `width` (optional) caps the requested image width; when omitted the
+ * builder's own default applies.
+ */
+export function toAttachmentImageUrl(
+  source: string,
+  width: number | null = null,
+): string {
+  if (source.length === 0 || source.startsWith("local:")) {
+    return source;
+  }
+  if (!isAttachmentSource(source)) {
+    return source;
+  }
+  const key = extractAttachmentKeyFromUrl(source);
+  if (key.length === 0) {
+    return source;
+  }
+  const builder = new AttachmentLinkBuilder(getAttachmentApi()).setFormat(
+    "webp",
+  );
+  if (width !== null) {
+    builder.setWidth(width);
+  }
+  return builder.getLink(key);
+}
+
+/**
  * Rewrite a synced theme's remote background images to the attachment image
  * endpoint at `width`.
  *
- * `publishCustomThemes` stores whatever `linkAttachment` returned
- * (`/attachments/<key>`); here we recover the raw attachment key and feed it
- * through `AttachmentLinkBuilder` so the browser downloads a width-capped
- * WebP variant (e.g. `.../api/attachments/image?width=1080&format=webp&key=…`)
+ * `publishCustomThemes` stores whatever `linkAttachment` returned; here we
+ * recover the raw attachment key and feed it through
+ * `AttachmentLinkBuilder` so the browser downloads a width-capped WebP
+ * variant (e.g. `.../api/attachments/image?width=1080&format=webp&key=…`)
  * instead of the original object. Empty values, device-local `local:<id>`
  * blobs and non-attachment URLs pass through untouched.
  */
@@ -46,29 +85,13 @@ export function withSyncedImageWidth(
   record: GeneratedThemeRecord,
   width: number,
 ): GeneratedThemeRecord {
-  const attachmentApi = getAttachmentApi();
-
-  const rewrite = (source: string): string => {
-    if (source.length === 0 || source.startsWith("local:")) {
-      return source;
-    }
-    if (!isAttachmentSource(source)) {
-      return source;
-    }
-    const key = extractAttachmentKeyFromUrl(source);
-    if (key.length === 0) {
-      return source;
-    }
-    return new AttachmentLinkBuilder(attachmentApi)
-      .setWidth(width)
-      .setFormat("webp")
-      .getLink(key);
-  };
-
   return {
     ...record,
-    backgroundImage: rewrite(record.backgroundImage),
-    blurredBackgroundImage: rewrite(record.blurredBackgroundImage),
+    backgroundImage: toAttachmentImageUrl(record.backgroundImage, width),
+    blurredBackgroundImage: toAttachmentImageUrl(
+      record.blurredBackgroundImage,
+      width,
+    ),
   };
 }
 

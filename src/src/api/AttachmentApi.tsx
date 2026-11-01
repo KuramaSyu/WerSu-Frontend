@@ -260,17 +260,18 @@ export class AttachmentApi
   }
 
   async getAttachment(key: string): Promise<Blob | null> {
-    const response = await fetch(
-      `${BACKEND_BASE}${ATTACHMENTS_API_PATH}/${key}`,
-      await this.getFetchParameters("GET"),
-    );
+    // The key is a path like `attachments/<uuid>` (it contains a slash) so
+    // it cannot be a route parameter. `GET /api/attachments/` expects it as
+    // the `key` query parameter.
+    const url = `${BACKEND_BASE}${ATTACHMENTS_API_PATH}/?key=${encodeURIComponent(key)}`;
+    const response = await fetch(url, await this.getFetchParameters("GET"));
 
     if (response.ok) {
       return response.blob();
     }
 
     this.logError(
-      `${ATTACHMENTS_API_PATH}/${key}`,
+      url,
       `Response not ok: ${response.status}; ${response.statusText}`,
     );
     return null;
@@ -357,8 +358,12 @@ export class AttachmentApi
     });
 
     if (response.ok) {
-      // encode payload key since s3 path contains / which confuses the GIN REST API
-      return `${BACKEND_BASE}/attachments/${encodeURIComponent(payload.attachment_key)}`;
+      // The key is a path like `attachments/<uuid>` (it contains a slash),
+      // and there is no `/attachments/:key` backend route. Store the
+      // canonical download URL with the key as a query parameter so the
+      // persisted link is actually fetchable. Consumers that need an image
+      // variant rebuild it from the key (see `AttachmentLinkBuilder`).
+      return `${BACKEND_BASE}${ATTACHMENTS_API_PATH}/?key=${encodeURIComponent(payload.attachment_key)}`;
     }
 
     this.logError(

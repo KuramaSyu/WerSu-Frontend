@@ -141,13 +141,16 @@ export function extractShareIdFromUrl(input: string): string {
 /**
  * Pulls the attachment key out of an attachment URL.
  *
- * Two URL shapes exist in this codebase:
+ * Several URL shapes exist in this codebase:
  *   1. `/api/attachments/image?key=<encoded>` — produced by
  *      `AttachmentApi.generateImageLink(...)`.
- *   2. `/attachments/<encoded key>[?width=...&jwt=...]` — produced by
+ *   2. `/api/attachments/?key=<encoded>` — produced by
  *      `linkAttachment(...)`, the URL that gets persisted in note
- *      content. Decoration params (`width`, `format`, `jwt`, ...) ride
- *      along on the query string and should be ignored.
+ *      content and preferences. Decoration params (`width`, `format`,
+ *      `jwt`, ...) ride along on the query string and should be ignored.
+ *   3. Legacy `/attachments/<encoded key>[?...]` — the old path form
+ *      emitted by `linkAttachment(...)` before the query-param fix. Kept
+ *      here so already-persisted links can still be resolved.
  *
  * Strategy: first try the `key` query param, then fall back to the
  * last non-empty path segment. The result is `decodeURIComponent`-d
@@ -165,7 +168,17 @@ export function extractAttachmentKeyFromUrl(input: string): string {
   try {
     url = new URL(trimmed);
   } catch {
-    return "";
+    // Backend-relative links (`/api/attachments/...`) are common when
+    // `BACKEND_BASE` is empty. Parse only true rooted paths against a
+    // throwaway origin so arbitrary strings are still rejected.
+    if (!trimmed.startsWith("/")) {
+      return "";
+    }
+    try {
+      url = new URL(trimmed, "http://attachment.invalid");
+    } catch {
+      return "";
+    }
   }
 
   const queryKey = url.searchParams.get("key");

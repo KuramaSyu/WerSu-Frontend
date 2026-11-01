@@ -62,6 +62,19 @@ describe("withSyncedImageWidth", () => {
     );
   });
 
+  it("rewrites the raw query-param download URL to the image endpoint", () => {
+    const key = "attachments/abc-123";
+    const record = makeRecord({
+      backgroundImage: `${BACKEND_BASE}/api/attachments/?key=${encodeURIComponent(key)}`,
+    });
+
+    const result = withSyncedImageWidth(record, 1080);
+
+    expect(result.backgroundImage).toContain("/api/attachments/image");
+    expect(result.backgroundImage).toContain("width=1080");
+    expect(result.backgroundImage).toContain("format=webp");
+  });
+
   it("uses the mobile width when asked", () => {
     const key = "attachments/abc-123";
     const record = makeRecord({

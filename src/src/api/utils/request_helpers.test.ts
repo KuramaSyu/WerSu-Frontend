@@ -299,9 +299,10 @@ describe("extractAttachmentKeyFromUrl", () => {
   });
 
   it("falls back to the last path segment when no key= query param is present", () => {
-    // This is the URL shape that linkAttachment() writes into note
-    // content: /attachments/<encoded uuid>, optionally followed by
-    // decoration params (width/format/jwt) on the query string.
+    // Legacy shape written by an older linkAttachment() implementation:
+    // /attachments/<encoded uuid>, optionally followed by decoration
+    // params (width/format/jwt) on the query string. New links use the
+    // query-param form, but persisted legacy links must still resolve.
     expect(
       extractAttachmentKeyFromUrl(
         "https://api.example.com/attachments/0195f8f4-1167-7f89-b5ec-b40a8f08f4cb",
@@ -345,6 +346,15 @@ describe("extractAttachmentKeyFromUrl", () => {
         "https://api.example.com/attachments/path-key?key=query-key",
       ),
     ).toBe("query-key");
+  });
+
+  it("parses backend-relative URLs (empty BACKEND_BASE)", () => {
+    expect(
+      extractAttachmentKeyFromUrl("/api/attachments/image?key=abc%2F123"),
+    ).toBe("abc/123");
+    expect(
+      extractAttachmentKeyFromUrl("/attachments/attachments%2Fabc"),
+    ).toBe("attachments/abc");
   });
 
   it("returns empty string when no key param or path segment is present", () => {

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useImageBlobCacheStore } from "../zustand/useImageBlobCache";
 import { fetchImageBlob } from "../utils/imageBlur";
+import { toAttachmentImageUrl } from "../utils/syncedThemeImages";
 
 /**
  * Resolve a theme background image to an object URL backed by IndexedDB.
@@ -16,44 +17,56 @@ import { fetchImageBlob } from "../utils/imageBlur";
  * renders an empty background.
  */
 export function useCachedImageUrl(url: string): string | null {
+  // Stored theme backgrounds may still use the legacy `/attachments/<key>`
+  // shape, which has no backend route. Normalise attachment references to
+  // the image endpoint before caching/fetching so the persisted URL and
+  // the object URL agree.
+  const resolvedUrl = toAttachmentImageUrl(url);
   const cached = useImageBlobCacheStore((s) =>
-    url.length > 0 ? (s.byUrl.get(url)?.objectUrl ?? null) : null,
+    resolvedUrl.length > 0
+      ? (s.byUrl.get(resolvedUrl)?.objectUrl ?? null)
+      : null,
   );
   const hydrated = useImageBlobCacheStore((s) => s.hydrated);
   const put = useImageBlobCacheStore((s) => s.put);
 
-  const isLocal = url.startsWith("local:");
+  const isLocal = resolvedUrl.startsWith("local:");
 
   useEffect(() => {
     // Cache hit, empty slot, device-local key, or cache not hydrated yet:
     // there is nothing to download.
-    if (url.length === 0 || cached !== null || isLocal || !hydrated) {
+    if (
+      resolvedUrl.length === 0 ||
+      cached !== null ||
+      isLocal ||
+      !hydrated
+    ) {
       return;
     }
     let cancelled = false;
     void (async () => {
       try {
-        const blob = await fetchImageBlob(url);
+        const blob = await fetchImageBlob(resolvedUrl);
         if (!cancelled) {
-          await put(url, blob);
+          await put(resolvedUrl, blob);
         }
       } catch (err) {
         // CORS / offline / 404: keep the raw URL fallback. The effect will
         // not retry on its own because `cached` stays null and the deps
         // are unchanged.
-        console.warn(`[image-cache] could not cache ${url}:`, err);
+        console.warn(`[image-cache] could not cache ${resolvedUrl}:`, err);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [url, cached, isLocal, hydrated, put]);
+  }, [resolvedUrl, cached, isLocal, hydrated, put]);
 
-  if (url.length === 0) {
+  if (resolvedUrl.length === 0) {
     return null;
   }
   if (isLocal) {
     return cached;
   }
-  return cached ?? url;
+  return cached ?? resolvedUrl;
 }

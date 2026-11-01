@@ -16,6 +16,7 @@ import { useImageBlobCacheStore } from "../zustand/useImageBlobCache";
 import { useCachedImageUrl } from "../hooks/useCachedImageUrl";
 import useInfoStore, { SnackbarUpdateImpl } from "../zustand/InfoStore";
 import { blurImageToWebp, fetchImageBlob } from "../utils/imageBlur";
+import { toAttachmentImageUrl } from "../utils/syncedThemeImages";
 import {
   DEFAULT_THEME_BLUR,
   MAX_THEME_NAME_LENGTH,
@@ -157,7 +158,9 @@ export const ThemeEditModal: React.FC<ThemeEditModalProps> = ({
           const entry = await cache.resolve(record.backgroundImage);
           sourceBlob = entry?.blob;
         } else if (record.backgroundImage.length > 0) {
-          sourceBlob = await fetchImageBlob(record.backgroundImage);
+          sourceBlob = await fetchImageBlob(
+            toAttachmentImageUrl(record.backgroundImage),
+          );
         }
         if (sourceBlob === undefined) {
           throw new Error("the original image is no longer available");
