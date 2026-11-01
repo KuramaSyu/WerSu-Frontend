@@ -117,7 +117,6 @@ export function useInfiniteNoteSearch(
      * determines pageParam = offset for the next call
      */
     getNextPageParam: (lastPage, allPages) => {
-      console.log("lastPage", lastPage);
       if (lastPage.length < limit) {
         return undefined;
       }

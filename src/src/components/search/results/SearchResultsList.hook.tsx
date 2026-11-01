@@ -42,7 +42,9 @@ const flattenPages = (
 // Provider: single useInfiniteNoteSearch call drives the whole overlay.
 export const SearchResultsProvider: React.FC<{
   children: React.ReactNode;
-}> = ({ children }) => {
+  /** Only run the search while the overlay is actually open. */
+  enabled?: boolean;
+}> = ({ children, enabled = true }) => {
   const filter = useSearchFilterStore((s) => s.filter);
   const searchType = useSearchFilterStore((s) => s.searchType);
   const debouncedSearch = useSearchFilterStore((s) => s.debouncedSearch);
@@ -56,7 +58,7 @@ export const SearchResultsProvider: React.FC<{
     searchType,
     debouncedSearch,
     30,
-    searchEnabled,
+    searchEnabled && enabled,
   );
 
   // Flatten pages on real page arrivals only. TanStack mutates

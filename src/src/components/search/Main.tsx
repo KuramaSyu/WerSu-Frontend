@@ -238,7 +238,7 @@ const SearchResultsOverlayInner: React.FC<SearchResultsOverlayProps> = ({
 export const SearchResultsOverlay: React.FC<SearchResultsOverlayProps> = (
   props,
 ) => (
-  <SearchResultsProvider>
+  <SearchResultsProvider enabled={props.open}>
     <SearchResultsOverlayInner {...props} />
   </SearchResultsProvider>
 );

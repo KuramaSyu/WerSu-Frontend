@@ -113,7 +113,6 @@ export class SearchNotesApi implements ISearchNotesApi {
         return null;
       });
       const safe = reply ?? { notes: [], directories: [], tags: [] };
-      console.log("fetched notes reply:", safe);
       return {
         notes: safe.notes ?? [],
         directories: safe.directories ?? [],

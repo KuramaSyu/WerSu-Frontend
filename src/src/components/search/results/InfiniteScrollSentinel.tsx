@@ -15,10 +15,12 @@ export const InfiniteScrollSentinel: React.FC<Props> = ({
   onLoadMore,
 }) => {
   const ref = useRef<HTMLDivElement | null>(null);
+  const isFetchingRef = useRef(isFetchingNextPage);
+  isFetchingRef.current = isFetchingNextPage;
 
   useEffect(() => {
     const node = ref.current;
-    if (!node || !hasNextPage || isFetchingNextPage) return;
+    if (!node || !hasNextPage) return;
 
     // walk up to the nearest scrollable ancestor (the immediate parent isn't)
     let scrollRoot: Element | null = node.parentElement;
@@ -28,9 +30,14 @@ export const InfiniteScrollSentinel: React.FC<Props> = ({
 
     const observer = new IntersectionObserver(
       (entries) => {
-        // disconnect immediately so repeated intersection frames don't refire
-        if (entries.some((e) => e.isIntersecting)) {
-          observer.disconnect();
+        // Keep the observer alive so later scrolls can load more. Guard
+        // with a ref instead of re-creating the observer when a fetch
+        // finishes -- recreating it while the sentinel is still in view
+        // caused an immediate fetchNextPage loop (offset 0, 30, 60...).
+        if (
+          entries.some((e) => e.isIntersecting) &&
+          !isFetchingRef.current
+        ) {
           onLoadMore();
         }
       },
@@ -38,7 +45,7 @@ export const InfiniteScrollSentinel: React.FC<Props> = ({
     );
     observer.observe(node);
     return () => observer.disconnect();
-  }, [hasNextPage, isFetchingNextPage, onLoadMore]);
+  }, [hasNextPage, onLoadMore]);
 
   if (!hasNextPage && !isFetchingNextPage) return null;
   return (
