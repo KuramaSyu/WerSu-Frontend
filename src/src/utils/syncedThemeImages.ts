@@ -2,6 +2,8 @@ import { getAttachmentApi } from "../api/AttachmentApi";
 import { AttachmentLinkBuilder } from "../api/utils/AttachmentLInkBuilder";
 import { extractAttachmentKeyFromUrl } from "../api/utils/request_helpers";
 import type { GeneratedThemeRecord } from "../theme/imageTheme";
+import { useImageBlobCacheStore } from "../zustand/useImageBlobCache";
+import { blurImageToWebp, fetchImageBlob } from "./imageBlur";
 
 /** Background width used when fetching synced theme images on desktop. */
 export const SYNCED_THEME_IMAGE_WIDTH_DESKTOP = 1080;
@@ -68,4 +70,71 @@ export function withSyncedImageWidth(
     backgroundImage: rewrite(record.backgroundImage),
     blurredBackgroundImage: rewrite(record.blurredBackgroundImage),
   };
+}
+
+/**
+ * Deterministic IndexedDB key for a regenerated blurred variant. Keyed by
+ * both the (already width-capped) source URL and the blur amount so a
+ * reload or re-render reuses the persisted blob instead of re-rendering.
+ */
+export function syncedBlurCacheKey(source: string, blur: number): string {
+  let hash = 5381;
+  const input = `${source}|${String(blur)}`;
+  for (let i = 0; i < input.length; i += 1) {
+    hash = ((hash << 5) + hash + input.charCodeAt(i)) >>> 0;
+  }
+  return `local:synced-blur-${hash.toString(36)}`;
+}
+
+/**
+ * Make sure a downloaded theme has a device-local blurred background.
+ *
+ * Published themes only carry the source image URL plus the `blur` amount,
+ * so the consuming client re-renders the blur here and caches it under a
+ * deterministic `local:` key. The source is read from the blob cache when
+ * present, otherwise fetched and cached (which also benefits the actual
+ * background render).
+ *
+ * Returns the record unchanged when blur is disabled, the source is
+ * missing, or the blur already exists as a local blob.
+ */
+export async function ensureSyncedBlur(
+  record: GeneratedThemeRecord,
+): Promise<GeneratedThemeRecord> {
+  if (record.blur <= 0 || record.backgroundImage.length === 0) {
+    return record;
+  }
+  // A device-local variant already exists (regenerated earlier, or a
+  // locally-created theme that happens to share the id).
+  if (record.blurredBackgroundImage.startsWith("local:")) {
+    return record;
+  }
+  const cache = useImageBlobCacheStore.getState();
+  const key = syncedBlurCacheKey(record.backgroundImage, record.blur);
+  if ((await cache.resolve(key)) !== null) {
+    return { ...record, blurredBackgroundImage: key };
+  }
+
+  const sourceEntry = await cache.resolve(record.backgroundImage);
+  let sourceBlob = sourceEntry?.blob ?? null;
+  if (sourceBlob === null && !record.backgroundImage.startsWith("local:")) {
+    try {
+      sourceBlob = await fetchImageBlob(record.backgroundImage);
+      await cache.put(record.backgroundImage, sourceBlob);
+    } catch {
+      // CORS / offline: keep the sharp source (or server-preblurred URL).
+      return record;
+    }
+  }
+  if (sourceBlob === null) {
+    return record;
+  }
+  try {
+    const blurred = await blurImageToWebp(sourceBlob, record.blur);
+    await cache.put(key, blurred);
+    return { ...record, blurredBackgroundImage: key };
+  } catch {
+    // No canvas / unsupported format: keep the sharp source.
+    return record;
+  }
 }

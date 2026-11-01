@@ -20,6 +20,7 @@ import { useSelectedShelfStore } from "../zustand/useSelectedShelfStore";
 import { useThemeStore } from "../zustand/useThemeStore";
 import { useUserStore } from "../zustand/userStore";
 import {
+  ensureSyncedBlur,
   SYNCED_THEME_IMAGE_WIDTH_DESKTOP,
   SYNCED_THEME_IMAGE_WIDTH_MOBILE,
   withSyncedImageWidth,
@@ -69,82 +70,88 @@ export type CustomThemesProgressCallback = (
 ) => void;
 
 /**
- * Count the `local:` images that publishing these records will upload. Used
- * to size the progress bar before the (concurrent) uploads start.
+ * Count the distinct `local:` backgrounds that publishing these records will
+ * upload. Used to size the progress bar before the (concurrent) uploads
+ * start. The blurred variant is never uploaded (the consumer regenerates it
+ * from the source + `blur`), and a dark/light pair sharing one image counts
+ * once.
  */
 export function countLocalThemeImages(
   themes: GeneratedThemeRecord[],
 ): number {
-  let count = 0;
+  const sources = new Set<string>();
   for (const record of themes) {
     if (record.backgroundImage.startsWith("local:")) {
-      count += 1;
-    }
-    if (record.blurredBackgroundImage.startsWith("local:")) {
-      count += 1;
+      sources.add(record.backgroundImage);
     }
   }
-  return count;
+  return sources.size;
 }
 
 /**
- * Upload a theme's local image/panel background and return the record with
- * remote attachment URLs. Images already stored as URLs pass through
+ * Upload a theme's local source background and return the record with its
+ * remote attachment URL. Images already stored as URLs pass through
  * untouched. On upload failure the field is emptied rather than failing the
  * whole publish, so a theme without its background still syncs its colors.
  *
- * `onImageUploaded` fires once per device-local image, whether the upload
- * succeeded or not, so callers can advance a progress counter.
+ * The blurred variant is intentionally dropped: consumers re-render it from
+ * the source image plus the persisted `blur` amount. `uploads` is shared
+ * across the whole publish so a dark/light pair using the same source blob
+ * uploads it once. `onImageUploaded` fires once per *distinct* upload,
+ * whether it succeeded or not, so callers can advance a progress counter.
  */
 async function materializeThemeImages(
   record: GeneratedThemeRecord,
   owner: CustomThemesOwner,
+  uploads: Map<string, Promise<string>>,
   onImageUploaded?: () => void,
 ): Promise<GeneratedThemeRecord> {
   const cache = useImageBlobCacheStore.getState();
 
-  const upload = async (
-    source: string,
-    filename: string,
-  ): Promise<string> => {
+  const upload = (source: string, filename: string): Promise<string> => {
     // Only device-local blobs need uploading; empty / remote URLs stay.
     if (source.length === 0 || !source.startsWith("local:")) {
-      return source;
+      return Promise.resolve(source);
     }
-    try {
-      const entry = await cache.resolve(source);
-      if (entry === null) {
-        return "";
-      }
-      const file = new File([entry.blob], filename, {
-        type: entry.contentType.length > 0 ? entry.contentType : "image/webp",
-      });
-      const created = await attachmentApi.createAttachment(file);
-      if (created === null) {
-        return "";
-      }
-      const url = await attachmentApi.linkAttachment({
-        attachment_key: created.key,
-        link_to: owner.scope,
-        ...(owner.scope === "user"
-          ? { user_id: owner.targetId }
-          : { shelf_id: owner.targetId }),
-      });
-      return url ?? "";
-    } finally {
-      onImageUploaded?.();
+    const inflight = uploads.get(source);
+    if (inflight !== undefined) {
+      return inflight;
     }
+    const work = (async (): Promise<string> => {
+      try {
+        const entry = await cache.resolve(source);
+        if (entry === null) {
+          return "";
+        }
+        const file = new File([entry.blob], filename, {
+          type:
+            entry.contentType.length > 0 ? entry.contentType : "image/webp",
+        });
+        const created = await attachmentApi.createAttachment(file);
+        if (created === null) {
+          return "";
+        }
+        const url = await attachmentApi.linkAttachment({
+          attachment_key: created.key,
+          link_to: owner.scope,
+          ...(owner.scope === "user"
+            ? { user_id: owner.targetId }
+            : { shelf_id: owner.targetId }),
+        });
+        return url ?? "";
+      } finally {
+        onImageUploaded?.();
+      }
+    })();
+    uploads.set(source, work);
+    return work;
   };
 
   const backgroundImage = await upload(
     record.backgroundImage,
     `${record.name}.webp`,
   );
-  const blurredBackgroundImage = await upload(
-    record.blurredBackgroundImage,
-    `${record.name}-blur.webp`,
-  );
-  return { ...record, backgroundImage, blurredBackgroundImage };
+  return { ...record, backgroundImage, blurredBackgroundImage: "" };
 }
 
 /**
@@ -176,9 +183,12 @@ export async function publishCustomThemes(
     message:
       imageCount > 0 ? "Uploading theme images" : "Saving custom themes",
   });
+  // Shared across every record so the same source blob (e.g. a dark/light
+  // pair generated from one image) is uploaded once.
+  const uploads = new Map<string, Promise<string>>();
   const materialized = await Promise.all(
     themes.map((record) =>
-      materializeThemeImages(record, owner, () => {
+      materializeThemeImages(record, owner, uploads, () => {
         completed += 1;
         onProgress?.({
           completed,
@@ -197,6 +207,41 @@ export async function publishCustomThemes(
     preferences_json: serializeCustomThemesData(payload),
   });
   onProgress?.({ completed: total, total, message: "Custom themes saved" });
+}
+
+/**
+ * Register a source's records immediately so theme names resolve at boot,
+ * then asynchronously re-render any missing blurred variants and re-register
+ * once they are ready.
+ *
+ * Registering the sharp records first avoids a window where a synced active
+ * theme cannot be resolved because its blur is still generating. Returns a
+ * cleanup that cancels the pending regeneration.
+ */
+function registerWithGeneratedBlur(
+  sourceKey: string,
+  records: GeneratedThemeRecord[],
+  register: (sourceKey: string, records: GeneratedThemeRecord[]) => void,
+): () => void {
+  register(sourceKey, records);
+  let cancelled = false;
+  void (async () => {
+    const withBlur = await Promise.all(records.map(ensureSyncedBlur));
+    if (cancelled) {
+      return;
+    }
+    const changed = withBlur.some(
+      (record, index) =>
+        record.blurredBackgroundImage !==
+        records[index].blurredBackgroundImage,
+    );
+    if (changed) {
+      register(sourceKey, withBlur);
+    }
+  })();
+  return () => {
+    cancelled = true;
+  };
 }
 
 /**
@@ -236,9 +281,10 @@ export function useCustomThemesSync(): void {
     if (userId === null) {
       return;
     }
-    registerSyncedThemes(
+    return registerWithGeneratedBlur(
       `user:${userId}`,
       widthThemes(userQuery.data?.themes ?? []),
+      registerSyncedThemes,
     );
   }, [userId, userQuery.data, registerSyncedThemes, widthThemes]);
 
@@ -246,9 +292,10 @@ export function useCustomThemesSync(): void {
     if (shelfId === null) {
       return;
     }
-    registerSyncedThemes(
+    return registerWithGeneratedBlur(
       `shelf:${shelfId}`,
       widthThemes(shelfQuery.data?.themes ?? []),
+      registerSyncedThemes,
     );
   }, [shelfId, shelfQuery.data, registerSyncedThemes, widthThemes]);
 

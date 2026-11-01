@@ -4,8 +4,10 @@ import { describe, expect, it } from "vitest";
 import { BACKEND_BASE } from "../statics";
 import type { GeneratedThemeRecord } from "../theme/imageTheme";
 import {
+  ensureSyncedBlur,
   SYNCED_THEME_IMAGE_WIDTH_DESKTOP,
   SYNCED_THEME_IMAGE_WIDTH_MOBILE,
+  syncedBlurCacheKey,
   withSyncedImageWidth,
 } from "./syncedThemeImages";
 
@@ -124,5 +126,43 @@ describe("withSyncedImageWidth", () => {
     // The trailing "photo.webp" segment must not be mistaken for an
     // attachment key.
     expect(result.backgroundImage).toBe("https://example.com/photo.webp");
+  });
+});
+
+describe("syncedBlurCacheKey", () => {
+  it("is deterministic and namespaced as a local blob", () => {
+    const a = syncedBlurCacheKey("https://x/img?width=1080", 33);
+    const b = syncedBlurCacheKey("https://x/img?width=1080", 33);
+    expect(a).toBe(b);
+    expect(a.startsWith("local:synced-blur-")).toBe(true);
+  });
+
+  it("changes when the source or blur changes", () => {
+    const base = syncedBlurCacheKey("https://x/img?width=1080", 33);
+    expect(syncedBlurCacheKey("https://x/img?width=720", 33)).not.toBe(base);
+    expect(syncedBlurCacheKey("https://x/img?width=1080", 60)).not.toBe(
+      base,
+    );
+  });
+});
+
+describe("ensureSyncedBlur fast paths", () => {
+  it("does nothing when blur is disabled", async () => {
+    const record = makeRecord({ blur: 0, backgroundImage: "https://x/a.webp" });
+    await expect(ensureSyncedBlur(record)).resolves.toBe(record);
+  });
+
+  it("does nothing when there is no source image", async () => {
+    const record = makeRecord({ blur: 33, backgroundImage: "" });
+    await expect(ensureSyncedBlur(record)).resolves.toBe(record);
+  });
+
+  it("keeps an existing device-local blurred blob", async () => {
+    const record = makeRecord({
+      blur: 33,
+      backgroundImage: "https://x/a.webp",
+      blurredBackgroundImage: "local:already-there",
+    });
+    await expect(ensureSyncedBlur(record)).resolves.toBe(record);
   });
 });
