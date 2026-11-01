@@ -18,7 +18,11 @@ import {
   TableRow,
 } from "@tiptap/extension-table";
 
-import { CustomHtml, formatCustomHtml } from "./CustomHtml";
+import {
+  CustomHtml,
+  formatCustomHtml,
+  sanitizeCustomHtml,
+} from "./CustomHtml";
 import { CustomHardBreak } from "./CustomHardBreak";
 import { CustomDetails } from "./CustomDetails";
 import { DetailsContent, DetailsSummary } from "@tiptap/extension-details";
@@ -579,6 +583,95 @@ describe("formatCustomHtml", () => {
   it("returns empty/failed input unchanged", () => {
     expect(formatCustomHtml("")).toBe("");
     expect(formatCustomHtml("   ")).toBe("   ");
+  });
+});
+
+describe("sanitizeCustomHtml", () => {
+  it("strips event-handler attributes but keeps the element", () => {
+    const out = sanitizeCustomHtml(
+      '<img src="x.png" onerror="alert(1)" onload="alert(2)" alt="a">',
+    );
+    expect(out).not.toContain("onerror");
+    expect(out).not.toContain("onload");
+    expect(out).toContain("<img");
+    expect(out).toContain('alt="a"');
+  });
+
+  it("removes <script> elements", () => {
+    const out = sanitizeCustomHtml("<p>hi</p><script>alert(1)</script>");
+    expect(out).not.toContain("<script");
+    expect(out).toContain("hi");
+  });
+
+  it("drops javascript: URLs", () => {
+    const out = sanitizeCustomHtml('<a href="javascript:alert(1)">x</a>');
+    expect(out).not.toContain("javascript:");
+    expect(out).toContain("x");
+  });
+
+  it("removes embedding, framing and form elements", () => {
+    for (const tag of [
+      "iframe",
+      "object",
+      "embed",
+      "form",
+      "input",
+      "style",
+      "link",
+      "meta",
+      "base",
+      "svg",
+    ]) {
+      expect(sanitizeCustomHtml(`<${tag}></${tag}>`)).not.toContain(`<${tag}`);
+    }
+  });
+
+  it("keeps styling, classes and table structure", () => {
+    const html =
+      '<table style="border:2px solid #7c3aed"><tbody><tr><td class="cell" style="padding:8px">a</td></tr></tbody></table>';
+    const out = sanitizeCustomHtml(html);
+    expect(out).toContain('style="border:2px solid #7c3aed"');
+    expect(out).toContain('class="cell"');
+    expect(out).toContain('style="padding:8px"');
+    expect(out).toContain("<table");
+    expect(out).toContain("<td");
+  });
+});
+
+describe("CustomHtml XSS protection", () => {
+  const hostile =
+    '<aside class="x"><img src="x.png" onerror="window.__xss=1"></aside>';
+
+  it("does not attach event handlers in the rich view", () => {
+    const editor = freshEditor();
+    editor.commands.setContent(hostile, { contentType: "markdown" });
+
+    const html = (editor.view.dom as HTMLElement).innerHTML;
+    expect(html).not.toContain("onerror");
+    expect(html).not.toContain("<script");
+  });
+
+  it("does not write event handlers back to markdown", () => {
+    const editor = freshEditor();
+    editor.commands.setContent(hostile, { contentType: "markdown" });
+
+    const out = editor.getMarkdown();
+
+    expect(out).not.toContain("onerror");
+    expect(out).not.toContain("<script");
+    // The harmless wrapper and styling still survive.
+    expect(out).toContain("<aside");
+  });
+
+  it("strips scripts from a preserved (known-tag) HTML block", () => {
+    const editor = freshEditor();
+    const src =
+      '<table style="border:2px solid #7c3aed"><tbody><tr><td><img src="x.png" onerror="window.__xss=1"></td></tr></tbody></table>';
+    editor.commands.setContent(src, { contentType: "markdown" });
+
+    const out = editor.getMarkdown();
+    expect(out).not.toContain("onerror");
+    expect(out).toContain("border:2px solid #7c3aed");
   });
 });
 

@@ -62,6 +62,7 @@
     "@uiw/react-codemirror": "^4.25.10",
     "codemirror-lang-latex": "^0.4.1",
     "date-fns": "^4.4.0",
+    "dompurify": "^3.4.17",
     "framer-motion": "^12.23.25",
     "katex": "^0.16.47",
     "lowlight": "^3.3.0",
