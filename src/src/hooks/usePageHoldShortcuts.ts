@@ -40,6 +40,7 @@ export function usePageHoldShortcuts(
       .filter((shortcut) => !isComboShortcut(shortcut))
       .filter((shortcut) => matchesShortcutState(shortcut.when, DEFAULT_STATE))
       .map<HoldKeyAction>((shortcut) => ({
+        id: shortcut.id,
         key: shortcut.key ?? "",
         keyLabel: shortcut.keyLabel,
         label: shortcut.label,

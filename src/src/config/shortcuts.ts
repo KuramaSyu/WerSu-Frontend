@@ -107,6 +107,26 @@ export function getRelevantShortcutPageIds(pathname: string): string[] {
   return ids;
 }
 
+/**
+ * True when the active page has its own Escape shortcut matching the
+ * given state. The global "navigate back" Escape is suppressed while a
+ * local Escape action (e.g. leaving source/insert mode) owns the key.
+ */
+export function hasLocalEscapeOverride(
+  pageId: string | null,
+  state: ShortcutState,
+): boolean {
+  if (!pageId) return false;
+  const page = shortcutConfig[pageId];
+  if (!page) return false;
+  return page.shortcuts.some(
+    (shortcut) =>
+      shortcut.key === "Escape" &&
+      !isComboShortcut(shortcut) &&
+      matchesShortcutState(shortcut.when, state),
+  );
+}
+
 /** The slice of runtime state a `when` condition can reference. */
 export interface ShortcutState {
   viewMode: ShortcutViewMode;

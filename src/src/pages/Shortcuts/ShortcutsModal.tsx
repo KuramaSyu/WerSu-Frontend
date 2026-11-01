@@ -11,6 +11,12 @@ import { ShortcutsList } from "./ShortcutsList";
 export interface ShortcutsModalProps {
   open: boolean;
   onClose: () => void;
+  /**
+   * Shortcut ids to omit in the relevant view (e.g. a global action that
+   * a page-local override is currently replacing). Ignored when
+   * "Show all" is active.
+   */
+  hiddenShortcutIds?: string[];
 }
 
 /**
@@ -24,6 +30,7 @@ export interface ShortcutsModalProps {
 export const ShortcutsModal: React.FC<ShortcutsModalProps> = ({
   open,
   onClose,
+  hiddenShortcutIds,
 }) => {
   const { pathname } = useLocation();
   const [showAll, setShowAll] = useState(false);
@@ -59,6 +66,7 @@ export const ShortcutsModal: React.FC<ShortcutsModalProps> = ({
         <ShortcutsList
           pageIds={showAll ? undefined : relevantPageIds}
           state={showAll ? undefined : editorState}
+          hiddenIds={showAll ? undefined : hiddenShortcutIds}
         />
       </Box>
     </ModalShell>

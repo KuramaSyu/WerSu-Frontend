@@ -30,7 +30,6 @@ import { FavouriteDirectories } from "./FavouriteDirectories";
 import { AllDirectories } from "./AllDirectories";
 import { M3, M4 } from "../../statics";
 import { useCreateModalsFromUrl } from "../../hooks/useCreateModalsFromUrl";
-import { useNavigateBack } from "../../hooks/useNavigateBack";
 import { usePageHoldShortcuts } from "../../hooks/usePageHoldShortcuts";
 import { HoldKeyActionBar } from "../../components/HoldKeyActionBar";
 import CreateFab from "../../components/CreateFab";
@@ -47,14 +46,13 @@ export const HomePage: React.FC = () => {
     setLeftPanelOpen,
   } = useLayout();
   const { isMobile } = useBreakpoint();
-  const navigateBack = useNavigateBack();
 
   // Hold-to-run shortcuts for this page (see config/shortcuts.json).
-  // Search (k) and home (h) are global; see GlobalShortcuts.
+  // Search (k), home (h), and navigate-back (Esc) are global; see
+  // GlobalShortcuts.
   const holdActions = usePageHoldShortcuts("home", {
     "home.newDirectory": () => setCreateDirectoryOpen(true),
     "home.newNote": () => setCreateNoteOpen(true),
-    "home.back": navigateBack,
   });
 
   useCreateModalsFromUrl({

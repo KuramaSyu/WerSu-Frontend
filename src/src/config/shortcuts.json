@@ -58,6 +58,14 @@
         "hold": true
       },
       {
+        "id": "global.back",
+        "label": "Navigate back",
+        "key": "Escape",
+        "keyLabel": "ESC",
+        "hold": true,
+        "allowInTextFields": true
+      },
+      {
         "id": "global.shortcutsModal",
         "label": "Keyboard shortcuts",
         "combo": "ctrl+/",
@@ -83,14 +91,6 @@
         "key": "n",
         "keyLabel": "N",
         "hold": true
-      },
-      {
-        "id": "home.back",
-        "label": "Navigate back",
-        "key": "Escape",
-        "keyLabel": "ESC",
-        "hold": true,
-        "allowInTextFields": true
       }
     ]
   },
@@ -118,14 +118,6 @@
         "key": "e",
         "keyLabel": "E",
         "hold": true
-      },
-      {
-        "id": "directory.back",
-        "label": "Navigate back",
-        "key": "Escape",
-        "keyLabel": "ESC",
-        "hold": true,
-        "allowInTextFields": true
       }
     ]
   }

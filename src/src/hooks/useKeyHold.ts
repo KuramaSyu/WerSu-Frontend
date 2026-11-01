@@ -10,6 +10,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * a separate main-thread timer.
  */
 export interface HoldKeyAction {
+  /**
+   * Stable catalogue id (`config/shortcuts.json`), when the action came
+   * from there. Lets callers filter/override specific actions.
+   */
+  id?: string;
   /** `KeyboardEvent.key` value that triggers this action, e.g. "Escape". */
   key: string;
   /** Text shown next to the key badge, e.g. "exit source mode". */

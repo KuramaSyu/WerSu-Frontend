@@ -24,6 +24,8 @@ export interface ShortcutsListProps {
    * is shown.
    */
   state?: ShortcutState;
+  /** Shortcut ids to omit regardless of page/state. */
+  hiddenIds?: string[];
 }
 
 /**
@@ -38,6 +40,7 @@ export interface ShortcutsListProps {
 export const ShortcutsList: React.FC<ShortcutsListProps> = ({
   pageIds,
   state,
+  hiddenIds,
 }) => {
   const pages: Array<[string, ShortcutPageConfig]> = pageIds
     ? pageIds.flatMap((id) => {
@@ -49,11 +52,12 @@ export const ShortcutsList: React.FC<ShortcutsListProps> = ({
   return (
     <Stack spacing={2}>
       {pages.map(([pageId, page]) => {
-        const shortcuts = state
-          ? page.shortcuts.filter((shortcut) =>
-              matchesShortcutState(shortcut.when, state),
-            )
-          : page.shortcuts;
+        const shortcuts = page.shortcuts
+          .filter((shortcut) => !hiddenIds?.includes(shortcut.id))
+          .filter(
+            (shortcut) =>
+              !state || matchesShortcutState(shortcut.when, state),
+          );
         if (shortcuts.length === 0) return null;
 
         return (

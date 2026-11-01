@@ -13,8 +13,13 @@ describe("usePageHoldShortcuts", () => {
     expect(result.current.map((action) => action.label)).toEqual([
       "Search",
       "Go home",
+      "Navigate back",
     ]);
-    expect(result.current.map((action) => action.key)).toEqual(["k", "h"]);
+    expect(result.current.map((action) => action.key)).toEqual([
+      "k",
+      "h",
+      "Escape",
+    ]);
   });
 
   it("resolves the home page's hold actions in catalogue order", () => {
@@ -23,13 +28,8 @@ describe("usePageHoldShortcuts", () => {
     expect(result.current.map((action) => action.label)).toEqual([
       "New directory",
       "New note",
-      "Navigate back",
     ]);
-    expect(result.current.map((action) => action.key)).toEqual([
-      "d",
-      "n",
-      "Escape",
-    ]);
+    expect(result.current.map((action) => action.key)).toEqual(["d", "n"]);
   });
 
   it("includes the directory-only edit action", () => {
@@ -41,13 +41,12 @@ describe("usePageHoldShortcuts", () => {
       "New directory",
       "New note",
       "Edit this directory",
-      "Navigate back",
     ]);
   });
 
   it("lets Escape arm from text fields only", () => {
     const { result } = renderHook(() =>
-      usePageHoldShortcuts("home", {}),
+      usePageHoldShortcuts("global", {}),
     );
 
     const escape = result.current.find((action) => action.key === "Escape");

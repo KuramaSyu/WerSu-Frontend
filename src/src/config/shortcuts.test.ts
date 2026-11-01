@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   getRelevantShortcutPageIds,
   getShortcutPageIdForPath,
+  hasLocalEscapeOverride,
   matchesShortcutPath,
 } from "./shortcuts";
 
@@ -46,5 +47,36 @@ describe("getRelevantShortcutPageIds", () => {
 
   it("falls back to global alone on an unconfigured route", () => {
     expect(getRelevantShortcutPageIds("/settings")).toEqual(["global"]);
+  });
+});
+
+describe("hasLocalEscapeOverride", () => {
+  const state = (
+    viewMode: "source" | "rich",
+    editMode: boolean,
+    readOnly = false,
+  ) => ({ viewMode, editMode, readOnly });
+
+  it("is false on the note page in read mode", () => {
+    expect(hasLocalEscapeOverride("note", state("rich", false))).toBe(false);
+  });
+
+  it("is true on the note page in source mode", () => {
+    expect(hasLocalEscapeOverride("note", state("source", true))).toBe(true);
+  });
+
+  it("is true on the note page in insert mode", () => {
+    expect(hasLocalEscapeOverride("note", state("rich", true))).toBe(true);
+  });
+
+  it("is false on the note page in read-only insert mode", () => {
+    expect(
+      hasLocalEscapeOverride("note", state("rich", true, true)),
+    ).toBe(false);
+  });
+
+  it("is false on pages without a local Escape or with no page", () => {
+    expect(hasLocalEscapeOverride("home", state("rich", true))).toBe(false);
+    expect(hasLocalEscapeOverride(null, state("rich", true))).toBe(false);
   });
 });
