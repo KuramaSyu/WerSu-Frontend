@@ -18,7 +18,7 @@ import {
   TableRow,
 } from "@tiptap/extension-table";
 
-import { CustomHtml } from "./CustomHtml";
+import { CustomHtml, formatCustomHtml } from "./CustomHtml";
 import { CustomHardBreak } from "./CustomHardBreak";
 import { CustomDetails } from "./CustomDetails";
 import { DetailsContent, DetailsSummary } from "@tiptap/extension-details";
@@ -465,7 +465,11 @@ describe("CustomHtml preservation for schema-known tags", () => {
     editor.commands.setContent(once, { contentType: "markdown" });
     const twice = editor.getMarkdown();
 
-    expect(once).toContain(styledTable);
+    // The custom table is written back as indented HTML...
+    expect(once).toContain("<table");
+    expect(once).toContain('style="width: 100%; border: 1px solid red"');
+    expect(once).toMatch(/\n {2}<tbody>/);
+    // ...and the formatting is stable across re-imports.
     expect(twice).toBe(once);
   });
 
@@ -527,17 +531,78 @@ describe("CustomHtml preservation for schema-known tags", () => {
   });
 });
 
+describe("formatCustomHtml", () => {
+  it("indents nested block elements with two spaces", () => {
+    expect(
+      formatCustomHtml(
+        '<table style="border:1px solid red"><tbody><tr><td>a</td></tr></tbody></table>',
+      ),
+    ).toBe(
+      [
+        '<table style="border:1px solid red">',
+        "  <tbody>",
+        "    <tr>",
+        "      <td>a</td>",
+        "    </tr>",
+        "  </tbody>",
+        "</table>",
+      ].join("\n"),
+    );
+  });
+
+  it("keeps inline markup on a single line", () => {
+    expect(
+      formatCustomHtml(
+        '<div class="callout"><p><strong>Heads up</strong> now</p></div>',
+      ),
+    ).toBe(
+      [
+        '<div class="callout">',
+        "  <p><strong>Heads up</strong> now</p>",
+        "</div>",
+      ].join("\n"),
+    );
+  });
+
+  it("leaves whitespace-sensitive tags untouched", () => {
+    const html = "<pre><code>a\n  b</code></pre>";
+    expect(formatCustomHtml(html)).toBe(html);
+  });
+
+  it("is idempotent", () => {
+    const once = formatCustomHtml(
+      '<div><ul><li>one</li><li>two</li></ul><p>after</p></div>',
+    );
+    expect(formatCustomHtml(once)).toBe(once);
+  });
+
+  it("returns empty/failed input unchanged", () => {
+    expect(formatCustomHtml("")).toBe("");
+    expect(formatCustomHtml("   ")).toBe("   ");
+  });
+});
+
 describe("CustomHtml regeneration after editing a preserved table", () => {
   // Rich custom table with per-cell styles, so we can assert both the
   // table-level and cell-level styling survive an edit.
   const richTable =
     '<table style="border:2px solid #7c3aed"><thead><tr><th style="background:#ede9fe">A</th><th>B</th></tr></thead><tbody><tr><td style="padding:8px">1</td><td>2</td></tr></tbody></table>';
 
-  it("keeps the original HTML byte-for-byte while unedited", () => {
+  it("pretty-prints the original HTML on output while unedited", () => {
     const editor = freshEditor();
     editor.commands.setContent(richTable, { contentType: "markdown" });
 
-    expect(editor.getMarkdown()).toContain(richTable);
+    const out = editor.getMarkdown();
+
+    expect(out).toContain('<table style="border:2px solid #7c3aed">');
+    // Two-space indentation, one level per nested block.
+    expect(out).toMatch(/\n {2}<t(?:head|body|foot)>/);
+    expect(out).toMatch(/\n {4}<tr>/);
+    expect(out).toMatch(/\n {6}<td style="padding:8px">1<\/td>/);
+
+    // Re-importing the formatted HTML keeps it stable.
+    editor.commands.setContent(out, { contentType: "markdown" });
+    expect(editor.getMarkdown()).toBe(out);
   });
 
   it("regenerates the HTML when a row is added and keeps custom styles", () => {

@@ -74,7 +74,7 @@ const shared = {
     };
   },
   renderMarkdown: (node: JSONContent) =>
-    (node.attrs?.html as string | undefined) ?? "",
+    formatCustomHtml((node.attrs?.html as string | undefined) ?? ""),
   // Build a DOM node that injects the saved HTML. Atom + content:"" means
   // the children slot is unused; we own the inner markup entirely.
   addNodeView() {
@@ -244,6 +244,181 @@ function parseHtmlElement(html: string): Element | null {
   const template = document.createElement("template");
   template.innerHTML = html.trim();
   return template.content.firstElementChild;
+}
+
+// --- HTML pretty-printing ------------------------------------------------
+
+const NODE_TYPE_ELEMENT = 1;
+const NODE_TYPE_TEXT = 3;
+const NODE_TYPE_COMMENT = 8;
+
+const VOID_TAGS = new Set([
+  "area",
+  "base",
+  "br",
+  "col",
+  "embed",
+  "hr",
+  "img",
+  "input",
+  "link",
+  "meta",
+  "param",
+  "source",
+  "track",
+  "wbr",
+]);
+
+// Tags whose contents must be emitted verbatim (whitespace is meaningful).
+const RAW_TEXT_TAGS = new Set(["pre", "code", "textarea", "script", "style"]);
+
+// Block-level tags get their own line; everything else stays inline with
+// its surrounding text so `<p><strong>x</strong></p>` stays one line.
+const BLOCK_TAGS = new Set([
+  "address",
+  "article",
+  "aside",
+  "blockquote",
+  "colgroup",
+  "dd",
+  "details",
+  "div",
+  "dl",
+  "dt",
+  "fieldset",
+  "figcaption",
+  "figure",
+  "footer",
+  "form",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "header",
+  "hr",
+  "li",
+  "main",
+  "nav",
+  "ol",
+  "p",
+  "section",
+  "summary",
+  "table",
+  "tbody",
+  "td",
+  "tfoot",
+  "th",
+  "thead",
+  "tr",
+  "ul",
+]);
+
+function escapeHtmlText(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function escapeHtmlAttribute(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;");
+}
+
+function formatAttributes(element: Element): string {
+  return Array.from(element.attributes)
+    .map((attribute) => ` ${attribute.name}="${escapeHtmlAttribute(attribute.value)}"`)
+    .join("");
+}
+
+/** Child nodes that are not insignificant whitespace. */
+function meaningfulChildren(
+  parent: Element | DocumentFragment,
+): ChildNode[] {
+  return Array.from(parent.childNodes).filter((child) => {
+    if (child.nodeType === NODE_TYPE_TEXT) {
+      return (child.textContent ?? "").trim().length > 0;
+    }
+    return (
+      child.nodeType === NODE_TYPE_ELEMENT ||
+      child.nodeType === NODE_TYPE_COMMENT
+    );
+  });
+}
+
+function formatNode(node: ChildNode, depth: number): string {
+  const pad = "  ".repeat(depth);
+  if (node.nodeType === NODE_TYPE_TEXT) {
+    return pad + escapeHtmlText(node.textContent ?? "");
+  }
+  if (node.nodeType === NODE_TYPE_COMMENT) {
+    return `${pad}<!--${node.textContent ?? ""}-->`;
+  }
+  if (node.nodeType !== NODE_TYPE_ELEMENT) {
+    return pad + escapeHtmlText(node.textContent ?? "");
+  }
+
+  const element = node as Element;
+  const tag = element.tagName.toLowerCase();
+  const open = `<${tag}${formatAttributes(element)}>`;
+  if (VOID_TAGS.has(tag)) {
+    return pad + open;
+  }
+  if (RAW_TEXT_TAGS.has(tag)) {
+    return pad + element.outerHTML;
+  }
+
+  const children = meaningfulChildren(element);
+  if (children.length === 0) {
+    return `${pad}${open}</${tag}>`;
+  }
+
+  const hasBlockChild = children.some(
+    (child) =>
+      child.nodeType === NODE_TYPE_ELEMENT &&
+      BLOCK_TAGS.has((child as Element).tagName.toLowerCase()),
+  );
+  if (!hasBlockChild) {
+    // Keep inline markup on a single line with its text.
+    return `${pad}${open}${element.innerHTML}</${tag}>`;
+  }
+
+  const inner = children
+    .map((child) => formatNode(child, depth + 1))
+    .join("\n");
+  return `${pad}${open}\n${inner}\n${pad}</${tag}>`;
+}
+
+/**
+ * Pretty-print a block HTML fragment with two-space indentation so the
+ * markdown source stays readable. Inline-only elements stay on one line;
+ * whitespace-sensitive tags (`<pre>`, ...) are emitted verbatim. Returns
+ * the input unchanged when there is no DOM or the fragment cannot be
+ * parsed, and is idempotent for already-formatted input.
+ */
+export function formatCustomHtml(html: string): string {
+  if (typeof document === "undefined") {
+    return html;
+  }
+  const trimmed = html.trim();
+  if (!trimmed) {
+    return html;
+  }
+  try {
+    const template = document.createElement("template");
+    template.innerHTML = trimmed;
+    const nodes = meaningfulChildren(template.content);
+    if (nodes.length === 0) {
+      return html;
+    }
+    return nodes.map((node) => formatNode(node, 0)).join("\n");
+  } catch {
+    return html;
+  }
 }
 
 /** All elements in `root` (inclusive), in document order. */
@@ -549,13 +724,15 @@ export const HtmlSerialization = Extension.create({
       if (typeof rawHtml === "string" && rawHtml.length > 0) {
         const signature = node.attrs?.[HTML_SOURCE_SIGNATURE_ATTR];
         if (signature === signatureOfJson(node)) {
-          return rawHtml;
+          return formatCustomHtml(rawHtml);
         }
         try {
           const pmNode = ProseMirrorNode.fromJSON(editor.schema, node);
-          return regeneratePreservedHtml(rawHtml, pmNode, editor.schema);
+          return formatCustomHtml(
+            regeneratePreservedHtml(rawHtml, pmNode, editor.schema),
+          );
         } catch {
-          return rawHtml;
+          return formatCustomHtml(rawHtml);
         }
       }
       return originalRenderNode(node, parentNode, index, level, meta);
