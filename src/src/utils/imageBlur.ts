@@ -8,6 +8,7 @@
  * regardless of the source dimensions.
  */
 
+import { BACKEND_BASE } from "../statics";
 import { FeatureFlagName, useFeatureStore } from "../zustand/FeatureStore";
 import { normalizeImageUrl } from "./imageUrl";
 
@@ -24,9 +25,36 @@ const MAX_BLUR_PX = 40;
 const WEBP_QUALITY = 0.85;
 const OUTPUT_TYPE = "image/webp";
 
+/**
+ * True when `url` targets our own backend (the configured `BACKEND_BASE`
+ * origin or a backend-relative path). Credentials are only attached to those
+ * requests: sending them to third-party image hosts makes the browser reject
+ * responses whose `Access-Control-Allow-Origin` is the `*` wildcard.
+ */
+function isBackendImageUrl(url: string): boolean {
+  if (url.startsWith("/")) {
+    return true;
+  }
+  if (BACKEND_BASE.length === 0) {
+    return false;
+  }
+  try {
+    return new URL(url).origin === new URL(BACKEND_BASE).origin;
+  } catch {
+    return false;
+  }
+}
+
 /** Fetch a remote image into a Blob (used for URL-sourced themes). */
 export async function fetchImageBlob(url: string): Promise<Blob> {
-  const response = await fetch(normalizeImageUrl(url), { mode: "cors" });
+  const target = normalizeImageUrl(url);
+  const response = await fetch(target, {
+    mode: "cors",
+    // Attachment images are auth-protected. The default `same-origin`
+    // credentials mode drops the session cookie on the cross-origin backend
+    // request, so the image endpoint answers 401.
+    credentials: isBackendImageUrl(target) ? "include" : "same-origin",
+  });
   if (!response.ok) {
     throw new Error(`Failed to fetch image (HTTP ${response.status})`);
   }
