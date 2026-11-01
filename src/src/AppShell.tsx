@@ -191,7 +191,15 @@ export const AppShell: React.FC = () => {
               isMobile || !showTopPanel ? "0px" : TOP_BAR_HEIGHT,
             //transition: `grid-template-columns ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
             transition: `grid-template-columns ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}, margin-top ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
-            marginTop: isMobile ? 0 : showTopPanel ? TOP_BAR_HEIGHT : 0,
+            // Use a string for the zero case: this theme's custom
+            // `spacing()` maps the number 0 to 0.25rem, so MUI's sx
+            // would otherwise leave a 4px band above the shell when
+            // the top bar is hidden.
+            marginTop: isMobile
+              ? "0px"
+              : showTopPanel
+                ? TOP_BAR_HEIGHT
+                : "0px",
             // flex: 1 to fill whatever the remaining vertical space is
             // e.g. with or without topbar
             flex: 1,
