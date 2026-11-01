@@ -4,23 +4,41 @@
 // the editor container; `view.coordsAtPos` drives a
 // `transform: translate3d(...)` on every plugin update, and the
 // global stylesheet owns the transition so the browser reliably
-// interpolates each change. A companion selection overlay renders
-// over an active selection, replacing the browser's `::selection`
-// highlight. `caret-color: transparent` on `.ProseMirror` hides the
-// native caret (see tiptap.css). The selection overlay also covers
-// table cell selections (single cell, row, column, block): it
-// reads each cell's DOM rect via `view.nodeDOM(pos)` and unions
-// them so a row/column/block highlight looks like one solid block.
+// interpolates each change. `caret-color: transparent` on
+// `.ProseMirror` hides the native caret (see tiptap.css).
+//
+// The custom overlay always paints the selection, using two shapes:
+//   * inside a single textblock (paragraph, heading, cell, code
+//     line, ...) the per-line client rects are used as-is, giving
+//     the browser-like, text-hugging shape with precise partial
+//     first / last lines, and
+//   * across block boundaries the first and last visual lines stay
+//     exact while every fully selected line in between becomes one
+//     full-width block, so messy multi-element selections read as a
+//     block without hiding where they start and end.
+//
+// Rectangles live in a reusable pool matched by vertical overlap, so
+// each one keeps its DOM element and the CSS transition animates the
+// change instead of the highlight popping between positions.
+// Table cell selections (single cell, row, column, block) are
+// unioned into one solid block as before, via `view.nodeDOM(pos)`.
 
 import { Extension } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
-import type { EditorState, Transaction } from "@tiptap/pm/state";
+import type { Transaction } from "@tiptap/pm/state";
 import { NodeSelection } from "@tiptap/pm/state";
+import type { EditorView } from "@tiptap/pm/view";
 import { CellSelection } from "@tiptap/pm/tables";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { alpha } from "@mui/material/styles";
-import { computeCellSelectionRect } from "./CaretAnimation.helpers";
+import {
+  assignRectsToSlots,
+  computeCellSelectionRect,
+  planSelectionRects,
+  selectionSpansBlocks,
+  type SelectionRect,
+} from "./CaretAnimation.helpers";
 
 export interface CaretAnimationOptions {
   /** Disable the overlay entirely. The extension always reads
@@ -53,6 +71,44 @@ function createSelectionElement(background: string): HTMLElement {
   return selectionEl;
 }
 
+/** Position an overlay element over a viewport-space rect, relative
+ *  to the editor container. */
+function positionRect(
+  el: HTMLElement,
+  rect: SelectionRect,
+  containerRect: DOMRect,
+): void {
+  el.style.transform = `translate3d(${rect.left - containerRect.left}px, ${
+    rect.top - containerRect.top
+  }px, 0)`;
+  el.style.width = `${rect.right - rect.left}px`;
+  el.style.height = `${rect.bottom - rect.top}px`;
+}
+
+/** Per-visual-line client rects of the current text selection, in
+ *  viewport coordinates. Built from the editor positions (rather than
+ *  `window.getSelection()`) so it always matches the ProseMirror state
+ *  even during transactions where the DOM selection lags behind. */
+function getSelectionLineRects(
+  view: EditorView,
+  from: number,
+  to: number,
+): SelectionRect[] {
+  const fromDom = view.domAtPos(from);
+  const toDom = view.domAtPos(to);
+  const range = document.createRange();
+  range.setStart(fromDom.node, fromDom.offset);
+  range.setEnd(toDom.node, toDom.offset);
+  return Array.from(range.getClientRects())
+    .map((r) => ({
+      left: r.left,
+      top: r.top,
+      right: r.right,
+      bottom: r.bottom,
+    }))
+    .filter((r) => r.right - r.left > 0 && r.bottom - r.top > 0);
+}
+
 export const CaretAnimation = Extension.create<CaretAnimationOptions>({
   name: "caretAnimation",
 
@@ -64,14 +120,6 @@ export const CaretAnimation = Extension.create<CaretAnimationOptions>({
     return [
       new Plugin({
         key: KEY,
-
-        props: {
-          decorations(state: EditorState) {
-            const editMode = useEditorSettings.getState().editMode;
-            if (!editMode) return null;
-            return null;
-          },
-        },
 
         view(editorView) {
           const caretEl = createCaretElement();
@@ -86,18 +134,39 @@ export const CaretAnimation = Extension.create<CaretAnimationOptions>({
               0.3,
             );
           };
-          const selectionEl = createSelectionElement(computeHoverBg());
           const container = editorView.dom.parentNode as HTMLElement | null;
           if (!container) {
             return {
               destroy() {
                 caretEl.remove();
-                selectionEl.remove();
               },
             };
           }
           container.appendChild(caretEl);
-          container.appendChild(selectionEl);
+
+          // A selection is painted by a pool of overlay rectangles:
+          // one per visual line inside a single block, or first /
+          // middle / last across blocks. Slots are reused across
+          // updates (matched by overlap) so each rectangle keeps its
+          // identity and the CSS transition animates every change.
+          interface Slot {
+            el: HTMLElement;
+            rect: SelectionRect | null;
+          }
+          const slots: Slot[] = [];
+          const createSlot = (): Slot => {
+            const el = createSelectionElement(computeHoverBg());
+            container.appendChild(el);
+            const slot = { el, rect: null };
+            slots.push(slot);
+            return slot;
+          };
+          const hideSelectionEls = () => {
+            for (const slot of slots) {
+              slot.el.style.display = "none";
+              slot.rect = null;
+            }
+          };
 
           let blinkTimer: number | null = null;
           const stopBlinkTimer = () => {
@@ -118,14 +187,54 @@ export const CaretAnimation = Extension.create<CaretAnimationOptions>({
           // Theme changes live outside ProseMirror, so paint the
           // selection background directly from the subscribe callback.
           const unsubscribeTheme = useThemeStore.subscribe(() => {
-            selectionEl.style.backgroundColor = computeHoverBg();
+            const background = computeHoverBg();
+            for (const slot of slots) slot.el.style.backgroundColor = background;
           });
+
+          // Paint a set of rects, reusing pooled elements by vertical
+          // overlap so every rectangle animates from its previous
+          // place instead of popping in at a new spot.
+          const paintSelection = (
+            rects: SelectionRect[],
+            containerRect: DOMRect,
+          ) => {
+            const slotOf = assignRectsToSlots(
+              slots.map((slot) => slot.rect),
+              rects,
+            );
+            const assignments: (SelectionRect | null)[] = slots.map(
+              () => null,
+            );
+            for (let i = 0; i < rects.length; i++) {
+              let slot = slotOf[i];
+              if (slot === -1) {
+                createSlot();
+                assignments.push(null);
+                slot = slots.length - 1;
+              }
+              assignments[slot] = rects[i];
+            }
+            for (let i = 0; i < slots.length; i++) {
+              const rect = assignments[i];
+              if (rect) {
+                positionRect(slots[i].el, rect, containerRect);
+                slots[i].el.style.display = "block";
+                slots[i].rect = rect;
+              } else {
+                slots[i].el.style.display = "none";
+                slots[i].rect = null;
+              }
+            }
+          };
 
           return {
             update(view) {
               const editMode = useEditorSettings.getState().editMode;
               const { selection } = view.state;
               const containerRect = container.getBoundingClientRect();
+
+              const isCellSelection = selection instanceof CellSelection;
+              const isNodeSelection = selection instanceof NodeSelection;
 
               // Cell selection (table): the editor state carries a
               // `CellSelection` whose `from` / `to` positions are
@@ -134,23 +243,18 @@ export const CaretAnimation = Extension.create<CaretAnimationOptions>({
               // its DOM rect, and draw a single block over the
               // union. Works for single-cell, row, column, and
               // block (rectangular) selections.
-              if (selection instanceof CellSelection) {
+              if (isCellSelection) {
                 caretEl.style.display = "none";
                 stopBlinkTimer();
                 try {
                   const rect = computeCellSelectionRect(view, selection);
                   if (rect === null) {
-                    selectionEl.style.display = "none";
+                    hideSelectionEls();
                     return;
                   }
-                  selectionEl.style.display = "block";
-                  selectionEl.style.transform = `translate3d(${
-                    rect.left - containerRect.left
-                  }px, ${rect.top - containerRect.top}px, 0)`;
-                  selectionEl.style.width = `${rect.right - rect.left}px`;
-                  selectionEl.style.height = `${rect.bottom - rect.top}px`;
+                  paintSelection([rect], containerRect);
                 } catch {
-                  selectionEl.style.display = "none";
+                  hideSelectionEls();
                 }
                 return;
               }
@@ -159,70 +263,48 @@ export const CaretAnimation = Extension.create<CaretAnimationOptions>({
               // outline in the node view; the translucent selection
               // block would sit on top of it as an unwanted
               // background highlight.
-              if (selection instanceof NodeSelection) {
+              if (isNodeSelection) {
                 caretEl.style.display = "none";
-                selectionEl.style.display = "none";
                 stopBlinkTimer();
+                hideSelectionEls();
                 return;
               }
 
-              // Active text selection -> hide caret, show a single
-              // full-width block spanning every selected line. The
-              // selection overlay works in both edit and view mode;
-              // only the caret below is edit-only.
+              // Active text selection. Inside one textblock the
+              // per-line rects give the browser-like, text-hugging
+              // shape; across blocks the first and last lines stay
+              // exact while every fully selected line between them
+              // becomes one full-width block (see planSelectionRects).
+              // The overlay works in both edit and view mode; only the
+              // caret below is edit-only.
               if (!selection.empty) {
                 caretEl.style.display = "none";
                 stopBlinkTimer();
-                selectionEl.style.display = "block";
-
                 try {
-                  const startCoords = editorView.coordsAtPos(selection.from);
-                  const endCoords = editorView.coordsAtPos(selection.to);
-                  // A small threshold absorbs sub-pixel jitter from
-                  // `coordsAtPos` so same-line selections don't get
-                  // mis-classified as multi-line.
-                  const isMultiLine =
-                    Math.abs(startCoords.top - endCoords.top) > 1;
-
-                  if (isMultiLine) {
-                    // Multi-line: full-width block spanning every
-                    // selected line, anchored to the container so
-                    // the CSS transition smoothly interpolates
-                    // width/height/transform on each selection tick.
-                    const top = Math.min(startCoords.top, endCoords.top);
-                    const bottom = Math.max(
-                      startCoords.bottom,
-                      endCoords.bottom,
-                    );
-                    selectionEl.style.transform = `translate3d(0, ${
-                      top - containerRect.top
-                    }px, 0)`;
-                    selectionEl.style.width = `${containerRect.width}px`;
-                    selectionEl.style.height = `${bottom - top}px`;
-                  } else {
-                    // Single-line: rect tightly bounding the actual
-                    // characters, same as the caret would.
-                    const left = Math.min(startCoords.left, endCoords.left);
-                    const top = Math.min(startCoords.top, endCoords.top);
-                    const right = Math.max(startCoords.right, endCoords.right);
-                    const bottom = Math.max(
-                      startCoords.bottom,
-                      endCoords.bottom,
-                    );
-                    selectionEl.style.transform = `translate3d(${
-                      left - containerRect.left
-                    }px, ${top - containerRect.top}px, 0)`;
-                    selectionEl.style.width = `${right - left}px`;
-                    selectionEl.style.height = `${bottom - top}px`;
+                  const lineRects = getSelectionLineRects(
+                    view,
+                    selection.from,
+                    selection.to,
+                  );
+                  const rects = planSelectionRects(
+                    lineRects,
+                    selectionSpansBlocks(selection.$from, selection.$to),
+                    containerRect.left,
+                    containerRect.right,
+                  );
+                  if (rects.length === 0) {
+                    hideSelectionEls();
+                    return;
                   }
+                  paintSelection(rects, containerRect);
                 } catch {
-                  selectionEl.style.display = "none";
+                  hideSelectionEls();
                 }
                 return;
               }
 
               // Collapsed cursor -> caret is edit-only.
-              selectionEl.style.display = "none";
+              hideSelectionEls();
               if (!editMode || !editorView.hasFocus()) {
                 caretEl.style.display = "none";
                 stopBlinkTimer();
@@ -249,7 +331,7 @@ export const CaretAnimation = Extension.create<CaretAnimationOptions>({
               unsubscribeTheme();
               stopBlinkTimer();
               caretEl.remove();
-              selectionEl.remove();
+              for (const slot of slots) slot.el.remove();
             },
           };
         },

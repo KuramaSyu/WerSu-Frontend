@@ -22,8 +22,13 @@
 import { describe, expect, it, vi } from "vitest";
 import type { CellSelection } from "@tiptap/pm/tables";
 import {
+  assignRectsToSlots,
+  computeBlockSelectionPieces,
   computeCellSelectionRect,
+  planSelectionRects,
+  selectionSpansBlocks,
   type NodeDomLookup,
+  type SelectionRect,
 } from "./CaretAnimation.helpers";
 
 /** Plain-object stub of a `CellSelection` exposing just the one
@@ -211,5 +216,169 @@ describe("computeCellSelectionRect", () => {
       right: 95,
       bottom: 45,
     });
+  });
+});
+
+describe("computeBlockSelectionPieces", () => {
+  const line = (
+    left: number,
+    top: number,
+    right: number,
+    bottom: number,
+  ) => ({ left, top, right, bottom });
+
+  it("returns null when there are no line rects", () => {
+    expect(computeBlockSelectionPieces([], 0, 500)).toBeNull();
+  });
+
+  it("keeps a single line exact with no middle block", () => {
+    const only = line(20, 10, 180, 30);
+    expect(computeBlockSelectionPieces([only], 0, 500)).toEqual({
+      first: only,
+      middle: null,
+      last: only,
+    });
+  });
+
+  it("adds a full-width middle block for a three-line selection", () => {
+    const lines = [
+      line(40, 0, 300, 20),
+      line(10, 20, 320, 40),
+      line(10, 40, 140, 60),
+    ];
+
+    expect(computeBlockSelectionPieces(lines, 0, 500)).toEqual({
+      // First line stays exact (partial start, ends where the line ends).
+      first: line(40, 0, 300, 20),
+      // Middle covers the fully selected line, full container width.
+      middle: line(0, 20, 500, 40),
+      // Last line stays exact (starts at the line start, partial end).
+      last: line(10, 40, 140, 60),
+    });
+  });
+
+  it("has no middle block when the two lines touch", () => {
+    const lines = [line(40, 0, 300, 20), line(10, 20, 140, 40)];
+    expect(computeBlockSelectionPieces(lines, 0, 500)).toEqual({
+      first: lines[0],
+      middle: null,
+      last: lines[1],
+    });
+  });
+
+  it("fills the gap between separated blocks with the middle block", () => {
+    // Paragraph spacing leaves a vertical gap between the last line of
+    // one paragraph and the first line of the next; the middle block
+    // spans it so the highlight reads as one solid block.
+    const lines = [line(0, 0, 200, 20), line(0, 40, 120, 60)];
+    expect(computeBlockSelectionPieces(lines, 0, 500)).toEqual({
+      first: lines[0],
+      middle: line(0, 20, 500, 40),
+      last: lines[1],
+    });
+  });
+
+  it("sorts lines by top before picking first and last", () => {
+    const top = line(40, 0, 300, 20);
+    const middle = line(10, 20, 320, 40);
+    const bottom = line(10, 40, 140, 60);
+    expect(
+      computeBlockSelectionPieces([bottom, top, middle], 0, 500),
+    ).toEqual({
+      first: top,
+      middle: line(0, 20, 500, 40),
+      last: bottom,
+    });
+  });
+});
+
+describe("planSelectionRects", () => {
+  const line = (
+    left: number,
+    top: number,
+    right: number,
+    bottom: number,
+  ): SelectionRect => ({ left, top, right, bottom });
+
+  it("returns no rects for an empty selection", () => {
+    expect(planSelectionRects([], false, 0, 500)).toEqual([]);
+  });
+
+  it("keeps the per-line rects inside a single block", () => {
+    const lines = [line(40, 0, 200, 20), line(10, 20, 300, 40)];
+    expect(planSelectionRects(lines, false, 0, 500)).toEqual(lines);
+  });
+
+  it("collapses fully selected lines into a block across blocks", () => {
+    const lines = [
+      line(40, 0, 300, 20),
+      line(10, 20, 320, 40),
+      line(10, 40, 140, 60),
+    ];
+    expect(planSelectionRects(lines, true, 0, 500)).toEqual([
+      line(40, 0, 300, 20),
+      line(0, 20, 500, 40),
+      line(10, 40, 140, 60),
+    ]);
+  });
+});
+
+describe("assignRectsToSlots", () => {
+  const line = (
+    top: number,
+    bottom: number,
+  ): SelectionRect => ({ left: 0, top, right: 100, bottom });
+
+  it("keeps a line matched to its slot when it stays put", () => {
+    const previous = [line(0, 20), line(20, 40)];
+    const next = [line(0, 20), line(20, 40)];
+    expect(assignRectsToSlots(previous, next)).toEqual([0, 1]);
+  });
+
+  it("keeps existing lines on their slots while a line is added on top", () => {
+    // Old: lines 2 and 3. New: lines 1, 2 and 3.
+    const previous = [line(20, 40), line(40, 60)];
+    const next = [line(0, 20), line(20, 40), line(40, 60)];
+    expect(assignRectsToSlots(previous, next)).toEqual([-1, 0, 1]);
+  });
+
+  it("asks for new slots when there is no previous pool", () => {
+    expect(assignRectsToSlots([], [line(0, 20), line(20, 40)])).toEqual([
+      -1, -1,
+    ]);
+  });
+
+  it("reuses a hidden slot before asking for a new one", () => {
+    const previous = [null, line(0, 20)];
+    expect(assignRectsToSlots(previous, [line(100, 120)])).toEqual([0]);
+  });
+
+  it("reuses any free slot when nothing overlaps", () => {
+    const previous = [line(0, 20), line(20, 40)];
+    // Only one next rect, no overlap with either slot -> first free slot.
+    expect(assignRectsToSlots(previous, [line(500, 520)])).toEqual([0]);
+  });
+});
+
+describe("selectionSpansBlocks", () => {
+  it("is false when both endpoints share a textblock parent", () => {
+    const paragraph = { isTextblock: true };
+    expect(
+      selectionSpansBlocks({ parent: paragraph }, { parent: paragraph }),
+    ).toBe(false);
+  });
+
+  it("is true when the endpoints sit in different blocks", () => {
+    expect(
+      selectionSpansBlocks(
+        { parent: { isTextblock: true } },
+        { parent: { isTextblock: true } },
+      ),
+    ).toBe(true);
+  });
+
+  it("is true for a whole-document selection in a non-textblock", () => {
+    const doc = { isTextblock: false };
+    expect(selectionSpansBlocks({ parent: doc }, { parent: doc })).toBe(true);
   });
 });

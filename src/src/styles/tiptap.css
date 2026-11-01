@@ -241,7 +241,8 @@
   50%      { opacity: 0; }
 }
 
-/* Hide the native browser selection highlight */
+/* Hide the native browser selection highlight; the custom animated
+   overlay paints the selection instead. */
 .ProseMirror ::selection {
   background: transparent;
 }

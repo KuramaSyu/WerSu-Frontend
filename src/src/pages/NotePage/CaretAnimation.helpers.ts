@@ -56,3 +56,185 @@ export function computeCellSelectionRect(
   const bottom = Math.max(...rects.map((r) => r.bottom));
   return { left, top, right, bottom };
 }
+
+/** A rectangle in viewport coordinates. Structurally compatible with
+ *  `DOMRect`, but plain so it can be built in tests without layout. */
+export interface SelectionRect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+/** The exact-on-the-edges block selection shape used for text
+ *  selections that span more than one block. `first` / `last` keep
+ *  the precise character extents on the first and last visual line,
+ *  while `middle` is a full-width block covering every fully
+ *  selected line between them (null when there is none). */
+export interface BlockSelectionPieces {
+  first: SelectionRect;
+  middle: SelectionRect | null;
+  last: SelectionRect;
+}
+
+/**
+ * Turn the per-line client rects of a text selection into the block
+ * preview shape:
+ *
+ *   * the first visual line is kept exact (from the selection start
+ *     to the end of that line),
+ *   * every fully selected line in between becomes one full-width
+ *     block spanning the container, and
+ *   * the last visual line is kept exact (from the start of that
+ *     line to the selection end).
+ *
+ * This lets the block highlight cover whole elements while still
+ * showing exactly where a partial first / last line begins and ends.
+ */
+export function computeBlockSelectionPieces(
+  lineRects: readonly SelectionRect[],
+  containerLeft: number,
+  containerRight: number,
+): BlockSelectionPieces | null {
+  if (lineRects.length === 0) return null;
+
+  const sorted = [...lineRects].sort((a, b) => a.top - b.top);
+  const first = sorted[0];
+  const last = sorted[sorted.length - 1];
+
+  // Only add the full-width middle when at least one whole line sits
+  // between the first and last line. The half-pixel threshold
+  // absorbs the sub-pixel seam between stacked line boxes.
+  const hasMiddle = sorted.length > 1 && last.top > first.bottom + 0.5;
+
+  return {
+    first,
+    middle: hasMiddle
+      ? {
+          left: containerLeft,
+          top: first.bottom,
+          right: containerRight,
+          bottom: last.top,
+        }
+      : null,
+    last,
+  };
+}
+
+/**
+ * The full list of overlay rectangles for a text selection:
+ *
+ *   * inside a single textblock the per-line client rects are used
+ *     as-is, so a wrapped paragraph gets the browser-like, text-hugging
+ *     shape (partial first / last line, precise middle lines), and
+ *   * across blocks the first and last lines stay exact while every
+ *     fully selected line in between collapses into one full-width
+ *     block (see {@link computeBlockSelectionPieces}).
+ */
+export function planSelectionRects(
+  lineRects: readonly SelectionRect[],
+  spansBlocks: boolean,
+  containerLeft: number,
+  containerRight: number,
+): SelectionRect[] {
+  if (lineRects.length === 0) return [];
+  if (!spansBlocks) return [...lineRects];
+
+  const pieces = computeBlockSelectionPieces(
+    lineRects,
+    containerLeft,
+    containerRight,
+  );
+  if (pieces === null) return [];
+
+  const rects = [pieces.first];
+  if (pieces.middle) rects.push(pieces.middle);
+  rects.push(pieces.last);
+  return rects;
+}
+
+/** Vertical overlap between two rects, or 0 when they don't touch. */
+function verticalOverlap(a: SelectionRect, b: SelectionRect): number {
+  return Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+}
+
+/**
+ * Assign each next rect to an overlay "slot" so the animated pool can
+ * reuse the same DOM element while the selection changes. Matching is
+ * greedy by greatest vertical overlap, which keeps a highlight glued
+ * to its line while the selection grows, shrinks or moves. Returns the
+ * slot index for each next rect, or `-1` when a fresh slot is needed.
+ */
+export function assignRectsToSlots(
+  previous: readonly (SelectionRect | null)[],
+  next: readonly SelectionRect[],
+): number[] {
+  const slotOf = new Array<number>(next.length).fill(-1);
+  const used = new Array<boolean>(previous.length).fill(false);
+
+  const pairs: Array<{ piece: number; slot: number; score: number }> = [];
+  for (let piece = 0; piece < next.length; piece++) {
+    for (let slot = 0; slot < previous.length; slot++) {
+      const prev = previous[slot];
+      if (!prev) continue;
+      const score = verticalOverlap(prev, next[piece]);
+      if (score > 0) pairs.push({ piece, slot, score });
+    }
+  }
+  // Highest overlap wins, so a line that already has its own slot is
+  // claimed before a newly selected line can steal it.
+  pairs.sort((a, b) => b.score - a.score);
+  for (const { piece, slot } of pairs) {
+    if (slotOf[piece] !== -1 || used[slot]) continue;
+    slotOf[piece] = slot;
+    used[slot] = true;
+  }
+
+  // Unmatched pieces: prefer already-hidden slots, then any free slot,
+  // otherwise ask the caller to create a new one.
+  for (let piece = 0; piece < next.length; piece++) {
+    if (slotOf[piece] !== -1) continue;
+    let slot = -1;
+    for (let s = 0; s < previous.length; s++) {
+      if (!used[s] && previous[s] === null) {
+        slot = s;
+        break;
+      }
+    }
+    if (slot === -1) {
+      for (let s = 0; s < previous.length; s++) {
+        if (!used[s]) {
+          slot = s;
+          break;
+        }
+      }
+    }
+    if (slot !== -1) used[slot] = true;
+    slotOf[piece] = slot;
+  }
+
+  return slotOf;
+}
+
+/** Minimal resolved-position shape: just enough to decide whether a
+ *  selection stays inside one block. Keeping it structural means the
+ *  helper stays testable without importing the ProseMirror model. */
+export interface BlockParentLike {
+  isTextblock: boolean;
+}
+export interface ResolvedPosLike {
+  parent: BlockParentLike;
+}
+
+/** True when `from` and `to` don't both sit in the same textblock,
+ *  i.e. the selection crosses paragraph / heading / cell boundaries
+ *  (or is a whole-document selection) and therefore needs the custom
+ *  block overlay. A selection contained in a single textblock is left
+ *  to the browser's native highlight. The parent node identity check
+ *  works because ProseMirror reuses node objects within a state. */
+export function selectionSpansBlocks(
+  from: ResolvedPosLike,
+  to: ResolvedPosLike,
+): boolean {
+  return from.parent !== to.parent || !from.parent.isTextblock;
+}
