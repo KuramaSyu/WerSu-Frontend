@@ -39,6 +39,26 @@
       }
     ]
   },
+  "global": {
+    "label": "Global",
+    "path": "everywhere",
+    "shortcuts": [
+      {
+        "id": "global.search",
+        "label": "Search",
+        "key": "k",
+        "keyLabel": "K",
+        "hold": true
+      },
+      {
+        "id": "global.home",
+        "label": "Go home",
+        "key": "h",
+        "keyLabel": "H",
+        "hold": true
+      }
+    ]
+  },
   "home": {
     "label": "Home",
     "path": "/",
@@ -55,13 +75,6 @@
         "label": "New note",
         "key": "n",
         "keyLabel": "N",
-        "hold": true
-      },
-      {
-        "id": "home.search",
-        "label": "Search",
-        "key": "k",
-        "keyLabel": "K",
         "hold": true
       },
       {
@@ -90,13 +103,6 @@
         "label": "New note",
         "key": "n",
         "keyLabel": "N",
-        "hold": true
-      },
-      {
-        "id": "directory.search",
-        "label": "Search",
-        "key": "k",
-        "keyLabel": "K",
         "hold": true
       },
       {

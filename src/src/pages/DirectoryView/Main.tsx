@@ -14,7 +14,6 @@ import { CreateDirectoryModal } from "../MainPage/CreateDirectory";
 import { useCreateModalsFromUrl } from "../../hooks/useCreateModalsFromUrl";
 import { useNavigateBack } from "../../hooks/useNavigateBack";
 import { usePageHoldShortcuts } from "../../hooks/usePageHoldShortcuts";
-import { useSearchNotesStore } from "../../zustand/useSearchNotesStore";
 import { HoldKeyActionBar } from "../../components/HoldKeyActionBar";
 import { M3, M4 } from "../../statics";
 import { DirectoryHirarchyItem } from "../../models/HirarchyItem";
@@ -74,15 +73,14 @@ export const DirectoryView: React.FC = () => {
   });
 
   const navigateBack = useNavigateBack();
-  const setIsSearchOpen = useSearchNotesStore((s) => s.setIsDialogOpen);
 
   // Hold-to-run shortcuts for this page (see config/shortcuts.json).
   // "Edit" always targets the directory in the URL (`currentNode`),
-  // never a hovered row.
+  // never a hovered row. Search (k) and home (h) are global; see
+  // GlobalHoldShortcuts.
   const holdActions = usePageHoldShortcuts("directory", {
     "directory.newDirectory": handleCreateSubdirectory,
     "directory.newNote": handleCreateNote,
-    "directory.search": () => setIsSearchOpen(true),
     "directory.edit": handleEditDirectory,
     "directory.back": navigateBack,
   });

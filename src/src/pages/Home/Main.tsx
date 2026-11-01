@@ -32,7 +32,6 @@ import { M3, M4 } from "../../statics";
 import { useCreateModalsFromUrl } from "../../hooks/useCreateModalsFromUrl";
 import { useNavigateBack } from "../../hooks/useNavigateBack";
 import { usePageHoldShortcuts } from "../../hooks/usePageHoldShortcuts";
-import { useSearchNotesStore } from "../../zustand/useSearchNotesStore";
 import { HoldKeyActionBar } from "../../components/HoldKeyActionBar";
 import CreateFab from "../../components/CreateFab";
 import { FabSlot } from "../../components/FabSlot";
@@ -49,13 +48,12 @@ export const HomePage: React.FC = () => {
   } = useLayout();
   const { isMobile } = useBreakpoint();
   const navigateBack = useNavigateBack();
-  const setIsSearchOpen = useSearchNotesStore((s) => s.setIsDialogOpen);
 
   // Hold-to-run shortcuts for this page (see config/shortcuts.json).
+  // Search (k) and home (h) are global; see GlobalHoldShortcuts.
   const holdActions = usePageHoldShortcuts("home", {
     "home.newDirectory": () => setCreateDirectoryOpen(true),
     "home.newNote": () => setCreateNoteOpen(true),
-    "home.search": () => setIsSearchOpen(true),
     "home.back": navigateBack,
   });
 

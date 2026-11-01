@@ -7,21 +7,27 @@ import { describe, expect, it, vi } from "vitest";
 import { usePageHoldShortcuts } from "./usePageHoldShortcuts";
 
 describe("usePageHoldShortcuts", () => {
+  it("resolves the global page's hold actions in catalogue order", () => {
+    const { result } = renderHook(() => usePageHoldShortcuts("global", {}));
+
+    expect(result.current.map((action) => action.label)).toEqual([
+      "Search",
+      "Go home",
+    ]);
+    expect(result.current.map((action) => action.key)).toEqual(["k", "h"]);
+  });
+
   it("resolves the home page's hold actions in catalogue order", () => {
-    const { result } = renderHook(() =>
-      usePageHoldShortcuts("home", {}),
-    );
+    const { result } = renderHook(() => usePageHoldShortcuts("home", {}));
 
     expect(result.current.map((action) => action.label)).toEqual([
       "New directory",
       "New note",
-      "Search",
       "Navigate back",
     ]);
     expect(result.current.map((action) => action.key)).toEqual([
       "d",
       "n",
-      "k",
       "Escape",
     ]);
   });
@@ -34,7 +40,6 @@ describe("usePageHoldShortcuts", () => {
     expect(result.current.map((action) => action.label)).toEqual([
       "New directory",
       "New note",
-      "Search",
       "Edit this directory",
       "Navigate back",
     ]);
