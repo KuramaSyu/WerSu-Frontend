@@ -80,6 +80,15 @@ interface ThemeState {
   markThemeUserSelected: () => void;
 
   /**
+   * A cloud preference whose theme has not been registered yet (e.g. a
+   * synced custom theme still loading from its own preference row). It is
+   * parked here instead of silently falling back to the default theme, and
+   * retried once `registerSyncedThemes` makes the theme available. Not
+   * persisted.
+   */
+  pendingThemePreference: ThemePreference | null;
+
+  /**
    * Explicit, user-initiated theme pick. Applies the theme and flips
    * `themeUserSelected` so the shelf fallback stops overriding it.
    */
@@ -165,6 +174,27 @@ function resolveThemePreference(preference: ThemePreference): string | null {
   return mode === "light" ? preference.light : preference.dark;
 }
 
+/**
+ * Apply a parked cloud preference once its theme has been registered and the
+ * device is not pinned. No-op while the theme is still missing, so it is safe
+ * to call after every registration pass.
+ */
+function applyPendingThemePreference(
+  get: () => ThemeState,
+  set: (partial: Partial<ThemeState>) => void,
+): void {
+  const { pendingThemePreference, themeLocked } = get();
+  if (pendingThemePreference === null || themeLocked) {
+    return;
+  }
+  const themeName = resolveThemePreference(pendingThemePreference);
+  if (themeName === null || !themeManager.hasTheme(themeName)) {
+    return;
+  }
+  set({ pendingThemePreference: null });
+  void get().setTheme(themeName);
+}
+
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set, get) => ({
@@ -182,9 +212,14 @@ export const useThemeStore = create<ThemeState>()(
       themeUserSelected: false,
       syncedThemes: [],
       syncedThemeIdsBySource: {},
+      pendingThemePreference: null,
 
       setThemeLocked: (locked: boolean) => {
         set({ themeLocked: locked });
+        // Unpinning lets a parked cloud preference take effect again.
+        if (!locked) {
+          applyPendingThemePreference(get, set);
+        }
       },
 
       markThemeUserSelected: () => {
@@ -194,7 +229,8 @@ export const useThemeStore = create<ThemeState>()(
       },
 
       selectTheme: async (themeName: string) => {
-        set({ themeUserSelected: true });
+        // An explicit pick wins over a parked cloud preference.
+        set({ themeUserSelected: true, pendingThemePreference: null });
         await get().setTheme(themeName);
       },
 
@@ -244,6 +280,10 @@ export const useThemeStore = create<ThemeState>()(
           },
           customThemes: themeManager.getAllThemes(),
         });
+
+        // A cloud preference that referenced one of the themes we just
+        // registered can now be applied.
+        applyPendingThemePreference(get, set);
       },
 
       applyThemePreference: async (
@@ -256,9 +296,19 @@ export const useThemeStore = create<ThemeState>()(
           return;
         }
         const themeName = resolveThemePreference(preference);
-        if (themeName !== null) {
-          await get().setTheme(themeName);
+        if (themeName === null) {
+          return;
         }
+        // Synced custom themes are loaded from a separate preference row and
+        // may not be registered yet. Park the preference and let
+        // `registerSyncedThemes` retry; `generateTheme` would otherwise
+        // silently resolve the unknown name to the default theme.
+        if (!themeManager.hasTheme(themeName)) {
+          set({ pendingThemePreference: preference });
+          return;
+        }
+        set({ pendingThemePreference: null });
+        await get().setTheme(themeName);
       },
 
       setTheme: async (themeName: string) => {

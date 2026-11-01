@@ -14,6 +14,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { useThemeStore } from "./useThemeStore";
 import {
   buildPaletteFromSwatches,
+  type GeneratedThemeRecord,
   type ImageSwatchData,
 } from "../theme/imageTheme";
 
@@ -107,9 +108,26 @@ describe("useThemeStore generated theme pairs", () => {
   });
 });
 
+const syncedRecord = (): GeneratedThemeRecord => ({
+  id: "synced-test-dark",
+  groupId: "synced-test",
+  name: "synced-test-dark",
+  longName: "Synced Test",
+  mode: "dark",
+  palette: buildPaletteFromSwatches(SWATCHES, "dark"),
+  backgroundImage: "",
+  blurredBackgroundImage: "",
+  blur: 0,
+  createdAt: Date.now(),
+});
+
 describe("useThemeStore synced theme preference", () => {
   beforeEach(() => {
-    useThemeStore.setState({ themeLocked: false, lastLightTheme: null });
+    useThemeStore.setState({
+      themeLocked: false,
+      lastLightTheme: null,
+      pendingThemePreference: null,
+    });
   });
 
   it("applies a synced preference while the device is unlocked", async () => {
@@ -142,5 +160,30 @@ describe("useThemeStore synced theme preference", () => {
     });
 
     expect(useThemeStore.getState().themeName).toBe(before);
+  });
+
+  it("parks and later applies a preference whose synced theme is not registered yet", async () => {
+    const record = syncedRecord();
+    try {
+      // The synced preference arrives before its `custom-themes` row, so
+      // the theme name is unknown at apply time. It must not fall back to
+      // the default theme.
+      await useThemeStore.getState().applyThemePreference({
+        mode: "dark",
+        light: null,
+        dark: record.name,
+      });
+      expect(useThemeStore.getState().pendingThemePreference).not.toBeNull();
+      expect(useThemeStore.getState().themeName).not.toBe(record.name);
+
+      // Registering the synced theme flushes the parked preference.
+      useThemeStore.getState().registerSyncedThemes("user:test", [record]);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(useThemeStore.getState().themeName).toBe(record.name);
+      expect(useThemeStore.getState().pendingThemePreference).toBeNull();
+    } finally {
+      useThemeStore.getState().registerSyncedThemes("user:test", []);
+    }
   });
 });
