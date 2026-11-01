@@ -13,13 +13,16 @@ export interface CreateAttachmentBody {
 }
 
 /**
- * Body for `/api/attachment-links`. At least one of `note_id` /
- * `user_id` SHOULD be set, but the backend accepts both being
- * absent too (link with no target) -- so both are optional here.
- * Note wins over user when both happen to be present.
+ * Body for `/api/attachment-links`. Mirrors the backend
+ * `controllers.AttachmentLinkBody`.
+ *
+ * `link_to` selects the target type:
+ *   - omitted / "note" -> NOTE; `note_id` is required by the backend.
+ *   - "user"            -> USER; `user_id` is required by the backend.
  */
 export interface AttachmentLinkBody {
   attachment_key: string;
+  link_to?: "note" | "user";
   note_id?: string;
   user_id?: string;
 }

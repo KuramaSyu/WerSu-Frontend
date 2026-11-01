@@ -69,19 +69,19 @@ export interface IAttachmentApi {
   deleteAttachment(key: string): Promise<DeleteAttachmentResponse | null>;
 
   /**
-   * Links an existing attachment to a note (default), to a user, or
-   * with no specific target - the optional `note_id` / `user_id`
-   * fields may be omitted entirely.
-   * @param payload - The data required to link the attachment, including the attachment key and optionally a note ID or user ID.
+   * Links an existing attachment to a note (default) or to a user.
+   * `link_to` selects the target: omitted/"note" requires `note_id`,
+   * while "user" requires `user_id`.
+   * @param payload - The data required to link the attachment, including the attachment key and the target note or user.
    * @returns the URL of the linked attachment or null if unsuccessful
    */
   linkAttachment(payload: AttachmentLinkBody): Promise<string | null>;
 
   /**
-   * Unlinks an attachment from a note (default), from a user, or
-   * with no specific target - the optional `note_id` / `user_id`
-   * fields may be omitted entirely.
-   * @param payload - The data required to unlink the attachment, including the attachment key and optionally a note ID or user ID.
+   * Unlinks an attachment from a note (default) or from a user.
+   * `link_to` selects the target: omitted/"note" requires `note_id`,
+   * while "user" requires `user_id`.
+   * @param payload - The data required to unlink the attachment, including the attachment key and the target note or user.
    * @returns whether or not the unlinking was successful
    */
   unlinkAttachment(payload: AttachmentLinkBody): Promise<boolean>;
