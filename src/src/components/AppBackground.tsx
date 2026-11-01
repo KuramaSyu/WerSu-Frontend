@@ -1,30 +1,20 @@
-import { useMemo } from "react";
 import { Box } from "@mui/material";
 import { useThemeStore } from "../zustand/useThemeStore";
-import { useImageBlobCacheStore } from "../zustand/useImageBlobCache";
+import { useCachedImageUrl } from "../hooks/useCachedImageUrl";
 
 // Fullscreen background layer. Renders the active theme's background
 // image (when it has one); themes without an image render nothing.
-// `local:<id>` images (uploaded from disk) resolve through the blob
-// cache; remote URLs render directly.
+// `local:<id>` blobs and remote URLs both resolve through the IndexedDB
+// cache, which downloads and persists remote URLs on first use.
 const AppBackground: React.FC = () => {
   const { theme } = useThemeStore();
   const themeImage =
     theme.custom.chosenBackgroundImage ??
     theme.custom.backgroundImages[0] ??
     "";
-  const cachedObjectUrl = useImageBlobCacheStore(
-    (s) => s.byUrl.get(themeImage)?.objectUrl ?? null,
-  );
+  const sourceUrl = useCachedImageUrl(themeImage);
 
-  const sourceUrl = useMemo<string | undefined>(() => {
-    if (themeImage.length === 0) {
-      return undefined;
-    }
-    return cachedObjectUrl ?? themeImage;
-  }, [themeImage, cachedObjectUrl]);
-
-  if (sourceUrl === undefined) {
+  if (sourceUrl === null) {
     return null;
   }
 

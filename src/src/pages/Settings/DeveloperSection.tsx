@@ -1,7 +1,7 @@
 import { Alert, Stack, Switch, Typography } from "@mui/material";
 import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
 import { ThemeManager } from "../../theme/themeManager";
-import { PreferencesJsonAccordion } from "./PreferencesJsonAccordion";
+import { AllPreferencesAccordion } from "./AllPreferencesAccordion";
 
 /**
  * Developer-only settings.
@@ -151,7 +151,7 @@ export const DeveloperSection: React.FC = () => {
         </Alert>
       )}
 
-      <PreferencesJsonAccordion />
+      <AllPreferencesAccordion />
     </Stack>
   );
 };

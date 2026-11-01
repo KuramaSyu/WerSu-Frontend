@@ -8,6 +8,7 @@ import {
 import { ThemeProvider } from "@mui/material/styles";
 import { useThemeStore } from "./zustand/useThemeStore";
 import { useThemePreferenceSync } from "./hooks/useThemePreferenceSync";
+import { useCustomThemesSync } from "./hooks/useCustomThemes";
 
 import "./App.css";
 import { HomePage } from "./pages/Home/Main";
@@ -34,6 +35,7 @@ import { PublicNotePage } from "./pages/PublicNotePage/Main";
 import SettingsPage from "./pages/Settings/Main";
 import { LoginPage } from "./pages/LoginPage/Main";
 import { RulesPage } from "./pages/Rules/RulesPage";
+import { ShelfEditPage } from "./pages/ShelfEdit/Main";
 import { SharesPage } from "./pages/Shares/Main";
 import { ShortcutsPage } from "./pages/Shortcuts/Main";
 
@@ -59,6 +61,11 @@ function App() {
   // has pinned its theme (see the lock button in the theme picker).
   useThemePreferenceSync();
 
+  // Register custom themes synced through the keyed `custom-themes`
+  // preference and apply the active shelf theme when the user has not
+  // selected one of their own.
+  useCustomThemesSync();
+
   // QueryClientProvider lives in main.tsx; do not add a second one here
   return (
     <ThemeProvider theme={theme}>
@@ -82,6 +89,10 @@ function App() {
                 <Route path="/shortcuts" element={<ShortcutsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/shelves/:shelfId/rules" element={<RulesPage />} />
+                <Route
+                  path="/shelves/:shelfId/edit"
+                  element={<ShelfEditPage />}
+                />
               </Route>
             </Route>
           </Routes>

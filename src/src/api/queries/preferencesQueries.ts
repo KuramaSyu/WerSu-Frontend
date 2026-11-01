@@ -52,9 +52,14 @@ export const preferencesKeys = {
   /** Root key for all preference queries. */
   all: ["preferences"] as const,
 
-  /** Key for a single `(scope, target_id)` blob. */
+  /** Key for a single `(scope, target_id, key?)` blob. */
   detail: (request: GetPreferencesEndpointRequest) =>
-    [...preferencesKeys.all, request.scope, request.target_id] as const,
+    [
+      ...preferencesKeys.all,
+      request.scope,
+      request.target_id,
+      request.key ?? null,
+    ] as const,
 };
 
 // -----------------------------------------------------------------------------
@@ -126,6 +131,7 @@ export function useReplacePreferences(
         queryKey: preferencesKeys.detail({
           scope: variables.scope,
           target_id: variables.target_id,
+          key: variables.key,
         }),
       });
       await userOnSuccess?.(data, variables, ...args);
@@ -161,6 +167,7 @@ export function useMergePreferences(
         queryKey: preferencesKeys.detail({
           scope: variables.scope,
           target_id: variables.target_id,
+          key: variables.key,
         }),
       });
       await userOnSuccess?.(data, variables, ...args);
@@ -196,6 +203,7 @@ export function useDeletePreferences(
         queryKey: preferencesKeys.detail({
           scope: variables.scope,
           target_id: variables.target_id,
+          key: variables.key,
         }),
       });
       await userOnSuccess?.(data, variables, ...args);

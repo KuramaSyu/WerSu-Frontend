@@ -107,6 +107,14 @@ export interface GeneratedThemeRecord {
   /** Background blur strength, 0-100. */
   blur: number;
   createdAt: number;
+  /**
+   * Where this theme has been published. Omitted for device-local themes
+   * that have not been synced yet. `user` themes live in the current
+   * user's `custom-themes` preference, `shelf` themes in a shelf's.
+   */
+  scope?: "user" | "shelf";
+  /** Id of the user/shelf the theme is published to (with `scope`). */
+  targetId?: string;
 }
 
 /**

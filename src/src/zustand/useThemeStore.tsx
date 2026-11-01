@@ -30,6 +30,10 @@ export interface AddGeneratedThemeInput {
   blurredBackgroundImage: string;
   /** Background blur strength, 0-100. */
   blur: number;
+  /** Owner the theme is (or will be) published to, when known. */
+  scope?: "user" | "shelf";
+  /** Id of the user/shelf the theme is published to (with `scope`). */
+  targetId?: string;
 }
 
 /** The dark + light records generated from a single image. */
@@ -64,6 +68,44 @@ interface ThemeState {
 
   /** Pin/unpin this device's theme against cloud preference changes. */
   setThemeLocked: (locked: boolean) => void;
+
+  /**
+   * `true` once the user has explicitly chosen a theme. A shelf's theme
+   * is only offered while this is `false` ("if he hasn't selected one
+   * himself"). Persisted so the choice survives reloads.
+   */
+  themeUserSelected: boolean;
+
+  /** Record that the current theme is an explicit user choice. */
+  markThemeUserSelected: () => void;
+
+  /**
+   * Explicit, user-initiated theme pick. Applies the theme and flips
+   * `themeUserSelected` so the shelf fallback stops overriding it.
+   */
+  selectTheme: (themeName: string) => Promise<void>;
+
+  /**
+   * Themes loaded from a `custom-themes` preferences row (the user's own
+   * or the active shelf's). Registered with the `ThemeManager` so a synced
+   * theme name resolves on this device, but kept separate from
+   * `generatedThemes` so they are never re-uploaded accidentally.
+   */
+  syncedThemes: GeneratedThemeRecord[];
+
+  /** Ids currently contributed by each synced preference row. */
+  syncedThemeIdsBySource: Record<string, string[]>;
+
+  /**
+   * Replace the themes sourced from one preference row. `sourceKey`
+   * identifies the row (e.g. `user:<id>` / `shelf:<id>`); themes from a
+   * previous value for the same source that are no longer present are
+   * unregistered (unless a local generated theme still uses the id).
+   */
+  registerSyncedThemes: (
+    sourceKey: string,
+    records: GeneratedThemeRecord[],
+  ) => void;  
 
   /**
    * Apply a cloud theme preference, unless this device's theme is pinned
@@ -137,9 +179,71 @@ export const useThemeStore = create<ThemeState>()(
       lastDarkTheme: null,
       generatedThemes: [],
       themeLocked: false,
+      themeUserSelected: false,
+      syncedThemes: [],
+      syncedThemeIdsBySource: {},
 
       setThemeLocked: (locked: boolean) => {
         set({ themeLocked: locked });
+      },
+
+      markThemeUserSelected: () => {
+        if (!get().themeUserSelected) {
+          set({ themeUserSelected: true });
+        }
+      },
+
+      selectTheme: async (themeName: string) => {
+        set({ themeUserSelected: true });
+        await get().setTheme(themeName);
+      },
+
+      registerSyncedThemes: (sourceKey, records) => {
+        const state = get();
+        const previousIds = new Set(
+          state.syncedThemeIdsBySource[sourceKey] ?? [],
+        );
+        const nextIds = new Set(records.map((r) => r.id));
+
+        // Patches that survived from this source, plus the new ones.
+        const byId = new Map(state.syncedThemes.map((r) => [r.id, r]));
+        for (const record of records) {
+          // Don't clobber a local generated theme with the same id.
+          if (!state.generatedThemes.some((r) => r.id === record.id)) {
+            byId.set(record.id, record);
+            themeManager.registerTheme(buildThemeFromImageRecord(record));
+          }
+        }
+
+        // Themes that this source no longer contains. Remove them only if
+        // no other source references them and no local theme owns the id.
+        const otherSourceIds = new Set(
+          Object.entries(state.syncedThemeIdsBySource)
+            .filter(([key]) => key !== sourceKey)
+            .flatMap(([, ids]) => ids),
+        );
+        for (const id of previousIds) {
+          if (nextIds.has(id) || otherSourceIds.has(id)) {
+            continue;
+          }
+          if (state.generatedThemes.some((r) => r.id === id)) {
+            continue;
+          }
+          const record = byId.get(id);
+          if (record !== undefined) {
+            themeManager.removeTheme(record.name);
+            byId.delete(id);
+          }
+        }
+
+        set({
+          syncedThemes: [...byId.values()],
+          syncedThemeIdsBySource: {
+            ...state.syncedThemeIdsBySource,
+            [sourceKey]: [...nextIds],
+          },
+          customThemes: themeManager.getAllThemes(),
+        });
       },
 
       applyThemePreference: async (
@@ -189,6 +293,8 @@ export const useThemeStore = create<ThemeState>()(
 
       addGeneratedTheme: (input) => {
         const longName = clampThemeName(input.longName);
+        const scope = input.scope;
+        const targetId = input.targetId;
         const baseName = slugify(longName);
         // A group owns two theme names (`<group>-dark` / `<group>-light`).
         let group = baseName;
@@ -214,6 +320,8 @@ export const useThemeStore = create<ThemeState>()(
           blurredBackgroundImage: input.blurredBackgroundImage,
           blur: input.blur,
           createdAt: Date.now(),
+          ...(scope !== undefined ? { scope } : {}),
+          ...(targetId !== undefined ? { targetId } : {}),
         });
 
         const dark = makeRecord("dark");
@@ -390,6 +498,7 @@ export const useThemeStore = create<ThemeState>()(
         lastDarkTheme: state.lastDarkTheme,
         generatedThemes: state.generatedThemes,
         themeLocked: state.themeLocked,
+        themeUserSelected: state.themeUserSelected,
       }),
 
       merge: (persisted, current) => {
@@ -411,6 +520,10 @@ export const useThemeStore = create<ThemeState>()(
             typeof p.themeLocked === "boolean"
               ? p.themeLocked
               : current.themeLocked,
+          themeUserSelected:
+            typeof p.themeUserSelected === "boolean"
+              ? p.themeUserSelected
+              : current.themeUserSelected,
           generatedThemes: Array.isArray(p.generatedThemes)
             ? p.generatedThemes
                 .filter(isGeneratedThemeRecord)

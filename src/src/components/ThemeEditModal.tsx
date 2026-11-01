@@ -13,6 +13,7 @@ import { useState, type ChangeEvent } from "react";
 import { ModalShell } from "./ModalShell";
 import { useThemeStore } from "../zustand/useThemeStore";
 import { useImageBlobCacheStore } from "../zustand/useImageBlobCache";
+import { useCachedImageUrl } from "../hooks/useCachedImageUrl";
 import useInfoStore, { SnackbarUpdateImpl } from "../zustand/InfoStore";
 import { blurImageToWebp, fetchImageBlob } from "../utils/imageBlur";
 import {
@@ -119,17 +120,9 @@ export const ThemeEditModal: React.FC<ThemeEditModalProps> = ({
   const [blur, setBlur] = useState(record?.blur ?? DEFAULT_THEME_BLUR);
   const [saving, setSaving] = useState(false);
 
-  // Non-blurred source for the live preview. `local:` images resolve
-  // through the blob cache; URLs render directly.
-  const sourceKey = record?.backgroundImage ?? "";
-  const cachedSourceUrl = useImageBlobCacheStore(
-    (s) => s.byUrl.get(sourceKey)?.objectUrl ?? null,
-  );
-  const sourceUrl = sourceKey.startsWith("local:")
-    ? cachedSourceUrl
-    : sourceKey.length > 0
-      ? sourceKey
-      : null;
+  // Non-blurred source for the live preview, served from the IndexedDB
+  // blob cache (remote URLs are downloaded and persisted on demand).
+  const sourceUrl = useCachedImageUrl(record?.backgroundImage ?? "");
   // Scale the full-size blur radius down to the preview box so the
   // slider gives a readable sense of the effect.
   const previewBlurPx = (blur / 100) * 13;

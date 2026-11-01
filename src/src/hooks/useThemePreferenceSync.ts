@@ -21,6 +21,9 @@ import { useUserStore } from "../zustand/userStore";
 export function useThemePreferenceSync(): void {
   const userId = useUserStore((s) => s.user?.id ?? null);
   const applyThemePreference = useThemeStore((s) => s.applyThemePreference);
+  const markThemeUserSelected = useThemeStore(
+    (s) => s.markThemeUserSelected,
+  );
 
   const { data } = usePreferences({
     scope: "user",
@@ -30,7 +33,10 @@ export function useThemePreferenceSync(): void {
   useEffect(() => {
     const preferences = parseStoredPreferences(data?.preferences_json);
     if (preferences !== null) {
+      // A stored user preference is an explicit choice; it must win over
+      // any shelf fallback theme (see `useCustomThemesSync`).
+      markThemeUserSelected();
       void applyThemePreference(preferences.theme);
     }
-  }, [data, applyThemePreference]);
+  }, [data, applyThemePreference, markThemeUserSelected]);
 }

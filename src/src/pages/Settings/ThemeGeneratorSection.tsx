@@ -27,6 +27,7 @@ import { useThemeStore } from "../../zustand/useThemeStore";
 import { useImageBlobCacheStore } from "../../zustand/useImageBlobCache";
 import { downscaleImageTo1080p } from "../../utils/imageDownscale";
 import { blurImageToWebp, fetchImageBlob } from "../../utils/imageBlur";
+import { useCachedImageUrl } from "../../hooks/useCachedImageUrl";
 import { normalizeImageUrl } from "../../utils/imageUrl";
 import {
   buildPaletteFromSwatches,
@@ -39,6 +40,14 @@ import {
 } from "../../theme/imageTheme";
 import { ThemeColorCircles } from "../../components/ThemeColorCircles";
 import { ThemeEditModal } from "../../components/ThemeEditModal";
+import {
+  useCustomThemesPreference,
+  usePublishCustomThemes,
+} from "../../hooks/useCustomThemes";
+import type { CustomThemeScope } from "../../models/customThemes";
+import type { ThemePreference } from "../../models/Preferences";
+import { useSelectedShelfStore } from "../../zustand/useSelectedShelfStore";
+import { useUserStore } from "../../zustand/userStore";
 const stripExtension = (fileName: string): string =>
   fileName.replace(/\.[^./]+$/u, "").trim();
 
@@ -68,14 +77,9 @@ const GeneratedThemeRow: React.FC<GeneratedThemeRowProps> = ({
   onEdit,
   onDelete,
 }) => {
-  // `local:` backgrounds resolve through the IndexedDB blob cache.
-  const cachedObjectUrl = useImageBlobCacheStore(
-    (s) => s.byUrl.get(record.backgroundImage)?.objectUrl ?? null,
-  );
-  const thumbnail =
-    record.backgroundImage.length === 0
-      ? null
-      : (cachedObjectUrl ?? record.backgroundImage);
+  // Backgrounds resolve through the IndexedDB blob cache; remote URLs are
+  // downloaded and persisted on first render.
+  const thumbnail = useCachedImageUrl(record.backgroundImage);
   return (
     <Card
       variant="outlined"
@@ -174,8 +178,24 @@ export const ThemeGeneratorSection: React.FC = () => {
   const generatedThemes = useThemeStore((s) => s.generatedThemes);
   const addGeneratedTheme = useThemeStore((s) => s.addGeneratedTheme);
   const removeGeneratedTheme = useThemeStore((s) => s.removeGeneratedTheme);
-  const setTheme = useThemeStore((s) => s.setTheme);
+  const selectTheme = useThemeStore((s) => s.selectTheme);
   const themeName = useThemeStore((s) => s.themeName);
+  const userId = useUserStore((s) => s.user?.id ?? null);
+  const selectedShelfId = useSelectedShelfStore((s) => s.selectedShelfId);
+  const { publish, isPublishing } = usePublishCustomThemes();
+  // Where the newly saved theme should live: personal or shared with the
+  // currently selected shelf.
+  const [ownerScope, setOwnerScope] = useState<CustomThemeScope>("user");
+  // Existing payloads are merged with the new pair so publishing from a
+  // device that only has *synced* themes never drops them.
+  const userThemes = useCustomThemesPreference({
+    scope: "user",
+    targetId: userId ?? "",
+  });
+  const shelfThemesData = useCustomThemesPreference({
+    scope: "shelf",
+    targetId: selectedShelfId ?? "",
+  });
 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   // Set only for disk uploads; its bytes are written to IndexedDB on save.
@@ -314,6 +334,9 @@ export const ThemeGeneratorSection: React.FC = () => {
         backgroundImage = previewUrl;
         try {
           sourceBlob = await fetchImageBlob(previewUrl);
+          // Cache the original URL blob so later renders are IndexedDB
+          // hits instead of network fetches (and the theme works offline).
+          await cache.put(backgroundImage, sourceBlob);
         } catch {
           // CORS/network blocked the read; keep the theme, just without
           // a pre-rendered blur.
@@ -334,6 +357,26 @@ export const ThemeGeneratorSection: React.FC = () => {
         }
       }
 
+      const shareToShelf = ownerScope === "shelf";
+      if (shareToShelf && selectedShelfId === null) {
+        setMessage(
+          new SnackbarUpdateImpl(
+            "Select a shelf before sharing a theme with one",
+            "warning",
+          ),
+        );
+        return;
+      }
+      const targetId = shareToShelf
+        ? (selectedShelfId as string)
+        : (userId as string);
+      if (!shareToShelf && userId === null) {
+        setMessage(
+          new SnackbarUpdateImpl("Sign in to save a theme", "warning"),
+        );
+        return;
+      }
+
       // One image yields a matched dark + light pair, so the top-bar
       // mode toggle can flip straight to the sibling variant.
       const pair = addGeneratedTheme({
@@ -345,12 +388,44 @@ export const ThemeGeneratorSection: React.FC = () => {
         backgroundImage,
         blurredBackgroundImage,
         blur: blurredBackgroundImage.length > 0 ? DEFAULT_THEME_BLUR : 0,
+        scope: ownerScope,
+        targetId,
       });
       const applied = pair[mode];
-      void setTheme(applied.name);
-      setMessage(
-        new SnackbarUpdateImpl(`Theme "${applied.longName}" saved`, "success"),
-      );
+
+      // Publish the owner's full set of themes so the whole theme
+      // (colors + uploaded image URL) reaches other clients. Merge with
+      // the stored payload to preserve themes synced from other devices.
+      const baseThemes =
+        (shareToShelf ? shelfThemesData.data : userThemes.data)?.themes ?? [];
+      const mergedById = new Map(baseThemes.map((r) => [r.id, r]));
+      mergedById.set(pair.dark.id, pair.dark);
+      mergedById.set(pair.light.id, pair.light);
+      const ownedThemes = [...mergedById.values()];
+      const active: ThemePreference | null = shareToShelf
+        ? { mode, light: pair.light.name, dark: pair.dark.name }
+        : null;
+      try {
+        await publish({ scope: ownerScope, targetId }, ownedThemes, active);
+        setMessage(
+          new SnackbarUpdateImpl(
+            shareToShelf
+              ? `Theme "${applied.longName}" shared with the shelf`
+              : `Theme "${applied.longName}" saved to your account`,
+            "success",
+          ),
+        );
+      } catch (err) {
+        setMessage(
+          new SnackbarUpdateImpl(
+            err instanceof Error
+              ? `Theme saved locally, but sync failed: ${err.message}`
+              : "Theme saved locally, but sync failed",
+            "warning",
+          ),
+        );
+      }
+      void selectTheme(applied.name);
       resetDraft();
     } catch (err) {
       setMessage(
@@ -513,15 +588,41 @@ export const ThemeGeneratorSection: React.FC = () => {
                 }}
               />
               <Stack direction="row" spacing={1}>
+                <ToggleButtonGroup
+                  size="small"
+                  exclusive
+                  value={ownerScope}
+                  onChange={(_, next: CustomThemeScope | null) => {
+                    if (next !== null) setOwnerScope(next);
+                  }}
+                  aria-label="Theme owner"
+                >
+                  <ToggleButton value="user">Just me</ToggleButton>
+                  <ToggleButton
+                    value="shelf"
+                    disabled={selectedShelfId === null}
+                  >
+                    This shelf
+                  </ToggleButton>
+                </ToggleButtonGroup>
                 <Button
                   variant="contained"
                   startIcon={
-                    saving ? <CircularProgress size={16} /> : <SaveIcon />
+                    saving || isPublishing ? (
+                      <CircularProgress size={16} />
+                    ) : (
+                      <SaveIcon />
+                    )
                   }
                   onClick={() => void handleSave()}
-                  disabled={saving || name.trim().length === 0}
+                  disabled={
+                    saving ||
+                    isPublishing ||
+                    name.trim().length === 0 ||
+                    (ownerScope === "shelf" && selectedShelfId === null)
+                  }
                 >
-                  {saving ? "Saving..." : "Save theme"}
+                  {saving || isPublishing ? "Saving..." : "Save theme"}
                 </Button>
                 <Button onClick={resetDraft}>Discard</Button>
               </Stack>
@@ -552,7 +653,7 @@ export const ThemeGeneratorSection: React.FC = () => {
               key={record.id}
               record={record}
               isActive={themeName === record.name}
-              onApply={() => void setTheme(record.name)}
+              onApply={() => void selectTheme(record.name)}
               onEdit={() => setEditing(record)}
               onDelete={() => removeGeneratedTheme(record.id)}
             />

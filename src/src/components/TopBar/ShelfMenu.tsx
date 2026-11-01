@@ -18,6 +18,7 @@ import CheckIcon from "@mui/icons-material/Check";
 import EditIcon from "@mui/icons-material/Edit";
 import InboxIcon from "@mui/icons-material/Inbox";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import SettingsIcon from "@mui/icons-material/Settings";
 import ShelvesIcon from "@mui/icons-material/Shelves";
 import { useShelves } from "../../api/queries/shelfQueries";
 import { useSelectedShelfStore } from "../../zustand/useSelectedShelfStore";
@@ -57,6 +58,11 @@ const ShelfMenuImpl: React.FC = () => {
     navigate(`/shelves/${shelfId}/rules`);
   };
 
+  const openEditForShelf = (shelfId: string) => {
+    handleClose();
+    navigate(`/shelves/${shelfId}/edit`);
+  };
+
   // The row's own select handler must not fire when the edit
   // action is clicked, or picking rules would also pick the shelf.
   const handleOpenRules = (
@@ -66,6 +72,14 @@ const ShelfMenuImpl: React.FC = () => {
     event.stopPropagation();
     openRulesForShelf(shelfId);
   };
+
+  const handleOpenEdit = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    shelfId: string,
+  ) => {
+    event.stopPropagation();
+    openEditForShelf(shelfId);
+  };   
 
   // Resolve the label through the query so a server-side rename updates on refresh.
   const activeShelf =
@@ -196,6 +210,17 @@ const ShelfMenuImpl: React.FC = () => {
                     sx={{ ml: 1 }}
                   >
                     <EditIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Edit shelf / theme" placement="right">
+                  <IconButton
+                    className="shelf-menu-edit"
+                    size="small"
+                    aria-label={`Edit shelf ${label}`}
+                    onClick={(event) => handleOpenEdit(event, shelf.id)}
+                    sx={{ ml: 0.5 }}
+                  >
+                    <SettingsIcon fontSize="small" />
                   </IconButton>
                 </Tooltip>
               </MenuItem>

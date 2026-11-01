@@ -63,7 +63,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
   const {
     theme,
     themeName,
-    setTheme,
+    selectTheme,
     customThemes,
     generatedThemes,
     lastLightTheme,
@@ -225,7 +225,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
         r.groupId === activeGenerated?.groupId && r.mode === otherMode,
     );
     if (sibling !== undefined) {
-      void setTheme(sibling.name);
+      void selectTheme(sibling.name);
       return;
     }
     const lastUsed =
@@ -238,7 +238,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
         const m = t.palette.mode === "light" ? "light" : "dark";
         return m === otherMode;
       });
-    if (next) void setTheme(next.custom.themeName);
+    if (next) void selectTheme(next.custom.themeName);
   };
 
   return (
@@ -418,7 +418,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
             open={themeSelectOpen}
             onOpen={() => setThemeSelectOpen(true)}
             onClose={() => setThemeSelectOpen(false)}
-            onChange={(event) => setTheme(event.target.value)}
+            onChange={(event) => void selectTheme(event.target.value)}
             sx={{ borderRadius: M4 }}
             inputProps={{ "aria-label": "Select theme" }}
             renderValue={(value) => {

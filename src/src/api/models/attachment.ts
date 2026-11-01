@@ -19,12 +19,17 @@ export interface CreateAttachmentBody {
  * `link_to` selects the target type:
  *   - omitted / "note" -> NOTE; `note_id` is required by the backend.
  *   - "user"            -> USER; `user_id` is required by the backend.
+ *   - "shelf"           -> SHELF; `shelf_id` is required by the backend.
+ *
+ * Shelf targets back shared preferences such as a custom theme's
+ * background image, which must be readable by every shelf member.
  */
 export interface AttachmentLinkBody {
   attachment_key: string;
-  link_to?: "note" | "user";
+  link_to?: "note" | "user" | "shelf";
   note_id?: string;
   user_id?: string;
+  shelf_id?: string;
 }
 
 export interface DeleteAttachmentResponse {

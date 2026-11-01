@@ -41,6 +41,12 @@ export interface GetPreferencesQuery {
   scope: PreferenceScope;
   /** Id of the entity the scope points at (e.g. user id, shelf id). */
   target_id: string;
+  /**
+   * Optional sub-key within the scope. Omit it to read the default blob.
+   * Provide one to read a separate, isolated blob for that key (e.g.
+   * `"custom-themes"`). A single owner can hold at most 50 keys.
+   */
+  key?: string;
 }
 
 /**
@@ -56,6 +62,12 @@ export interface PreferencesJsonBody {
   scope: PreferenceScope;
   /** Id of the entity the scope points at. */
   target_id: string;
+  /**
+   * Optional sub-key within the scope. Omit it to write the default blob;
+   * pass one (e.g. `"custom-themes"`) to keep unrelated preference topics
+   * in their own isolated row.
+   */
+  key?: string;
   /**
    * Preference payload as a JSON-encoded string (the backend stores the
    * string verbatim). `JSON.stringify` the frontend's `PreferencesData`
@@ -73,6 +85,8 @@ export interface DeletePreferencesBody {
   scope: PreferenceScope;
   /** Id of the entity the scope points at. */
   target_id: string;
+  /** Optional sub-key within the scope; omit to delete the default blob. */
+  key?: string;
 }
 
 /**
@@ -87,6 +101,8 @@ export interface PreferencesReply {
   scope: PreferenceScope;
   /** Id of the entity the scope points at. */
   target_id: string;
+  /** Sub-key the blob is stored under; omitted/`""` for the default blob. */
+  key?: string;
   /**
    * Currently stored preference payload, JSON-encoded. Readers should
    * decode with `parseStoredPreferences` rather than `JSON.parse`.
