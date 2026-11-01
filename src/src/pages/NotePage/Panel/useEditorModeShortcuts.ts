@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from "react";
+import type { NoteWidthMode } from "../../../api/models/ViewConfig";
 import { useActiveNoteStore } from "../../../zustand/editorStore";
 import { useEditorSettings } from "../../../zustand/useEditorSettings";
 import { useViewConfig } from "../../../zustand/useViewConfig";
@@ -30,6 +31,16 @@ export interface EditorModeShortcuts {
 }
 
 /**
+ * Runtime collaborators the shortcut handlers need. All optional so
+ * read-only consumers (the reference panel) can resolve the catalogue
+ * without wiring up width transitions.
+ */
+export interface EditorModeShortcutOptions {
+  /** Switches the editor width preset (F/W/N shortcuts). */
+  setWidthMode?: (mode: NoteWidthMode) => void;
+}
+
+/**
  * Resolves the `note` page's shortcuts from the shared JSON catalogue
  * and binds each id to its runtime handler.
  *
@@ -37,9 +48,13 @@ export interface EditorModeShortcuts {
  * shortcut is contextual: while the source view is open it leaves the
  * source editor; otherwise, while in insert mode, it leaves insert
  * mode. The "I" shortcut enters insert mode from read mode, and "S"
- * opens the source editor from either mode.
+ * opens the source editor from either mode. "F"/"W"/"N" jump the
+ * width preset to full/wide/normal.
  */
-export function useEditorModeShortcuts(): EditorModeShortcuts {
+export function useEditorModeShortcuts(
+  options: EditorModeShortcutOptions = {},
+): EditorModeShortcuts {
+  const { setWidthMode } = options;
   const viewMode = useEditorSettings((s) => s.viewMode);
   const editMode = useEditorSettings((s) => s.editMode);
   const setViewMode = useEditorSettings((s) => s.setViewMode);
@@ -69,15 +84,23 @@ export function useEditorModeShortcuts(): EditorModeShortcuts {
 
   // id -> runtime callback. Kept separate from the JSON so the config
   // stays pure data (page, keys, state) that any UI can read.
-  const handlers = useMemo<Record<string, () => void>>(
-    () => ({
+  const handlers = useMemo<Record<string, () => void>>(() => {
+    const map: Record<string, () => void> = {
       "note.leaveSource": leaveSource,
       "note.openSource": openSource,
       "note.enterInsert": enterInsert,
       "note.leaveInsert": leaveInsert,
-    }),
-    [leaveSource, openSource, enterInsert, leaveInsert],
-  );
+    };
+    // Width shortcuts are only meaningful where a width transition can
+    // actually run (the live editor). The reference panel resolves the
+    // catalogue without them and simply gets the no-op fallback.
+    if (setWidthMode) {
+      map["note.widthNormal"] = () => setWidthMode("normal");
+      map["note.widthWide"] = () => setWidthMode("wide");
+      map["note.widthFull"] = () => setWidthMode("full");
+    }
+    return map;
+  }, [leaveSource, openSource, enterInsert, leaveInsert, setWidthMode]);
 
   const shortcuts = useMemo<EditorShortcut[]>(() => {
     const page = getShortcutPage(PAGE_ID);

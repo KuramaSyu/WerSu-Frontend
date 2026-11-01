@@ -52,6 +52,7 @@ import { logRerender } from "./editorRenderLog";
 import { CollabConflictController } from "./CollabConflictController";
 import { HoldKeyActionBar } from "../../components/HoldKeyActionBar";
 import { useEditorModeShortcuts } from "./Panel/useEditorModeShortcuts";
+import { useNoteWidthMode } from "./Panel/useNoteWidthMode";
 
 export interface NoteEditorProps {
   note?: Note;
@@ -179,8 +180,11 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
   );
 
   // Hold-to-run editor shortcuts (shared with the right-rail
-  // Shortcuts panel). The floating bar is the visible feedback.
-  const { actions: holdShortcuts } = useEditorModeShortcuts();
+  // Shortcuts panel). The floating bar is the visible feedback. The
+  // width shortcuts reuse the toolbar's transition controller so
+  // entering/leaving `full` moves the side panels the same way.
+  const { setWidthMode } = useNoteWidthMode();
+  const { actions: holdShortcuts } = useEditorModeShortcuts({ setWidthMode });
 
   // Memoized slash command list. Without useMemo the array identity
   // changes per render and retriggers BubbleMenu plugin teardown.

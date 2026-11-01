@@ -11,8 +11,32 @@ const DEFAULT_VIEW_CONFIG: ViewConfig = {
   widthMode: "normal",
 };
 
+/**
+ * Panel layout captured just before entering a width mode that manages
+ * panels (`full`). Stored here — rather than in a per-hook ref — so the
+ * top-bar width toggle and the editor's width shortcuts (which live in
+ * different components) share one transition history. See
+ * `useNoteWidthMode`.
+ */
+export interface NotePanelSnapshot {
+  leftOpen: boolean;
+  rightOpen: boolean;
+  leftOverride: boolean;
+  rightOverride: boolean;
+}
+
 interface ViewConfigState {
   config: ViewConfig;
+
+  /**
+   * Layout to restore once the active mode stops forcing panels, or
+   * `null` when no panel-managing mode is in flight. Transition
+   * history, not configuration — kept out of `config` so it is never
+   * mistaken for a user preference.
+   */
+  panelSnapshot: NotePanelSnapshot | null;
+
+  setPanelSnapshot: (snapshot: NotePanelSnapshot | null) => void;
 
   /**
    * Shallow-merge partial flags into the current config. Used by the
@@ -30,7 +54,10 @@ interface ViewConfigState {
 
 export const useViewConfig = create<ViewConfigState>((set) => ({
   config: DEFAULT_VIEW_CONFIG,
+  panelSnapshot: null,
   setViewConfig: (cfg) =>
     set((state) => ({ config: { ...state.config, ...cfg } })),
-  resetViewConfig: () => set({ config: DEFAULT_VIEW_CONFIG }),
+  setPanelSnapshot: (panelSnapshot) => set({ panelSnapshot }),
+  resetViewConfig: () =>
+    set({ config: DEFAULT_VIEW_CONFIG, panelSnapshot: null }),
 }));

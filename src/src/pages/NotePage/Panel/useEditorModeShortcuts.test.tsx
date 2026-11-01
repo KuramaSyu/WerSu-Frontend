@@ -3,7 +3,7 @@
 import "../../../test/setup";
 
 import { act, renderHook } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { Editor } from "@tiptap/core";
 import { useActiveNoteStore } from "../../../zustand/editorStore";
 import { useEditorSettings } from "../../../zustand/useEditorSettings";
@@ -20,13 +20,16 @@ const availableLabels = (
 ) => shortcuts.filter((s) => s.available).map((s) => s.label);
 
 describe("useEditorModeShortcuts", () => {
-  it("offers S (open source) in rich/read, alongside I", () => {
+  const WIDTH_LABELS = ["Normal width", "Wide width", "Full width"];
+
+  it("offers S (open source) in rich/read, alongside I and the widths", () => {
     setModes("rich", false);
     const { result } = renderHook(() => useEditorModeShortcuts());
 
     expect(availableLabels(result.current.shortcuts)).toEqual([
       "Enter insert mode",
       "Open source editor",
+      ...WIDTH_LABELS,
     ]);
   });
 
@@ -37,15 +40,17 @@ describe("useEditorModeShortcuts", () => {
     expect(availableLabels(result.current.shortcuts)).toEqual([
       "Leave insert mode",
       "Open source editor",
+      ...WIDTH_LABELS,
     ]);
   });
 
-  it("only offers leaving source while the source view is open", () => {
+  it("only offers leaving source and the widths in source/insert", () => {
     setModes("source", true);
     const { result } = renderHook(() => useEditorModeShortcuts());
 
     expect(availableLabels(result.current.shortcuts)).toEqual([
       "Leave source editor",
+      ...WIDTH_LABELS,
     ]);
   });
 
@@ -56,6 +61,33 @@ describe("useEditorModeShortcuts", () => {
     expect(availableLabels(result.current.shortcuts)).toEqual([
       "Leave source editor",
       "Enter insert mode",
+      ...WIDTH_LABELS,
+    ]);
+  });
+
+  it("routes the F/W/N width shortcuts through setWidthMode", () => {
+    setModes("rich", false);
+    const setWidthMode = vi.fn();
+    const { result } = renderHook(() =>
+      useEditorModeShortcuts({ setWidthMode }),
+    );
+
+    act(() => {
+      result.current.shortcuts
+        .find((s) => s.label === "Full width")
+        ?.onTrigger();
+      result.current.shortcuts
+        .find((s) => s.label === "Wide width")
+        ?.onTrigger();
+      result.current.shortcuts
+        .find((s) => s.label === "Normal width")
+        ?.onTrigger();
+    });
+
+    expect(setWidthMode.mock.calls.map(([mode]) => mode)).toEqual([
+      "full",
+      "wide",
+      "normal",
     ]);
   });
 

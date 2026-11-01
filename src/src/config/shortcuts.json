@@ -36,6 +36,27 @@
         "keyLabel": "S",
         "hold": true,
         "when": { "viewMode": "rich" }
+      },
+      {
+        "id": "note.widthNormal",
+        "label": "Normal width",
+        "key": "n",
+        "keyLabel": "N",
+        "hold": true
+      },
+      {
+        "id": "note.widthWide",
+        "label": "Wide width",
+        "key": "w",
+        "keyLabel": "W",
+        "hold": true
+      },
+      {
+        "id": "note.widthFull",
+        "label": "Full width",
+        "key": "f",
+        "keyLabel": "F",
+        "hold": true
       }
     ]
   },

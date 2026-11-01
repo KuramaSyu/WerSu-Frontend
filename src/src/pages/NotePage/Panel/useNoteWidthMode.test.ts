@@ -108,4 +108,29 @@ describe("useNoteWidthMode", () => {
     cycle(result); // normal -> wide
     expect(useViewConfig.getState().config.widthMode).toBe("wide");
   });
+
+  it("jumps straight to a preset with setWidthMode", () => {
+    const { result } = renderHook(() => useNoteWidthMode());
+
+    act(() => result.current.setWidthMode("wide"));
+    expect(useViewConfig.getState().config.widthMode).toBe("wide");
+
+    act(() => result.current.setWidthMode("full"));
+    expect(useViewConfig.getState().config.widthMode).toBe("full");
+    expect(layout.setLeftPanelOpen).toHaveBeenCalledWith(false);
+    expect(layout.setRightPanelOpen).toHaveBeenCalledWith(false);
+
+    act(() => result.current.setWidthMode("normal"));
+    expect(useViewConfig.getState().config.widthMode).toBe("normal");
+    expect(layout.setLeftPanelOpen).toHaveBeenLastCalledWith(true);
+  });
+
+  it("ignores setWidthMode for the mode that is already active", () => {
+    const { result } = renderHook(() => useNoteWidthMode());
+
+    act(() => result.current.setWidthMode("normal"));
+
+    expect(layout.setLeftPanelOpen).not.toHaveBeenCalled();
+    expect(layout.setRightPanelOpen).not.toHaveBeenCalled();
+  });
 });
