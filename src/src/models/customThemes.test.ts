@@ -6,6 +6,7 @@ import {
   CUSTOM_THEMES_VERSION,
   customThemeContentEqual,
   parseCustomThemesData,
+  removeCustomThemeGroups,
   serializeCustomThemesData,
 } from "./customThemes";
 import type { GeneratedThemeRecord } from "../theme/imageTheme";
@@ -129,6 +130,73 @@ describe("parseCustomThemesData", () => {
     expect(parseCustomThemesData(null)).toBeNull();
     expect(parseCustomThemesData("{not json")).toBeNull();
     expect(parseCustomThemesData({ themes: [] })).toBeNull();
+  });
+});
+
+describe("removeCustomThemeGroups", () => {
+  it("removes every variant of a theme group", () => {
+    const dark = makeRecord({ id: "gen-dark-1", groupId: "group-1" });
+    const light = makeRecord({
+      id: "gen-light-1",
+      groupId: "group-1",
+      name: "sunset-light",
+      mode: "light",
+    });
+    const other = makeRecord({
+      id: "gen-dark-2",
+      groupId: "group-2",
+      name: "ocean-dark",
+    });
+    const data = buildCustomThemesData([dark, light, other]);
+
+    const updated = removeCustomThemeGroups(data, new Set(["group-1"]));
+
+    expect(updated.themes).toEqual([other]);
+  });
+
+  it("clears active selections that referenced a removed theme", () => {
+    const dark = makeRecord();
+    const light = makeRecord({
+      id: "gen-light-1",
+      name: "sunset-light",
+      mode: "light",
+    });
+    const data = buildCustomThemesData([dark, light], {
+      mode: "dark",
+      light: "sunset-light",
+      dark: "sunset-dark",
+    });
+
+    const updated = removeCustomThemeGroups(data, new Set(["group-1"]));
+
+    expect(updated.active).toBeNull();
+  });
+
+  it("keeps the other mode when only one active name was removed", () => {
+    const dark = makeRecord();
+    const light = makeRecord({
+      id: "gen-light-1",
+      name: "sunset-light",
+      mode: "light",
+    });
+    const data = buildCustomThemesData([dark, light], {
+      mode: "dark",
+      light: "sunset-light",
+      dark: "ocean-dark",
+    });
+
+    const updated = removeCustomThemeGroups(data, new Set(["group-1"]));
+
+    expect(updated.active).toEqual({
+      mode: "dark",
+      light: null,
+      dark: "ocean-dark",
+    });
+  });
+
+  it("returns the original payload when no group matched", () => {
+    const data = buildCustomThemesData([makeRecord()]);
+    expect(removeCustomThemeGroups(data, new Set(["missing"]))).toBe(data);
   });
 });
 

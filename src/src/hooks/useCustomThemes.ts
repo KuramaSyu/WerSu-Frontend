@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getAttachmentApi } from "../api/AttachmentApi";
+import { getPreferencesApi } from "../api/PreferencesApi";
 import {
   usePreferences,
   useReplacePreferences,
@@ -9,6 +10,7 @@ import {
   buildCustomThemesData,
   CUSTOM_THEMES_PREFERENCE_KEY,
   parseCustomThemesData,
+  removeCustomThemeGroups,
   serializeCustomThemesData,
   type CustomThemeScope,
   type CustomThemesData,
@@ -350,6 +352,124 @@ export function useCustomThemesSync(): void {
     themeLocked,
     applyThemePreference,
   ]);
+}
+
+/** Parse a `syncedThemeIdsBySource` key (`user:<id>` / `shelf:<id>`). */
+function parseCustomThemesSourceKey(
+  sourceKey: string,
+): CustomThemesOwner | null {
+  const separator = sourceKey.indexOf(":");
+  if (separator < 0) {
+    return null;
+  }
+  const scope = sourceKey.slice(0, separator);
+  const targetId = sourceKey.slice(separator + 1);
+  if ((scope !== "user" && scope !== "shelf") || targetId.length === 0) {
+    return null;
+  }
+  return { scope, targetId };
+}
+
+/**
+ * Delete custom themes from every cloud row that owns them, then drop the
+ * device-local copies.
+ *
+ * A theme can be published to the signed-in user and/or one or more shelves.
+ * `syncedThemeIdsBySource` records which preference rows contributed each
+ * synced id, while locally generated records carry `scope`/`targetId` once
+ * they have been published. Removing the group from those rows makes the
+ * deletion reach every client on its next sync instead of only hiding the
+ * theme on this device. Both variants of a dark/light pair are removed.
+ */
+export function useDeleteCustomThemes(): {
+  /** Delete the dark/light groups containing `records` everywhere. */
+  deleteThemes: (records: GeneratedThemeRecord[]) => Promise<void>;
+  isDeleting: boolean;
+} {
+  const replace = useReplacePreferences();
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const deleteThemes = useCallback(
+    async (records: GeneratedThemeRecord[]) => {
+      if (records.length === 0) {
+        return;
+      }
+      const groupIds = new Set(records.map((record) => record.groupId));
+      const state = useThemeStore.getState();
+      const groupRecords = [
+        ...state.generatedThemes,
+        ...state.syncedThemes,
+      ].filter((record) => groupIds.has(record.groupId));
+      // Include the caller's records too, so a deletion requested before the
+      // store registers a freshly fetched row still targets the right ids.
+      const allById = new Map(
+        [...groupRecords, ...records].map((record) => [record.id, record]),
+      );
+      const allRecords = [...allById.values()];
+      const ids = new Set(allRecords.map((record) => record.id));
+
+      // Every synced source that contributed one of these ids owns a copy.
+      const owners = new Map<string, CustomThemesOwner>();
+      for (const [sourceKey, sourceIds] of Object.entries(
+        state.syncedThemeIdsBySource,
+      )) {
+        if (!sourceIds.some((id) => ids.has(id))) {
+          continue;
+        }
+        const owner = parseCustomThemesSourceKey(sourceKey);
+        if (owner !== null) {
+          owners.set(sourceKey, owner);
+        }
+      }
+      // Local records remember where they were published even before the
+      // corresponding row has synced back to this client.
+      for (const record of allRecords) {
+        if (record.scope !== undefined && record.targetId !== undefined) {
+          owners.set(`${record.scope}:${record.targetId}`, {
+            scope: record.scope,
+            targetId: record.targetId,
+          });
+        }
+      }
+
+      setIsDeleting(true);
+      try {
+        const preferencesApi = getPreferencesApi();
+        for (const owner of owners.values()) {
+          const reply = await preferencesApi.getPreferences({
+            scope: owner.scope,
+            target_id: owner.targetId,
+            key: CUSTOM_THEMES_PREFERENCE_KEY,
+          });
+          const data = parseCustomThemesData(reply?.preferences_json);
+          if (data === null) {
+            continue;
+          }
+          const updated = removeCustomThemeGroups(data, groupIds);
+          if (updated === data) {
+            continue;
+          }
+          await publishCustomThemes(
+            owner,
+            updated.themes,
+            updated.active,
+            replace.mutateAsync,
+          );
+        }
+
+        // Remove the local copy only after the cloud rows no longer list it,
+        // so a failed write leaves the theme available for a retry.
+        for (const id of ids) {
+          useThemeStore.getState().deleteThemeLocally(id);
+        }
+      } finally {
+        setIsDeleting(false);
+      }
+    },
+    [replace.mutateAsync],
+  );
+
+  return { deleteThemes, isDeleting };
 }
 
 /**

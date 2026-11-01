@@ -113,6 +113,57 @@ export function customThemeContentEqual(
   );
 }
 
+/**
+ * Clear theme names that are no longer present from an owner's active
+ * selection. Returns the original object when nothing changed, so callers
+ * can avoid needless writes.
+ */
+export function removeThemeNamesFromPreference(
+  active: ThemePreference | null,
+  removedNames: ReadonlySet<string>,
+): ThemePreference | null {
+  if (active === null) {
+    return null;
+  }
+  const light =
+    active.light !== null && removedNames.has(active.light)
+      ? null
+      : active.light;
+  const dark =
+    active.dark !== null && removedNames.has(active.dark) ? null : active.dark;
+  if (light === active.light && dark === active.dark) {
+    return active;
+  }
+  // Nothing selectable remains; drop the selection entirely.
+  return light === null && dark === null
+    ? null
+    : { ...active, light, dark };
+}
+
+/**
+ * Remove one or more theme groups from a stored payload.
+ *
+ * Both variants of a theme share a `groupId`, so deleting either variant
+ * removes the whole dark/light pair. Active selections that pointed at a
+ * removed theme are cleared so other clients do not try to apply a theme
+ * that no longer exists. Returns the original object when no group matched,
+ * letting callers skip an unnecessary preference write.
+ */
+export function removeCustomThemeGroups(
+  data: CustomThemesData,
+  groupIds: ReadonlySet<string>,
+): CustomThemesData {
+  const removed = data.themes.filter((theme) => groupIds.has(theme.groupId));
+  if (removed.length === 0) {
+    return data;
+  }
+  const removedNames = new Set(removed.map((theme) => theme.name));
+  return buildCustomThemesData(
+    data.themes.filter((theme) => !groupIds.has(theme.groupId)),
+    removeThemeNamesFromPreference(data.active, removedNames),
+  );
+}
+
 /** Build the payload written to the `custom-themes` preferences row. */
 export function buildCustomThemesData(
   themes: GeneratedThemeRecord[],

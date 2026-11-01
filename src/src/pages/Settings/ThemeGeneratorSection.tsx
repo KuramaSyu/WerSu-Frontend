@@ -43,6 +43,7 @@ import { ThemeColorCircles } from "../../components/ThemeColorCircles";
 import { ThemeEditModal } from "../../components/ThemeEditModal";
 import {
   useCustomThemesPreference,
+  useDeleteCustomThemes,
   usePublishCustomThemes,
 } from "../../hooks/useCustomThemes";
 import type { CustomThemeScope } from "../../models/customThemes";
@@ -68,10 +69,12 @@ interface GeneratedThemeRowProps {
   isActive: boolean;
   onApply: () => void;
   onEdit: () => void;
-  /** Omitted for synced themes, which would just be restored on next sync. */
+  /** Delete the theme locally and from every cloud row that owns it. */
   onDelete?: () => void;
   /** Drop the local copy and re-download it from its source. */
   onRefetch?: () => void;
+  /** Disable actions while a theme mutation is running. */
+  disabled?: boolean;
 }
 
 const GeneratedThemeRow: React.FC<GeneratedThemeRowProps> = ({
@@ -81,6 +84,7 @@ const GeneratedThemeRow: React.FC<GeneratedThemeRowProps> = ({
   onEdit,
   onDelete,
   onRefetch,
+  disabled = false,
 }) => {
   // Backgrounds resolve through the IndexedDB blob cache; remote URLs are
   // downloaded and persisted on first render.
@@ -144,13 +148,19 @@ const GeneratedThemeRow: React.FC<GeneratedThemeRowProps> = ({
       {isActive ? (
         <CheckCircleIcon color="primary" aria-label="active theme" />
       ) : null}
-      <Button size="small" variant="outlined" onClick={onApply}>
+      <Button
+        size="small"
+        variant="outlined"
+        onClick={onApply}
+        disabled={disabled}
+      >
         Use
       </Button>
       <Tooltip title="Edit theme">
         <IconButton
           aria-label={`Edit theme ${record.longName}`}
           onClick={onEdit}
+          disabled={disabled}
         >
           <EditIcon />
         </IconButton>
@@ -160,16 +170,18 @@ const GeneratedThemeRow: React.FC<GeneratedThemeRowProps> = ({
           <IconButton
             aria-label={`Re-fetch theme ${record.longName}`}
             onClick={onRefetch}
+            disabled={disabled}
           >
             <RefreshIcon />
           </IconButton>
         </Tooltip>
       ) : null}
       {onDelete !== undefined ? (
-        <Tooltip title="Delete theme">
+        <Tooltip title="Delete theme everywhere">
           <IconButton
             aria-label={`Delete theme ${record.longName}`}
             onClick={onDelete}
+            disabled={disabled}
           >
             <DeleteIcon />
           </IconButton>
@@ -194,24 +206,21 @@ export const ThemeGeneratorSection: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const generatedThemes = useThemeStore((s) => s.generatedThemes);
   const syncedThemes = useThemeStore((s) => s.syncedThemes);
-  // Sync themes are editable but not deletable here (they'd return on the
-  // next sync), so the list merges both sources.
+  // Local and synced themes are merged into one editable list. Both can be
+  // deleted; deleting a synced theme also removes it from the cloud row that
+  // owns it, so it does not return on the next sync.
   const editableThemes = useMemo(
     () => [...generatedThemes, ...syncedThemes],
     [generatedThemes, syncedThemes],
   );
-  const syncedIds = useMemo(
-    () => new Set(syncedThemes.map((r) => r.id)),
-    [syncedThemes],
-  );
   const addGeneratedTheme = useThemeStore((s) => s.addGeneratedTheme);
-  const removeGeneratedTheme = useThemeStore((s) => s.removeGeneratedTheme);
   const deleteThemeLocally = useThemeStore((s) => s.deleteThemeLocally);
   const selectTheme = useThemeStore((s) => s.selectTheme);
   const themeName = useThemeStore((s) => s.themeName);
   const userId = useUserStore((s) => s.user?.id ?? null);
   const selectedShelfId = useSelectedShelfStore((s) => s.selectedShelfId);
   const { publish, isPublishing } = usePublishCustomThemes();
+  const { deleteThemes, isDeleting } = useDeleteCustomThemes();
   // Where the newly saved theme should live: personal or shared with the
   // currently selected shelf.
   const [ownerScope, setOwnerScope] = useState<CustomThemeScope>("user");
@@ -331,6 +340,26 @@ export const ThemeGeneratorSection: React.FC = () => {
       );
     } finally {
       setAnalyzing(false);
+    }
+  };
+
+  // Delete a theme everywhere: remove it from every cloud row that owns it
+  // (user and/or shelves) and then drop this device's local record/blobs.
+  const handleDeleteTheme = async (record: GeneratedThemeRecord) => {
+    try {
+      await deleteThemes([record]);
+      setMessage(
+        new SnackbarUpdateImpl(`Deleted “${record.longName}”`, "success"),
+      );
+    } catch (err) {
+      setMessage(
+        new SnackbarUpdateImpl(
+          err instanceof Error
+            ? `Could not delete “${record.longName}”: ${err.message}`
+            : `Could not delete “${record.longName}”`,
+          "error",
+        ),
+      );
     }
   };
 
@@ -702,11 +731,8 @@ export const ThemeGeneratorSection: React.FC = () => {
               onApply={() => void selectTheme(record.name)}
               onEdit={() => setEditing(record)}
               onRefetch={() => handleRefetchTheme(record)}
-              onDelete={
-                syncedIds.has(record.id)
-                  ? undefined
-                  : () => removeGeneratedTheme(record.id)
-              }
+              onDelete={() => void handleDeleteTheme(record)}
+              disabled={isDeleting || isPublishing}
             />
           ))}
         </Stack>
