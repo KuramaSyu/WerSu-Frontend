@@ -161,8 +161,13 @@ export function analyseSelection(state: EditorState): SelectionAnalysisFull {
   if (selection instanceof NodeSelection) {
     return { kind: "empty", editable: false, state };
   }
-  const editable = state.doc && selection.from !== selection.to;
-  if (selection.empty) return { kind: "empty", editable, state };
+  // A CellSelection's from/to span its first cell, so `empty` is true when
+  // that cell has no text even though rows/columns are clearly selected.
+  const isCellSelection = selection instanceof CellSelection;
+  const editable =
+    isCellSelection || (state.doc && selection.from !== selection.to);
+  if (selection.empty && !isCellSelection)
+    return { kind: "empty", editable, state };
 
   const scope = classifyTableScope(state);
   if (scope === "multi-table") return { kind: "multiTable", editable, state };

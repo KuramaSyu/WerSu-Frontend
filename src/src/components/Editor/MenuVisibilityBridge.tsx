@@ -10,6 +10,8 @@ import type { Editor } from "@tiptap/core";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
 import { useEditorMenuStore } from "../../zustand/editorMenuStore";
 import { useEditorTableSelectionStore } from "../../zustand/editorTableSelectionStore";
+import { NodeSelection } from "@tiptap/pm/state";
+import { CellSelection } from "@tiptap/pm/tables";
 import { analyseSelection } from "./bubbleMenuStrategies";
 import { logRerender } from "../../pages/NotePage/editorRenderLog";
 
@@ -30,7 +32,10 @@ function computeVisibility(
   if (!enabled || !editor.isEditable) return false;
   if (!editor.isFocused) return false;
   if (isPointerDown) return false;
-  const { from, to, empty } = editor.state.selection;
+  const selection = editor.state.selection;
+  if (selection instanceof CellSelection) return true;
+  if (selection instanceof NodeSelection) return false;
+  const { from, to, empty } = selection;
   if (empty || from === to) return false;
   return true;
 }

@@ -21,7 +21,8 @@ import { CopyButton } from "../CopyButton";
 import { copyEditorSelection } from "../RightClick/editorClipboard";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useEditorMenuStore } from "../../zustand/editorMenuStore";
-import { TextSelection } from "@tiptap/pm/state";
+import { NodeSelection } from "@tiptap/pm/state";
+import { CellSelection } from "@tiptap/pm/tables";
 import { analyseSelection, pickStrategy } from "./bubbleMenuStrategies";
 import { iconForName } from "./editorIcons";
 
@@ -58,7 +59,23 @@ export const TextSelectionBubbleMenu = ({
     selector: (ctx) => {
       const selection = ctx.editor.state.selection;
       const { from, to } = selection;
-      const isTextSelection = selection instanceof TextSelection;
+      // Node selections (images, embeds) carry their own toolbar; the text
+      // formatting menu must not open over them. Table CellSelections are
+      // ranges too, but their first cell may be empty, so from === to is not
+      // a reliable emptiness check for them.
+      const isCellSelection = selection instanceof CellSelection;
+      const hasRangeSelection =
+        isCellSelection ||
+        (from !== to && !(selection instanceof NodeSelection));
+      const plainSelection = isCellSelection
+        ? selection.content().content.textBetween(
+            0,
+            selection.content().content.size,
+            "\n\n",
+          )
+        : hasRangeSelection
+          ? ctx.editor.state.doc.textBetween(from, to, "\n\n")
+          : "";
       return {
         activeMarks: {
           bold: ctx.editor.isActive("bold"),
@@ -67,11 +84,8 @@ export const TextSelectionBubbleMenu = ({
           code: ctx.editor.isActive("code"),
           highlight: ctx.editor.isActive("highlight"),
         },
-        hasSelection: isTextSelection && from !== to,
-        plainSelection:
-          isTextSelection && from !== to
-            ? ctx.editor.state.doc.textBetween(from, to, "\n\n")
-            : "",
+        hasSelection: hasRangeSelection,
+        plainSelection,
       };
     },
   });
