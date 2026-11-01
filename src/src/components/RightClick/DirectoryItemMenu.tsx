@@ -8,7 +8,6 @@
 
 import { useCallback, useState, type ReactNode } from "react";
 import { Box } from "@mui/material";
-import ShareIcon from "@mui/icons-material/Share";
 import { useNavigate } from "react-router-dom";
 import { copyToClipboard } from "../../zustand/InfoStore";
 import { useRightClickMenuStore } from "../../zustand/useRightClickMenuStore";
@@ -108,28 +107,10 @@ export const DirectoryItemMenu: React.FC<DirectoryItemMenuProps> = ({
         };
       }
 
-      // Rendered last: `extraComponents` appends after the built-ins.
-      const extraComponents: RightClickMenuSpec["extraComponents"] = [];
-      if (target.kind === "directory" && !isRoot) {
-        extraComponents.push({
-          key: "view-shares",
-          label: "Shares",
-          icon: <ShareIcon fontSize="small" />,
-          handler: () => {
-            navigate(
-              `/shares?directory=${encodeURIComponent(target.directoryId)}`,
-            );
-            return true;
-          },
-        });
-      }
-
       menu.onContextMenu(event, {
         targetId:
           target.kind === "directory" ? target.directoryId : target.noteId,
         buttons: target.kind === "note" ? NOTE_ROW_BUTTONS : ROW_BUTTONS,
-        extraComponents:
-          extraComponents.length > 0 ? extraComponents : undefined,
         overrides,
       });
     },

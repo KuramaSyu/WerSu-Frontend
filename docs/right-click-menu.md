@@ -205,8 +205,8 @@ mutation logic inside a component.
 | Provider | Attached to | Buttons |
 |---|---|---|
 | `EditorRightClickMenu` | editor surface | `copy paste cut` + table ops + `Insert ▸` |
-| `DirectoryItemMenu` | `DirectoryItem` | `copy paste edit delete`, then `Shares` |
-| `FolderCardMenu` | home directory card | `copy paste favourite edit delete`, then `Shares` |
+| `DirectoryItemMenu` | `DirectoryItem` | `copy paste edit delete` |
+| `FolderCardMenu` | home directory card | `copy paste favourite edit delete` |
 | `NoteCardMenu` | main-page note card | `copy paste edit delete` |
 
 ---
