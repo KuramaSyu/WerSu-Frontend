@@ -93,6 +93,45 @@ describe("HoldKeyActionBar", () => {
     });
   });
 
+  it("falls back to a timer when the fill animation never ends", () => {
+    vi.useFakeTimers();
+    try {
+      const onTrigger = vi.fn();
+      render(
+        <HoldKeyActionBar
+          active
+          duration={400}
+          actions={[
+            {
+              key: "i",
+              keyLabel: "I",
+              label: "Enter insert mode",
+              onTrigger,
+            },
+          ]}
+        />,
+      );
+
+      act(() => {
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "i" }));
+      });
+      expect(screen.getByTestId("hold-key-i")).toBeInTheDocument();
+      expect(onTrigger).not.toHaveBeenCalled();
+
+      // No `animationend` is dispatched: the fallback must still
+      // complete the hold and register the confirmation pulse.
+      act(() => {
+        vi.advanceTimersByTime(500);
+      });
+
+      expect(onTrigger).toHaveBeenCalledTimes(1);
+      expect(useShortcutPulseStore.getState().pulse).toMatchObject({ key: "i" });
+      expect(screen.queryByTestId("hold-key-i")).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("hides a half-finished hold when deactivated", () => {
     const { rerender } = render(
       <HoldKeyActionBar

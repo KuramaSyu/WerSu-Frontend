@@ -73,21 +73,33 @@ const HoldKeyActionBarContent: React.FC<BarContentProps> = ({
     capture,
   });
   const fillRef = useRef<HTMLDivElement | null>(null);
+  // Guards against firing the same hold twice (e.g. when both the CSS
+  // animation and the fallback timer manage to land).
+  const firedRef = useRef(false);
 
-  // Fire the action the instant the fill finishes, and hand the finished
-  // action to the app-level pulse overlay. The overlay lives outside the
-  // editor tree, so actions that remount the editor (insert mode) can't
-  // swallow the confirmation.
-  const handleFillEnd = useCallback(() => {
+  // Finish the hold: register the confirmation pulse *before* running
+  // the action. The action can remount/rerender the editor subtree
+  // (entering insert mode, leaving source view), and if that throws or
+  // tears the bar down we must still have handed the pulse to the
+  // app-level overlay, which lives outside the editor tree.
+  const finishHold = useCallback(() => {
+    if (firedRef.current) return;
+    firedRef.current = true;
     const finished = holding;
+    if (finished) {
+      triggerPulse({
+        key: finished.key,
+        keyLabel: finished.keyLabel,
+        label: finished.label,
+      });
+    }
     complete();
-    if (!finished) return;
-    triggerPulse({
-      key: finished.key,
-      keyLabel: finished.keyLabel,
-      label: finished.label,
-    });
   }, [holding, complete, triggerPulse]);
+
+  // A fresh hold may fire again next time.
+  useEffect(() => {
+    if (holding) firedRef.current = false;
+  }, [holding]);
 
   // A native listener is used (not React's onAnimationEnd) so it works
   // regardless of the environment's AnimationEvent support and never
@@ -95,9 +107,19 @@ const HoldKeyActionBarContent: React.FC<BarContentProps> = ({
   useEffect(() => {
     const node = fillRef.current;
     if (!node) return;
-    node.addEventListener("animationend", handleFillEnd);
-    return () => node.removeEventListener("animationend", handleFillEnd);
-  }, [handleFillEnd]);
+    node.addEventListener("animationend", finishHold);
+    return () => node.removeEventListener("animationend", finishHold);
+  }, [finishHold]);
+
+  // Fallback: if the fill's `animationend` never arrives (the subtree
+  // was remounted mid-hold, the tab throttled the animation, etc.)
+  // complete on a timer so the action and pulse still land.
+  useEffect(() => {
+    if (!holding) return;
+    const ms = (holding.duration ?? duration) + 50;
+    const id = window.setTimeout(finishHold, ms);
+    return () => window.clearTimeout(id);
+  }, [holding, duration, finishHold]);
 
   // Nothing to show until the user presses a key.
   if (!holding) {
