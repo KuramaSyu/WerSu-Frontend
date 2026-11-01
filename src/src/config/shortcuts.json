@@ -86,6 +86,20 @@
         "hold": true
       },
       {
+        "id": "global.toggleLeftRail",
+        "label": "Toggle left panel",
+        "key": "<",
+        "keyLabel": "<",
+        "hold": true
+      },
+      {
+        "id": "global.toggleRightRail",
+        "label": "Toggle right panel",
+        "key": ">",
+        "keyLabel": ">",
+        "hold": true
+      },
+      {
         "id": "global.back",
         "label": "Navigate back",
         "key": "Escape",

@@ -13,11 +13,15 @@ describe("usePageHoldShortcuts", () => {
     expect(result.current.map((action) => action.label)).toEqual([
       "Search",
       "Go home",
+      "Toggle left panel",
+      "Toggle right panel",
       "Navigate back",
     ]);
     expect(result.current.map((action) => action.key)).toEqual([
       "k",
       "h",
+      "<",
+      ">",
       "Escape",
     ]);
   });
