@@ -5,6 +5,8 @@
 
 import { useCallback, useState, type ReactNode } from "react";
 import { Box } from "@mui/material";
+import ShareIcon from "@mui/icons-material/Share";
+import { useNavigate } from "react-router-dom";
 import { copyToClipboard } from "../../zustand/InfoStore";
 import { useFavouritesStore } from "../../zustand/useFavouritesStore";
 import { useRightClickMenuStore } from "../../zustand/useRightClickMenuStore";
@@ -32,6 +34,7 @@ export const FolderCardMenu: React.FC<FolderCardMenuProps> = ({
   children,
 }) => {
   const menu = useRightClickMenu();
+  const navigate = useNavigate();
   const openDirectoryDialog = useRightClickMenuStore(
     (s) => s.openDirectoryDialog,
   );
@@ -47,6 +50,20 @@ export const FolderCardMenu: React.FC<FolderCardMenuProps> = ({
       menu.onContextMenu(event, {
         targetId: directoryId,
         buttons: CARD_BUTTONS,
+        // Rendered last: `extraComponents` appends after the built-ins.
+        extraComponents: [
+          {
+            key: "view-shares",
+            label: "Shares",
+            icon: <ShareIcon fontSize="small" />,
+            handler: () => {
+              navigate(
+                `/shares?directory=${encodeURIComponent(directoryId)}`,
+              );
+              return true;
+            },
+          },
+        ],
         overrides: {
           copy: {
             handler: () => {
@@ -76,7 +93,7 @@ export const FolderCardMenu: React.FC<FolderCardMenuProps> = ({
         },
       });
     },
-    [menu, directoryId, name, toggleDirectory, openDirectoryDialog],
+    [menu, directoryId, name, toggleDirectory, openDirectoryDialog, navigate],
   );
 
   const runDelete = async () => {

@@ -13,6 +13,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
 import DeleteIcon from "@mui/icons-material/Delete";
+import ShareIcon from "@mui/icons-material/Share";
 import { useNavigate, useParams } from "react-router-dom";
 import { useFavouritesStore } from "../../zustand/useFavouritesStore";
 import { ConfirmationModal } from "../Settings/ConfirmationModal";
@@ -194,6 +195,20 @@ export const DirectoryMenu: React.FC<DirectoryMenuProps> = ({
             <DeleteIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText>Delete</ListItemText>
+        </MenuItem>
+        <MenuItem
+          disabled={isRoot}
+          onClick={() => {
+            closeMenu();
+            if (directoryId) {
+              navigate(`/shares?directory=${encodeURIComponent(directoryId)}`);
+            }
+          }}
+        >
+          <ListItemIcon>
+            <ShareIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Shares</ListItemText>
         </MenuItem>
       </Menu>
       <ConfirmationModal

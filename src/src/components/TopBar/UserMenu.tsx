@@ -24,6 +24,7 @@ import LightModeIcon from "@mui/icons-material/LightMode";
 import Logout from "@mui/icons-material/Logout";
 import RuleFolderIcon from "@mui/icons-material/RuleFolder";
 import SettingsIcon from "@mui/icons-material/Settings";
+import ShareIcon from "@mui/icons-material/Share";
 import { useNavigate } from "react-router-dom";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useUser } from "../../api/queries/useUser";
@@ -114,6 +115,18 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
 
   const handleOpenGraph = () => {
     navigate(Pages.GRAPH);
+    onRequestClose();
+  };
+
+  const handleOpenShares = () => {
+    // Carry the app-wide selected shelf into the scope so the shares
+    // page opens with the shelf the user is currently working in
+    // already selected in its scope changer.
+    navigate(
+      selectedShelfId !== null
+        ? `${Pages.SHARES}?shelf=${encodeURIComponent(selectedShelfId)}`
+        : Pages.SHARES,
+    );
     onRequestClose();
   };
 
@@ -437,6 +450,18 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
           primary="Rules"
           secondary={rulesDisabled ? "Pick a shelf first" : undefined}
         />
+      </MenuItem>
+      <MenuItem
+        onClick={handleOpenShares}
+        sx={{
+          "&:hover": { backgroundColor: theme.palette.action.hover },
+          minHeight: 52,
+        }}
+      >
+        <ListItemIcon>
+          <ShareIcon fontSize="small" />
+        </ListItemIcon>
+        <ListItemText primary="Shares" />
       </MenuItem>
 
       <Divider />

@@ -493,10 +493,22 @@ export const handlers = [
 
   // ─────────────────────────── shares ───────────────────────────
 
-  http.get("*/api/shares", async () => {
+  http.get("*/api/shares", async ({ request }) => {
     await delay(50);
     const db = getFakeDb();
-    return json({ shares: db.shares });
+    const params = new URL(request.url).searchParams;
+    const noteId = params.get("note_id");
+    const createdBy = params.get("created_by");
+    // Mirror the typed GET /api/shares reply (a flat NoteShareReply[])
+    // and the optional note_id / created_by filters.
+    const shares = db.shares.filter((share) => {
+      if (noteId && share.note_id !== noteId) return false;
+      if (createdBy && (share as { created_by?: string }).created_by !== createdBy) {
+        return false;
+      }
+      return true;
+    });
+    return json(shares);
   }),
 
   http.post("*/api/shares", async ({ request }) => {

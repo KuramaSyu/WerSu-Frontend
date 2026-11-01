@@ -32,6 +32,7 @@ import { PublicNotePage } from "./pages/PublicNotePage/Main";
 import SettingsPage from "./pages/Settings/Main";
 import { LoginPage } from "./pages/LoginPage/Main";
 import { RulesPage } from "./pages/Rules/RulesPage";
+import { SharesPage } from "./pages/Shares/Main";
 
 /**
  * records the navigation of the user, so that the back button works as expected
@@ -70,6 +71,7 @@ function App() {
                 <Route path="/d/:id/edit" element={<DirectoryEditPage />} />
                 <Route path="/d/:id/new" element={<CreateSubdirectoryPage />} />
                 <Route path="/graph" element={<FileGraphPage />} />
+                <Route path="/shares" element={<SharesPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/shelves/:shelfId/rules" element={<RulesPage />} />
               </Route>
