@@ -69,6 +69,7 @@ import {
   getSlashCommandName,
   isSlashCommandContext,
   setSlashMenuState,
+  shouldHandleSlashMenuArrowKey,
   slashMenuStateKey,
   type SlashCommand,
 } from "./SlashCommandMenu";
@@ -484,6 +485,65 @@ describe("SlashCommandMenu — slash state tracking", () => {
       clearSlashLine(editor);
 
       expect(slashMenuStateKey.getState(editor.state)).toBeNull();
+    } finally {
+      editor.destroy();
+    }
+  });
+});
+
+// Regression: the arrow-key listener is installed for the editor's whole
+// lifetime (it is not conditional on the menu being open), so it must not
+// claim ArrowUp/ArrowDown outside a slash context. Before the guard, every
+// vertical keypress was `preventDefault`-ed, which broke caret movement
+// everywhere in the document, including inside code blocks.
+describe("SlashCommandMenu - arrow key ownership", () => {
+  it("does not claim arrow keys for plain prose", () => {
+    const editor = makeEditor();
+    try {
+      editor.commands.setContent("<p>just some text</p>");
+      editor.commands.focus("end");
+
+      expect(shouldHandleSlashMenuArrowKey(editor, true)).toBe(false);
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("does not claim arrow keys for code blocks", () => {
+    const editor = makeEditor();
+    try {
+      editor.commands.setContent(
+        "<pre><code>const a = 1;\nconst b = 2;</code></pre>",
+      );
+      editor.commands.focus("end");
+
+      expect(shouldHandleSlashMenuArrowKey(editor, true)).toBe(false);
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("does not claim arrow keys when the menu is disabled", () => {
+    const editor = makeEditor();
+    try {
+      editor.commands.setContent("<p>/</p>");
+      editor.commands.focus("end");
+      setSlashMenuState(editor, 1);
+
+      expect(shouldHandleSlashMenuArrowKey(editor, false)).toBe(false);
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("claims arrow keys while the menu is open", () => {
+    const editor = makeEditor();
+    try {
+      editor.commands.setContent("<p>/</p>");
+      editor.commands.focus("end");
+      setSlashMenuState(editor, 1);
+
+      expect(shouldHandleSlashMenuArrowKey(editor, true)).toBe(true);
     } finally {
       editor.destroy();
     }

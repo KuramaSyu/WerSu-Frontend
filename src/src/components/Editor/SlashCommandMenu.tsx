@@ -535,6 +535,23 @@ export function runBestSlashCommand(editor: Editor): boolean {
   return true;
 }
 
+/**
+ * Whether an ArrowUp/ArrowDown keypress should be consumed by the slash
+ * command menu. The menu may only steal the arrow keys while it is
+ * actually open; otherwise the keys must fall through to ProseMirror's
+ * default caret movement (including inside code blocks).
+ *
+ * Exported as a pure predicate so the guard can be regression-tested
+ * without mounting the `FloatingMenu` render tree.
+ */
+// eslint-disable-next-line react-refresh/only-export-components
+export function shouldHandleSlashMenuArrowKey(
+  editor: Editor,
+  enabled: boolean,
+): boolean {
+  return enabled && editor.isEditable && isSlashCommandContext(editor);
+}
+
 export const SlashCommandMenu = ({
   editor,
   enabled = true,
@@ -573,10 +590,21 @@ export const SlashCommandMenu = ({
       return;
     }
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+      // Only steal the arrow keys when the menu is actually open. The
+      // listener is capture-phase and mounted for the editor's whole
+      // lifetime, so an unconditional `preventDefault()` here would
+      // swallow every vertical caret movement in the document (the
+      // default ProseMirror arrow-up/down keymap lives on `keydown`).
+      // Note: the fallback branch in `isSlashCommandContext` also keeps
+      // the menu open for pasted content that starts with `/`.
+      if (!shouldHandleSlashMenuArrowKey(editor, enabled)) {
+        return;
+      }
       if (event.key === "ArrowUp") {
         event.preventDefault();
         setSelectedIndex((prev) => (prev > 0 ? prev - 1 : 0));
-      } else if (event.key === "ArrowDown") {
+      } else {
         event.preventDefault();
         setSelectedIndex((prev) =>
           prev < matchingCommands.length - 1 ? prev + 1 : prev,
@@ -590,7 +618,7 @@ export const SlashCommandMenu = ({
         editor.view.dom.removeEventListener("keydown", handleKeyDown, true);
       }
     };
-  }, [editor, matchingCommands]);
+  }, [editor, enabled, matchingCommands]);
 
   // keyboard navigation: Enter or Tab to execute the selected command
   useEffect(() => {
