@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import {
   Avatar,
   Box,
+  CircularProgress,
   Divider,
   FormControl,
   IconButton,
@@ -78,6 +79,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
     canDownload,
     isUploading,
     upload,
+    progress,
     download,
   } = useCloudPreferences();
   const navigate = useNavigate();
@@ -342,7 +344,9 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
             <Tooltip
               title={
                 isUploading
-                  ? "Uploading preferences…"
+                  ? progress !== null
+                    ? `${progress.message} (${progress.completed}/${progress.total})`
+                    : "Uploading preferences…"
                   : canUpload
                     ? "Upload preferences to cloud"
                     : "Preferences are up to date"
@@ -356,7 +360,24 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
                   disabled={!canUpload || isUploading}
                   sx={{ flexShrink: 0 }}
                 >
-                  <CloudUploadIcon fontSize="small" />
+                  {isUploading ? (
+                    <CircularProgress
+                      size={16}
+                      variant={progress !== null ? "determinate" : "indeterminate"}
+                      value={
+                        progress !== null && progress.total > 0
+                          ? (progress.completed / progress.total) * 100
+                          : undefined
+                      }
+                      aria-label={
+                        progress !== null
+                          ? `Syncing ${progress.completed} of ${progress.total}`
+                          : "Syncing preferences"
+                      }
+                    />
+                  ) : (
+                    <CloudUploadIcon fontSize="small" />
+                  )}
                 </IconButton>
               </span>
             </Tooltip>
