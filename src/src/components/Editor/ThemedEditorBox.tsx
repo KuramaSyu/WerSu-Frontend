@@ -150,6 +150,54 @@ export const ThemedEditorBox = ({
             borderRadius: theme.shape.borderRadius,
           },
 
+          // Blockquote ("cite") styled like BookStack: a coloured vertical
+          // bar on the left, a matching quote glyph, and a subtly tinted
+          // background.
+          "& blockquote": {
+            position: "relative",
+            mx: 0,
+            my: theme.spacing(1.5),
+            py: theme.spacing(1),
+            pr: theme.spacing(1.5),
+            // Fixed offset (not theme.spacing, which scales exponentially)
+            // sized to the icon's left inset + 26px width + a small gap.
+            pl: "2.75rem",
+            borderLeft: `4px solid ${theme.palette.primary.main}`,
+            borderRadius: "4px",
+            backgroundColor: alpha(
+              theme.palette.text.primary,
+              theme.palette.mode === "dark" ? 0.08 : 0.04,
+            ),
+            color: theme.palette.text.primary,
+
+            // Keep paragraph rhythm tight inside the quote.
+            "& p": {
+              my: theme.spacing(0.5),
+            },
+
+            // Quote glyph, painted with the primary colour via a mask so
+            // it follows the active theme. `pointer-events: none` keeps it
+            // out of text-selection / editing interactions.
+            "&::before": {
+              content: '""',
+              position: "absolute",
+              top: theme.spacing(1),
+              left: theme.spacing(1.5),
+              width: 26,
+              height: 26,
+              backgroundColor: theme.palette.primary.main,
+              pointerEvents: "none",
+              maskImage:
+                "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='white' d='M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z'/%3E%3C/svg%3E\")",
+              WebkitMaskImage:
+                "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='white' d='M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z'/%3E%3C/svg%3E\")",
+              maskRepeat: "no-repeat",
+              WebkitMaskRepeat: "no-repeat",
+              maskSize: "contain",
+              WebkitMaskSize: "contain",
+            },
+          },
+
           // set background to latex box on hover
           "& .tiptap-mathematics-render": {
             position: "relative",

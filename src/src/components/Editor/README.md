@@ -68,6 +68,7 @@ The components here are intentionally split by responsibility: editor shell, for
 		- `/heading-3`
 		- `/codeblock`
 		- `/details`
+		- `/cite` (also matches `quote`)
 		- `/bold`
 		- `/italic`
 		- `/strike`

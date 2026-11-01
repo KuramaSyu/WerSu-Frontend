@@ -288,6 +288,15 @@ const slashCommands: SlashCommand[] = [
     },
   },
   {
+    id: "cite",
+    label: "Cite",
+    keywords: ["cite", "quote", "blockquote", "citation"],
+    run: (editor) => {
+      clearSlashLine(editor);
+      editor.chain().focus().setBlockquote().run();
+    },
+  },
+  {
     id: "bold",
     label: "Bold",
     keywords: ["bold", "strong", "**"],
