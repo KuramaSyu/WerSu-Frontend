@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import type { HoldKeyAction } from "./useKeyHold";
 import {
   getShortcutPage,
+  isComboShortcut,
   matchesShortcutState,
   type ShortcutState,
 } from "../config/shortcuts";
@@ -36,9 +37,10 @@ export function usePageHoldShortcuts(
     const page = getShortcutPage(pageId);
     if (!page) return [];
     return page.shortcuts
+      .filter((shortcut) => !isComboShortcut(shortcut))
       .filter((shortcut) => matchesShortcutState(shortcut.when, DEFAULT_STATE))
       .map<HoldKeyAction>((shortcut) => ({
-        key: shortcut.key,
+        key: shortcut.key ?? "",
         keyLabel: shortcut.keyLabel,
         label: shortcut.label,
         // A tap action fires as soon as the key goes down.

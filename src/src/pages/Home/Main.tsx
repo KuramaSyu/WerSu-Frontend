@@ -50,7 +50,7 @@ export const HomePage: React.FC = () => {
   const navigateBack = useNavigateBack();
 
   // Hold-to-run shortcuts for this page (see config/shortcuts.json).
-  // Search (k) and home (h) are global; see GlobalHoldShortcuts.
+  // Search (k) and home (h) are global; see GlobalShortcuts.
   const holdActions = usePageHoldShortcuts("home", {
     "home.newDirectory": () => setCreateDirectoryOpen(true),
     "home.newNote": () => setCreateNoteOpen(true),

@@ -14,9 +14,17 @@ export interface ShortcutConfig {
   id: string;
   /** Human-readable action name. */
   label: string;
-  /** `KeyboardEvent.key` that arms the shortcut. */
-  key: string;
-  /** Chip label rendered in the UI. Defaults to `key`. */
+  /**
+   * `KeyboardEvent.key` that arms a hold/tap shortcut. Omitted for
+   * combo shortcuts, which use `combo` instead.
+   */
+  key?: string;
+  /**
+   * Ctrl/Meta combo that fires this shortcut on key-down, e.g.
+   * `"ctrl+/"`. Present means "tap combo", not a hold action.
+   */
+  combo?: string;
+  /** Chip label rendered in the UI. Defaults to `combo`/`key`. */
   keyLabel?: string;
   /** When true the key must be held; otherwise a tap fires it. */
   hold?: boolean;
@@ -41,6 +49,16 @@ export const shortcutConfig = shortcutsJson as unknown as ShortcutConfigMap;
 
 export function getShortcutPage(page: string): ShortcutPageConfig | undefined {
   return shortcutConfig[page];
+}
+
+/** True when a shortcut fires as a Ctrl/Meta combo on key-down. */
+export function isComboShortcut(shortcut: ShortcutConfig): boolean {
+  return typeof shortcut.combo === "string" && shortcut.combo.length > 0;
+}
+
+/** The chip text rendered for a shortcut (combo, label, or key). */
+export function shortcutDisplayKey(shortcut: ShortcutConfig): string {
+  return shortcut.combo ?? shortcut.keyLabel ?? shortcut.key ?? "";
 }
 
 /** The slice of runtime state a `when` condition can reference. */

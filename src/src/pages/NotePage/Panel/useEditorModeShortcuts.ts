@@ -5,6 +5,7 @@ import { useViewConfig } from "../../../zustand/useViewConfig";
 import type { HoldKeyAction } from "../../../hooks/useKeyHold";
 import {
   getShortcutPage,
+  isComboShortcut,
   matchesShortcutState,
   type ShortcutState,
 } from "../../../config/shortcuts";
@@ -82,16 +83,18 @@ export function useEditorModeShortcuts(): EditorModeShortcuts {
     const page = getShortcutPage(PAGE_ID);
     if (!page) return [];
     const state: ShortcutState = { viewMode, editMode, readOnly };
-    return page.shortcuts.map((shortcut) => ({
-      key: shortcut.key,
-      keyLabel: shortcut.keyLabel,
-      label: shortcut.label,
-      // A tap action fires as soon as the key goes down.
-      duration: shortcut.hold === false ? 0 : undefined,
-      allowInTextFields: shortcut.allowInTextFields,
-      available: matchesShortcutState(shortcut.when, state),
-      onTrigger: handlers[shortcut.id] ?? (() => undefined),
-    }));
+    return page.shortcuts
+      .filter((shortcut) => !isComboShortcut(shortcut))
+      .map((shortcut) => ({
+        key: shortcut.key ?? "",
+        keyLabel: shortcut.keyLabel,
+        label: shortcut.label,
+        // A tap action fires as soon as the key goes down.
+        duration: shortcut.hold === false ? 0 : undefined,
+        allowInTextFields: shortcut.allowInTextFields,
+        available: matchesShortcutState(shortcut.when, state),
+        onTrigger: handlers[shortcut.id] ?? (() => undefined),
+      }));
   }, [viewMode, editMode, readOnly, handlers]);
 
   const actions = useMemo<HoldKeyAction[]>(

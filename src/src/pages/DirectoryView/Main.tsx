@@ -77,7 +77,7 @@ export const DirectoryView: React.FC = () => {
   // Hold-to-run shortcuts for this page (see config/shortcuts.json).
   // "Edit" always targets the directory in the URL (`currentNode`),
   // never a hovered row. Search (k) and home (h) are global; see
-  // GlobalHoldShortcuts.
+  // GlobalShortcuts.
   const holdActions = usePageHoldShortcuts("directory", {
     "directory.newDirectory": handleCreateSubdirectory,
     "directory.newNote": handleCreateNote,

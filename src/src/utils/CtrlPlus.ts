@@ -54,3 +54,25 @@ export function isCtrlPlus(
     : [key.toLowerCase()];
   return targets.includes(pressed);
 }
+
+/**
+ * Whether a keyboard event matches a catalogue combo string such as
+ * `"ctrl+/"` or `"ctrl+alt+n"`.
+ *
+ * The combo is parsed as `modifier... + key`; `ctrl`/`cmd`/`super`
+ * map to the Ctrl/Meta rule enforced by `isCtrlPlus`, and an optional
+ * `alt` modifier is honoured. Combos are always Ctrl/Meta based, which
+ * keeps them isolated from plain typing.
+ */
+export function isCtrlCombo(event: KeyboardEvent, combo: string): boolean {
+  const parts = combo
+    .toLowerCase()
+    .split("+")
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+  if (parts.length < 2) return false;
+
+  const key = parts[parts.length - 1];
+  const alt = parts.includes("alt");
+  return isCtrlPlus(event, key, { alt });
+}

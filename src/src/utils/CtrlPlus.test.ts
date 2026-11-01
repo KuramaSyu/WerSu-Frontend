@@ -20,7 +20,7 @@ import "../test/setup";
 
 import { describe, expect, it } from "vitest";
 
-import { isCtrlPlus } from "./CtrlPlus";
+import { isCtrlCombo, isCtrlPlus } from "./CtrlPlus";
 
 const k = (
   init: KeyboardEventInit & {
@@ -149,5 +149,36 @@ describe("isCtrlPlus ({ alt: true })", () => {
         alt: true,
       }),
     ).toBe(false);
+  });
+});
+
+describe("isCtrlCombo", () => {
+  it("matches ctrl+/", () => {
+    expect(isCtrlCombo(k({ key: "/", ctrlKey: true }), "ctrl+/")).toBe(true);
+  });
+
+  it("matches meta+/ on Mac", () => {
+    expect(isCtrlCombo(k({ key: "/", metaKey: true }), "ctrl+/")).toBe(true);
+  });
+
+  it("returns false without a modifier", () => {
+    expect(isCtrlCombo(k({ key: "/" }), "ctrl+/")).toBe(false);
+  });
+
+  it("returns false for a different key", () => {
+    expect(isCtrlCombo(k({ key: "k", ctrlKey: true }), "ctrl+/")).toBe(false);
+  });
+
+  it("honours an explicit alt modifier", () => {
+    expect(
+      isCtrlCombo(k({ key: "n", ctrlKey: true, altKey: true }), "ctrl+alt+n"),
+    ).toBe(true);
+    expect(isCtrlCombo(k({ key: "n", ctrlKey: true }), "ctrl+alt+n")).toBe(
+      false,
+    );
+  });
+
+  it("rejects a malformed combo without a key", () => {
+    expect(isCtrlCombo(k({ key: "ctrl", ctrlKey: true }), "ctrl")).toBe(false);
   });
 });

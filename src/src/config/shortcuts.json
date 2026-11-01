@@ -56,6 +56,13 @@
         "key": "h",
         "keyLabel": "H",
         "hold": true
+      },
+      {
+        "id": "global.shortcutsModal",
+        "label": "Keyboard shortcuts",
+        "combo": "ctrl+/",
+        "keyLabel": "ctrl+/",
+        "hold": false
       }
     ]
   },

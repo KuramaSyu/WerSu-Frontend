@@ -23,7 +23,7 @@ import { useThemeStore } from "./zustand/useThemeStore";
 import { useScrollElementStore } from "./zustand/outlineStore";
 import { FeatureFlagName, useFeatureStore } from "./zustand/FeatureStore";
 import AppBackground from "./components/AppBackground";
-import { GlobalHoldShortcuts } from "./components/GlobalHoldShortcuts";
+import { GlobalShortcuts } from "./components/GlobalShortcuts";
 import { TranslucentPaper } from "./components/TranslucentPaper";
 
 // Path patterns that gate the auto-hide topbar behaviour. The topbar
@@ -261,7 +261,7 @@ export const AppShell: React.FC = () => {
           </TranslucentPaper>
         </Box>
       </Box>
-      <GlobalHoldShortcuts />
+      <GlobalShortcuts />
     </>
   );
 };
