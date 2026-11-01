@@ -311,3 +311,16 @@
 
 
 
+
+/* In-note find/replace highlights. The active match is warmer/more
+   saturated than the other hits so it stands out while stepping. */
+.tiptap .find-replace-match {
+  background-color: rgba(250, 204, 21, 0.35);
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.5);
+}
+
+.tiptap .find-replace-match--active {
+  background-color: rgba(249, 115, 22, 0.55);
+  box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.9);
+}

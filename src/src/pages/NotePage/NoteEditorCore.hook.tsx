@@ -36,6 +36,7 @@ import { usePublicUserStore } from "../../zustand/usePublicUserStore";
 import { colorFromString, randomMatchingColor } from "../../utils/blendWithContrast";
 import { CustomCodeBlock } from "../../components/Editor/View/CustomCodeBlock";
 import { EditorContextHighlight } from "../../components/Editor/editorContextHighlight";
+import { FindReplaceExtension } from "../../components/Editor/FindReplaceExtension";
 import { EditorListMergePreview } from "../../components/Editor/editorListMergePreview";
 import { handleCodeBlockTabKey } from "../../components/Editor/codeBlockTabKey";
 import { handleTableBackspaceKey } from "../../components/Editor/tableBackspaceKey";
@@ -214,6 +215,7 @@ export const useNoteEditor = (params: UseNoteEditorParams): Editor | null => {
         }),
         CustomCodeBlock.configure({ lowlight, defaultLanguage: "plaintext" }),
         EditorContextHighlight,
+        FindReplaceExtension,
         EditorListMergePreview,
         TaskList,
         TaskItem.configure({ nested: true }),

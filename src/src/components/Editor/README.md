@@ -133,6 +133,29 @@ Why this exists:
 
 and supports markdown source editing through a source-mode `TextField`.
 
+### Find / replace
+
+The full-page note editor has a VS Code-style find/replace widget
+(`src/pages/NotePage/FindReplaceBar.tsx`) floating at the bottom of the
+viewport. It is opened with `Ctrl/Cmd+F`; `Ctrl/Cmd+H` opens it with the
+replace row already expanded. Replace is only available while the note
+is editable (view mode keeps find but disables replace).
+
+Supporting pieces:
+
+- `findReplace.ts`
+	- Pure matcher/replacer shared by the rich and source surfaces.
+	- Handles match case, whole word, regex, capture expansion and
+	  preserve case.
+- `FindReplaceExtension.ts`
+	- Tiptap/ProseMirror plugin that resolves matches to document
+	  positions and paints the `find-replace-match` decorations (the
+	  active hit also gets `--active`). Recomputes on every transaction.
+- `FindReplaceBar.tsx`
+	- The widget UI and the `Ctrl+F`/`Ctrl+H` capture.
+	- Drives the rich editor through `FindReplaceExtension` and the
+	  source `NoteSourceEditor` textarea through its imperative handle.
+
 ## Adding new slash commands
 
 In `SlashCommandMenu.tsx`, extend the `slashCommands` array with:

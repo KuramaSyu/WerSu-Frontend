@@ -40,6 +40,7 @@ import { LatexDialogController } from "./LatexDialogController";
 import { FileUploadDialogController } from "./FileUploadDialogController";
 import { NoteTitleBar } from "./NoteTitleBar";
 import { NoteRichEditor } from "./NoteRichEditor";
+import { FindReplaceBar } from "./FindReplaceBar";
 import {
   NoteSourceEditor,
   type NoteSourceEditorHandle,
@@ -89,6 +90,7 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
   const viewMode = useEditorSettings((s) => s.viewMode);
   const editMode = useEditorSettings((s) => s.editMode);
   const widthMode = useViewConfig((s) => s.config.widthMode);
+  const readOnly = useViewConfig((s) => s.config.readOnly);
 
   const { mutateAsync: updateNote } = useUpdateNote();
   const { isMobile } = useBreakpoint();
@@ -273,6 +275,17 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
         editor={editor}
         setSourceMarkdown={setSourceMarkdown}
         sourceMarkdown={sourceMarkdown}
+      />
+
+      {/* VS Code-style find/replace. Mounted even when closed so it can
+          capture Ctrl/Cmd+F before the browser's native find UI. */}
+      <FindReplaceBar
+        editor={editor}
+        viewMode={viewMode}
+        editMode={editMode}
+        readOnly={readOnly}
+        sourceMarkdown={sourceMarkdown}
+        setSourceMarkdown={setSourceMarkdown}
       />
 
       {/* Imperative dialogs. Each owns its own state and re-renders
