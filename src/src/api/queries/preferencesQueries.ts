@@ -1,4 +1,18 @@
-// TanStack query hooks for /api/preferences.
+/*
+  TanStack query hooks for `/api/preferences`.
+
+  Thin wrappers around `PreferencesApi` that add query-key management and
+  cache invalidation:
+
+    - `usePreferences`         — read a blob (query).
+    - `useReplacePreferences`  — replace wholesale (mutation).
+    - `useMergePreferences`    — shallow-merge (mutation).
+    - `useDeletePreferences`   — drop the blob (mutation).
+
+  Every mutation invalidates the matching `preferencesKeys.detail(...)` entry
+  on success so the next `usePreferences` read reflects the write. Wire types
+  live in `../models/preferences`.
+*/
 
 import {
   useMutation,
@@ -28,9 +42,17 @@ const preferencesApi = getPreferencesApi();
 // Query keys
 // -----------------------------------------------------------------------------
 
+/**
+ * Query-key factory for preferences.
+ *
+ * `detail` keys include both `scope` and `target_id`, so each stored blob
+ * gets its own cache entry and invalidating one scope never clobbers another.
+ */
 export const preferencesKeys = {
+  /** Root key for all preference queries. */
   all: ["preferences"] as const,
 
+  /** Key for a single `(scope, target_id)` blob. */
   detail: (request: GetPreferencesEndpointRequest) =>
     [...preferencesKeys.all, request.scope, request.target_id] as const,
 };
@@ -39,7 +61,19 @@ export const preferencesKeys = {
 // Queries
 // -----------------------------------------------------------------------------
 
-/** Read the stored blob for a (scope, target_id) pair. */
+/**
+ * Read the stored blob for a `(scope, target_id)` pair.
+ * `GET /api/preferences`
+ *
+ * Disabled while `target_id` is empty (e.g. before the current user/shelf has
+ * resolved), so callers can mount the hook unconditionally. The backend
+ * returns `{}` when no row exists, meaning a successful query may carry empty
+ * `data`.
+ *
+ * @param request - `(scope, target_id)` to read.
+ * @param options - Extra TanStack query options; `queryKey` and `queryFn` are
+ *   managed by the hook and cannot be overridden.
+ */
 export function usePreferences(
   request: GetPreferencesEndpointRequest,
   options?: Omit<
@@ -64,7 +98,14 @@ export function usePreferences(
 // Mutations
 // -----------------------------------------------------------------------------
 
-/** Replace the blob wholesale; invalidates the matching detail cache on success. */
+/**
+ * Replace the stored blob wholesale.
+ * `POST /api/preferences`
+ *
+ * Invalidates the matching detail cache on success before delegating to the
+ * caller's `onSuccess` (if any). Pass a caller `onSuccess` via `options`; it
+ * runs after invalidation and receives the same arguments.
+ */
 export function useReplacePreferences(
   options?: UseMutationOptions<
     ReplacePreferencesEndpointReply,
@@ -92,7 +133,14 @@ export function useReplacePreferences(
   });
 }
 
-/** Shallow-merge the payload into the blob; invalidates the matching detail cache on success. */
+/**
+ * Shallow-merge the payload into the stored blob.
+ * `PATCH /api/preferences`
+ *
+ * Top-level keys overwrite the same keys in storage; nested objects and lists
+ * are replaced wholesale. Invalidates the matching detail cache on success
+ * before delegating to the caller's `onSuccess` (if any).
+ */
 export function useMergePreferences(
   options?: UseMutationOptions<
     MergePreferencesEndpointReply,
@@ -120,7 +168,14 @@ export function useMergePreferences(
   });
 }
 
-/** Drop the blob; invalidates the matching detail cache on success. */
+/**
+ * Drop the stored blob. Idempotent.
+ * `DELETE /api/preferences`
+ *
+ * The reply's `success` is `true` iff a row was actually removed. Invalidates
+ * the matching detail cache on success before delegating to the caller's
+ * `onSuccess` (if any).
+ */
 export function useDeletePreferences(
   options?: UseMutationOptions<
     DeletePreferencesEndpointReply,
