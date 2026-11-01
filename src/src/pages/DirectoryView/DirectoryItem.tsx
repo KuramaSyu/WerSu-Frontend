@@ -12,6 +12,7 @@ import {
   DirectoryItemMenu,
   type DirectoryItemMenuTarget,
 } from "../../components/RightClick/DirectoryItemMenu";
+import { useDirectoryTypeAheadStore } from "../../zustand/useDirectoryTypeAheadStore";
 
 interface BaseProps {
   onClick: () => void;
@@ -68,6 +69,11 @@ export const DirectoryItem: React.FC<DirectoryItemProps> = (props) => {
   );
   const startSelection = useDirectorySelectionStore((s) => s.startSelection);
   const toggle = useDirectorySelectionStore((s) => s.toggle);
+  const navKey = `${entry.kind}:${entry.id}`;
+  const isTypeAhead = useDirectoryTypeAheadStore(
+    (s) => s.highlighted === navKey,
+  );
+  const navName = variant === "directory" ? props.name : props.note.title;
 
   const bindings = useLongPress({
     onLongPress: () => {
@@ -93,6 +99,8 @@ export const DirectoryItem: React.FC<DirectoryItemProps> = (props) => {
     <DirectoryItemMenu target={menuTarget}>
     <ButtonBase
       {...bindings}
+      data-directory-nav={navKey}
+      data-directory-nav-name={navName}
       onClick={() => {
         // Suppress the synthetic click that fires right after a
         // long-press release, otherwise the gesture toggles the
@@ -114,7 +122,9 @@ export const DirectoryItem: React.FC<DirectoryItemProps> = (props) => {
         mb: variant === "note" ? 1 : 0,
         outline: isSelected
           ? `2px solid ${theme.palette.primary.main}`
-          : "none",
+          : isTypeAhead
+            ? `2px dashed ${theme.palette.primary.main}`
+            : "none",
         outlineOffset: -2,
         transition: (t) =>
           t.transitions.create("outline", {

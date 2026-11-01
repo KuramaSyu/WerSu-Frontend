@@ -19,6 +19,8 @@ import { DirectoryHirarchyItem } from "../../models/HirarchyItem";
 import { ChapterAccordion } from "./ChapterAccordion";
 import { SelectionActionBar } from "./SelectionActionBar";
 import { useDirectorySelectionStore } from "../../zustand/useDirectorySelectionStore";
+import { useDirectoryTypeAheadStore } from "../../zustand/useDirectoryTypeAheadStore";
+import { useDirectoryTypeAhead } from "./useDirectoryTypeAhead";
 import TranslucentPaper from "../../components/TranslucentPaper";
 import { useThemeStore } from "../../zustand/useThemeStore";
 
@@ -97,9 +99,15 @@ export const DirectoryView: React.FC = () => {
 
   // Clear any leftover selection when the user navigates to a new directory
   const clearSelection = useDirectorySelectionStore((s) => s.clear);
+  const clearTypeAhead = useDirectoryTypeAheadStore((s) => s.clear);
   useEffect(() => {
     clearSelection();
-  }, [directoryId, clearSelection]);
+    clearTypeAhead();
+  }, [directoryId, clearSelection, clearTypeAhead]);
+
+  // Tap a letter to jump to the first directory/note whose name starts
+  // with it; tap the same letter again to cycle through the matches.
+  useDirectoryTypeAhead();
 
   // Build the list of every selectable item on this page so the
   // action bar can power Select All. Only direct children of the

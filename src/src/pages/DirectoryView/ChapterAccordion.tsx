@@ -24,6 +24,7 @@ import type { CustomThemeImpl } from "../../theme/customTheme";
 import type { MinimalNote } from "../../api/models/search";
 import type { UseChapterAccordionResult } from "./ChapterAccordion.hook";
 import { CopyNameMenu } from "../../components/RightClick/CopyNameMenu";
+import { useDirectoryTypeAheadStore } from "../../zustand/useDirectoryTypeAheadStore";
 
 interface ChapterAccordionProps {
   /** Directory reply backing this chapter row. */
@@ -69,6 +70,9 @@ export const ChapterAccordion: React.FC<ChapterAccordionProps> = ({
   );
   const startSelection = useDirectorySelectionStore((s) => s.startSelection);
   const toggle = useDirectorySelectionStore((s) => s.toggle);
+  const isTypeAhead = useDirectoryTypeAheadStore(
+    (s) => s.highlighted === `directory:${directory.id}`,
+  );
 
   const summaryBindings = useLongPress({
     onLongPress: () => {
@@ -108,7 +112,9 @@ export const ChapterAccordion: React.FC<ChapterAccordionProps> = ({
         "&:before": { display: "none" },
         outline: isSelected
           ? `2px solid ${theme.palette.primary.main}`
-          : "none",
+          : isTypeAhead
+            ? `2px dashed ${theme.palette.primary.main}`
+            : "none",
         outlineOffset: -2,
         transition: (t) =>
           t.transitions.create("outline", {
@@ -119,6 +125,8 @@ export const ChapterAccordion: React.FC<ChapterAccordionProps> = ({
       <CopyNameMenu text={summaryName} targetId={hydratedDirectory.id}>
         <AccordionSummary
           {...summaryBindings}
+          data-directory-nav={`directory:${directory.id}`}
+          data-directory-nav-name={summaryName}
         expandIcon={
           <ExpandMoreIcon
             onClick={toggleExpanded}
@@ -284,6 +292,9 @@ const NoteRowWithSelection: React.FC<{
   const startSelection = useDirectorySelectionStore((s) => s.startSelection);
   const toggle = useDirectorySelectionStore((s) => s.toggle);
   const active = useDirectorySelectionStore((s) => s.active);
+  const isTypeAhead = useDirectoryTypeAheadStore(
+    (s) => s.highlighted === `note:${note.id}`,
+  );
 
   const bindings = useLongPress({
     onLongPress: () => {
@@ -301,6 +312,8 @@ const NoteRowWithSelection: React.FC<{
         {...bindings}
         role="button"
         tabIndex={0}
+        data-directory-nav={`note:${note.id}`}
+        data-directory-nav-name={note.title}
         onClick={() => {
           if (bindings.longPressFired.current) {
             return;
@@ -319,7 +332,9 @@ const NoteRowWithSelection: React.FC<{
         overflow: "hidden",
         outline: isSelected
           ? `2px solid ${theme.palette.primary.main}`
-          : "none",
+          : isTypeAhead
+            ? `2px dashed ${theme.palette.primary.main}`
+            : "none",
         outlineOffset: -2,
         cursor: "pointer",
         transition: (t) =>
