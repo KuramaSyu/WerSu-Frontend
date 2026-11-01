@@ -16,7 +16,7 @@ import { Youtube } from "@tiptap/extension-youtube";
 import { Twitch } from "@tiptap/extension-twitch";
 import { TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
 import { Highlight } from "@tiptap/extension-highlight";
-import Mathematics from "@tiptap/extension-mathematics";
+import { CustomMathematics } from "../../components/Editor/CustomMathematics";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Markdown } from "@tiptap/markdown";
 import { DetailsContent, DetailsSummary } from "@tiptap/extension-details";
@@ -237,7 +237,7 @@ export const useNoteEditor = (params: UseNoteEditorParams): Editor | null => {
         TableWithControls.configure({ resizable: false }),
         Highlight,
         // eslint-disable-next-line react-hooks/refs
-        Mathematics.configure({
+        CustomMathematics.configure({
           blockOptions: {
             onClick: (node, pos) => {
               if (!editor?.isEditable) return;

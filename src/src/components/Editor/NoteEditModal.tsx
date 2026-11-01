@@ -21,7 +21,7 @@ import { createBlockMarkdownSpec, Node } from "@tiptap/core";
 import { Highlight } from "@tiptap/extension-highlight";
 import { Image } from "@tiptap/extension-image";
 import { TaskItem, TaskList } from "@tiptap/extension-list";
-import { Mathematics } from "@tiptap/extension-mathematics";
+import { CustomMathematics } from "./CustomMathematics";
 import { Mention } from "@tiptap/extension-mention";
 import {
   Table,
@@ -192,7 +192,7 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
         resizable: false,
       }),
       Highlight,
-      Mathematics,
+      CustomMathematics,
       CustomReactNode,
 
       Markdown,
