@@ -14,6 +14,7 @@ import {
 } from "../theme/imageTheme";
 import { useImageBlobCacheStore } from "./useImageBlobCache";
 import { slugify } from "../utils/slugify";
+import type { ThemePreference } from "../models/Preferences";
 
 // Instantiate our ThemeManager with the custom configurations.
 const themeManager = ThemeManager.getInstance();
@@ -54,6 +55,30 @@ interface ThemeState {
   generatedThemes: GeneratedThemeRecord[];
 
   /**
+   * When `true`, cloud `/api/preferences` theme changes are ignored and
+   * must NOT replace the theme chosen on this device (the "device
+   * override"). Toggled by the pin button next to the theme picker in
+   * `UserMenu`. Persisted so the pin survives reloads.
+   */
+  themeLocked: boolean;
+
+  /** Pin/unpin this device's theme against cloud preference changes. */
+  setThemeLocked: (locked: boolean) => void;
+
+  /**
+   * Apply a cloud theme preference, unless this device's theme is pinned
+   * (`themeLocked`). Manual `setTheme` calls always win immediately; this
+   * method only runs for changes coming from the preferences blob.
+   *
+   * Pass `{ force: true }` for an explicit user-initiated download, which
+   * must apply even when the device theme is pinned.
+   */
+  applyThemePreference: (
+    preference: ThemePreference,
+    options?: { force?: boolean },
+  ) => Promise<void>;
+
+  /**
    * setTheme accepts a theme string, resolves the MUI theme (including
    * any registered generated theme), and updates the store with the
    * theme and its names.
@@ -79,6 +104,25 @@ interface ThemeState {
   clearGeneratedThemes: () => void;
 }
 
+/**
+ * Resolve a cloud `ThemePreference` to a concrete theme-name slug.
+ *
+ * `mode: "system"` follows the OS `prefers-color-scheme` setting; the
+ * matching `light`/`dark` slot supplies the theme name. Returns `null`
+ * when that slot is unset (callers then keep the current theme).
+ */
+function resolveThemePreference(preference: ThemePreference): string | null {
+  let mode = preference.mode;
+  if (mode === "system") {
+    const prefersDark =
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches;
+    mode = prefersDark ? "dark" : "light";
+  }
+  return mode === "light" ? preference.light : preference.dark;
+}
+
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set, get) => ({
@@ -92,6 +136,26 @@ export const useThemeStore = create<ThemeState>()(
       lastLightTheme: null,
       lastDarkTheme: null,
       generatedThemes: [],
+      themeLocked: false,
+
+      setThemeLocked: (locked: boolean) => {
+        set({ themeLocked: locked });
+      },
+
+      applyThemePreference: async (
+        preference: ThemePreference,
+        options?: { force?: boolean },
+      ) => {
+        // A pinned device theme ignores incoming cloud preference changes,
+        // unless this is an explicit download (`force`).
+        if (get().themeLocked && options?.force !== true) {
+          return;
+        }
+        const themeName = resolveThemePreference(preference);
+        if (themeName !== null) {
+          await get().setTheme(themeName);
+        }
+      },
 
       setTheme: async (themeName: string) => {
         console.log(`set theme to ${themeName}`);
@@ -325,6 +389,7 @@ export const useThemeStore = create<ThemeState>()(
         lastLightTheme: state.lastLightTheme,
         lastDarkTheme: state.lastDarkTheme,
         generatedThemes: state.generatedThemes,
+        themeLocked: state.themeLocked,
       }),
 
       merge: (persisted, current) => {
@@ -342,6 +407,10 @@ export const useThemeStore = create<ThemeState>()(
             typeof p.lastDarkTheme === "string"
               ? p.lastDarkTheme
               : current.lastDarkTheme,
+          themeLocked:
+            typeof p.themeLocked === "boolean"
+              ? p.themeLocked
+              : current.themeLocked,
           generatedThemes: Array.isArray(p.generatedThemes)
             ? p.generatedThemes
                 .filter(isGeneratedThemeRecord)

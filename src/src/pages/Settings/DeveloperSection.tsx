@@ -1,6 +1,7 @@
 import { Alert, Stack, Switch, Typography } from "@mui/material";
 import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
 import { ThemeManager } from "../../theme/themeManager";
+import { PreferencesJsonAccordion } from "./PreferencesJsonAccordion";
 
 /**
  * Developer-only settings.
@@ -149,6 +150,8 @@ export const DeveloperSection: React.FC = () => {
           that resets on full page reload.
         </Alert>
       )}
+
+      <PreferencesJsonAccordion />
     </Stack>
   );
 };

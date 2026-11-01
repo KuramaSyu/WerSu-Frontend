@@ -106,3 +106,41 @@ describe("useThemeStore generated theme pairs", () => {
     expect(useThemeStore.getState().generatedThemes).toEqual([]);
   });
 });
+
+describe("useThemeStore synced theme preference", () => {
+  beforeEach(() => {
+    useThemeStore.setState({ themeLocked: false, lastLightTheme: null });
+  });
+
+  it("applies a synced preference while the device is unlocked", async () => {
+    const light = useThemeStore
+      .getState()
+      .customThemes.find((t) => t.palette.mode === "light");
+    expect(light, "a light theme exists").toBeTruthy();
+
+    await useThemeStore.getState().applyThemePreference({
+      mode: "light",
+      light: light!.custom.themeName,
+      dark: null,
+    });
+
+    expect(useThemeStore.getState().themeName).toBe(light!.custom.themeName);
+  });
+
+  it("ignores a synced preference while the device is locked", async () => {
+    const dark = useThemeStore
+      .getState()
+      .customThemes.find((t) => t.palette.mode === "dark");
+    expect(dark, "a dark theme exists").toBeTruthy();
+    const before = useThemeStore.getState().themeName;
+
+    useThemeStore.setState({ themeLocked: true });
+    await useThemeStore.getState().applyThemePreference({
+      mode: "dark",
+      light: null,
+      dark: dark!.custom.themeName,
+    });
+
+    expect(useThemeStore.getState().themeName).toBe(before);
+  });
+});

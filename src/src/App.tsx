@@ -7,6 +7,7 @@ import {
 } from "react-router-dom";
 import { ThemeProvider } from "@mui/material/styles";
 import { useThemeStore } from "./zustand/useThemeStore";
+import { useThemePreferenceSync } from "./hooks/useThemePreferenceSync";
 
 import "./App.css";
 import { HomePage } from "./pages/Home/Main";
@@ -53,6 +54,10 @@ const NavigationRecorder: React.FC = () => {
 
 function App() {
   const { theme } = useThemeStore();
+
+  // Apply the signed-in user's synced theme preference unless this device
+  // has pinned its theme (see the lock button in the theme picker).
+  useThemePreferenceSync();
 
   // QueryClientProvider lives in main.tsx; do not add a second one here
   return (

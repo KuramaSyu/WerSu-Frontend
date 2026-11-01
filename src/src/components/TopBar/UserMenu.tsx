@@ -16,11 +16,15 @@ import {
 } from "@mui/material";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
 import CheckIcon from "@mui/icons-material/Check";
+import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import CloseIcon from "@mui/icons-material/Close";
 import DarkModeIcon from "@mui/icons-material/DarkMode";
 import EditIcon from "@mui/icons-material/Edit";
 import HomeIcon from "@mui/icons-material/Home";
 import LightModeIcon from "@mui/icons-material/LightMode";
+import LockIcon from "@mui/icons-material/Lock";
+import LockOpenIcon from "@mui/icons-material/LockOpen";
 import Logout from "@mui/icons-material/Logout";
 import RuleFolderIcon from "@mui/icons-material/RuleFolder";
 import SettingsIcon from "@mui/icons-material/Settings";
@@ -41,6 +45,7 @@ import { ThemeEditModal } from "../ThemeEditModal";
 import type { GeneratedThemeRecord } from "../../theme/imageTheme";
 import { Pages } from "./Pages";
 import { useSelectedShelfStore } from "../../zustand/useSelectedShelfStore";
+import { useCloudPreferences } from "../../hooks/useCloudPreferences";
 import { handleLogout as performLogout } from "../../utils/logout";
 
 export interface UserMenuProps {
@@ -63,9 +68,18 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
     generatedThemes,
     lastLightTheme,
     lastDarkTheme,
+    themeLocked,
+    setThemeLocked,
   } = useThemeStore();
   const { data: user } = useUser();
   const { isPublic } = usePublicRouteReady({ timeoutMs: 0 });
+  const {
+    canUpload,
+    canDownload,
+    isUploading,
+    upload,
+    download,
+  } = useCloudPreferences();
   const navigate = useNavigate();
   const selectedShelfId = useSelectedShelfStore((s) => s.selectedShelfId);
 
@@ -189,6 +203,13 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
   // theme they were on before). Fall back to the first theme of
   // the other mode when the user has never picked one in this
   // mode on this device.
+  // Lock the device's current theme so synced preference changes stop
+  // overriding it. Unlocked devices follow the synced preference.
+  const lockTooltip = themeLocked
+    ? "Theme pinned on this device. Cloud preferences are ignored."
+    : "Pin this device's theme so cloud preferences are ignored.";
+  const handleToggleThemeLock = () => setThemeLocked(!themeLocked);
+
   const otherMode: "dark" | "light" = currentMode === "dark" ? "light" : "dark";
   const lastUsedOther = otherMode === "light" ? lastLightTheme : lastDarkTheme;
   const toggleTooltip =
@@ -316,6 +337,50 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
             </IconButton>
           </Tooltip>
         )}
+        {!isAnonymousPublic && (
+          <>
+            <Tooltip
+              title={
+                isUploading
+                  ? "Uploading preferences…"
+                  : canUpload
+                    ? "Upload preferences to cloud"
+                    : "Preferences are up to date"
+              }
+            >
+              <span>
+                <IconButton
+                  size="small"
+                  aria-label="Upload preferences to cloud"
+                  onClick={upload}
+                  disabled={!canUpload || isUploading}
+                  sx={{ flexShrink: 0 }}
+                >
+                  <CloudUploadIcon fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip
+              title={
+                canDownload
+                  ? "Load preferences from cloud"
+                  : "No cloud preferences yet"
+              }
+            >
+              <span>
+                <IconButton
+                  size="small"
+                  aria-label="Load preferences from cloud"
+                  onClick={download}
+                  disabled={!canDownload}
+                  sx={{ flexShrink: 0 }}
+                >
+                  <CloudDownloadIcon fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+          </>
+        )}
       </Stack>
 
       <Divider />
@@ -421,6 +486,22 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
             })}
           </Select>
         </FormControl>
+        <Tooltip title={lockTooltip}>
+          <IconButton
+            size="small"
+            onClick={handleToggleThemeLock}
+            aria-label={lockTooltip}
+            aria-pressed={themeLocked}
+            color={themeLocked ? "primary" : "inherit"}
+            sx={{ flexShrink: 0 }}
+          >
+            {themeLocked ? (
+              <LockIcon fontSize="small" />
+            ) : (
+              <LockOpenIcon fontSize="small" />
+            )}
+          </IconButton>
+        </Tooltip>
       </Box>
 
       <Divider />

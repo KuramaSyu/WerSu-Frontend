@@ -3,9 +3,14 @@
  *
  * Preferences are stored server-side as an opaque JSON blob keyed by a
  * `(scope, target_id)` pair. The backend does not interpret the contents of
- * `data`; it only reads/writes/merges the blob. The concrete JSON schema is
- * defined by the frontend (see `src/models/Preferences.ts` and the various
- * zustand stores that consume these endpoints).
+ * `preferences_json`; it only reads/writes/merges the blob. The concrete
+ * JSON schema is defined by the frontend (see `src/models/Preferences.ts`
+ * and the various zustand stores that consume these endpoints).
+ *
+ * The `preferences_json` field carries a `PreferencesData` payload (see
+ * `src/models/Preferences.ts`) as a JSON-encoded **string**, e.g.
+ * `"{\"version\":1,\"theme\":{...}}"`. Use `JSON.stringify` when
+ * sending and `parseStoredPreferences` when reading.
  *
  * Endpoints (see `docs/swagger.json` in the backend):
  *   - `GET    /api/preferences` — read the blob (`GetPreferencesQuery` in,
@@ -43,16 +48,20 @@ export interface GetPreferencesQuery {
  * `PATCH /api/preferences` (shallow merge).
  *
  * On `POST` the stored row is overwritten entirely. On `PATCH` the
- * top-level keys of `data` overwrite the same keys in storage; nested
- * objects and arrays are replaced wholesale (no deep merge).
+ * top-level keys of `preferences_json` overwrite the same keys in storage;
+ * nested objects and arrays are replaced wholesale (no deep merge).
  */
 export interface PreferencesJsonBody {
   /** Scope the blob is stored under. */
   scope: PreferenceScope;
   /** Id of the entity the scope points at. */
   target_id: string;
-  /** Preference payload. Free-form JSON; the backend stores it verbatim. */
-  data: Record<string, unknown>;
+  /**
+   * Preference payload as a JSON-encoded string (the backend stores the
+   * string verbatim). `JSON.stringify` the frontend's `PreferencesData`
+   * (version + theme) before assigning.
+   */
+  preferences_json: string;
 }
 
 /**
@@ -71,15 +80,18 @@ export interface DeletePreferencesBody {
  *
  * Echoes back the `(scope, target_id)` pair along with the currently stored
  * blob, so callers can confirm exactly what was persisted. For `GET` with no
- * existing row, `data` is `{}`.
+ * existing row, `preferences_json` is empty (`""` / `"{}"`).
  */
 export interface PreferencesReply {
   /** Scope the blob is stored under. */
   scope: PreferenceScope;
   /** Id of the entity the scope points at. */
   target_id: string;
-  /** Currently stored preference payload. */
-  data: Record<string, unknown>;
+  /**
+   * Currently stored preference payload, JSON-encoded. Readers should
+   * decode with `parseStoredPreferences` rather than `JSON.parse`.
+   */
+  preferences_json: string;
 }
 
 /**
@@ -96,7 +108,8 @@ export interface DeletePreferencesReply {
 /** Request accepted by `getPreferences` (`GET /api/preferences`). */
 export type GetPreferencesEndpointRequest = GetPreferencesQuery;
 /**
- * Reply returned by `getPreferences`; `data` is `{}` when nothing is stored.
+ * Reply returned by `getPreferences`; `preferences_json` is empty when
+ * nothing is stored.
  */
 export type GetPreferencesEndpointReply = PreferencesReply;
 
