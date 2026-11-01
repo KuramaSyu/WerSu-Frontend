@@ -5,7 +5,11 @@ import { useParams } from "react-router-dom";
 import { DirectoryLeftPanel } from "./LeftPanel";
 import { DirectoryActions } from "./DirectoryActions";
 import { DirectoryMenu } from "./DirectoryMenu";
-import { useLeftPanel, usePanelSize } from "../../LayoutProvider";
+import {
+  useLeftPanel,
+  usePanelSize,
+  useRightPanel,
+} from "../../LayoutProvider";
 import { DirectoryBreadCrumbs } from "./DirectoryBreadCrumbs";
 import { DirectoryItem } from "./DirectoryItem";
 import { useDirectoryFeatures } from "./DirectoryFeatures.hook";
@@ -85,6 +89,10 @@ export const DirectoryView: React.FC = () => {
 
   // Match the home screen's left-panel sizing
   usePanelSize({ left: "clamp(20rem, 25vw, 30rem)" });
+
+  // Directory view has no right rail; clear any panel a previously
+  // visited page (e.g. the note editor) left mounted.
+  useRightPanel(null);
 
   // `?action=create-note|create-directory` -> open the matching
   // modal, then strip the param.

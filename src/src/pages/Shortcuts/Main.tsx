@@ -2,6 +2,7 @@ import React from "react";
 import { Box, Stack, Typography } from "@mui/material";
 import KeyboardIcon from "@mui/icons-material/Keyboard";
 import { M2, M3, M4 } from "../../statics";
+import { useRightPanel } from "../../LayoutProvider";
 import { ShortcutsList } from "./ShortcutsList";
 
 /**
@@ -14,6 +15,10 @@ import { ShortcutsList } from "./ShortcutsList";
  * component.
  */
 export const ShortcutsPage: React.FC = () => {
+  // The shortcuts reference is a single full-width column; clear any
+  // right rail a previously visited page left mounted.
+  useRightPanel(null);
+
   return (
     <Box sx={{ maxWidth: "56rem", mx: "auto", p: M4, width: "100%" }}>
       <Stack spacing={M3}>

@@ -9,6 +9,7 @@ import {
   Typography,
 } from "@mui/material";
 import { M3, M4 } from "../../statics";
+import { useRightPanel } from "../../LayoutProvider";
 import { DirectoryFormFields } from "../DirectoryEdit/DirectoryFormFields";
 import { useCreateSubdirectoryForm } from "./Main.hook";
 
@@ -134,6 +135,8 @@ const CreateSubdirectoryForm: React.FC = () => {
  */
 export const CreateSubdirectoryPage: React.FC = () => {
   const { id } = useParams();
+  // Full-width form; no right rail on this route.
+  useRightPanel(null);
   return <CreateSubdirectoryForm key={id ?? "__no_id__"} />;
 };
 

@@ -9,6 +9,7 @@ import {
   Typography,
 } from "@mui/material";
 import { M3, M4 } from "../../statics";
+import { useRightPanel } from "../../LayoutProvider";
 import { DirectoryFormFields } from "./DirectoryFormFields";
 import { useDirectoryEditForm } from "./Main.hook";
 
@@ -155,6 +156,8 @@ const DirectoryEditForm: React.FC = () => {
  */
 export const DirectoryEditPage: React.FC = () => {
   const { id } = useParams();
+  // Full-width form; no right rail on this route.
+  useRightPanel(null);
   // The `key` is intentionally the raw route id (not a derived value)
   // so any change to `:id` — even one that resolves to the same
   // directory after a redirect — triggers a remount.

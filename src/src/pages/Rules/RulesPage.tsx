@@ -26,7 +26,11 @@ import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { RuleCard } from "./RuleCard";
 import { RuleFormModal } from "./RuleFormModal";
 import { ConfirmationModal } from "../Settings/ConfirmationModal";
-import { useLeftPanel, usePanelSize } from "../../LayoutProvider";
+import {
+  useLeftPanel,
+  usePanelSize,
+  useRightPanel,
+} from "../../LayoutProvider";
 import { RulesShelfPanel } from "./RulesShelfPanel";
 
 // Rules page scoped to a single shelf.
@@ -68,6 +72,10 @@ export const RulesPage: React.FC = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   usePanelSize({ left: "clamp(18rem, 22vw, 26rem)" });
+
+  // Rules has no right rail; clear any panel left over from another
+  // page (e.g. the note editor).
+  useRightPanel(null);
   useLeftPanel(
     <RulesShelfPanel
       shelf={shelfQuery.data ?? null}

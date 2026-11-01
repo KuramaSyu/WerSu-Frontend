@@ -9,6 +9,7 @@ import "swagger-ui-themes/themes/3.x/theme-outline.css";
 import { BACKEND_BASE } from "../../statics";
 import { Box, GlobalStyles, styled, ThemeProvider } from "@mui/material";
 import { useThemeStore } from "../../zustand/useThemeStore";
+import { useRightPanel } from "../../LayoutProvider";
 
 import { useUserStore } from "../../zustand/userStore";
 import { docsTheme } from "../../theme/themes";
@@ -19,6 +20,8 @@ import {
 
 export const SwaggerDocs: React.FC = () => {
   const { theme, setTheme } = useThemeStore();
+  // Full-width API docs; no right rail on this route.
+  useRightPanel(null);
 
   useEffect(() => {
     async function init() {

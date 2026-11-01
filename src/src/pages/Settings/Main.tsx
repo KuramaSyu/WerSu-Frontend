@@ -11,7 +11,11 @@ import {
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useSearchParams } from "react-router-dom";
-import { useLeftPanel, usePanelSize } from "../../LayoutProvider";
+import {
+  useLeftPanel,
+  usePanelSize,
+  useRightPanel,
+} from "../../LayoutProvider";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { SettingsLeftPanel } from "./SettingsLeftPanel";
 import { SettingsSection } from "./SettingsSection";
@@ -78,6 +82,10 @@ const SettingsPage: React.FC = () => {
   // inside this component's JSX).
   useLeftPanel(<SettingsLeftPanel />);
   usePanelSize({ left: "clamp(15rem, 20vw, 22rem)" });
+
+  // Settings has no right rail; clear any panel left over from another
+  // page (e.g. the note editor).
+  useRightPanel(null);
 
   // Mobile drill-in state. `null` -> show the category list; a real
   // id -> show that single section with a back button.

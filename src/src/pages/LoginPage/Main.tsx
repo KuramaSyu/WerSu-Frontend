@@ -10,7 +10,7 @@ import { LogoSvgComponent } from "../LoadingPage/Main";
 import { useLoadingStore } from "../../zustand/loadingStore";
 import { useUsersStore, useUserStore } from "../../zustand/userStore";
 import { defaultTheme } from "../../theme/themes";
-import { useLayout } from "../../LayoutProvider";
+import { useLayout, useRightPanel } from "../../LayoutProvider";
 import { M3, M4, M5 } from "../../statics";
 
 export const LoginPage: React.FC = () => {
@@ -19,6 +19,9 @@ export const LoginPage: React.FC = () => {
   const { isMobile } = useBreakpoint();
   const { setLeftPanelOpen, setRightPanelOpen } = useLayout();
   const logoAnchorRef = useRef<HTMLDivElement>(null);
+  // Login is chrome-free; drop any right panel left over from a
+  // previous session.
+  useRightPanel(null);
 
   useEffect(() => {
     setLeftPanelOpen(false);
