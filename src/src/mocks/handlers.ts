@@ -120,7 +120,13 @@ export const handlers = [
     return json(getFakeDb().users);
   }),
 
-  http.post("*/api/auth/logout", async () => okNoContent()),
+  http.post("*/api/auth/logout", async () => {
+    // Actually end the fake session: without this the follow-up
+    // `GET /api/auth/user` would keep answering with the user and the
+    // topbar avatar would reappear.
+    getFakeDb().currentUserId = "";
+    return okNoContent();
+  }),
 
   // ─────────────────────────── status ───────────────────────────
 

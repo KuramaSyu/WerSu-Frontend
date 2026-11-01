@@ -190,6 +190,10 @@ function useHydrateUserStoreFromQuery(
 
   useEffect(() => {
     if (isSuccess && user) {
+      // Never let a stale/cached query result undo an explicit logout.
+      // (`useUser` is disabled while latched, but a query that was
+      // already successful can briefly still report `isSuccess`.)
+      if (useUserStore.getState().loggedOut) return;
       const id = user.id ?? null;
       if (lastSeenIdRef.current === id) return;
       lastSeenIdRef.current = id;

@@ -5,11 +5,12 @@ import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persi
 import "./index.css";
 import "katex/dist/katex.min.css";
 import App from "./App.tsx";
-import { queryClient } from "./api/queryClient";
+import { queryClient, PERSIST_CACHE_STORAGE_KEY } from "./api/queryClient";
 import { Note } from "./api/models/search";
 
 const localStoragePersister = createAsyncStoragePersister({
   storage: window.localStorage,
+  key: PERSIST_CACHE_STORAGE_KEY,
 });
 
 /**

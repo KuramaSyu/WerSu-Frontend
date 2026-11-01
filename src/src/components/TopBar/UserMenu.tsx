@@ -105,8 +105,17 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
   // identity-shaped zustand store + the React Query cache so the
   // previous user's data doesn't flash on the next session.
   const handleLogout = async () => {
-    await performLogout();
-    onRequestClose();
+    try {
+      await performLogout();
+    } finally {
+      // Always leave the current page, even if clearing the session
+      // threw. The auth gate deliberately exempts /settings (so it
+      // stays usable when logged out), which means clicking Logout
+      // there would otherwise leave the top bar showing the previous
+      // user's avatar. Logging out always means going to /login.
+      onRequestClose();
+      navigate("/login", { replace: true });
+    }
   };
 
   const handleOpenSettings = () => {

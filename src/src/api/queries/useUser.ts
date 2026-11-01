@@ -31,9 +31,21 @@ export function useUserKey(): string | null {
 
 // Hook to fetch the current user with discord login authentication.
 export function useUser(): UseQueryResult<WersuUserImpl, Error> {
+  // After an explicit logout the query must stay off so it can't
+  // re-authenticate the viewer off a still-valid cookie (or the fake
+  // backend). A real login calls `setUser(user)`, which clears this.
+  const loggedOut = useUserStore((s) => s.loggedOut);
   return useQuery<WersuUser, Error, WersuUserImpl>({
     queryKey: ["user"],
+    enabled: !loggedOut,
     queryFn: async () => {
+      // Hard stop: never let a fetch that raced the logout latch
+      // re-authenticate the viewer. `enabled` already gates this, but
+      // an observer can briefly still be enabled during the logout
+      // re-render.
+      if (useUserStore.getState().loggedOut) {
+        throw new UserError("Logged out", "Logged out", 401);
+      }
       const result = await userApi.fetchUser();
       console.log("useUser: fetched user", result);
       return result;

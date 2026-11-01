@@ -3,12 +3,34 @@ import { WersuUserImpl } from "./../components/DiscordLogin";
 
 interface UserState {
   user: WersuUserImpl | null;
+  /**
+   * Set when the viewer explicitly logs out. It suppresses the
+   * `useUser` query and forces the auth gate closed until a real login
+   * calls `setUser(user)` again. Without this latch, clearing the
+   * query cache while `useUser` is still mounted would immediately
+   * refetch and re-hydrate the previous identity (avatar snapping
+   * back into the top bar) whenever the session cookie is still valid
+   * or the fake backend still answers.
+   */
+  loggedOut: boolean;
   setUser: (user: WersuUserImpl | null) => void;
+  /** Explicit logout: clears the user and latches the gate closed. */
+  setLoggedOut: () => void;
 }
 
 export const useUserStore = create<UserState>((set) => ({
   user: null,
-  setUser: (user: WersuUserImpl | null) => set({ user: user }),
+  loggedOut: false,
+  // A non-null user means a fresh login, which clears the latch.
+  // `setUser(null)` (cold-start hydration failure) must NOT latch,
+  // otherwise the app could never recover without a reload.
+  setUser: (user: WersuUserImpl | null) =>
+    set((state) =>
+      user !== null
+        ? { user, loggedOut: false }
+        : { user: null, loggedOut: state.loggedOut },
+    ),
+  setLoggedOut: () => set({ user: null, loggedOut: true }),
 }));
 
 export interface UsersState {
