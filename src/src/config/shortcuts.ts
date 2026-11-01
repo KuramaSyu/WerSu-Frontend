@@ -61,6 +61,52 @@ export function shortcutDisplayKey(shortcut: ShortcutConfig): string {
   return shortcut.combo ?? shortcut.keyLabel ?? shortcut.key ?? "";
 }
 
+/**
+ * True when a route pattern matches a pathname. Patterns may contain
+ * `:param` segments (`/n/:id`); the special path `"everywhere"` matches
+ * any path. Extra trailing segments are allowed so nested routes such as
+ * `/d/:id/edit` still resolve to their parent page.
+ */
+export function matchesShortcutPath(
+  pattern: string,
+  pathname: string,
+): boolean {
+  if (pattern === "everywhere") return true;
+  if (pattern === "/") return pathname === "/" || pathname === "";
+
+  const patternSegments = pattern.split("/").filter(Boolean);
+  const pathSegments = pathname.split("/").filter(Boolean);
+  if (pathSegments.length < patternSegments.length) return false;
+
+  return patternSegments.every((segment, index) =>
+    segment.startsWith(":")
+      ? pathSegments[index].length > 0
+      : segment === pathSegments[index],
+  );
+}
+
+/** The page id whose `path` matches the route, or `null` if none do. */
+export function getShortcutPageIdForPath(pathname: string): string | null {
+  for (const [id, page] of Object.entries(shortcutConfig)) {
+    if (page.path === "everywhere") continue;
+    if (matchesShortcutPath(page.path, pathname)) return id;
+  }
+  return null;
+}
+
+/**
+ * The page ids relevant on a route: the active page first, then the
+ * always-applicable `global` page. Used by the Ctrl+/ modal to show
+ * only what applies where the user is.
+ */
+export function getRelevantShortcutPageIds(pathname: string): string[] {
+  const current = getShortcutPageIdForPath(pathname);
+  const ids: string[] = [];
+  if (current) ids.push(current);
+  if (shortcutConfig.global && current !== "global") ids.push("global");
+  return ids;
+}
+
 /** The slice of runtime state a `when` condition can reference. */
 export interface ShortcutState {
   viewMode: ShortcutViewMode;
