@@ -26,6 +26,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useImageBlobCacheStore } from "../../zustand/useImageBlobCache";
+import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
 import { downscaleImageTo1080p } from "../../utils/imageDownscale";
 import { blurImageToWebp, fetchImageBlob } from "../../utils/imageBlur";
 import { useCachedImageUrl } from "../../hooks/useCachedImageUrl";
@@ -419,16 +420,29 @@ export const ThemeGeneratorSection: React.FC = () => {
         }
       }
 
-      // Store a second, pre-blurred copy of the image at the default
-      // blur so the background renders without a runtime filter.
+      // Store a second, pre-blurred copy of the image at the default blur so
+      // the background renders without a runtime transform. When the
+      // pre-render flag is off the sharp source is blurred on the fly at
+      // render time instead, so no second cache entry is written.
+      const preRenderBlur =
+        useFeatureStore.getState().flags[FeatureFlagName.PreRenderThemeBlur];
       let blurredBackgroundImage = "";
+      let blurActive = false;
       if (sourceBlob !== null) {
-        try {
-          const blurred = await blurImageToWebp(sourceBlob, DEFAULT_THEME_BLUR);
-          blurredBackgroundImage = makeKey("-blur");
-          await cache.put(blurredBackgroundImage, blurred);
-        } catch {
-          blurredBackgroundImage = "";
+        if (preRenderBlur) {
+          try {
+            const blurred = await blurImageToWebp(
+              sourceBlob,
+              DEFAULT_THEME_BLUR,
+            );
+            blurredBackgroundImage = makeKey("-blur");
+            await cache.put(blurredBackgroundImage, blurred);
+            blurActive = true;
+          } catch {
+            blurredBackgroundImage = "";
+          }
+        } else {
+          blurActive = true;
         }
       }
 
@@ -462,7 +476,7 @@ export const ThemeGeneratorSection: React.FC = () => {
         },
         backgroundImage,
         blurredBackgroundImage,
-        blur: blurredBackgroundImage.length > 0 ? DEFAULT_THEME_BLUR : 0,
+        blur: blurActive ? DEFAULT_THEME_BLUR : 0,
         scope: ownerScope,
         targetId,
       });

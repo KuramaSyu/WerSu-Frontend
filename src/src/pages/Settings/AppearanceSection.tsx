@@ -55,6 +55,9 @@ export const AppearanceSection: React.FC = () => {
   const noteEditorBackgroundBlur = useFeatureStore(
     (state) => state.flags[FeatureFlagName.NoteEditorBackgroundBlur],
   );
+  const preRenderThemeBlur = useFeatureStore(
+    (state) => state.flags[FeatureFlagName.PreRenderThemeBlur],
+  );
   const developerMode = useFeatureStore(
     (state) => state.flags[FeatureFlagName.DeveloperMode],
   );
@@ -142,6 +145,42 @@ export const AppearanceSection: React.FC = () => {
             sx={{ maxWidth: 320 }}
           />
         </Stack>
+      </Stack>
+
+      <Stack
+        direction="row"
+        spacing={2}
+        sx={{
+          py: 1.5,
+          borderTop: 1,
+          borderBottom: 1,
+          borderColor: "divider",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <Stack direction="column" spacing={1}>
+          <Typography variant="subtitle1">
+            Pre-render blurred theme backgrounds
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Store a second, pre-blurred copy of the theme image in IndexedDB
+            (two cached copies) so the background renders instantly. Turn this
+            off to instead fetch the image at screen resolution (1080p / 720p)
+            and apply the blur on the fly — only the sharp source is cached.
+          </Typography>
+        </Stack>
+        <Switch
+          checked={preRenderThemeBlur}
+          onChange={(_, checked) =>
+            setFlag(FeatureFlagName.PreRenderThemeBlur, checked)
+          }
+          slotProps={{
+            input: {
+              "aria-label": "Pre-render blurred theme backgrounds toggle",
+            },
+          }}
+        />
       </Stack>
 
       <Stack>

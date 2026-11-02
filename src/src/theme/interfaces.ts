@@ -8,6 +8,13 @@ export interface ThemeCustomExtension {
   backgroundImages: string[];
   /** The single image picked for the current theme instance; null when no image is set. */
   chosenBackgroundImage?: string | null;
+  /**
+   * Background blur strength (0-100) carried over from the generated
+   * theme record. `0`/`undefined` for plain themes. Used by
+   * `AppBackground` to decide whether the sharp source may be rendered
+   * (only when `0`) and whether the manual blur pipeline is active.
+   */
+  blur?: number;
 }
 
 declare module "@mui/material/styles" {

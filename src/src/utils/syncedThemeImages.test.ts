@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getAttachmentApi } from "../api/AttachmentApi";
 import { BACKEND_BASE } from "../statics";
 import type { GeneratedThemeRecord } from "../theme/imageTheme";
+import { FeatureFlagName, useFeatureStore } from "../zustand/FeatureStore";
 import { useImageBlobCacheStore } from "../zustand/useImageBlobCache";
 
 const { fetchImageBlobMock, blurImageToWebpMock } = vi.hoisted(() => ({
@@ -598,6 +599,24 @@ describe("ensureSyncedBlur fast paths", () => {
   it("does nothing when there is no source image", async () => {
     const record = makeRecord({ blur: 33, backgroundImage: "" });
     await expect(ensureSyncedBlur(record)).resolves.toBe(record);
+  });
+
+  it("does nothing when pre-rendering is disabled", async () => {
+    useFeatureStore
+      .getState()
+      .setFlag(FeatureFlagName.PreRenderThemeBlur, false);
+    try {
+      const record = makeRecord({
+        blur: 33,
+        backgroundImage: "https://x/a.webp",
+      });
+      await expect(ensureSyncedBlur(record)).resolves.toBe(record);
+      expect(blurImageToWebpMock).not.toHaveBeenCalled();
+    } finally {
+      useFeatureStore
+        .getState()
+        .setFlag(FeatureFlagName.PreRenderThemeBlur, true);
+    }
   });
 });
 

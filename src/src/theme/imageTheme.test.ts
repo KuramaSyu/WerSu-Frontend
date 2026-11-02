@@ -196,6 +196,22 @@ describe("buildThemeFromImageRecord", () => {
     );
   });
 
+  it("never falls back to the sharp source for an unrendered blur", () => {
+    // A freshly downloaded theme is registered before its blurred variant has
+    // been rendered on this device. The chosen background must stay empty so
+    // the sharp image never flashes; `custom.blur` still reports the amount.
+    const theme = buildThemeFromImageRecord({
+      ...record,
+      blurredBackgroundImage: "",
+      blur: 33,
+    });
+    expect(theme.custom.chosenBackgroundImage).toBeNull();
+    expect(theme.custom.backgroundImages).toEqual([
+      "https://example.com/forest.jpg",
+    ]);
+    expect(theme.custom.blur).toBe(33);
+  });
+
   it("leaves the background empty when no image is provided", () => {
     const theme = buildThemeFromImageRecord({
       ...record,

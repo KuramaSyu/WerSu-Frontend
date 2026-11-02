@@ -2,6 +2,10 @@ import { getAttachmentApi } from "../api/AttachmentApi";
 import { AttachmentLinkBuilder } from "../api/utils/AttachmentLInkBuilder";
 import { extractAttachmentKeyFromUrl } from "../api/utils/request_helpers";
 import type { GeneratedThemeRecord } from "../theme/imageTheme";
+import {
+  FeatureFlagName,
+  useFeatureStore,
+} from "../zustand/FeatureStore";
 import { useImageBlobCacheStore } from "../zustand/useImageBlobCache";
 import { blurImageToWebp, fetchImageBlob } from "./imageBlur";
 
@@ -430,6 +434,12 @@ export async function ensureSyncedBlur(
   record: GeneratedThemeRecord,
 ): Promise<GeneratedThemeRecord> {
   if (record.blur <= 0 || record.backgroundImage.length === 0) {
+    return record;
+  }
+  // Manual-blur mode: nothing is pre-rendered or persisted, so leave the
+  // record without a `local:` blurred variant. `AppBackground` blurs the
+  // sharp source on the fly instead.
+  if (!useFeatureStore.getState().flags[FeatureFlagName.PreRenderThemeBlur]) {
     return record;
   }
   const cache = useImageBlobCacheStore.getState();

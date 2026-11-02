@@ -1,29 +1,56 @@
 import { Box } from "@mui/material";
 import { useThemeStore } from "../zustand/useThemeStore";
+import { FeatureFlagName, useFeatureStore } from "../zustand/FeatureStore";
 import { useCachedImageUrl } from "../hooks/useCachedImageUrl";
+import { useManualBlurImageUrl } from "../hooks/useManualBlurImageUrl";
 
 // Fullscreen background layer. Renders the active theme's background
 // image (when it has one); themes without an image render nothing.
 // `local:<id>` blobs and remote URLs both resolve through the IndexedDB
 // cache, which downloads and persists remote URLs on first use.
 //
-// If the chosen (blurred) image is a `local:` blob whose bytes are gone
-// (lost IndexedDB write, cleared store), the theme's sharp source is
-// rendered instead so the background never goes blank; the repair hook
-// (`useThemeImageRepair`) regenerates the blob in the meantime.
+// Blurred themes must never flash the sharp source: a downloaded theme is
+// registered before its blurred variant has been rendered locally (and a
+// device-local one may have lost its IndexedDB bytes), so the chosen
+// background can legitimately be empty for a while. In that window this
+// renders nothing (the theme's base color shows through) and waits for the
+// repair/generation pass instead of falling back to the sharp image.
+//
+// When `PreRenderThemeBlur` is off, the sharp source is fetched at display
+// resolution and blurred on the fly (a canvas transform, not a CSS filter on
+// the box) so the pre-rendered second cache copy is not needed.
 const AppBackground: React.FC = () => {
   const { theme } = useThemeStore();
-  const themeImage =
-    theme.custom.chosenBackgroundImage ??
-    theme.custom.backgroundImages[0] ??
-    "";
-  const sharpImage = theme.custom.backgroundImages[0] ?? "";
-  const sourceUrl = useCachedImageUrl(themeImage);
-  // Only meaningful when the blurred variant differs from the sharp source
-  // (blur > 0 with a pre-rendered blob); passing "" disables the lookup.
-  const fallbackUrl = useCachedImageUrl(themeImage === sharpImage ? "" : sharpImage);
+  const preRenderBlur = useFeatureStore(
+    (s) => s.flags[FeatureFlagName.PreRenderThemeBlur],
+  );
+  const custom = theme.custom;
+  const sharpImage = custom.backgroundImages[0] ?? "";
+  const chosenImage = custom.chosenBackgroundImage ?? "";
+  const blur = custom.blur ?? 0;
 
-  const resolved = sourceUrl ?? fallbackUrl;
+  // Only read the pre-rendered variant from the cache when it actually
+  // exists and differs from the sharp source. An empty/unknown chosen value
+  // disables the lookup so the sharp source is never shown for a blurred
+  // theme.
+  const storedUrl = useCachedImageUrl(
+    blur <= 0
+      ? chosenImage.length > 0
+        ? chosenImage
+        : sharpImage
+      : preRenderBlur &&
+          chosenImage.length > 0 &&
+          chosenImage !== sharpImage
+        ? chosenImage
+        : "",
+  );
+  // Manual mode only; passing "" disables the lookup.
+  const manualUrl = useManualBlurImageUrl(
+    preRenderBlur || blur <= 0 ? "" : sharpImage,
+    blur,
+  );
+
+  const resolved = blur > 0 && !preRenderBlur ? manualUrl : storedUrl;
 
   if (resolved === null) {
     return null;

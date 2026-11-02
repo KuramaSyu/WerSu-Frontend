@@ -13,6 +13,7 @@ import { useEffect, useState, type ChangeEvent } from "react";
 import { ModalShell } from "./ModalShell";
 import { useThemeStore } from "../zustand/useThemeStore";
 import { useImageBlobCacheStore } from "../zustand/useImageBlobCache";
+import { FeatureFlagName, useFeatureStore } from "../zustand/FeatureStore";
 import { useCachedImageUrl } from "../hooks/useCachedImageUrl";
 import useInfoStore, { SnackbarUpdateImpl } from "../zustand/InfoStore";
 import { blurImageToWebp } from "../utils/imageBlur";
@@ -206,10 +207,13 @@ export const ThemeEditModal: React.FC<ThemeEditModalProps> = ({
       const isSourceKey =
         blurredBackgroundImage === record.backgroundImage ||
         blurredBackgroundImage === originalKey;
+      const preRenderBlur =
+        useFeatureStore.getState().flags[FeatureFlagName.PreRenderThemeBlur];
 
-      if (blur === 0) {
-        // No blur: drop the pre-rendered variant and fall back to the
-        // original source.
+      if (blur === 0 || !preRenderBlur) {
+        // No blur, or manual-blur mode: drop any pre-rendered variant. The
+        // background then comes from the sharp source (with a runtime canvas
+        // transform when a blur amount is set).
         if (blurredBackgroundImage.startsWith("local:") && !isSourceKey) {
           await cache.remove(blurredBackgroundImage);
         }

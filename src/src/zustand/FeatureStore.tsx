@@ -52,6 +52,14 @@ export enum FeatureFlagName {
    * slider. Disable this for better performance on low-end devices.
    */
   NoteEditorBackgroundBlur = "NoteEditorBackgroundBlur",
+  /**
+   * When true (default), a blurred theme background is rendered with a
+   * canvas and persisted to IndexedDB alongside the sharp source (two
+   * cached copies). When false, the sharp source is fetched at display
+   * resolution (1080p desktop / 720p mobile) and blurred on the fly at
+   * render time instead, so only the source ends up in the cache.
+   */
+  PreRenderThemeBlur = "PreRenderThemeBlur",
 }
 
 const FEATURE_FLAG_NAMES = Object.values(FeatureFlagName);
@@ -69,6 +77,7 @@ const DEFAULT_FEATURE_FLAGS: Record<FeatureFlagName, boolean> = {
   [FeatureFlagName.BlurredBackgroundDebug]: false,
   [FeatureFlagName.BackgroundImageDebug]: false,
   [FeatureFlagName.NoteEditorBackgroundBlur]: true,
+  [FeatureFlagName.PreRenderThemeBlur]: true,
 };
 
 const isBooleanRecord = (value: unknown): value is Record<string, boolean> =>

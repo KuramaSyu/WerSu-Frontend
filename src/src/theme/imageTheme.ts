@@ -321,11 +321,16 @@ export function buildThemeFromImageRecord(
   record: GeneratedThemeRecord,
 ): CustomTheme {
   const palette = record.palette;
-  // Prefer the pre-blurred variant when blur is active; fall back to the
-  // original source otherwise.
+  // Prefer the pre-blurred variant when blur is active. When blur is on but
+  // the variant has not been rendered/cached yet we intentionally leave the
+  // chosen background empty instead of falling back to the sharp source:
+  // `AppBackground` must never flash the sharp image for a blurred theme. The
+  // repair/manual pipeline fills the background in once it is ready.
   const displayBackground =
-    record.blur > 0 && record.blurredBackgroundImage.length > 0
-      ? record.blurredBackgroundImage
+    record.blur > 0
+      ? record.blurredBackgroundImage.length > 0
+        ? record.blurredBackgroundImage
+        : ""
       : record.backgroundImage;
   return createTheme({
     palette: {
@@ -371,6 +376,7 @@ export function buildThemeFromImageRecord(
         displayBackground.length > 0 ? displayBackground : null,
       themeName: record.name,
       longName: record.longName,
+      blur: record.blur,
     },
   }) as unknown as CustomTheme;
 }
