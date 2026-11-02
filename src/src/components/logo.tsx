@@ -1,7 +1,8 @@
 import React from "react";
-import { darken, getOverlayAlpha } from "@mui/material/styles";
+import { darken, getOverlayAlpha, lighten } from "@mui/material/styles";
 import type { Theme } from "@mui/material/styles";
 import { useThemeStore } from "../zustand/useThemeStore";
+import { blendColors, hexToRgb, rgbToHex } from "../utils/blendWithContrast";
 
 /**
  * `palette.background.paper` raised to an MUI elevation.
@@ -100,7 +101,7 @@ export const Logo: React.FC<LogoProps> = ({
 }) => {
   const { theme } = useThemeStore();
   const { palette } = theme;
-
+  theme.changeSaturation;
   const toneVars: Record<string, string> = monochrome
     ? {
         "--logo-paper": "currentColor",
@@ -108,8 +109,17 @@ export const Logo: React.FC<LogoProps> = ({
         "--logo-secondary": "currentColor",
       }
     : {
-        "--logo-paper": elevatedPaper(palette, 12),
-        "--logo-primary": palette.text.secondary,
+        "--logo-paper": theme.setSaturation(
+          rgbToHex(
+            blendColors(
+              hexToRgb(palette.background.default),
+              hexToRgb(palette.primary.main),
+              0.4,
+            ),
+          ),
+          0.33,
+        ),
+        "--logo-primary": lighten(palette.primary.main, 0.7),
         "--logo-secondary": elevatedPaper(palette, 12), //not visible
         "--logo-dark": darken(palette.background.default, 0.2),
       };
