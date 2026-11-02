@@ -10,6 +10,8 @@ export interface MobileAction {
   label: string;
   icon: ReactNode;
   onClick: () => void;
+  /** Renders the action as a non-interactive indicator (e.g. read-only). */
+  disabled?: boolean;
 }
 
 interface MobileActionsState {

@@ -1,8 +1,12 @@
 // Floating editor actions: read/write FAB (or a read-only badge when
 // the view is not writable) and source/rich FAB. Save lives in the
 // desktop top bar.
+//
+// On mobile the two FABs are not rendered on the canvas; instead they
+// register with `useMobileActionsStore` so `MobileBottomBar` shows them
+// as compact icon buttons (see `CreateActions` for the same pattern).
 
-import { memo } from "react";
+import { memo, useCallback, useEffect, useId, useRef } from "react";
 import {
   Box,
   ButtonBase,
@@ -17,6 +21,10 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import type { Editor } from "@tiptap/react";
 import { M4, MOBILE_BOTTOM_BAR_CLEARANCE } from "../../statics";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
+import {
+  useMobileActionsStore,
+  type MobileAction,
+} from "../../zustand/useMobileActionsStore";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { useViewConfig } from "../../zustand/useViewConfig";
 import { useActiveNoteStore } from "../../zustand/editorStore";
@@ -93,7 +101,7 @@ const InsertSpeedDialImpl: React.FC<InsertSpeedDialProps> = ({
 
   const isRich = viewMode === "rich";
 
-  const handleSourceToggle = () => {
+  const handleSourceToggle = useCallback(() => {
     if (isRich) {
       const markdown = editor?.getMarkdown() ?? sourceMarkdown;
       setSourceMarkdown(markdown);
@@ -104,7 +112,14 @@ const InsertSpeedDialImpl: React.FC<InsertSpeedDialProps> = ({
     // already claimed this markdown (which the dedupe guard would skip).
     setContent(sourceMarkdown, true);
     setViewMode("rich");
-  };
+  }, [
+    isRich,
+    editor,
+    sourceMarkdown,
+    setSourceMarkdown,
+    setViewMode,
+    setContent,
+  ]);
 
   // Read/write FAB icon shows the mode the tap switches INTO,
   // not the current mode.
@@ -117,6 +132,72 @@ const InsertSpeedDialImpl: React.FC<InsertSpeedDialProps> = ({
   // grant write. Desktop gets an extended FAB with the "View only"
   // label next to the eye; mobile gets the icon only.
   const readOnlyLabel = "You only have read access";
+
+  // ------------------------------------------------------------------
+  // Mobile: the FABs move into the bottom bar as compact icon buttons
+  // (mirroring `CreateActions`). The handlers live in a ref so the
+  // registration effect only re-runs when a visible attribute (mode /
+  // icon) changes rather than on every render.
+  // ------------------------------------------------------------------
+  const ownerId = useId();
+  const setActions = useMobileActionsStore((s) => s.setActions);
+  const clearActions = useMobileActionsStore((s) => s.clearActions);
+  const handlersRef = useRef<{ readWrite: () => void; source: () => void }>({
+    readWrite: () => {},
+    source: () => {},
+  });
+  useEffect(() => {
+    handlersRef.current = {
+      readWrite: () => setWrite(!editMode),
+      source: handleSourceToggle,
+    };
+  }, [setWrite, editMode, handleSourceToggle]);
+
+  useEffect(() => {
+    if (!isMobile) {
+      clearActions(ownerId);
+      return;
+    }
+    const readWriteAction: MobileAction = readOnly
+      ? {
+          id: `${ownerId}-readonly`,
+          label: readOnlyLabel,
+          icon: <VisibilityIcon />,
+          disabled: true,
+          onClick: () => {},
+        }
+      : {
+          id: `${ownerId}-readwrite`,
+          label: readWriteLabel,
+          icon: editMode ? <VisibilityIcon /> : <EditIcon />,
+          onClick: () => handlersRef.current.readWrite(),
+        };
+    const actions: MobileAction[] = [
+      readWriteAction,
+      {
+        id: `${ownerId}-source`,
+        label: isRich ? "Swap to Source view" : "Swap to Rich editor",
+        icon: isRich ? <CodeIcon /> : <ArticleIcon />,
+        onClick: () => handlersRef.current.source(),
+      },
+    ];
+    setActions(ownerId, actions);
+    return () => clearActions(ownerId);
+  }, [
+    isMobile,
+    ownerId,
+    readOnly,
+    readOnlyLabel,
+    readWriteLabel,
+    editMode,
+    isRich,
+    setActions,
+    clearActions,
+  ]);
+
+  if (isMobile) {
+    return null;
+  }
 
   const bottom = isMobile ? `calc(${M4} + ${MOBILE_BOTTOM_BAR_CLEARANCE})` : M4;
   const paperFg = theme.palette.getContrastText(

@@ -18,12 +18,6 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import {
-  IconLayoutSidebarLeftCollapseFilled,
-  IconLayoutSidebarLeftExpandFilled,
-  IconLayoutSidebarRightCollapseFilled,
-  IconLayoutSidebarRightExpandFilled,
-} from "@tabler/icons-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { M1, M2, M3 } from "../../statics";
 import { useLayout } from "../../LayoutProvider";
@@ -76,13 +70,12 @@ const SWIPE_UP_MAX_DRIFT_PX = 24;
  * doesn't auto-hide on scroll because there's no chrome above the
  * canvas to reclaim.
  *
- * On routes with a left rail (home, directory view, note view),
- * horizontal swipes toggle the rail: swipe right opens it (and
- * pins the user override so it stays open), swipe left closes it.
- * The page itself closes the rail on mobile on mount, so the
- * swipe is the only way to re-open it. Subroutes like
- * `/d/:id/edit` and `/d/:id/new` are excluded -- they're modal
- * editor surfaces that own their own panels.
+ * Horizontal swipes are the only way to open / close the side
+ * rails on mobile (there are no collapse buttons): swipe right
+ * toggles the left rail, swipe left toggles the right rail. The
+ * two drawers are mutually exclusive, and a swipe towards an open
+ * drawer closes it. The gesture works on every route; a rail that
+ * isn't mounted on the current page simply ignores the swipe.
  *
  * A swipe up on the bar navigates to `/` (home) from any other
  * route. The two axes are decided by the dominant direction at
@@ -142,13 +135,6 @@ export const MobileBottomBar: React.FC = () => {
   });
 
   const isHome = pathname === "/";
-  // Directory view (`/d/:id`) and note view (`/n/:id`) get the
-  // same panel-toggle gesture as the home screen. Subroutes like
-  // `/d/:id/edit` and `/d/:id/new` are intentionally excluded —
-  // they're modal editor surfaces that own their own panels and
-  // shouldn't be hijacked by a swipe.
-  const swipePanelEnabled =
-    isHome || /^\/d\/[^/]+$/.test(pathname) || /^\/n\/[^/]+$/.test(pathname);
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     swipeRef.current = {
@@ -186,22 +172,31 @@ export const MobileBottomBar: React.FC = () => {
       return;
     }
     if (dx >= SWIPE_MIN_PX) {
-      // Swipe right: on routes with a left rail, open it (and
-      // pin the user override so it stays open). On other
-      // routes the gesture is a no-op so it doesn't fight
-      // other UI (e.g. carousels).
-      if (swipePanelEnabled && !leftPanelOpen) {
+      // Swipe right: close an open right drawer first, otherwise
+      // toggle the left rail. The two drawers are mutually
+      // exclusive, so a swipe towards one closes the other.
+      if (rightPanelOpen) {
         swipe.triggered = true;
-        setLeftPanelOpen(true);
+        setRightPanelOpen(false);
+        setRightPanelUserOverride(true);
+      } else if (leftPanel !== null) {
+        swipe.triggered = true;
+        setLeftPanelOpen(!leftPanelOpen);
         setLeftPanelUserOverride(true);
       }
       return;
     }
     if (-dx >= SWIPE_MIN_PX) {
-      // Swipe left: on routes with a left rail, close it.
-      if (swipePanelEnabled && leftPanelOpen) {
+      // Swipe left: close an open left drawer first, otherwise
+      // toggle the right rail.
+      if (leftPanelOpen) {
         swipe.triggered = true;
         setLeftPanelOpen(false);
+        setLeftPanelUserOverride(true);
+      } else if (rightPanel !== null) {
+        swipe.triggered = true;
+        setRightPanelOpen(!rightPanelOpen);
+        setRightPanelUserOverride(true);
       }
       return;
     }
@@ -329,10 +324,9 @@ export const MobileBottomBar: React.FC = () => {
           </Typography>
         </Stack>
 
-        {/* Right cluster: page actions + left-panel toggle + search
-            shortcut + notifications bell. The search shortcut mirrors
-            the desktop top bar's SearchBar: Ctrl+K / tap opens the
-            search dialog. */}
+        {/* Right cluster: page / editor actions + search shortcut +
+            notifications bell. The search shortcut mirrors the desktop
+            top bar's SearchBar: Ctrl+K / tap opens the search dialog. */}
         <Stack direction="row" spacing={M1} sx={{ alignItems: "center" }}>
           {/* Page-provided actions (e.g. the create FABs) render here
               on mobile instead of floating over the canvas. */}
@@ -342,58 +336,13 @@ export const MobileBottomBar: React.FC = () => {
                 onClick={action.onClick}
                 size="medium"
                 aria-label={action.label}
+                disabled={action.disabled}
                 sx={{ p: 1 }}
               >
                 {action.icon}
               </IconButton>
             </Tooltip>
           ))}
-          {leftPanel !== null && (
-            <Tooltip
-              title={leftPanelOpen ? "Close left panel" : "Open left panel"}
-            >
-              <IconButton
-                size="medium"
-                aria-label={
-                  leftPanelOpen ? "Close left panel" : "Open left panel"
-                }
-                sx={{ p: 1 }}
-                onClick={() => {
-                  setLeftPanelOpen(!leftPanelOpen);
-                  setLeftPanelUserOverride(true);
-                }}
-              >
-                {leftPanelOpen ? (
-                  <IconLayoutSidebarLeftCollapseFilled size={24} />
-                ) : (
-                  <IconLayoutSidebarLeftExpandFilled size={24} />
-                )}
-              </IconButton>
-            </Tooltip>
-          )}
-          {rightPanel !== null && (
-            <Tooltip
-              title={rightPanelOpen ? "Close right panel" : "Open right panel"}
-            >
-              <IconButton
-                size="medium"
-                aria-label={
-                  rightPanelOpen ? "Close right panel" : "Open right panel"
-                }
-                sx={{ p: 1 }}
-                onClick={() => {
-                  setRightPanelOpen(!rightPanelOpen);
-                  setRightPanelUserOverride(true);
-                }}
-              >
-                {rightPanelOpen ? (
-                  <IconLayoutSidebarRightCollapseFilled size={24} />
-                ) : (
-                  <IconLayoutSidebarRightExpandFilled size={24} />
-                )}
-              </IconButton>
-            </Tooltip>
-          )}
           <Tooltip title="Search (Ctrl+K)">
             <IconButton
               onClick={() => setIsDialogOpen(true)}
