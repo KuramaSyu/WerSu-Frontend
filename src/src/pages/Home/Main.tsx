@@ -19,7 +19,10 @@ import {
 } from "../../components/FrequentlyUsed/Main";
 import { CreateNote } from "../MainPage/CreateNote";
 import { CreateDirectoryModal } from "../MainPage/CreateDirectory";
-import { FavouriteDirectories } from "./FavouriteDirectories";
+import {
+  FavouriteDirectories,
+  useFavouriteDirectoryIds,
+} from "./FavouriteDirectories";
 import { AllDirectories } from "./AllDirectories";
 import { HomeGreeting } from "./HomeGreeting";
 import { NotesTabs } from "./NotesTabs";
@@ -47,9 +50,14 @@ export const HomePage: React.FC = () => {
     setCreateDirectoryOpen,
   });
 
-  // Shared by the greeting (today-count) and the Recent notes list so the
-  // two sections resolve from a single cached request.
+  // Shared by the Recent notes list and the notes tabs so both sections
+  // resolve from a single cached request.
   const { data: recentNotes } = useNotesByScope({ limit: 50 });
+
+  // Only surface the favourites section once the user actually has one on
+  // the current shelf; the empty-state copy lives here rather than in a
+  // permanently visible section.
+  const favouriteDirectoryIds = useFavouriteDirectoryIds();
 
   useRightPanel(null);
   usePanelSize({ left: "clamp(20rem, 25vw, 30rem)" });
@@ -91,17 +99,19 @@ export const HomePage: React.FC = () => {
       }}
     >
       <Stack spacing={3}>
-        <HomeGreeting notes={recentNotes} />
+        <HomeGreeting />
 
-        <Stack direction="column" spacing={2}>
-          <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-            <StarIcon color="primary" fontSize="small" />
-            <Typography variant="h5" color="textPrimary">
-              Favourite directories
-            </Typography>
+        {favouriteDirectoryIds.length > 0 && (
+          <Stack direction="column" spacing={2}>
+            <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+              <StarIcon color="primary" fontSize="small" />
+              <Typography variant="h5" color="textPrimary">
+                Favourite directories
+              </Typography>
+            </Stack>
+            <FavouriteDirectories />
           </Stack>
-          <FavouriteDirectories />
-        </Stack>
+        )}
 
         <Stack direction="column" spacing={2}>
           <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>

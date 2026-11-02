@@ -31,16 +31,20 @@ const SIZE_TO_GAP: Record<CardSize, string> = {
  * is filtered out: it has no real metadata, so rendering it would only
  * show a loading skeleton or an empty card.
  */
-export const FavouriteDirectories: React.FC<FavouriteDirectoriesProps> = ({
-  size = "medium",
-}) => {
+/**
+ * Resolves the user's favourite directory IDs that are visible on the
+ * current shelf, dropping the synthetic "root" id and any id that has no
+ * real metadata to render. Shared by the list and by callers that only
+ * need to know whether the favourites section should be shown at all.
+ */
+export const useFavouriteDirectoryIds = (): string[] => {
   // Drop the synthetic root id; everything else is a real directory.
   const favouriteIds = useFavouritesStore((s) => s.directories);
   const selectedShelfId = useSelectedShelfStore((s) => s.selectedShelfId);
   const tree = useDirectoryTreeStore((s) => s.tree);
   const isDirectoryOnShelf = useDirectoryTreeStore((s) => s.isDirectoryOnShelf);
 
-  const filteredFavouriteIds = useMemo(() => {
+  return useMemo(() => {
     return Object.entries(favouriteIds)
       .filter(
         ([id, isFav]) =>
@@ -50,6 +54,12 @@ export const FavouriteDirectories: React.FC<FavouriteDirectoriesProps> = ({
       )
       .map(([id]) => id);
   }, [favouriteIds, selectedShelfId, isDirectoryOnShelf, tree]);
+};
+
+export const FavouriteDirectories: React.FC<FavouriteDirectoriesProps> = ({
+  size = "medium",
+}) => {
+  const filteredFavouriteIds = useFavouriteDirectoryIds();
 
   const { theme } = useThemeStore();
 
