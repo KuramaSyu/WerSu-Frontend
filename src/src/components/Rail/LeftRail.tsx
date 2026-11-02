@@ -9,6 +9,14 @@ import { panelIconButtonSx, panelIconSvgSx } from "./panelIconStyles";
 import { TranslucentPaper } from "../TranslucentPaper";
 import { PanelEdgeHandle } from "../Panels/PanelEdgeHandle";
 
+/**
+ * Opacity of everything painted inside the rail while the pointer is
+ * elsewhere. Blending the whole subtree toward the surface behind it
+ * mutes every colour (text, icons, chips, cards) in one place, in both
+ * light and dark themes, without turning into a hard grey.
+ */
+const RAIL_INACTIVE_OPACITY = 0.55;
+
 export interface LeftRailProps {
   /** Mounted left-rail content (whatever the current route put there). */
   children: ReactNode;
@@ -77,49 +85,67 @@ export const LeftRail: React.FC<LeftRailProps> = ({ children }) => {
           borderRight: `1px solid ${theme.palette.divider}`,
         }}
       >
-        {isCollapsed ? (
-          // Collapsed rail: just the search shortcut so Ctrl+K
-          // stays reachable even when the top panel is hidden. The
-          // expand toggle lives in the top bar (`<LeftPanelToggle />`)
-          // and in the edge handle below.
-          <Stack spacing={0.5} sx={{ pt: 0.5, alignItems: "center" }}>
-            <Tooltip title="Search (Ctrl+K)">
-              <IconButton
-                onClick={() =>
-                  useSearchNotesStore.getState().setIsDialogOpen(true)
-                }
-                sx={panelIconButtonSx}
-              >
-                <SearchIcon sx={panelIconSvgSx} />
-              </IconButton>
-            </Tooltip>
-          </Stack>
-        ) : null}
-
-        {/* Keep the panel content mounted while the rail is collapsed.
-            Unmounting it here made expanding rebuild the whole subtree
-            (directory hierarchy, table of contents, attachments…) in the
-            same frame as the shell's grid transition, which blocked the
-            main thread for hundreds of ms on the note page. `display:
-            none` keeps the React tree alive without taking up space. */}
+        {/* Every colour inside the rail is muted until the pointer is
+            over it. This wrapper fades the content toward the rail's
+            own surface -- `backgroundColor` is painted on the
+            `TranslucentPaper` above, so it keeps its colour and only
+            the content loses luminance. */}
         <Box
           sx={{
-            display: isCollapsed ? "none" : "flex",
-            flexDirection: "column",
             flex: 1,
-            overflowY: "auto",
+            display: "flex",
+            flexDirection: "column",
             minHeight: 0,
-            px: M2,
-            pb: M2,
-            scrollbarWidth: "thin",
-            scrollbarColor: `transparent transparent`,
-            "&:hover": {
-              scrollbarColor: `${theme.palette.secondary.dark} transparent`,
-            },
-            transition: theme.transitions.create(),
+            minWidth: 0,
+            opacity: RAIL_INACTIVE_OPACITY,
+            transition: theme.transitions.create("opacity"),
+            "&:hover": { opacity: 1 },
           }}
         >
-          {children}
+          {isCollapsed ? (
+            // Collapsed rail: just the search shortcut so Ctrl+K
+            // stays reachable even when the top panel is hidden. The
+            // expand toggle lives in the top bar (`<LeftPanelToggle />`)
+            // and in the edge handle below.
+            <Stack spacing={0.5} sx={{ pt: 0.5, alignItems: "center" }}>
+              <Tooltip title="Search (Ctrl+K)">
+                <IconButton
+                  onClick={() =>
+                    useSearchNotesStore.getState().setIsDialogOpen(true)
+                  }
+                  sx={panelIconButtonSx}
+                >
+                  <SearchIcon sx={panelIconSvgSx} />
+                </IconButton>
+              </Tooltip>
+            </Stack>
+          ) : null}
+
+          {/* Keep the panel content mounted while the rail is collapsed.
+              Unmounting it here made expanding rebuild the whole subtree
+              (directory hierarchy, table of contents, attachments…) in the
+              same frame as the shell's grid transition, which blocked the
+              main thread for hundreds of ms on the note page. `display:
+              none` keeps the React tree alive without taking up space. */}
+          <Box
+            sx={{
+              display: isCollapsed ? "none" : "flex",
+              flexDirection: "column",
+              flex: 1,
+              overflowY: "auto",
+              minHeight: 0,
+              px: M2,
+              pb: M2,
+              scrollbarWidth: "thin",
+              scrollbarColor: `transparent transparent`,
+              "&:hover": {
+                scrollbarColor: `${theme.palette.secondary.dark} transparent`,
+              },
+              transition: theme.transitions.create(),
+            }}
+          >
+            {children}
+          </Box>
         </Box>
       </TranslucentPaper>
 
