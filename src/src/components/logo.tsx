@@ -57,11 +57,13 @@ function saturatedColor(
   hex: string,
   saturation: number,
 ): string {
-  const setSaturation = (
-    theme as Theme & { setSaturation?: (color: string, s: number) => string }
-  ).setSaturation;
-  return typeof setSaturation === "function"
-    ? setSaturation(hex, saturation)
+  const themed = theme as Theme & {
+    setSaturation?: (color: string, s: number) => string;
+  };
+  // Invoke with `theme` as the receiver: the helper relies on `this` (e.g.
+  // `this.resolveColor`), so calling it detached would throw.
+  return typeof themed.setSaturation === "function"
+    ? themed.setSaturation(hex, saturation)
     : forceSaturation(hex, saturation);
 }
 

@@ -45,11 +45,14 @@ const SearchResultsEmptyStateInner: React.FC<Props> = ({
       timeout={{ enter: theme.transitions.duration.short, exit: 0 }}
       unmountOnExit
     >
-      <Stack direction="row" sx={{ alignItems: "center" }}>
+      <Stack
+        direction={{ xs: "column", md: "row" }}
+        sx={{ alignItems: "center" }}
+      >
         <Stack
           direction="column"
           sx={{
-            width: 3 / 8,
+            width: { xs: "100%", md: 3 / 8 },
             px: M4,
             gap: M3,
             justifyItems: "center",
@@ -79,8 +82,21 @@ const SearchResultsEmptyStateInner: React.FC<Props> = ({
             )}
           </TextTrail>
         </Stack>
-        <Box sx={{ display: "flex", width: 5 / 8, justifyContent: "center" }}>
-          <Box sx={{ display: "flex", width: 5 / 8, justifyContent: "center" }}>
+        <Box
+          sx={{
+            display: "flex",
+            width: { xs: "100%", md: 5 / 8 },
+            mt: { xs: M3, md: 0 },
+            justifyContent: "center",
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              width: { xs: "55%", md: 5 / 8 },
+              justifyContent: "center",
+            }}
+          >
             <LogoSvgComponent />
           </Box>
         </Box>
