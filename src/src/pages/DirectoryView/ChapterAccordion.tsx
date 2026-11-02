@@ -120,6 +120,9 @@ export const ChapterAccordion: React.FC<ChapterAccordionProps> = ({
           t.transitions.create("outline", {
             duration: t.transitions.duration.short,
           }),
+        // Let the long chapter name truncate instead of forcing the
+        // summary content wider than the accordion.
+        "& .MuiAccordionSummary-content": { minWidth: 0 },
       }}
     >
       <CopyNameMenu text={summaryName} targetId={hydratedDirectory.id}>

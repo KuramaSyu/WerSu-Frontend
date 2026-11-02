@@ -130,15 +130,17 @@ vi.mock("@mui/material", () => ({
   // interpolates the result into an `animation: ${...}` string, so a
   // bare function returning a stable identifier is enough.
   keyframes: () => "mock-keyframes",
-  // `usePanelSize` reaches into MUI's theme for breakpoint queries
-  // (`theme.breakpoints.up`). Return a stub that always matches up
-  // to xl, so the panel sizes recorded by the test aren't driven by
-  // jsdom's lack of `matchMedia`. The breakpoint tokens we use here
-  // are dumb strings - the assertions only care about the values
-  // passed to `usePanelSize`, never the resulting open/close state.
+  // `usePanelSize` / `useLeftPanel` reach into MUI's theme for
+  // breakpoint queries (`theme.breakpoints.up` / `.down`). Return a
+  // stub that always matches, so the panel sizes recorded by the test
+  // aren't driven by jsdom's lack of `matchMedia`. The breakpoint
+  // tokens we use here are dumb strings - the assertions only care
+  // about the values passed to `usePanelSize`, never the resulting
+  // open/close state.
   useTheme: () => ({
     breakpoints: {
       up: () => "(min-width: 0px)",
+      down: () => "(max-width: 0px)",
     },
   }),
   useMediaQuery: () => true,

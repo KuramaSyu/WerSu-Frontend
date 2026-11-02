@@ -53,7 +53,15 @@ export const ChapterRowView: React.FC<ChapterRowViewProps> = memo(
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Typography
           variant={compact ? "body1" : "subtitle1"}
-          sx={{ fontWeight: 600, overflowX: "scroll" }}
+          sx={{
+            fontWeight: 600,
+            // Truncate with an ellipsis instead of a horizontal
+            // scrollbar; `overflowX: "scroll"` kept the full
+            // unwrapped text as the row's min-content width and
+            // pushed long directory names past the row padding.
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
           noWrap
         >
           {name}

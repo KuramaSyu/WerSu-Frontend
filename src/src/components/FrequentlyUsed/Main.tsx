@@ -6,6 +6,7 @@ import {
 } from "./FrequentlyUsedFeatures";
 import type { HistoryRowEntry } from "../RecentActivity/HistoryRowFeatures";
 import { formatHistoryRowTimestamp } from "../RecentActivity/HistoryRowFeatures";
+import type { MostUsedAlgorithm } from "../../api/models/history";
 import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
 import {
   HistoryListPanel,
@@ -21,6 +22,10 @@ export interface FrequentlyUsedPanelProps {
   title?: string | null;
   /** Max number of items to fetch and render. */
   limit?: number;
+  /** Scoring algorithm the backend aggregates with. */
+  algorithm?: MostUsedAlgorithm;
+  /** Only count activity within this many days. Omit for all time. */
+  days?: number;
 }
 
 /**
@@ -40,8 +45,14 @@ export interface LastUsedPanelProps {
 export const FrequentlyUsedPanel: React.FC<FrequentlyUsedPanelProps> = ({
   title = "Frequently used",
   limit = 20,
+  algorithm = "MOST_USED_ALGORITHM_LOG_COUNT",
+  days,
 }) => {
-  const { rows, isLoading, hasError } = useFrequentlyUsedRows(limit);
+  const { rows, isLoading, hasError } = useFrequentlyUsedRows({
+    limit,
+    algorithm,
+    days,
+  });
   const navigate = useNavigate();
   const developerMode = useFeatureStore(
     (state) => state.flags[FeatureFlagName.DeveloperMode],

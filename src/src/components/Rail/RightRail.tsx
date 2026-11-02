@@ -1,9 +1,11 @@
 import type { ReactNode } from "react";
 import { Box } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { M2 } from "../../statics";
+import { M2, MOBILE_DRAWER_WIDTH } from "../../statics";
 import { useLayout } from "../../LayoutProvider";
+import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { PanelEdgeHandle } from "../Panels/PanelEdgeHandle";
+import { MobileDrawerBackdrop } from "../Panels/MobileDrawerBackdrop";
 
 export interface RightRailProps {
   /** Mounted right-rail content (whatever the current route put there). */
@@ -41,6 +43,7 @@ export interface RightRailProps {
  */
 export const RightRail: React.FC<RightRailProps> = ({ children, width }) => {
   const theme = useTheme();
+  const { isMobile } = useBreakpoint();
   const {
     rightPanelSize,
     rightPanelOpen,
@@ -53,15 +56,42 @@ export const RightRail: React.FC<RightRailProps> = ({ children, width }) => {
     setRightPanelUserOverride(true);
   };
 
+  if (isMobile && children === null) {
+    return null;
+  }
+
   return (
+    <>
+      <MobileDrawerBackdrop
+        open={isMobile && rightPanelOpen}
+        onClose={() => setRightPanelOpen(false)}
+      />
     <Box
       sx={{
-        position: "relative",
-        width,
+        // Mobile: slide in from the right as an overlay drawer.
+        // Desktop: the in-flow column with an animated width.
+        position: isMobile ? "fixed" : "relative",
+        top: isMobile ? 0 : undefined,
+        right: isMobile ? 0 : undefined,
+        bottom: isMobile ? 0 : undefined,
+        width: isMobile ? MOBILE_DRAWER_WIDTH : width,
         height: "100%",
         flexShrink: 0,
-        transition: theme.transitions.create("width"),
-        zIndex: 2,
+        transform: isMobile
+          ? `translateX(${rightPanelOpen ? "0" : "100%"})`
+          : undefined,
+        transition: isMobile
+          ? theme.transitions.create("transform", {
+              duration: theme.transitions.duration.standard,
+              easing: theme.transitions.easing.easeInOut,
+            })
+          : theme.transitions.create("width"),
+        zIndex: isMobile ? (t) => t.zIndex.appBar + 1 : 2,
+        boxShadow: isMobile && rightPanelOpen ? theme.shadows[8] : undefined,
+        // The rail is normally transparent over the main paper; as a
+        // drawer it needs its own opaque surface.
+        backgroundColor: isMobile ? theme.palette.background.default : undefined,
+        borderLeft: isMobile ? `1px solid ${theme.palette.divider}` : undefined,
       }}
     >
       <Box
@@ -77,8 +107,8 @@ export const RightRail: React.FC<RightRailProps> = ({ children, width }) => {
           sx={{
             flex: 1,
             alignSelf: "flex-start",
-            width: rightPanelSize,
-            minWidth: rightPanelSize,
+            width: isMobile ? "100%" : rightPanelSize,
+            minWidth: isMobile ? 0 : rightPanelSize,
             overflowY: "auto",
             minHeight: 0,
             px: M2,
@@ -91,7 +121,7 @@ export const RightRail: React.FC<RightRailProps> = ({ children, width }) => {
 
       {/* Collapsed-only expand handle. Mirrors the left rail so the
           panel stays reopenable once its content is clipped away. */}
-      {children != null && !rightPanelOpen && (
+      {!isMobile && children != null && !rightPanelOpen && (
         <PanelEdgeHandle
           side="right"
           open={false}
@@ -101,5 +131,6 @@ export const RightRail: React.FC<RightRailProps> = ({ children, width }) => {
         />
       )}
     </Box>
+    </>
   );
 };

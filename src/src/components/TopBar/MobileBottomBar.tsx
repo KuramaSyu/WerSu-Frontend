@@ -4,6 +4,7 @@ import {
   Box,
   IconButton,
   Menu,
+  Paper,
   Popover,
   Stack,
   Tooltip,
@@ -12,10 +13,17 @@ import {
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import SearchIcon from "@mui/icons-material/Search";
 import {
+  useMemo,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react";
+import {
+  IconLayoutSidebarLeftCollapseFilled,
+  IconLayoutSidebarLeftExpandFilled,
+  IconLayoutSidebarRightCollapseFilled,
+  IconLayoutSidebarRightExpandFilled,
+} from "@tabler/icons-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { M1, M2, M3 } from "../../statics";
 import { useLayout } from "../../LayoutProvider";
@@ -27,10 +35,10 @@ import { useSearchNotesStore } from "../../zustand/useSearchNotesStore";
 import { PublicUserAvatar } from "./PublicUserAvatar";
 import { SearchResultsOverlay } from "../search/Main";
 import { useServiceReachability } from "./useServiceReachability";
+import { useMobileActionsStore } from "../../zustand/useMobileActionsStore";
 import { UserMenu } from "./UserMenu";
 import { NotificationsPanel } from "./NotificationsPanel";
 import { ServiceFailureDialog } from "./ServiceFailureDialog";
-import { TranslucentPaper } from "../TranslucentPaper";
 
 /**
  * Minimum horizontal travel (px) before a swipe is recognised as
@@ -95,8 +103,22 @@ export const MobileBottomBar: React.FC = () => {
   const navigate = useNavigate();
   const isDialogOpen = useSearchNotesStore((s) => s.isDialogOpen);
   const setIsDialogOpen = useSearchNotesStore((s) => s.setIsDialogOpen);
-  const { leftPanelOpen, setLeftPanelOpen, setLeftPanelUserOverride } =
-    useLayout();
+  const {
+    leftPanel,
+    leftPanelOpen,
+    setLeftPanelOpen,
+    setLeftPanelUserOverride,
+    rightPanel,
+    rightPanelOpen,
+    setRightPanelOpen,
+    setRightPanelUserOverride,
+    showTopPanel: showBottomBar,
+  } = useLayout();
+  const actionsByOwner = useMobileActionsStore((s) => s.actionsByOwner);
+  const mobileActions = useMemo(
+    () => Object.values(actionsByOwner).flat(),
+    [actionsByOwner],
+  );
 
   // Anchors for the user menu and notifications popover
   const [userMenuAnchor, setUserMenuAnchor] = useState<HTMLElement | null>(
@@ -190,7 +212,7 @@ export const MobileBottomBar: React.FC = () => {
 
   return (
     <>
-      <TranslucentPaper
+      <Paper
         elevation={8}
         sx={{
           position: "fixed",
@@ -201,11 +223,19 @@ export const MobileBottomBar: React.FC = () => {
           color: theme.palette.text.primary,
           borderRadius: 9999,
           boxShadow: theme.shadows[6],
-          paddingInline: M2,
-          paddingBlock: "0.5rem",
+          paddingInline: M3,
+          paddingBlock: "0.625rem",
           display: "flex",
           alignItems: "center",
           gap: M2,
+          // Hide with the topbar on scroll down; return on scroll up.
+          transform: showBottomBar ? "translateY(0)" : "translateY(200%)",
+          opacity: showBottomBar ? 1 : 0,
+          pointerEvents: showBottomBar ? "auto" : "none",
+          transition: theme.transitions.create(["transform", "opacity"], {
+            duration: theme.transitions.duration.standard,
+            easing: theme.transitions.easing.easeInOut,
+          }),
           // Disable the browser's native scroll/pan while the swipe is in
           // progress: the bar captures both horizontal swipes (rail
           // toggle) and vertical swipes (navigate home) via
@@ -243,16 +273,16 @@ export const MobileBottomBar: React.FC = () => {
           >
             <IconButton
               onClick={(e) => setUserMenuAnchor(e.currentTarget)}
-              size="small"
+              size="medium"
               sx={{ padding: 0 }}
             >
               {isAnonymousPublic ? (
-                <PublicUserAvatar size={40} fontSize={15} />
+                <PublicUserAvatar size={44} fontSize={16} />
               ) : (
                 <Avatar
                   src={user ? user.getAvatarUrl() : undefined}
                   alt={user ? user.username : ""}
-                  sx={{ width: 40, height: 40 }}
+                  sx={{ width: 44, height: 44 }}
                 />
               )}
             </IconButton>
@@ -299,13 +329,78 @@ export const MobileBottomBar: React.FC = () => {
           </Typography>
         </Stack>
 
-        {/* Right cluster: search shortcut + notifications bell.
-            The search shortcut mirrors the desktop top bar's
-            SearchBar: Ctrl+K / tap opens the search dialog. */}
+        {/* Right cluster: page actions + left-panel toggle + search
+            shortcut + notifications bell. The search shortcut mirrors
+            the desktop top bar's SearchBar: Ctrl+K / tap opens the
+            search dialog. */}
         <Stack direction="row" spacing={M1} sx={{ alignItems: "center" }}>
+          {/* Page-provided actions (e.g. the create FABs) render here
+              on mobile instead of floating over the canvas. */}
+          {mobileActions.map((action) => (
+            <Tooltip key={action.id} title={action.label}>
+              <IconButton
+                onClick={action.onClick}
+                size="medium"
+                aria-label={action.label}
+                sx={{ p: 1 }}
+              >
+                {action.icon}
+              </IconButton>
+            </Tooltip>
+          ))}
+          {leftPanel !== null && (
+            <Tooltip
+              title={leftPanelOpen ? "Close left panel" : "Open left panel"}
+            >
+              <IconButton
+                size="medium"
+                aria-label={
+                  leftPanelOpen ? "Close left panel" : "Open left panel"
+                }
+                sx={{ p: 1 }}
+                onClick={() => {
+                  setLeftPanelOpen(!leftPanelOpen);
+                  setLeftPanelUserOverride(true);
+                }}
+              >
+                {leftPanelOpen ? (
+                  <IconLayoutSidebarLeftCollapseFilled size={24} />
+                ) : (
+                  <IconLayoutSidebarLeftExpandFilled size={24} />
+                )}
+              </IconButton>
+            </Tooltip>
+          )}
+          {rightPanel !== null && (
+            <Tooltip
+              title={rightPanelOpen ? "Close right panel" : "Open right panel"}
+            >
+              <IconButton
+                size="medium"
+                aria-label={
+                  rightPanelOpen ? "Close right panel" : "Open right panel"
+                }
+                sx={{ p: 1 }}
+                onClick={() => {
+                  setRightPanelOpen(!rightPanelOpen);
+                  setRightPanelUserOverride(true);
+                }}
+              >
+                {rightPanelOpen ? (
+                  <IconLayoutSidebarRightCollapseFilled size={24} />
+                ) : (
+                  <IconLayoutSidebarRightExpandFilled size={24} />
+                )}
+              </IconButton>
+            </Tooltip>
+          )}
           <Tooltip title="Search (Ctrl+K)">
-            <IconButton onClick={() => setIsDialogOpen(true)} size="small">
-              <SearchIcon fontSize="small" />
+            <IconButton
+              onClick={() => setIsDialogOpen(true)}
+              size="medium"
+              sx={{ p: 1 }}
+            >
+              <SearchIcon />
             </IconButton>
           </Tooltip>
           <Tooltip
@@ -317,7 +412,8 @@ export const MobileBottomBar: React.FC = () => {
           >
             <IconButton
               onClick={(e) => setNotificationsAnchor(e.currentTarget)}
-              size="small"
+              size="medium"
+              sx={{ p: 1 }}
             >
               <Badge
                 color="error"
@@ -330,7 +426,7 @@ export const MobileBottomBar: React.FC = () => {
             </IconButton>
           </Tooltip>
         </Stack>
-      </TranslucentPaper>
+      </Paper>
 
       <Menu
         anchorEl={userMenuAnchor}

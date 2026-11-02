@@ -5,8 +5,13 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { SearchNotesApi } from "../SearchNotesApi";
-import { RestNotesSearchType, type MinimalNote } from "../models/search";
+import {
+  RestNotesSearchType,
+  type MinimalNote,
+  type NotesReply,
+} from "../models/search";
 import { useIsAuthenticated } from "./useUser";
+import { mergeTagsFromNotesReply } from "../../zustand/useTagStore";
 
 // Plain instance (not the registry singleton) to mirror `useNoteQueries`.
 const searchNotesApi = new SearchNotesApi();
@@ -27,30 +32,45 @@ export const notesByScopeQueryKeys = {
 };
 
 /**
+ * Fetch the raw notes reply for the given scope. Prefer this over
+ * `useNotesByScope` when the caller also needs the bundled directory /
+ * tag metadata (used to label a note's folders and tags).
+ *
+ * With no `shelfId` and no `directoryId` this degrades to the latest
+ * notes list.
+ */
+export function useNotesReplyByScope(request: NotesByScopeRequest) {
+  const isAuthed = useIsAuthenticated();
+  const { shelfId, directoryId, limit = 500 } = request;
+
+  return useQuery<NotesReply>({
+    queryKey: notesByScopeQueryKeys.list({ shelfId, directoryId, limit }),
+    queryFn: async () => {
+      const reply = await searchNotesApi.search(RestNotesSearchType.LATEST, "", {
+        limit,
+        offset: 0,
+        include_shelf_ids: shelfId ? [shelfId] : undefined,
+        include_directory_ids: directoryId ? [directoryId] : undefined,
+      });
+      // Search replies bundle the tag rows; keep the tag store in sync so
+      // note list rows can resolve tag ids to labels.
+      mergeTagsFromNotesReply(reply);
+      return reply;
+    },
+    enabled: isAuthed,
+  });
+}
+
+/**
  * Fetch the notes in the given scope.
  *
  * With no `shelfId` and no `directoryId` this degrades to the latest
  * notes list, which supplies titles for the unscoped all-shares page.
+ *
+ * Shares the underlying query key with `useNotesReplyByScope`, so the
+ * two hooks reuse a single cached request.
  */
 export function useNotesByScope(request: NotesByScopeRequest) {
-  const isAuthed = useIsAuthenticated();
-  const { shelfId, directoryId, limit = 500 } = request;
-
-  return useQuery({
-    queryKey: notesByScopeQueryKeys.list({ shelfId, directoryId, limit }),
-    queryFn: async (): Promise<MinimalNote[]> => {
-      const reply = await searchNotesApi.search(
-        RestNotesSearchType.LATEST,
-        "",
-        {
-          limit,
-          offset: 0,
-          include_shelf_ids: shelfId ? [shelfId] : undefined,
-          include_directory_ids: directoryId ? [directoryId] : undefined,
-        },
-      );
-      return reply.notes;
-    },
-    enabled: isAuthed,
-  });
+  const query = useNotesReplyByScope(request);
+  return { ...query, data: query.data?.notes as MinimalNote[] | undefined };
 }

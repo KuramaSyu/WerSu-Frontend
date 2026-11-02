@@ -63,11 +63,16 @@ export const LayoutProvider: React.FC<AppLayoutProps> = ({
   defaultLeftPanelSize = DEFAULT_PANEL_SIZE,
   defaultRightPanelSize = DEFAULT_PANEL_SIZE,
 }) => {
+  const theme = useTheme();
+  // On mobile the left rail is an overlay drawer; start it closed so it
+  // never flashes open on the first paint before `useLeftPanel` runs.
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+
   const [leftPanel, setLeftPanel] = useState<ReactNode | null>(null);
   const [rightPanel, setRightPanel] = useState<ReactNode | null>(null);
 
   // often in use for navigation and actions
-  const [leftPanelOpen, setLeftPanelOpen] = useState(true);
+  const [leftPanelOpen, setLeftPanelOpen] = useState(!isMobile);
 
   // usually not in use
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
@@ -141,12 +146,17 @@ export function useLeftPanel(
 ): void {
   const { setLeftPanel, setLeftPanelOpen, setLeftPanelUserOverride } =
     useLayout();
+  const theme = useTheme();
+  // On mobile the left rail is an overlay drawer, so a newly mounted
+  // panel starts closed instead of covering the canvas. The user can
+  // still open it via the bottom-bar toggle / swipe gesture.
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   useEffect(() => {
     setLeftPanel(panel);
     setLeftPanelUserOverride(false);
     if (panel !== null) {
-      setLeftPanelOpen(true);
+      setLeftPanelOpen(!isMobile);
     } else {
       setLeftPanelOpen(false);
     }
@@ -173,12 +183,16 @@ export function useRightPanel(
 ): void {
   const { setRightPanel, setRightPanelOpen, setRightPanelUserOverride } =
     useLayout();
+  const theme = useTheme();
+  // Mirror `useLeftPanel`: a freshly mounted right panel starts closed
+  // on mobile so the drawer never covers the canvas uninvited.
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   useEffect(() => {
     setRightPanel(panel);
     setRightPanelUserOverride(false);
     if (panel !== null) {
-      setRightPanelOpen(true);
+      setRightPanelOpen(!isMobile);
     } else {
       setRightPanelOpen(false);
     }

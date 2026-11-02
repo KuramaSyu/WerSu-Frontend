@@ -4,10 +4,12 @@ import SearchIcon from "@mui/icons-material/Search";
 import { useLayout } from "../../LayoutProvider";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useSearchNotesStore } from "../../zustand/useSearchNotesStore";
-import { M2, RAIL_ELEVATION } from "../../statics";
+import { useBreakpoint } from "../../hooks/useBreakpoint";
+import { M2, MOBILE_DRAWER_WIDTH, RAIL_ELEVATION } from "../../statics";
 import { panelIconButtonSx, panelIconSvgSx } from "./panelIconStyles";
 import { TranslucentPaper } from "../TranslucentPaper";
 import { PanelEdgeHandle } from "../Panels/PanelEdgeHandle";
+import { MobileDrawerBackdrop } from "../Panels/MobileDrawerBackdrop";
 
 /**
  * Opacity of everything painted inside the rail while the pointer is
@@ -49,8 +51,16 @@ export const LeftRail: React.FC<LeftRailProps> = ({ children }) => {
     setLeftPanelUserOverride,
   } = useLayout();
   const { theme } = useThemeStore();
+  const { isMobile } = useBreakpoint();
 
   const isCollapsed = !leftPanelOpen;
+
+  // Routes without a left panel render nothing at all. On mobile the
+  // rail is out of the grid flow, so it would otherwise paint an empty
+  // fixed drawer over the canvas.
+  if (isMobile && children === null) {
+    return null;
+  }
 
   // In-context second way to collapse / expand the rail, floating on
   // the right border. This is purely additive: the top-bar
@@ -62,13 +72,36 @@ export const LeftRail: React.FC<LeftRailProps> = ({ children }) => {
   };
 
   return (
+    <>
+      <MobileDrawerBackdrop
+        open={isMobile && leftPanelOpen}
+        onClose={() => setLeftPanelOpen(false)}
+      />
     <Box
       sx={{
-        position: "relative",
+        // Mobile: escape the grid and slide over the canvas as a
+        // drawer. Desktop: a normal grid column whose width is owned
+        // by AppShell.
+        gridColumn: "1",
+        position: isMobile ? "fixed" : "relative",
+        top: isMobile ? 0 : undefined,
+        left: isMobile ? 0 : undefined,
+        bottom: isMobile ? 0 : undefined,
+        width: isMobile ? MOBILE_DRAWER_WIDTH : undefined,
+        transform: isMobile
+          ? `translateX(${leftPanelOpen ? "0" : "-100%"})`
+          : undefined,
+        transition: isMobile
+          ? theme.transitions.create("transform", {
+              duration: theme.transitions.duration.standard,
+              easing: theme.transitions.easing.easeInOut,
+            })
+          : undefined,
         display: "flex",
         flexDirection: "column",
         minWidth: 0,
-        zIndex: 2,
+        zIndex: isMobile ? (t) => t.zIndex.appBar + 1 : 2,
+        boxShadow: isMobile && leftPanelOpen ? theme.shadows[8] : undefined,
       }}
     >
       <TranslucentPaper
@@ -97,7 +130,9 @@ export const LeftRail: React.FC<LeftRailProps> = ({ children }) => {
             flexDirection: "column",
             minHeight: 0,
             minWidth: 0,
-            opacity: RAIL_INACTIVE_OPACITY,
+            // The hover-mute reads poorly on touch; keep the drawer at
+            // full opacity on mobile.
+            opacity: isMobile ? 1 : RAIL_INACTIVE_OPACITY,
             transition: theme.transitions.create("opacity"),
             "&:hover": { opacity: 1 },
           }}
@@ -129,7 +164,9 @@ export const LeftRail: React.FC<LeftRailProps> = ({ children }) => {
               none` keeps the React tree alive without taking up space. */}
           <Box
             sx={{
-              display: isCollapsed ? "none" : "flex",
+              // On mobile keep the content mounted while closed so the
+              // drawer can animate in / out instead of popping.
+              display: isMobile || !isCollapsed ? "flex" : "none",
               flexDirection: "column",
               flex: 1,
               overflowY: "auto",
@@ -151,8 +188,10 @@ export const LeftRail: React.FC<LeftRailProps> = ({ children }) => {
 
       {/* Vertically centred handle on the rail's right border. Only
           mounted when a panel is actually present so it does not
-          float over the canvas on routes without a left panel. */}
-      {children != null && (
+          float over the canvas on routes without a left panel. On
+          mobile the drawer is closed by tapping the scrim, so the
+          edge handle is redundant. */}
+      {!isMobile && children != null && (
         <PanelEdgeHandle
           side="left"
           open={leftPanelOpen}
@@ -163,5 +202,6 @@ export const LeftRail: React.FC<LeftRailProps> = ({ children }) => {
         />
       )}
     </Box>
+    </>
   );
 };

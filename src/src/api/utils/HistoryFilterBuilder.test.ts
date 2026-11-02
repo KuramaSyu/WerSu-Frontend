@@ -146,17 +146,13 @@ describe("HistoryFilterBuilder - scalar setters", () => {
     expect(f.note_id).toBe("n-2");
   });
 
-  it("setDirectory replaces prior directory id (matches wire)", () => {
-    // The wire currently accepts a single directory_id; calling
-    // setDirectory twice is a replace, not an append. If the
-    // backend ever supports multiple, the builder should be
-    // updated alongside it.
+  it("setDirectory appends directory ids", () => {
     const f = new HistoryFilterBuilder()
       .useHistory()
       .setDirectory("d-1")
       .setDirectory("d-2")
       .build();
-    expect(f.directory_id).toBe("d-2");
+    expect(f.directory_ids).toEqual(["d-1", "d-2"]);
   });
 
   it("setUser maps to actor_id", () => {
@@ -227,7 +223,7 @@ describe("HistoryFilterBuilder - chaining", () => {
       .build();
     expect(f).toEqual({
       mode: "most_used",
-      directory_id: "dir-1",
+      directory_ids: ["dir-1"],
       days: 30,
       algorithm: "MOST_USED_ALGORITHM_LOG_COUNT",
       unique_per_day: true,

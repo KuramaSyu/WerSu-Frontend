@@ -1,18 +1,15 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Box, Stack, Typography } from "@mui/material";
 import FolderIcon from "@mui/icons-material/Folder";
 import HistoryIcon from "@mui/icons-material/History";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import ScheduleIcon from "@mui/icons-material/Schedule";
 import StarIcon from "@mui/icons-material/Star";
-import NotesIcon from "@mui/icons-material/Notes";
 import {
   usePanelSize,
   useLeftPanel,
   useRightPanel,
-  useLayout,
 } from "../../LayoutProvider";
-import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { UpperPanel } from "../../components/Panels/UpperPanel";
 import { PanelSection } from "../../components/Panels/PanelSection";
 import { RecentActivityPanel } from "../../components/RecentActivity/Main";
@@ -25,22 +22,17 @@ import { CreateDirectoryModal } from "../MainPage/CreateDirectory";
 import { FavouriteDirectories } from "./FavouriteDirectories";
 import { AllDirectories } from "./AllDirectories";
 import { HomeGreeting } from "./HomeGreeting";
-import { RecentNotes } from "./RecentNotes";
-import { DraftNotes } from "./DraftNotes";
-import { useNotesReplyByScope } from "../../api/queries/useNotesByScope";
+import { NotesTabs } from "./NotesTabs";
+import { useNotesByScope } from "../../api/queries/useNotesByScope";
 import { useCreateModalsFromUrl } from "../../hooks/useCreateModalsFromUrl";
 import { usePageHoldShortcuts } from "../../hooks/usePageHoldShortcuts";
 import { HoldKeyActionBar } from "../../components/HoldKeyActionBar";
-import CreateFab from "../../components/CreateFab";
-import { FabSlot } from "../../components/FabSlot";
+import { CreateActions } from "../../components/CreateActions";
 
 /** Home page: recent activity on the left, favourites + all dirs in the body. */
 export const HomePage: React.FC = () => {
   const [createNoteOpen, setCreateNoteOpen] = useState(false);
   const [createDirectoryOpen, setCreateDirectoryOpen] = useState(false);
-  const { leftPanelOpen, leftPanelUserOverride, setLeftPanelOpen } =
-    useLayout();
-  const { isMobile } = useBreakpoint();
 
   // Hold-to-run shortcuts for this page (see config/shortcuts.json).
   // Search (k), home (h), and navigate-back (Esc) are global; see
@@ -56,10 +48,8 @@ export const HomePage: React.FC = () => {
   });
 
   // Shared by the greeting (today-count) and the Recent notes list so the
-  // two sections resolve from a single cached request. The full reply is
-  // kept because the note rows also need directory / tag labels.
-  const { data: recentNotesReply } = useNotesReplyByScope({ limit: 50 });
-  const recentNotes = recentNotesReply?.notes;
+  // two sections resolve from a single cached request.
+  const { data: recentNotes } = useNotesByScope({ limit: 50 });
 
   useRightPanel(null);
   usePanelSize({ left: "clamp(20rem, 25vw, 30rem)" });
@@ -85,21 +75,6 @@ export const HomePage: React.FC = () => {
       </PanelSection>
     </UpperPanel>,
   );
-
-  // Mobile: hide the left rail by default. The user can still open
-  // it via the bottom-bar swipe-right gesture (sets the override).
-  useEffect(() => {
-    if (!isMobile) {
-      return;
-    }
-    if (leftPanelUserOverride) {
-      return;
-    }
-    if (leftPanelOpen) {
-      setLeftPanelOpen(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isMobile]);
 
   return (
     <Box
@@ -138,28 +113,12 @@ export const HomePage: React.FC = () => {
           <AllDirectories />
         </Stack>
 
-        <DraftNotes />
-
-        <Stack direction="column" spacing={2}>
-          <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-            <NotesIcon color="primary" fontSize="small" />
-            <Typography variant="h5" color="textPrimary">
-              Recent notes
-            </Typography>
-          </Stack>
-          <RecentNotes
-            notes={recentNotes}
-            directories={recentNotesReply?.directories}
-            tags={recentNotesReply?.tags}
-          />
-        </Stack>
+        <NotesTabs notes={recentNotes} />
       </Stack>
-      <FabSlot>
-        <CreateFab
-          onCreateNote={() => setCreateNoteOpen(true)}
-          onCreateDirectory={() => setCreateDirectoryOpen(true)}
-        />
-      </FabSlot>
+      <CreateActions
+        onCreateNote={() => setCreateNoteOpen(true)}
+        onCreateDirectory={() => setCreateDirectoryOpen(true)}
+      />
       <CreateNote open={createNoteOpen} onOpenChange={setCreateNoteOpen} />
       <CreateDirectoryModal
         open={createDirectoryOpen}

@@ -70,13 +70,15 @@ export class HistoryFilterBuilder {
   /**
    * Restrict to a directory subtree root.
    *
-   * Currently the wire accepts a single `directory_id`; calling
-   * `setDirectory` twice REPLACES the prior id. If multi-subtree
-   * filtering is added to the wire later, this can switch to
-   * append.
+   * Additive: every call appends another root to `directory_ids`, and
+   * the backend expands each root to its subtree.
    */
   setDirectory(directoryId: string): HistoryFilterBuilder {
-    this._filter = { ...this._filter, directory_id: directoryId };
+    const existing = this._filter.directory_ids ?? [];
+    this._filter = {
+      ...this._filter,
+      directory_ids: [...existing, directoryId],
+    };
     return this;
   }
 

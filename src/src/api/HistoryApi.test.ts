@@ -121,7 +121,7 @@ describe("HistoryApi.getActivityHistory - URL shape", () => {
     await api.getActivityHistory({
       mode: "history",
       note_id: "note-1",
-      directory_id: "dir-1",
+      directory_ids: ["dir-1", "dir-2"],
       actor_id: "user-1",
       role_id: "role-1",
       accessed_as: "ACCESSED_AS_USER",
@@ -134,7 +134,7 @@ describe("HistoryApi.getActivityHistory - URL shape", () => {
     const q = parseQuery(calls[0].url);
     expect(q.get("mode")).toEqual(["history"]);
     expect(q.get("note_id")).toEqual(["note-1"]);
-    expect(q.get("directory_id")).toEqual(["dir-1"]);
+    expect(q.get("directory_ids")).toEqual(["dir-1", "dir-2"]);
     expect(q.get("actor_id")).toEqual(["user-1"]);
     expect(q.get("role_id")).toEqual(["role-1"]);
     expect(q.get("accessed_as")).toEqual(["ACCESSED_AS_USER"]);
@@ -203,7 +203,7 @@ describe("HistoryApi.getMostUsed - URL shape", () => {
       mode: "most_used",
       algorithm: "MOST_USED_ALGORITHM_LOG_COUNT",
       unique_per_day: true,
-      directory_id: "dir-1",
+      directory_ids: ["dir-1"],
       days: 30,
     });
     expect(calls).toHaveLength(1);
@@ -211,7 +211,7 @@ describe("HistoryApi.getMostUsed - URL shape", () => {
     expect(q.get("mode")).toEqual(["most_used"]);
     expect(q.get("algorithm")).toEqual(["MOST_USED_ALGORITHM_LOG_COUNT"]);
     expect(q.get("unique_per_day")).toEqual(["true"]);
-    expect(q.get("directory_id")).toEqual(["dir-1"]);
+    expect(q.get("directory_ids")).toEqual(["dir-1"]);
     expect(q.get("days")).toEqual(["30"]);
   });
 

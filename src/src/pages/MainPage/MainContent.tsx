@@ -19,8 +19,7 @@ import { DirectorySideView } from "./DirectorySideView";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 
 import { LeftPanel } from "./LeftPanel";
-import CreateFab from "../../components/CreateFab";
-import { FabSlot } from "../../components/FabSlot";
+import { CreateActions } from "../../components/CreateActions";
 import { CreateNote } from "./CreateNote";
 import { getNoteParentDirectoryIds } from "../../utils/fileGraphUtils";
 import { useLatestNotes, useMoveNote } from "../../api/queries/useNoteQueries";
@@ -187,9 +186,7 @@ export const MainContent: React.FC = () => {
             alignItems: "center",
           }}
         >
-          <FabSlot>
-            <CreateFab onCreateNote={() => setCreateNoteOpen(true)} />
-          </FabSlot>
+          <CreateActions onCreateNote={() => setCreateNoteOpen(true)} />
           <CreateNote open={createNoteOpen} onOpenChange={setCreateNoteOpen} />
           <DragDropProvider onDragEnd={(event) => void handleDragEnd(event)}>
             <Stack direction={"row"} sx={{ alignItems: "center" }}>

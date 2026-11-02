@@ -1,19 +1,12 @@
-import { useMemo } from "react";
-import {
-  Box,
-  Card,
-  CardContent,
-  Chip,
-  IconButton,
-  Skeleton,
-  Stack,
-  Tooltip,
-  Typography,
-} from "@mui/material";
+import { IconButton, Stack, Tooltip, Typography } from "@mui/material";
 import DraftsIcon from "@mui/icons-material/Drafts";
 import CloseIcon from "@mui/icons-material/Close";
-import { useNote } from "../../api/queries/useNoteQueries";
-import { useDraftNoteIds, useDraftStates } from "../../api/queries/useDraftQueries";
+import { useQueries } from "@tanstack/react-query";
+import { noteQueries } from "../../api/queries/useNoteQueries";
+import {
+  useDraftNoteIds,
+  useDraftStates,
+} from "../../api/queries/useDraftQueries";
 import {
   formatDraftChangeLabel,
   formatDraftSizeChip,
@@ -21,159 +14,177 @@ import {
   useDraftStore,
   type DraftUrgency,
 } from "../../zustand/useDraftStore";
-import { M4 } from "../../statics";
-import { RecentNoteCard } from "./RecentNotes";
+import { NoteList } from "./RecentNotes";
+import type { MinimalNote } from "../../api/models/search";
 
-const CARD_WIDTH = 220;
-const CARD_HEIGHT = 150;
-
-// Same wrapping grid as the directory sections, so cards grow on hover
-// without being clipped by a scroll container.
-const DRAFT_CARD_GRID_SX = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: M4,
-} as const;
-
-/** Compact skeleton matching a single `RecentNoteCard`. */
-const DraftNoteSkeleton: React.FC = () => (
-  <Card
-    variant="outlined"
-    sx={{ width: CARD_WIDTH, height: CARD_HEIGHT, flexShrink: 0 }}
-  >
-    <CardContent>
-      <Skeleton variant="text" width="70%" animation="wave" />
-      <Skeleton variant="text" width="100%" animation="wave" />
-      <Skeleton variant="text" width="40%" animation="wave" />
-    </CardContent>
-  </Card>
-);
-
-const URGENCY_CHIP_COLOR: Record<DraftUrgency, "default" | "warning" | "error"> =
-  {
-    low: "default",
-    medium: "warning",
-    high: "error",
-  };
-
-/** Short relative time for a chip (e.g. "5m ago"). */
-const formatCompactAge = (timestamp: number): string => {
-  const minutes = Math.floor(Math.max(0, Date.now() - timestamp) / 60_000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
+/** Text colour per draft urgency (MUI palette token for the sx `color`). */
+const URGENCY_TEXT_COLOR: Record<DraftUrgency, string> = {
+  low: "text.secondary",
+  medium: "warning.main",
+  high: "error.main",
 };
 
-const DraftNoteCard: React.FC<{ noteId: string }> = ({ noteId }) => {
-  const { data: note, isLoading, isError } = useNote(noteId);
-  const clearDraft = useDraftStore((s) => s.clearDraft);
-  const entry = useDraftStore((s) => s.drafts[noteId]);
+const emptyNote = (noteId: string): MinimalNote => ({
+  id: noteId,
+  title: "",
+  author_id: "",
+  updated_at: "",
+  stripped_content: "",
+  directory_ids: [],
+  tag_ids: [],
+});
 
-  if (isLoading) {
-    return <DraftNoteSkeleton />;
-  }
-  // A draft whose note is gone / no longer accessible is dropped from
-  // the row rather than rendered as a broken card.
-  if (isError || !note) {
-    return null;
-  }
-
-  // Badge colours surface urgency; tooltips carry the detail.
-  const urgency = entry ? getDraftUrgency(entry) : "low";
-
-  return (
-    <RecentNoteCard
-      note={note}
-      badge={
-        <>
-          {entry && entry.changedChars > 0 && (
-            <Tooltip title={formatDraftChangeLabel(entry.changedChars)}>
-              <Chip
-                label={formatDraftSizeChip(entry.changedChars)}
-                size="small"
-                variant="outlined"
-                color={URGENCY_CHIP_COLOR[urgency]}
-                onClick={(event) => event.stopPropagation()}
-                onMouseDown={(event) => event.stopPropagation()}
-              />
-            </Tooltip>
-          )}
-          {entry && (
-            <Tooltip title={new Date(entry.updatedAt).toLocaleString()}>
-              <Chip
-                label={formatCompactAge(entry.updatedAt)}
-                size="small"
-                variant="outlined"
-                onClick={(event) => event.stopPropagation()}
-                onMouseDown={(event) => event.stopPropagation()}
-              />
-            </Tooltip>
-          )}
-        </>
-      }
-      hoverAction={
-        <Tooltip title="Ignore">
-          <IconButton
-            size="small"
-            aria-label="Ignore draft"
-            onClick={(event) => {
-              event.stopPropagation();
-              clearDraft(noteId);
-            }}
-            onMouseDown={(event) => event.stopPropagation()}
-            sx={{ backgroundColor: "background.paper" }}
-          >
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-      }
-    />
-  );
-};
+export interface DraftNotesProps {
+  /** Copy rendered when there are no drafts. When omitted, nothing renders. */
+  emptyText?: string;
+  /** Render the section header. Defaults to true. */
+  showTitle?: boolean;
+  /** Restrict to notes in any of these directories (subtree-expanded). */
+  filterDirectoryIds?: string[];
+  /** Only keep drafts edited within this many days. */
+  maxAgeDays?: number;
+  /** Called when a draft's folder chip is clicked. */
+  onDirectoryClick?: (directoryId: string) => void;
+}
 
 /**
- * Home section listing notes with unsaved local edits.
+ * Notes with unsaved local edits, rendered with the same single-line list
+ * style as the other Home lists. A dedicated column shows the number of
+ * changed characters per draft.
  *
- * Draft ids come from the local tracker; each card resolves its own
- * note (title / preview) via `useNote`, because an unsaved note's
- * server `updated_at` is stale and it would not reliably appear in the
- * "latest notes" list.
- *
- * Renders nothing when there are no drafts, so the section only shows
- * when it is relevant.
+ * Draft ids come from the local tracker; each note is resolved via the
+ * shared note-detail query so folders / tags render.
  */
-export const DraftNotes: React.FC = () => {
-  const { draftsById, isLoading } = useDraftStates();
+export const DraftNotes: React.FC<DraftNotesProps> = ({
+  emptyText,
+  showTitle = true,
+  filterDirectoryIds,
+  maxAgeDays,
+  onDirectoryClick,
+}) => {
+  const matchesFilters = (note: MinimalNote, noteId: string) => {
+    if (filterDirectoryIds && filterDirectoryIds.length > 0) {
+      const inDirectory = (note.directory_ids ?? []).some((id) =>
+        filterDirectoryIds.includes(id),
+      );
+      if (!inDirectory) {
+        return false;
+      }
+    }
+    if (maxAgeDays !== undefined) {
+      const updatedAt = draftsById[noteId]?.updatedAt;
+      if (
+        updatedAt !== undefined &&
+        // eslint-disable-next-line react-hooks/purity -- age cutoff needs wall-clock time
+        updatedAt < Date.now() - maxAgeDays * 86_400_000
+      ) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const { draftsById } = useDraftStates();
   const draftIds = useDraftNoteIds();
+  const clearDraft = useDraftStore((state) => state.clearDraft);
 
-  const count = useMemo(
-    () => Object.keys(draftsById).length,
-    [draftsById],
-  );
+  const noteResults = useQueries({
+    queries: draftIds.map((id) => noteQueries.detail(id)),
+  });
 
-  if (count === 0) {
-    return null;
+  const notes: MinimalNote[] = [];
+  const skeletonIds = new Set<string>();
+  const changedById: Record<string, React.ReactNode> = {};
+  const timestampById: Record<string, string | number | Date> = {};
+  const actionById: Record<string, React.ReactNode> = {};
+
+  draftIds.forEach((noteId, index) => {
+    const result = noteResults[index];
+    const note = result?.data;
+
+    if (!note) {
+      // Keep the slot while loading; drop rows whose note is gone.
+      if (result?.isLoading) {
+        notes.push(emptyNote(noteId));
+        skeletonIds.add(noteId);
+      }
+      return;
+    }
+
+    if (!matchesFilters(note, noteId)) {
+      return;
+    }
+
+    notes.push(note);
+
+    const entry = draftsById[noteId];
+    if (!entry) {
+      return;
+    }
+
+    const urgency = getDraftUrgency(entry);
+
+    changedById[noteId] = (
+      <Tooltip title={formatDraftChangeLabel(entry.changedChars)}>
+        <Typography
+          variant="caption"
+          sx={{ color: URGENCY_TEXT_COLOR[urgency] }}
+        >
+          {formatDraftSizeChip(entry.changedChars)}
+        </Typography>
+      </Tooltip>
+    );
+    timestampById[noteId] = entry.updatedAt;
+    actionById[noteId] = (
+      <Tooltip title="Ignore">
+        <IconButton
+          size="small"
+          aria-label="Ignore draft"
+          onClick={(event) => {
+            event.stopPropagation();
+            clearDraft(noteId);
+          }}
+          onMouseDown={(event) => event.stopPropagation()}
+        >
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+    );
+  });
+
+  if (draftIds.length === 0) {
+    if (!emptyText) {
+      return null;
+    }
+    return (
+      <Typography variant="body2" color="textSecondary">
+        {emptyText}
+      </Typography>
+    );
   }
 
   return (
     <Stack direction="column" spacing={2}>
-      <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-        <DraftsIcon color="warning" fontSize="small" />
-        <Typography variant="h5" color="textPrimary">
-          Drafts
-        </Typography>
-      </Stack>
-      <Box sx={DRAFT_CARD_GRID_SX}>
-        {isLoading
-          ? Array.from({ length: count }).map((_, index) => (
-              <DraftNoteSkeleton key={`draft-skeleton-${index}`} />
-            ))
-          : draftIds.map((noteId) => (
-              <DraftNoteCard key={noteId} noteId={noteId} />
-            ))}
-      </Box>
+      {showTitle && (
+        <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+          <DraftsIcon color="warning" fontSize="small" />
+          <Typography variant="h5" color="textPrimary">
+            Drafts
+          </Typography>
+        </Stack>
+      )}
+      <NoteList
+        notes={notes}
+        skeletonIds={skeletonIds}
+        changedById={changedById}
+        timestampById={timestampById}
+        actionById={actionById}
+        showActionColumn
+        onDirectoryClick={onDirectoryClick}
+        emptyText="No drafts."
+      />
     </Stack>
   );
 };
+
+export default DraftNotes;

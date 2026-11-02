@@ -15,18 +15,48 @@ import { markdownPreview } from "../../utils/markdownPreview";
 /** Cap on the description preview rendered per frequently-used row. */
 const FREQUENTLY_USED_DESCRIPTION_CAP = 120;
 
+/** Filter knobs accepted by `useFrequentlyUsedRows`. */
+export interface FrequentlyUsedRowsOptions {
+  /** Page size handed to the backend. */
+  limit?: number;
+  /** Scoring algorithm the backend aggregates with. */
+  algorithm?: HistoryFilter["algorithm"];
+  /** Only count activity within this many days. Omit for all time. */
+  days?: number;
+  /** Count at most one hit per note per day. */
+  uniquePerDay?: boolean;
+  /** Restrict to notes in any of these directories (backend-expanded). */
+  directoryIds?: string[];
+}
+
 /** Fetches aggregated most-used rows for the Frequently Used panel; copies title and a 120-char description preview into each row. */
 export function useFrequentlyUsedRows(
-  limit: number = 8,
-  algorithm: HistoryFilter["algorithm"] = "MOST_USED_ALGORITHM_LOG_COUNT",
+  options: FrequentlyUsedRowsOptions = {},
 ): HistoryState {
+  const {
+    limit = 8,
+    algorithm = "MOST_USED_ALGORITHM_LOG_COUNT",
+    days,
+    uniquePerDay,
+    directoryIds,
+  } = options;
+
+  const directoryKey = directoryIds?.join(",") ?? "";
+
   const filter = useMemo<HistoryFilter>(
     () => ({
       mode: "most_used",
       limit,
       algorithm,
+      ...(days !== undefined ? { days } : {}),
+      ...(uniquePerDay !== undefined ? { unique_per_day: uniquePerDay } : {}),
+      ...(directoryIds && directoryIds.length > 0
+        ? { directory_ids: directoryIds }
+        : {}),
     }),
-    [limit, algorithm],
+    // directoryKey captures the array contents for memo stability.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [limit, algorithm, days, uniquePerDay, directoryKey],
   );
 
   const result = useMostUsedActivity(filter);

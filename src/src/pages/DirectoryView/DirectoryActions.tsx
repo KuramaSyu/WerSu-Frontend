@@ -1,6 +1,5 @@
 import React from "react";
-import { FabSlot } from "../../components/FabSlot";
-import CreateFab from "../../components/CreateFab";
+import { CreateActions } from "../../components/CreateActions";
 
 export interface DirectoryActionsProps {
   handleCreateNote: () => void;
@@ -8,21 +7,19 @@ export interface DirectoryActionsProps {
 }
 
 /**
- * Bottom-right FAB stack for the directory view: a single
- * `CreateFab` exposing the two create actions. The directory's
- * non-create actions (edit, favourite, delete) moved to a 3-dot
- * menu next to the directory title; see `DirectoryMenu`.
+ * Responsive create actions for the directory view: floating FABs on
+ * desktop, compact icon buttons in the mobile bottom bar on mobile.
+ * The directory's non-create actions (edit, favourite, delete) live in
+ * a 3-dot menu next to the directory title; see `DirectoryMenu`.
  */
 export const DirectoryActions: React.FC<DirectoryActionsProps> = ({
   handleCreateNote,
   handleCreateSubdirectory,
 }) => {
   return (
-    <FabSlot>
-      <CreateFab
-        onCreateNote={handleCreateNote}
-        onCreateDirectory={handleCreateSubdirectory}
-      />
-    </FabSlot>
+    <CreateActions
+      onCreateNote={handleCreateNote}
+      onCreateDirectory={handleCreateSubdirectory}
+    />
   );
 };

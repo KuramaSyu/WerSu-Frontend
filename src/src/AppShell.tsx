@@ -74,12 +74,23 @@ export const AppShell: React.FC = () => {
   }, [scrollElement]);
 
   // Hide-on-scroll for the top panel, sourced from the main contents
-  // box. Only enabled on note pages; elsewhere the panel stays put.
-  useTopPanelScrollVisibility(scrollElement, setShowTopPanel, isNotesPage);
+  // box. On desktop this is limited to note pages; on mobile the same
+  // state drives the bottom bar, which should hide on scroll down on
+  // every route (mirroring the topbar behaviour).
+  useTopPanelScrollVisibility(
+    scrollElement,
+    setShowTopPanel,
+    isNotesPage || isMobile,
+  );
 
   // Re-reveal a hidden top panel when the cursor enters the top strip.
   // Only active on note pages, matching the scroll-hide gate above.
   useTopPanelHoverShow(setShowTopPanel, isNotesPage);
+
+  // A fresh route should never start with the chrome scrolled away.
+  useEffect(() => {
+    setShowTopPanel(true);
+  }, [pathname, setShowTopPanel]);
 
   // splash screen starts from a random direction because i like it
   const oneOrZero = Math.round(exitPercentage / 100) * 100;
@@ -114,17 +125,17 @@ export const AppShell: React.FC = () => {
   // either renders at its full width or at the icon-only collapsed
   // width (so the collapse toggle stays reachable).
   const leftColumnWidth =
-    leftPanel !== null
-      ? leftPanelOpen
+    isMobile || leftPanel === null
+      ? "0px"
+      : leftPanelOpen
         ? leftPanelSize
-        : COLLAPSED_PANEL_SIZE
-      : "0px";
+        : COLLAPSED_PANEL_SIZE;
   const rightColumnWidth =
-    rightPanel !== null
-      ? rightPanelOpen
+    isMobile || rightPanel === null
+      ? "0px"
+      : rightPanelOpen
         ? rightPanelSize
-        : COLLAPSED_PANEL_SIZE
-      : "0px";
+        : COLLAPSED_PANEL_SIZE;
 
   return (
     <>
@@ -219,6 +230,10 @@ export const AppShell: React.FC = () => {
             }
             square
             sx={{
+              // Explicit column placement: on mobile both rails are
+              // fixed (out of flow), so without this the wrapper would
+              // auto-place into the collapsed `0px` first column.
+              gridColumn: "2",
               // Flex (not grid) so the right rail can animate its own
               // `width` -- a plain width transition is more reliable
               // than a nested `grid-template-columns` one.
@@ -226,7 +241,10 @@ export const AppShell: React.FC = () => {
               overflow: "hidden",
               minWidth: 0,
               minHeight: 0,
-              zIndex: 0,
+              // On mobile the right rail renders as a fixed drawer; a
+              // z-index here would create a stacking context that
+              // traps it below the root-level bottom bar.
+              zIndex: isMobile ? undefined : 0,
             }}
           >
             <Box

@@ -216,7 +216,8 @@ export const handlers = [
     if (!id) return notFound("note id missing in body");
     const idx = db.notes.findIndex((n) => n.id === id);
     if (idx < 0) return notFound("note not found");
-    const { id: _ignored, ...fields } = patch;
+    const fields = { ...patch };
+    delete fields.id;
     const merged: FakeNote = {
       ...db.notes[idx],
       ...fields,
@@ -308,7 +309,8 @@ export const handlers = [
     if (!id) return notFound("directory id missing in body");
     const idx = db.directories.findIndex((d) => d.id === id);
     if (idx < 0) return notFound("directory not found");
-    const { id: _ignored, ...fields } = patch;
+    const fields = { ...patch };
+    delete fields.id;
     db.directories[idx] = { ...db.directories[idx], ...fields };
     return json(directoryWireShape(db.directories[idx]));
   }),
@@ -557,7 +559,7 @@ export const handlers = [
    * Honors the production-side filter params the panels send:
    *   - `actions` (CSV / repeated): include only these action kinds
    *   - `days` (int): include only events newer than `now - days`
-   *   - `note_id` / `directory_id` / `actor_id` / `role_id`: scope
+   *   - `note_id` / `directory_ids` / `actor_id` / `role_id`: scope
    *   - `limit` / `offset`: pagination
    *
    * `metadata_json` is populated with the note title/description so
@@ -576,7 +578,7 @@ export const handlers = [
     const days = Number(url.searchParams.get("days") ?? "0");
     const cutoffMs = days > 0 ? Date.now() - days * 24 * 60 * 60 * 1000 : 0;
     const noteId = url.searchParams.get("note_id");
-    const dirId = url.searchParams.get("directory_id");
+    const dirIds = url.searchParams.getAll("directory_ids");
     const actorId = url.searchParams.get("actor_id");
     const roleId = url.searchParams.get("role_id");
 
@@ -610,7 +612,7 @@ export const handlers = [
         return false;
       }
       if (noteId && a.note_id !== noteId) return false;
-      if (dirId && a.directory_id !== dirId) return false;
+      if (dirIds.length > 0 && !dirIds.includes(a.directory_id)) return false;
       if (actorId && a.actor_id !== actorId) return false;
       if (roleId && a.role_id !== roleId) return false;
       return true;

@@ -67,7 +67,8 @@ export interface ActivityScoreReply {
 export interface HistoryFilter {
   mode?: HistoryMode;
   note_id?: string;
-  directory_id?: string;
+  /** Restrict to notes in any of these directories (OR, subtree-expanded). */
+  directory_ids?: string[];
   actor_id?: string;
   role_id?: string;
   /** Shelf id to scope the query to; not yet honoured server-side, so callers should drop it until the backend supports it. */
