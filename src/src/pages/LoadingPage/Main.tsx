@@ -16,7 +16,6 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
 import BlockIcon from "@mui/icons-material/Block";
 import Fade from "@mui/material/Fade";
-import { useThemeStore } from "../../zustand/useThemeStore";
 import { ThemeProvider } from "@emotion/react";
 import {
   ExpandingCircleBackground,
@@ -28,65 +27,15 @@ import { DocumentSwirl } from "./DocumentSwirl";
 import { useMinSquareSize } from "./minSquareSize";
 import { defaultTheme } from "../../theme/themes";
 import { useUser } from "../../api/queries/useUser";
+import {
+  Logo,
+  LogoSvgComponent,
+  SmallLogoSvgComponent,
+  type LogoProps,
+} from "../../components/logo";
 
-interface LogoSvgComponentProps {
-  style?: React.CSSProperties;
-  monochrome?: boolean; // add monochrome flag
-}
-
-export const LogoSvgComponent: React.FC<LogoSvgComponentProps> = ({
-  style,
-  monochrome = false, // default to false
-}) => {
-  const { theme } = useThemeStore(); // get current theme
-
-  // If monochrome, apply greyscale and color filter
-  const filterStyle = monochrome
-    ? {
-        filter: `grayscale(1) brightness(1.1) drop-shadow(0 0 0 ${theme.palette.primary.main})`,
-      }
-    : {};
-
-  return (
-    <img
-      src="/assets/GoToHell-Icon.svg"
-      alt="GoToHell Logo"
-      style={{
-        width: "100%",
-        height: "100%",
-        ...(style || {}),
-        ...filterStyle,
-      }}
-    />
-  );
-};
-
-export const SmallLogoSvgComponent: React.FC<LogoSvgComponentProps> = ({
-  style,
-  monochrome = false, // default to false
-}) => {
-  const { theme } = useThemeStore(); // get current theme
-
-  // If monochrome, apply greyscale and color filter
-  const filterStyle = monochrome
-    ? {
-        filter: `grayscale(1) brightness(1.1) drop-shadow(0 0 0 ${theme.palette.primary.main})`,
-      }
-    : {};
-
-  return (
-    <img
-      src="/assets/GoToHell-Icon-small.svg"
-      alt="GoToHell Logo"
-      style={{
-        width: "100%",
-        height: "100%",
-        ...(style || {}),
-        ...filterStyle,
-      }}
-    />
-  );
-};
+export { Logo, LogoSvgComponent, SmallLogoSvgComponent };
+export type LogoSvgComponentProps = LogoProps;
 
 interface LoadingMapValue {
   loaded: boolean;
