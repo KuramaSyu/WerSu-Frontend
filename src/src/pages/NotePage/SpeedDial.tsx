@@ -100,7 +100,9 @@ const InsertSpeedDialImpl: React.FC<InsertSpeedDialProps> = ({
       setViewMode("source");
       return;
     }
-    setContent(sourceMarkdown);
+    // `force`: apply source edits even though `setSourceMarkdown`
+    // already claimed this markdown (which the dedupe guard would skip).
+    setContent(sourceMarkdown, true);
     setViewMode("rich");
   };
 

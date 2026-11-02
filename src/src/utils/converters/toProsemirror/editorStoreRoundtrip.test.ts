@@ -143,6 +143,48 @@ describe("useActiveNoteStore.seedSourceMarkdown", () => {
   });
 });
 
+describe("useActiveNoteStore.setContent (source -> rich)", () => {
+  // Regression: `setSourceMarkdown` updates the write memo, so leaving
+  // source mode used to be deduped and the user's source edits never
+  // reached the rich editor until they pressed save. `force` bypasses
+  // the dedupe for that explicit intent.
+  it("applies source edits to the editor when forced", async () => {
+    const editor = makeEditor();
+    useActiveNoteStore.getState().setEditor(editor);
+    useActiveNoteStore.getState().setContent("# rich original");
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // User edits in source mode; the memo now claims the edited markdown.
+    useActiveNoteStore.getState().setSourceMarkdown("# edited in source");
+
+    // Leaving source passes `force` (see useEditorModeShortcuts).
+    useActiveNoteStore.getState().setContent("# edited in source", true);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(editor.getMarkdown()).toContain("edited in source");
+  });
+
+  it("still dedupes an unforced repeat write", async () => {
+    const editor = makeEditor();
+    useActiveNoteStore.getState().setEditor(editor);
+    useActiveNoteStore.getState().setContent("# rich original");
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // The source buffer claims a different markdown but nothing forces
+    // the write, so the editor keeps its current content.
+    useActiveNoteStore.getState().setSourceMarkdown("# edited in source");
+    useActiveNoteStore.getState().setContent("# edited in source");
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(editor.getMarkdown()).toContain("rich original");
+    expect(editor.getMarkdown()).not.toContain("edited in source");
+  });
+});
+
 describe("markdownToProsemirror (sanity)", () => {
   it("returns a doc with the after-table content", () => {
     const editor = makeEditor();

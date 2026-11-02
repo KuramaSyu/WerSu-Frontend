@@ -68,7 +68,10 @@ export function useEditorModeShortcuts(
     // Read the markdown on demand rather than subscribing: this hook is
     // also used by the rail panel, which must not re-render per keystroke.
     const sourceMarkdown = useActiveNoteStore.getState().sourceMarkdown;
-    setContent(sourceMarkdown);
+    // `force`: the source buffer already claimed this markdown via
+    // `setSourceMarkdown`, so the dedupe guard would otherwise skip
+    // applying the user's source edits to the rich editor.
+    setContent(sourceMarkdown, true);
     setViewMode("rich");
   }, [setContent, setViewMode]);
 

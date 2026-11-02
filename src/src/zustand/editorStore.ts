@@ -53,7 +53,15 @@ interface ActiveNoteState {
   ) => void;
 
   getContent: () => string;
-  setContent: (markdown: string) => void;
+  /**
+   * Writes `markdown` into the rich editor (and mirrors it into the
+   * source buffer). Normally a no-op when `markdown` matches what was
+   * last written, which guards against the Collaboration onSynced echo.
+   * Pass `force` for explicit user intents (leaving source mode, a save
+   * with an override) where the editor must be updated even though the
+   * source buffer already claims that markdown.
+   */
+  setContent: (markdown: string, force?: boolean) => void;
   save: (titleOverrdide?: string, contentOverride?: string) => Promise<void>;
 }
 
@@ -94,7 +102,10 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => {
     setYDoc: (ydoc) => set({ ydoc }),
     setTitle: (title) => set({ title }),
     setSourceMarkdown: (markdown) => {
-      // Keep memo in sync with user source edits so dedupe does not block.
+      // Track the source buffer as the latest known markdown so an
+      // unchanged source -> rich toggle is deduped (no needless editor
+      // reset). Explicit source edits that differ from the editor are
+      // applied via `setContent(markdown, true)` on leaving source.
       lastWrittenMarkdown = markdown;
       set({ sourceMarkdown: markdown });
     },
@@ -115,7 +126,7 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => {
         : (editor?.getMarkdown() ?? "");
     },
 
-    setContent: (markdown) => {
+    setContent: (markdown, force = false) => {
       const _noteId = get().noteId;
       // A silently-skipped write is the one shape of failure the
       // content-set log cannot show, so the guard exits are logged too.
@@ -202,7 +213,9 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => {
       }
 
       // Same-content dedupe: guards Collaboration onSynced echo.
-      if (lastWrittenMarkdown === markdown) {
+      // `force` skips it for explicit user intents (source -> rich),
+      // where the source buffer legitimately differs from the editor.
+      if (!force && lastWrittenMarkdown === markdown) {
         logCollabContent("content-set-skipped(dedupe)", _noteId, {
           markdownLen: (markdown ?? "").length,
           editorBound: !!get().editor,
@@ -256,7 +269,7 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => {
       if (!noteId) return;
 
       if (titleOverride !== undefined) set({ title: titleOverride });
-      if (contentOverride !== undefined) setContent(contentOverride);
+      if (contentOverride !== undefined) setContent(contentOverride, true);
 
       const finalTitle = titleOverride ?? title;
       const finalContent = contentOverride ?? get().getContent();
