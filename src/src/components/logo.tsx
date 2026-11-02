@@ -2,7 +2,13 @@ import React from "react";
 import { darken, getOverlayAlpha, lighten } from "@mui/material/styles";
 import type { Theme } from "@mui/material/styles";
 import { useThemeStore } from "../zustand/useThemeStore";
-import { blendColors, hexToRgb, rgbToHex } from "../utils/blendWithContrast";
+import {
+  blendColors,
+  hexToHsl,
+  hexToRgb,
+  hslToHex,
+  rgbToHex,
+} from "../utils/blendWithContrast";
 
 /**
  * `palette.background.paper` raised to an MUI elevation.
@@ -33,6 +39,30 @@ function elevatedPaper(palette: Theme["palette"], elevation: number): string {
   const pagePercent = ((1 - t) * 100).toFixed(2);
   const paperPercent = (t * 100).toFixed(2);
   return `color-mix(in srgb, ${palette.background.default} ${pagePercent}%, ${base} ${paperPercent}%)`;
+}
+
+/**
+ * Force a hex colour's HSL saturation (0-1). Standalone equivalent of
+ * `CustomThemeImpl.setSaturation`, so the logo can also be coloured from a
+ * plain MUI theme (e.g. `defaultTheme`) that lacks the custom helpers.
+ */
+function forceSaturation(hex: string, saturation: number): string {
+  const { h, l } = hexToHsl(hex);
+  return hslToHex(h, saturation * 100, l);
+}
+
+/** Use the theme's own helper when available, falling back for plain themes. */
+function saturatedColor(
+  theme: Theme,
+  hex: string,
+  saturation: number,
+): string {
+  const setSaturation = (
+    theme as Theme & { setSaturation?: (color: string, s: number) => string }
+  ).setSaturation;
+  return typeof setSaturation === "function"
+    ? setSaturation(hex, saturation)
+    : forceSaturation(hex, saturation);
 }
 
 /**
@@ -85,6 +115,12 @@ export interface LogoProps extends Omit<
   monochrome?: boolean;
   /** Explicit per-tone colours; anything omitted falls back to the theme. */
   colors?: LogoColors;
+  /**
+   * Theme whose palette colours the logo. Defaults to the active app theme.
+   * Standalone screens (splash, login) pass `defaultTheme` so the mark matches
+   * their hard-coded background instead of the signed-in user's theme.
+   */
+  theme?: Theme;
   /** Accessible label. Pass `null` to mark it purely decorative. */
   title?: string | null;
 }
@@ -95,13 +131,14 @@ export const Logo: React.FC<LogoProps> = ({
   size,
   monochrome = false,
   colors,
+  theme: themeProp,
   title = "WerSu Logo",
   style,
   ...rest
 }) => {
-  const { theme } = useThemeStore();
+  const { theme: activeTheme } = useThemeStore();
+  const theme = themeProp ?? activeTheme;
   const { palette } = theme;
-  theme.changeSaturation;
   const toneVars: Record<string, string> = monochrome
     ? {
         "--logo-paper": "currentColor",
@@ -109,7 +146,8 @@ export const Logo: React.FC<LogoProps> = ({
         "--logo-secondary": "currentColor",
       }
     : {
-        "--logo-paper": theme.setSaturation(
+        "--logo-paper": saturatedColor(
+          theme,
           rgbToHex(
             blendColors(
               hexToRgb(palette.background.default),

@@ -259,7 +259,7 @@ export const LoadingPage: React.FC = () => {
                 display: "flex",
               }}
             >
-              <LogoSvgComponent />
+              <LogoSvgComponent theme={defaultTheme} />
             </Box>
           </Box>
         </Box>
