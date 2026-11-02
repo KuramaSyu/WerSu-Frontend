@@ -15,7 +15,6 @@ import {
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { UpperPanel } from "../../components/Panels/UpperPanel";
 import { PanelSection } from "../../components/Panels/PanelSection";
-import { NavigationSection } from "../../components/Panels/NavigationSection";
 import { RecentActivityPanel } from "../../components/RecentActivity/Main";
 import {
   FrequentlyUsedPanel,
@@ -28,14 +27,14 @@ import { AllDirectories } from "./AllDirectories";
 import { HomeGreeting } from "./HomeGreeting";
 import { RecentNotes } from "./RecentNotes";
 import { DraftNotes } from "./DraftNotes";
-import { useNotesByScope } from "../../api/queries/useNotesByScope";
+import { useNotesReplyByScope } from "../../api/queries/useNotesByScope";
 import { useCreateModalsFromUrl } from "../../hooks/useCreateModalsFromUrl";
 import { usePageHoldShortcuts } from "../../hooks/usePageHoldShortcuts";
 import { HoldKeyActionBar } from "../../components/HoldKeyActionBar";
 import CreateFab from "../../components/CreateFab";
 import { FabSlot } from "../../components/FabSlot";
 
-/** Home page: nav + recent activity on the left, favourites + all dirs in the body. */
+/** Home page: recent activity on the left, favourites + all dirs in the body. */
 export const HomePage: React.FC = () => {
   const [createNoteOpen, setCreateNoteOpen] = useState(false);
   const [createDirectoryOpen, setCreateDirectoryOpen] = useState(false);
@@ -56,15 +55,16 @@ export const HomePage: React.FC = () => {
     setCreateDirectoryOpen,
   });
 
-  // Shared by the greeting (today-count) and the Recent notes row so the
-  // two sections resolve from a single cached request.
-  const { data: recentNotes } = useNotesByScope({ limit: 50 });
+  // Shared by the greeting (today-count) and the Recent notes list so the
+  // two sections resolve from a single cached request. The full reply is
+  // kept because the note rows also need directory / tag labels.
+  const { data: recentNotesReply } = useNotesReplyByScope({ limit: 50 });
+  const recentNotes = recentNotesReply?.notes;
 
   useRightPanel(null);
   usePanelSize({ left: "clamp(20rem, 25vw, 30rem)" });
   useLeftPanel(
     <UpperPanel>
-      <NavigationSection />
       <PanelSection
         title="Last used"
         titleIcon={<HistoryIcon fontSize="small" />}
@@ -147,7 +147,11 @@ export const HomePage: React.FC = () => {
               Recent notes
             </Typography>
           </Stack>
-          <RecentNotes notes={recentNotes} />
+          <RecentNotes
+            notes={recentNotes}
+            directories={recentNotesReply?.directories}
+            tags={recentNotesReply?.tags}
+          />
         </Stack>
       </Stack>
       <FabSlot>

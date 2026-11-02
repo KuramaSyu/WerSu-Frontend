@@ -2,10 +2,8 @@ import React from "react";
 import ScheduleIcon from "@mui/icons-material/Schedule";
 import NotesIcon from "@mui/icons-material/Notes";
 import { RecentActivityPanel } from "../../components/RecentActivity/Main";
-import { DirectorySideView } from "../MainPage/DirectorySideView";
 import type { HirarchyItem } from "../../models/HirarchyItem";
 import { PanelSection } from "../../components/Panels/PanelSection";
-import { NavigationSection } from "../../components/Panels/NavigationSection";
 import { UpperPanel } from "../../components/Panels/UpperPanel";
 import { useDirectory } from "../../api/queries/useDirectoryQuery";
 import { InlineEditableDescription } from "../../components/DirectoryView/InlineEditableDescription/InlineEditableDescription";
@@ -15,8 +13,8 @@ interface DirectoryLeftPanelProps {
 }
 
 /**
- * Left-panel directory actions: navigation, directory tree, recent
- * activity. The FAB + speed-dial used to live here too, but they
+ * Left-panel directory actions: recent activity and description.
+ * The FAB + speed-dial used to live here too, but they
  * disappeared with the panel on mobile (the rail is hidden by
  * default on mobile + `COLLAPSED_PANEL_SIZE = 0px`). They now live
  * in `DirectoryView/Main.tsx` so they stay visible regardless of
@@ -30,7 +28,6 @@ export const DirectoryLeftPanel: React.FC<DirectoryLeftPanelProps> = ({
   );
   return (
     <UpperPanel spacing={2}>
-      <NavigationSection />
       <PanelSection
         title="Recent activity"
         titleIcon={<ScheduleIcon fontSize="small" />}

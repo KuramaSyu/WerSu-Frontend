@@ -13,7 +13,6 @@ import TuneIcon from "@mui/icons-material/Tune";
 import ShareIcon from "@mui/icons-material/Share";
 import { UpperPanel } from "../../components/Panels/UpperPanel";
 import { PanelSection } from "../../components/Panels/PanelSection";
-import { NavigationSection } from "../../components/Panels/NavigationSection";
 import { useShelves } from "../../api/queries/shelfQueries";
 import { useAllDirectoriesQuery } from "../../api/queries/directoryQueries";
 import { disambiguateLabels } from "../../utils/disambiguateLabels";
@@ -74,8 +73,6 @@ export const SharesLeftPanel: React.FC<SharesLeftPanelProps> = ({
 
   return (
     <UpperPanel spacing={2}>
-      <NavigationSection />
-
       <PanelSection
         title="Selected"
         titleIcon={<ShareIcon fontSize="small" />}
