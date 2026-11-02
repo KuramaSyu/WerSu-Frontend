@@ -39,6 +39,14 @@ interface ActiveNoteState {
   setTitle: (title: string) => void;
   setSourceMarkdown: (markdown: string) => void;
 
+  /**
+   * Mirrors a note's markdown into the source buffer *without* claiming
+   * that it was already written to the editor. Used by the note-load
+   * effect so the read-mode `setContent` seed is not deduped away when
+   * the note resolves after the editor was already mounted (cache miss).
+   */
+  seedSourceMarkdown: (markdown: string) => void;
+
   /** Setter for updateNote; injects a tanstack mutation function so updates/invalidation work. */
   setUpdateNoteFn: (
     fn: (title: string, content: string) => Promise<Note>,
@@ -88,6 +96,12 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => {
     setSourceMarkdown: (markdown) => {
       // Keep memo in sync with user source edits so dedupe does not block.
       lastWrittenMarkdown = markdown;
+      set({ sourceMarkdown: markdown });
+    },
+    seedSourceMarkdown: (markdown) => {
+      // Deliberately does NOT touch `lastWrittenMarkdown`: the caller
+      // still needs `setContent` to run and load the note into the
+      // editor.
       set({ sourceMarkdown: markdown });
     },
     setUpdateNoteFn: (fn) => set({ updateNote: fn }),

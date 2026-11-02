@@ -91,6 +91,7 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
   const setTitle = useActiveNoteStore((s) => s.setTitle);
   const sourceMarkdown = useActiveNoteStore((s) => s.sourceMarkdown);
   const setSourceMarkdown = useActiveNoteStore((s) => s.setSourceMarkdown);
+  const seedSourceMarkdown = useActiveNoteStore((s) => s.seedSourceMarkdown);
 
   const viewMode = useEditorSettings((s) => s.viewMode);
   const editMode = useEditorSettings((s) => s.editMode);
@@ -185,7 +186,12 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
 
   useEffect(() => {
     if (note) {
-      setSourceMarkdown(note.content || note.stripped_content || "");
+      // Use the seed setter: it mirrors the source buffer without
+      // marking the markdown as already-written, so the seed effect in
+      // `useNoteEditor` still loads it into the editor. This matters on
+      // a cache miss, where the note resolves *after* the editor has
+      // mounted and the editor's `setEditor` reset has already run.
+      seedSourceMarkdown(note.content || note.stripped_content || "");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note?.id]);

@@ -122,6 +122,27 @@ describe("useActiveNoteStore.setContent", () => {
   });
 });
 
+describe("useActiveNoteStore.seedSourceMarkdown", () => {
+  it("lets the note load into the editor when it resolves after mount (cache miss)", async () => {
+    // Cache-miss ordering: the editor mounts while `useNote` is still
+    // pending, so `setEditor` (which resets the write dedupe) has
+    // already run. The note then arrives and the source-sync effect
+    // mirrors its markdown *before* the seed effect calls setContent.
+    const editor = makeEditor();
+    useActiveNoteStore.getState().setEditor(editor);
+
+    // Source-sync effect mirrors the late note. It must not mark the
+    // markdown as already written, or the seed below gets deduped.
+    useActiveNoteStore.getState().seedSourceMarkdown("# loaded late");
+    useActiveNoteStore.getState().setContent("# loaded late");
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(editor.getMarkdown()).toContain("loaded late");
+  });
+});
+
 describe("markdownToProsemirror (sanity)", () => {
   it("returns a doc with the after-table content", () => {
     const editor = makeEditor();
