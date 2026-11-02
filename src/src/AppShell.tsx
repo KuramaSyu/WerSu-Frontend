@@ -61,6 +61,10 @@ export const AppShell: React.FC = () => {
     null,
   );
   const isNotesPage = useIsNotesPage();
+  const { pathname } = useLocation();
+  // The login page paints its own full-bleed background, so the
+  // shell's main-content padding has to go for that route only.
+  const isLoginPage = pathname === "/login";
 
   // Mirror the scroll container into a shared store so deep-link
   // handlers and the outline panel can read it without prop-drilling.
@@ -188,15 +192,11 @@ export const AppShell: React.FC = () => {
               isMobile || !showTopPanel ? "0px" : TOP_BAR_HEIGHT,
             //transition: `grid-template-columns ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
             transition: `grid-template-columns ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}, margin-top ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
-            // Use a string for the zero case: this theme's custom
-            // `spacing()` maps the number 0 to 0.25rem, so MUI's sx
-            // would otherwise leave a 4px band above the shell when
-            // the top bar is hidden.
             marginTop: isMobile
-              ? "0px"
+              ? 0
               : showTopPanel
                 ? TOP_BAR_HEIGHT
-                : "0px",
+                : 0,
             // flex: 1 to fill whatever the remaining vertical space is
             // e.g. with or without topbar
             flex: 1,
@@ -238,11 +238,13 @@ export const AppShell: React.FC = () => {
                 display: "flex",
                 flexDirection: "column",
                 scrollbarWidth: "none",
-                p: M2,
+                p: isLoginPage ? 0 : M2,
                 // pt: isMobile ? M2 : showTopPanel ? M2 : 0,
-                paddingBottom: isMobile
-                  ? `calc(env(safe-area-inset-bottom, 0px) + ${MOBILE_BOTTOM_BAR_CLEARANCE})`
-                  : M2,
+                paddingBottom: isLoginPage
+                  ? 0
+                  : isMobile
+                    ? `calc(env(safe-area-inset-bottom, 0px) + ${MOBILE_BOTTOM_BAR_CLEARANCE})`
+                    : M2,
                 transition: `padding-top ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
                 minWidth: 0,
                 minHeight: 0,

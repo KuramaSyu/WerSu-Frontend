@@ -8,6 +8,25 @@ import { customThemes } from "./themes";
 const SEMANTIC_KEYS = ["error", "warning", "success", "info"] as const;
 const CONTRAST_TARGET = 3.5;
 
+describe("spacing scale", () => {
+  const theme = customThemes[0];
+
+  it("keeps zero at zero instead of 0.25rem", () => {
+    expect(theme.spacing(0)).toBe("0rem");
+  });
+
+  it("keeps the doubling scale for positive steps", () => {
+    expect(theme.spacing(1)).toBe("0.5rem");
+    expect(theme.spacing(2)).toBe("1rem");
+    expect(theme.spacing(3)).toBe("2rem");
+    expect(theme.spacing(4)).toBe("4rem");
+  });
+
+  it("joins multi-axis shorthand", () => {
+    expect(theme.spacing(1, 0)).toBe("0.5rem 0rem");
+  });
+});
+
 describe("semantic text tones", () => {
   it("gives every theme readable text on the elevated menu paper", () => {
     for (const theme of customThemes) {

@@ -239,6 +239,12 @@ export class CustomThemeImpl implements CustomTheme {
         .map((factor) => {
           const numFactor =
             typeof factor === "string" ? parseFloat(factor) : factor;
+          // The scale below is exponential (0.25 * 2^n rem), which would
+          // turn `0` into 0.25rem and leave a 4px band wherever a zero
+          // spacing is asked for. Keep zero at zero.
+          if (!Number.isFinite(numFactor) || numFactor === 0) {
+            return "0rem";
+          }
           return `${0.25 * Math.pow(2, numFactor)}rem`;
         })
         .join(" ");
@@ -605,6 +611,20 @@ export class CustomThemeImpl implements CustomTheme {
       hsl.l,
     );
 
+    return rgbToHex(adjusted);
+  }
+
+  /**
+   *
+   * @param color mui color
+   * @param saturation value 0-1 where 0 is desaturated
+   * @returns a color with overriden saturation value
+   */
+  setSaturation(color: ColorInput, saturation: number): string {
+    const resolved = this.resolveColor(color);
+    const rgb = hexToRgb(resolved);
+    const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+    const adjusted = hslToRgb(hsl.h, saturation, hsl.l);
     return rgbToHex(adjusted);
   }
 

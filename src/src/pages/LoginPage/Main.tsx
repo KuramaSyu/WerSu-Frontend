@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { Box } from "@mui/material";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
@@ -9,39 +9,19 @@ import { DocumentSwirl } from "../LoadingPage/DocumentSwirl";
 import { LogoSvgComponent } from "../LoadingPage/Main";
 import { useLoadingStore } from "../../zustand/loadingStore";
 import { useUsersStore, useUserStore } from "../../zustand/userStore";
-import { defaultTheme } from "../../theme/themes";
-import { useLayout, useRightPanel } from "../../LayoutProvider";
+import { useLeftPanel, useRightPanel } from "../../LayoutProvider";
 import { M3, M4, M5 } from "../../statics";
 
 export const LoginPage: React.FC = () => {
-  const { theme, setTheme } = useThemeStore();
-  const [oldTheme, setOldTheme] = useState<string | null>();
+  const { theme } = useThemeStore();
   const { isMobile } = useBreakpoint();
-  const { setLeftPanelOpen, setRightPanelOpen } = useLayout();
   const logoAnchorRef = useRef<HTMLDivElement>(null);
-  // Login is chrome-free; drop any right panel left over from a
-  // previous session.
+  // Login is chrome-free; drop any side panel left over from a
+  // previous session so the shell grid leaves no rail gap around us.
+  // `LayoutProvider` deliberately keeps panel content across route
+  // changes, so both hooks are needed on this route.
+  useLeftPanel(null);
   useRightPanel(null);
-
-  useEffect(() => {
-    setLeftPanelOpen(false);
-    setRightPanelOpen(false);
-  }, []);
-  useEffect(() => {
-    if (theme.custom.themeName !== "default") {
-      setOldTheme(theme.custom.themeName);
-      setTheme("default");
-    }
-    return;
-  }, [theme]);
-
-  useEffect(() => {
-    if (oldTheme === null || oldTheme === undefined) return;
-    return () => {
-      console.log("set old theme");
-      setTheme(oldTheme);
-    };
-  }, [oldTheme]);
 
   return (
     <Box
@@ -129,7 +109,7 @@ export const LoginPage: React.FC = () => {
             flex: "0 0 auto",
           }}
         >
-          <Title theme={defaultTheme} />
+          <Title theme={theme} />
         </Box>
         <Box
           ref={logoAnchorRef}

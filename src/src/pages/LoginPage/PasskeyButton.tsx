@@ -5,7 +5,7 @@
 import React, { useMemo } from "react";
 import { ThemeProvider, Button, Stack } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import { defaultTheme } from "../../theme/themes";
+import { useThemeStore } from "../../zustand/useThemeStore";
 import {
   usePasskeyLogin,
   isWebAuthnSupported,
@@ -14,7 +14,7 @@ import {
 export const PasskeyButton: React.FC = () => {
   const login = usePasskeyLogin();
   const supported = useMemo(() => isWebAuthnSupported(), []);
-  const theme = defaultTheme;
+  const { theme } = useThemeStore();
   const navigate = useNavigate();
 
   return (

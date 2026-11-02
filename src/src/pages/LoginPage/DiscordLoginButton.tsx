@@ -5,10 +5,10 @@
 import React from "react";
 import { ThemeProvider, Button, Stack } from "@mui/material";
 import { BACKEND_BASE } from "../../statics";
-import { defaultTheme } from "../../theme/themes";
+import { useThemeStore } from "../../zustand/useThemeStore";
 
 export const DiscordLoginButton: React.FC = () => {
-  const theme = defaultTheme;
+  const { theme } = useThemeStore();
 
   const handleLogin = (): void => {
     window.location.href = `${BACKEND_BASE}/api/auth/discord`;
