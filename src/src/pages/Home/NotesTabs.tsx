@@ -1,21 +1,31 @@
 import { useMemo, useState } from "react";
 import {
   Autocomplete,
+  Badge,
   Box,
+  Button,
   Chip,
   Collapse,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
   Stack,
   Tab,
   Tabs,
   TextField,
   ToggleButton,
   ToggleButtonGroup,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import NotesIcon from "@mui/icons-material/Notes";
 import DraftsIcon from "@mui/icons-material/Drafts";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
+import FilterListIcon from "@mui/icons-material/FilterList";
 import { M1 } from "../../statics";
+import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { DraftNotes } from "./DraftNotes";
 import { RecentNotes } from "./RecentNotes";
 import { FrequentlyUsedNotes } from "./FrequentlyUsedNotes";
@@ -103,8 +113,10 @@ export const NotesTabs: React.FC<NotesTabsProps> = ({
   notes,
   initialTab = RECENT_TAB,
 }) => {
+  const { isMobile } = useBreakpoint();
   const [tab, setTab] = useState(initialTab);
   const [activeFilter, setActiveFilter] = useState<FilterCategory | null>(null);
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [algorithm, setAlgorithm] = useState<MostUsedAlgorithm>(
     DEFAULT_ALGORITHM,
   );
@@ -167,6 +179,11 @@ export const NotesTabs: React.FC<NotesTabsProps> = ({
     dayKey !== ALL_TIME_KEY ||
     algorithm !== DEFAULT_ALGORITHM;
 
+  const activeFilterCount =
+    (selectedDirectoryIds.length > 0 ? 1 : 0) +
+    (dayKey !== ALL_TIME_KEY ? 1 : 0) +
+    (algorithm !== DEFAULT_ALGORITHM ? 1 : 0);
+
   const handleDirectoryClick = (directoryId: string) => {
     // Apply the filter silently; don't pop open the directory filter box.
     setSelectedDirectoryIds((prev) =>
@@ -181,11 +198,137 @@ export const NotesTabs: React.FC<NotesTabsProps> = ({
     }
   };
 
+  const openFilterModal = () => {
+    // Open on a concrete category so the modal always shows options.
+    setActiveFilter((current) => current ?? "directory");
+    setFilterModalOpen(true);
+  };
+
+  const clearFilters = () => {
+    setSelectedDirectoryIds([]);
+    setDayKey(ALL_TIME_KEY);
+    setAlgorithm(DEFAULT_ALGORITHM);
+  };
+
+  // Shared filter panels: rendered inline on desktop and inside the modal
+  // on mobile.
+  const renderFilterOptions = () => (
+    <Box
+      sx={{
+        pt: M1,
+        display: "flex",
+        justifyContent: "center",
+      }}
+    >
+      {activeFilter === "directory" && (
+        <Stack spacing={1} sx={{ alignItems: "center", width: "100%" }}>
+          <Typography variant="caption" color="textSecondary">
+            Only notes in these directories and their subdirectories
+          </Typography>
+          <Autocomplete<DirectoryReply, true>
+            multiple
+            size="small"
+            options={directories ?? []}
+            getOptionLabel={(option) => directoryLabel(option.id, directoriesById)}
+            isOptionEqualToValue={(option, value) => option.id === value.id}
+            value={selectedDirectories}
+            onChange={(_event, value) =>
+              setSelectedDirectoryIds(value.map((option) => option.id))
+            }
+            renderInput={(params) => (
+              <TextField {...params} label="Directories" />
+            )}
+            sx={{ width: "100%", maxWidth: 360 }}
+          />
+        </Stack>
+      )}
+
+      {activeFilter === "window" && (
+        <Stack spacing={1} sx={{ alignItems: "center" }}>
+          <Typography variant="caption" color="textSecondary">
+            Only count activity within
+          </Typography>
+          <Stack
+            direction="row"
+            sx={{ flexWrap: "wrap", gap: 1, justifyContent: "center" }}
+          >
+            <Chip
+              label="All time"
+              clickable
+              size="small"
+              color={dayKey === ALL_TIME_KEY ? "primary" : "default"}
+              variant={dayKey === ALL_TIME_KEY ? "filled" : "outlined"}
+              onClick={() => setDayKey(ALL_TIME_KEY)}
+            />
+            {DAY_OPTIONS.map((option) => {
+              const selected = dayKey === option.key;
+              return (
+                <Chip
+                  key={option.key}
+                  label={option.label}
+                  clickable
+                  size="small"
+                  color={selected ? "primary" : "default"}
+                  variant={selected ? "filled" : "outlined"}
+                  onClick={() => setDayKey(option.key)}
+                />
+              );
+            })}
+            <Chip
+              label="Custom"
+              clickable
+              size="small"
+              color={dayKey === CUSTOM_DAY_KEY ? "primary" : "default"}
+              variant={dayKey === CUSTOM_DAY_KEY ? "filled" : "outlined"}
+              onClick={() => setDayKey(CUSTOM_DAY_KEY)}
+            />
+          </Stack>
+          {dayKey === CUSTOM_DAY_KEY && (
+            <TextField
+              type="number"
+              size="small"
+              label="Days"
+              value={customDays}
+              onChange={(event) => handleCustomDays(event.target.value)}
+              slotProps={{ htmlInput: { min: 1 } }}
+              sx={{ width: 120 }}
+            />
+          )}
+        </Stack>
+      )}
+
+      {activeFilter === "type" && (
+        <Stack spacing={1} sx={{ alignItems: "center" }}>
+          <Typography variant="caption" color="textSecondary">
+            How repeated views are scored
+          </Typography>
+          <ToggleButtonGroup
+            size="small"
+            exclusive
+            value={algorithm}
+            onChange={(_event, value: MostUsedAlgorithm | null) => {
+              if (value) setAlgorithm(value);
+            }}
+            sx={PILL_GROUP_SX}
+          >
+            {ALGORITHM_OPTIONS.map((option) => (
+              <ToggleButton key={option.value} value={option.value}>
+                {option.label}
+              </ToggleButton>
+            ))}
+          </ToggleButtonGroup>
+        </Stack>
+      )}
+    </Box>
+  );
+
   return (
     <Box>
       <Box
         sx={{
           display: "flex",
+          // Tabs scroll horizontally on phones; the filter icon sits on the
+          // same row, pinned to the right.
           alignItems: "center",
           minWidth: 0,
           borderBottom: 1,
@@ -195,6 +338,9 @@ export const NotesTabs: React.FC<NotesTabsProps> = ({
         <Tabs
           value={tab}
           onChange={(_event, value: number) => setTab(value)}
+          variant="scrollable"
+          scrollButtons="auto"
+          allowScrollButtonsMobile
           sx={{ flex: 1, minWidth: 0 }}
         >
           <Tab
@@ -214,32 +360,55 @@ export const NotesTabs: React.FC<NotesTabsProps> = ({
           />
         </Tabs>
 
-        <Stack
-          direction="row"
-          spacing={1}
-          sx={{ pr: 1, alignItems: "center", flexShrink: 0 }}
-        >
-          <Typography
-            variant="body2"
-            color="textSecondary"
-            sx={{ whiteSpace: "nowrap" }}
+        {isMobile ? (
+          <Stack
+            direction="row"
+            sx={{ pr: 1, justifyContent: "flex-end", flexShrink: 0 }}
           >
-            Filter by:
-          </Typography>
-          <ToggleButtonGroup
-            size="small"
-            exclusive
-            value={activeFilter}
-            onChange={(_event, value: FilterCategory | null) =>
-              setActiveFilter(value)
-            }
-            sx={PILL_GROUP_SX}
+            <Tooltip title="Filter">
+              <IconButton aria-label="Filter notes" onClick={openFilterModal}>
+                <Badge badgeContent={activeFilterCount} color="primary">
+                  <FilterListIcon />
+                </Badge>
+              </IconButton>
+            </Tooltip>
+          </Stack>
+        ) : (
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{
+              pr: 1,
+              pb: { xs: 1, md: 0 },
+              alignItems: "center",
+              flexWrap: "wrap",
+              rowGap: 1,
+              flexShrink: 0,
+              justifyContent: { xs: "flex-start", md: "flex-end" },
+            }}
           >
-            <ToggleButton value="directory">Directory</ToggleButton>
-            <ToggleButton value="window">Time window</ToggleButton>
-            <ToggleButton value="type">Type</ToggleButton>
-          </ToggleButtonGroup>
-        </Stack>
+            <Typography
+              variant="body2"
+              color="textSecondary"
+              sx={{ whiteSpace: "nowrap" }}
+            >
+              Filter by:
+            </Typography>
+            <ToggleButtonGroup
+              size="small"
+              exclusive
+              value={activeFilter}
+              onChange={(_event, value: FilterCategory | null) =>
+                setActiveFilter(value)
+              }
+              sx={PILL_GROUP_SX}
+            >
+              <ToggleButton value="directory">Directory</ToggleButton>
+              <ToggleButton value="window">Time window</ToggleButton>
+              <ToggleButton value="type">Type</ToggleButton>
+            </ToggleButtonGroup>
+          </Stack>
+        )}
       </Box>
 
       {hasActiveFilters && (
@@ -283,119 +452,49 @@ export const NotesTabs: React.FC<NotesTabsProps> = ({
         </Stack>
       )}
 
-      <Collapse in={activeFilter !== null} unmountOnExit>
-        <Box
-          sx={{
-            pt: M1,
-            display: "flex",
-            justifyContent: "center",
-          }}
-        >
-          {activeFilter === "directory" && (
-            <Stack spacing={1} sx={{ alignItems: "center" }}>
-              <Typography variant="caption" color="textSecondary">
-                Only notes in these directories and their subdirectories
-              </Typography>
-              <Autocomplete<DirectoryReply, true>
-                multiple
-                size="small"
-                options={directories ?? []}
-                getOptionLabel={(option) =>
-                  directoryLabel(option.id, directoriesById)
-                }
-                isOptionEqualToValue={(option, value) =>
-                  option.id === value.id
-                }
-                value={selectedDirectories}
-                onChange={(_event, value) =>
-                  setSelectedDirectoryIds(value.map((option) => option.id))
-                }
-                renderInput={(params) => (
-                  <TextField {...params} label="Directories" />
-                )}
-                sx={{ width: 360 }}
-              />
-            </Stack>
-          )}
+      {!isMobile && (
+        <Collapse in={activeFilter !== null} unmountOnExit>
+          {renderFilterOptions()}
+        </Collapse>
+      )}
 
-          {activeFilter === "window" && (
-            <Stack spacing={1} sx={{ alignItems: "center" }}>
-              <Typography variant="caption" color="textSecondary">
-                Only count activity within
-              </Typography>
-              <Stack
-                direction="row"
-                sx={{ flexWrap: "wrap", gap: 1, justifyContent: "center" }}
-              >
-                <Chip
-                  label="All time"
-                  clickable
-                  size="small"
-                  color={dayKey === ALL_TIME_KEY ? "primary" : "default"}
-                  variant={dayKey === ALL_TIME_KEY ? "filled" : "outlined"}
-                  onClick={() => setDayKey(ALL_TIME_KEY)}
-                />
-                {DAY_OPTIONS.map((option) => {
-                  const selected = dayKey === option.key;
-                  return (
-                    <Chip
-                      key={option.key}
-                      label={option.label}
-                      clickable
-                      size="small"
-                      color={selected ? "primary" : "default"}
-                      variant={selected ? "filled" : "outlined"}
-                      onClick={() => setDayKey(option.key)}
-                    />
-                  );
-                })}
-                <Chip
-                  label="Custom"
-                  clickable
-                  size="small"
-                  color={dayKey === CUSTOM_DAY_KEY ? "primary" : "default"}
-                  variant={dayKey === CUSTOM_DAY_KEY ? "filled" : "outlined"}
-                  onClick={() => setDayKey(CUSTOM_DAY_KEY)}
-                />
-              </Stack>
-              {dayKey === CUSTOM_DAY_KEY && (
-                <TextField
-                  type="number"
-                  size="small"
-                  label="Days"
-                  value={customDays}
-                  onChange={(event) => handleCustomDays(event.target.value)}
-                  slotProps={{ htmlInput: { min: 1 } }}
-                  sx={{ width: 120 }}
-                />
-              )}
-            </Stack>
-          )}
-
-          {activeFilter === "type" && (
-            <Stack spacing={1} sx={{ alignItems: "center" }}>
-              <Typography variant="caption" color="textSecondary">
-                How repeated views are scored
-              </Typography>
-              <ToggleButtonGroup
-                size="small"
-                exclusive
-                value={algorithm}
-                onChange={(_event, value: MostUsedAlgorithm | null) => {
-                  if (value) setAlgorithm(value);
-                }}
-                sx={PILL_GROUP_SX}
-              >
-                {ALGORITHM_OPTIONS.map((option) => (
-                  <ToggleButton key={option.value} value={option.value}>
-                    {option.label}
-                  </ToggleButton>
-                ))}
-              </ToggleButtonGroup>
-            </Stack>
-          )}
-        </Box>
-      </Collapse>
+      <Dialog
+        open={filterModalOpen}
+        onClose={() => setFilterModalOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Filter notes</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            <ToggleButtonGroup
+              size="small"
+              exclusive
+              value={activeFilter}
+              onChange={(_event, value: FilterCategory | null) => {
+                if (value) setActiveFilter(value);
+              }}
+              sx={{ ...PILL_GROUP_SX, flexWrap: "wrap" }}
+            >
+              <ToggleButton value="directory">Directory</ToggleButton>
+              <ToggleButton value="window">Time window</ToggleButton>
+              <ToggleButton value="type">Type</ToggleButton>
+            </ToggleButtonGroup>
+            {renderFilterOptions()}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={clearFilters} disabled={!hasActiveFilters}>
+            Clear all
+          </Button>
+          <Button
+            onClick={() => setFilterModalOpen(false)}
+            variant="contained"
+          >
+            Done
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Box sx={{ mt: 2 }}>
         {tab === RECENT_TAB && (
