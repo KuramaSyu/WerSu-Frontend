@@ -20,12 +20,14 @@ import {
   ToggleButtonGroup,
   Tooltip,
   Typography,
+  useTheme,
 } from "@mui/material";
 import NotesIcon from "@mui/icons-material/Notes";
 import DraftsIcon from "@mui/icons-material/Drafts";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import { M1 } from "../../statics";
+import { ColoredToggleButton } from "../../components/ColoredToggleButton";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { DraftNotes } from "./DraftNotes";
 import { RecentNotes } from "./RecentNotes";
@@ -60,8 +62,7 @@ const TAB_OPTIONS: { value: number; label: string; icon: ReactElement }[] = [
 type FilterCategory = "directory" | "window" | "type";
 
 /** Default scoring algorithm. */
-const DEFAULT_ALGORITHM: MostUsedAlgorithm =
-  "MOST_USED_ALGORITHM_LOG_COUNT";
+const DEFAULT_ALGORITHM: MostUsedAlgorithm = "MOST_USED_ALGORITHM_LOG_COUNT";
 
 /** Scoring options for the "Frequently used" tab. */
 const ALGORITHM_OPTIONS: { value: MostUsedAlgorithm; label: string }[] = [
@@ -110,6 +111,9 @@ const PILL_GROUP_SX = {
   },
 } as const;
 
+/** Compact sizing for the filter pills. */
+const FILTER_BUTTON_SX = { py: 0.25, px: 1.25, minHeight: 0 } as const;
+
 export interface NotesTabsProps {
   /** Notes for the "Recent notes" tab, newest first. */
   notes?: MinimalNote[];
@@ -130,20 +134,20 @@ export const NotesTabs: React.FC<NotesTabsProps> = ({
   initialTab = RECENT_TAB,
 }) => {
   const { isMobile } = useBreakpoint();
+  const theme = useTheme();
+  const primaryAccent = theme.palette.primary.main;
   const [tab, setTab] = useState(initialTab);
   const [activeFilter, setActiveFilter] = useState<FilterCategory | null>(null);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
-  const [algorithm, setAlgorithm] = useState<MostUsedAlgorithm>(
-    DEFAULT_ALGORITHM,
-  );
+  const [algorithm, setAlgorithm] =
+    useState<MostUsedAlgorithm>(DEFAULT_ALGORITHM);
   const [dayKey, setDayKey] = useState<string>(DEFAULT_DAY_KEY);
   const [customDays, setCustomDays] = useState<number>(30);
   const [selectedDirectoryIds, setSelectedDirectoryIds] = useState<string[]>(
     [],
   );
 
-  const { list: directories, byId: directoriesById } =
-    useAllDirectoriesQuery();
+  const { list: directories, byId: directoriesById } = useAllDirectoriesQuery();
 
   // Directory filter expands to the subtree for the note-list tabs; the
   // frequently-used backend expands each directory_id itself.
@@ -164,9 +168,7 @@ export const NotesTabs: React.FC<NotesTabsProps> = ({
     () =>
       selectedDirectoryIds
         .map((id) => directoriesById[id])
-        .filter((directory): directory is DirectoryReply =>
-          Boolean(directory),
-        ),
+        .filter((directory): directory is DirectoryReply => Boolean(directory)),
     [selectedDirectoryIds, directoriesById],
   );
 
@@ -187,8 +189,7 @@ export const NotesTabs: React.FC<NotesTabsProps> = ({
         : (DAY_OPTIONS.find((option) => option.key === dayKey)?.label ??
           `${days} days`);
   const algorithmLabel =
-    ALGORITHM_OPTIONS.find((option) => option.value === algorithm)?.label ??
-    "";
+    ALGORITHM_OPTIONS.find((option) => option.value === algorithm)?.label ?? "";
 
   const hasActiveFilters =
     selectedDirectoryIds.length > 0 ||
@@ -245,7 +246,9 @@ export const NotesTabs: React.FC<NotesTabsProps> = ({
             multiple
             size="small"
             options={directories ?? []}
-            getOptionLabel={(option) => directoryLabel(option.id, directoriesById)}
+            getOptionLabel={(option) =>
+              directoryLabel(option.id, directoriesById)
+            }
             isOptionEqualToValue={(option, value) => option.id === value.id}
             value={selectedDirectories}
             onChange={(_event, value) =>
@@ -401,7 +404,12 @@ export const NotesTabs: React.FC<NotesTabsProps> = ({
         {isMobile ? (
           <Stack
             direction="row"
-            sx={{ pr: 1, ml: "auto", justifyContent: "flex-end", flexShrink: 0 }}
+            sx={{
+              pr: 1,
+              ml: "auto",
+              justifyContent: "flex-end",
+              flexShrink: 0,
+            }}
           >
             <Tooltip title="Filter">
               <IconButton aria-label="Filter notes" onClick={openFilterModal}>
@@ -432,19 +440,50 @@ export const NotesTabs: React.FC<NotesTabsProps> = ({
             >
               Filter by:
             </Typography>
-            <ToggleButtonGroup
-              size="small"
-              exclusive
-              value={activeFilter}
-              onChange={(_event, value: FilterCategory | null) =>
-                setActiveFilter(value)
-              }
-              sx={PILL_GROUP_SX}
-            >
-              <ToggleButton value="directory">Book/Chapter</ToggleButton>
-              <ToggleButton value="window">Time window</ToggleButton>
-              <ToggleButton value="type">Type</ToggleButton>
-            </ToggleButtonGroup>
+            <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
+              <ColoredToggleButton
+                size="small"
+                accentColor={primaryAccent}
+                value="directory"
+                selected={activeFilter === "directory"}
+                sx={FILTER_BUTTON_SX}
+                onChange={() =>
+                  setActiveFilter((current) =>
+                    current === "directory" ? null : "directory",
+                  )
+                }
+              >
+                Book/Chapter
+              </ColoredToggleButton>
+              <ColoredToggleButton
+                size="small"
+                accentColor={primaryAccent}
+                value="window"
+                selected={activeFilter === "window"}
+                sx={FILTER_BUTTON_SX}
+                onChange={() =>
+                  setActiveFilter((current) =>
+                    current === "window" ? null : "window",
+                  )
+                }
+              >
+                Time window
+              </ColoredToggleButton>
+              <ColoredToggleButton
+                size="small"
+                accentColor={primaryAccent}
+                value="type"
+                selected={activeFilter === "type"}
+                sx={FILTER_BUTTON_SX}
+                onChange={() =>
+                  setActiveFilter((current) =>
+                    current === "type" ? null : "type",
+                  )
+                }
+              >
+                Type
+              </ColoredToggleButton>
+            </Stack>
           </Stack>
         )}
       </Box>
@@ -505,19 +544,38 @@ export const NotesTabs: React.FC<NotesTabsProps> = ({
         <DialogTitle>Filter notes</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
-            <ToggleButtonGroup
-              size="small"
-              exclusive
-              value={activeFilter}
-              onChange={(_event, value: FilterCategory | null) => {
-                if (value) setActiveFilter(value);
-              }}
-              sx={{ ...PILL_GROUP_SX, flexWrap: "wrap" }}
-            >
-              <ToggleButton value="directory">Book/Chapter</ToggleButton>
-              <ToggleButton value="window">Time window</ToggleButton>
-              <ToggleButton value="type">Type</ToggleButton>
-            </ToggleButtonGroup>
+            <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
+              <ColoredToggleButton
+                size="small"
+                accentColor={primaryAccent}
+                value="directory"
+                selected={activeFilter === "directory"}
+                sx={FILTER_BUTTON_SX}
+                onChange={() => setActiveFilter("directory")}
+              >
+                Book/Chapter
+              </ColoredToggleButton>
+              <ColoredToggleButton
+                size="small"
+                accentColor={primaryAccent}
+                value="window"
+                selected={activeFilter === "window"}
+                sx={FILTER_BUTTON_SX}
+                onChange={() => setActiveFilter("window")}
+              >
+                Time window
+              </ColoredToggleButton>
+              <ColoredToggleButton
+                size="small"
+                accentColor={primaryAccent}
+                value="type"
+                selected={activeFilter === "type"}
+                sx={FILTER_BUTTON_SX}
+                onChange={() => setActiveFilter("type")}
+              >
+                Type
+              </ColoredToggleButton>
+            </Stack>
             {renderFilterOptions()}
           </Stack>
         </DialogContent>
@@ -525,10 +583,7 @@ export const NotesTabs: React.FC<NotesTabsProps> = ({
           <Button onClick={clearFilters} disabled={!hasActiveFilters}>
             Clear all
           </Button>
-          <Button
-            onClick={() => setFilterModalOpen(false)}
-            variant="contained"
-          >
+          <Button onClick={() => setFilterModalOpen(false)} variant="contained">
             Done
           </Button>
         </DialogActions>
