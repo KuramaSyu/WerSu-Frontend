@@ -1,25 +1,18 @@
 import {
   Avatar,
-  Badge,
   Box,
   Divider,
   IconButton,
   Menu,
-  Popover,
   Stack,
-  Tooltip,
 } from "@mui/material";
-import InboxIcon from "@mui/icons-material/Inbox";
 import React, { useState } from "react";
 import { M1 } from "../../statics";
 import { useLayout } from "../../LayoutProvider";
 import { useUser } from "../../api/queries/useUser";
 import { usePublicRouteReady } from "../../hooks/usePublicRouteReady";
-import { useServiceReachability } from "./useServiceReachability";
 import { UserMenu } from "./UserMenu";
 import { PublicUserAvatar } from "./PublicUserAvatar";
-import { NotificationsPanel } from "./NotificationsPanel";
-import { ServiceFailureDialog } from "./ServiceFailureDialog";
 import {
   selectSortedTopBarSlots,
   useTopBarStore,
@@ -27,43 +20,34 @@ import {
 
 /**
  * Right cluster of the desktop top bar: plug-in slots, the vertical
- * divider, the notifications bell, the user avatar, and the popovers
- * / menu / service-failure dialog anchored to those buttons.
+ * divider, the user avatar, and the user menu.
  *
  * Extracted from :class:`DesktopTopBar` so that:
  *
  *   - changes to `useTopBarStore.slots` (contributor mounts, the
  *     right rail opening / closing) re-render only this subtree
  *     and never touch the wordmark, search bar or panel toggles;
- *   - changes to the bell red dot (`useServiceReachability`) and
- *     popover open / close only re-render the buttons and anchors
- *     they own;
  *   - the top bar's scroll-driven `showTopPanel` flips cascade
  *     through `<Slide>`'s box wrapper but stop here thanks to the
  *     `React.memo` wrap on the export.
  *
- * Holds its own anchors (`userMenuAnchor`, `notificationsAnchor`)
- * so popping a menu or notification never reaches the surrounding
- * chrome.
+ * Notifications used to live on a dedicated bell here; they are now
+ * reached from the user menu (`UserMenu` -> Notifications), so this
+ * cluster only owns the avatar menu anchor.
  */
 const TopBarRightClusterImpl: React.FC = () => {
   const { rightPanel } = useLayout();
-  const reachability = useServiceReachability();
   const { data: user } = useUser();
   const { isPublic } = usePublicRouteReady({ timeoutMs: 0 });
   // Anonymous viewers on a public share: no Discord profile, so the
   // avatar falls back to the generated public handle's initials.
   const isAnonymousPublic = isPublic && !user;
 
-  // Local anchors: opening / closing the user menu or notifications
-  // popover only re-renders this subtree. Kept here (rather than
-  // lifted into the parent) so the popovers travel with the
-  // buttons they anchor to.
+  // Local anchor: opening / closing the user menu only re-renders
+  // this subtree.
   const [userMenuAnchor, setUserMenuAnchor] = useState<HTMLElement | null>(
     null,
   );
-  const [notificationsAnchor, setNotificationsAnchor] =
-    useState<HTMLElement | null>(null);
 
   // Slots render whenever a right rail is mounted -- the toolbar
   // is wired into the top bar at all times, independent of whether
@@ -91,27 +75,6 @@ const TopBarRightClusterImpl: React.FC = () => {
             sx={{ my: 1, opacity: 0.5 }}
           />
         )}
-        <Tooltip
-          title={
-            reachability.servicesReachable
-              ? "Open notifications"
-              : "Backend services unreachable"
-          }
-        >
-          <IconButton
-            onClick={(e) => setNotificationsAnchor(e.currentTarget)}
-            size="small"
-          >
-            <Badge
-              color="error"
-              variant="dot"
-              invisible={reachability.servicesReachable}
-              overlap="circular"
-            >
-              <InboxIcon />
-            </Badge>
-          </IconButton>
-        </Tooltip>
         <IconButton
           onClick={(e) => setUserMenuAnchor(e.currentTarget)}
           size="small"
@@ -137,27 +100,6 @@ const TopBarRightClusterImpl: React.FC = () => {
       >
         <UserMenu onRequestClose={() => setUserMenuAnchor(null)} />
       </Menu>
-      <Popover
-        anchorEl={notificationsAnchor}
-        open={Boolean(notificationsAnchor)}
-        onClose={() => setNotificationsAnchor(null)}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-        transformOrigin={{ vertical: "top", horizontal: "right" }}
-        slotProps={{
-          paper: {
-            sx: { width: 420, maxWidth: "calc(100vw - 2rem)" },
-          },
-        }}
-      >
-        <NotificationsPanel />
-      </Popover>
-      <ServiceFailureDialog
-        open={reachability.dialogOpen}
-        unreachableServices={reachability.unreachableServices}
-        onClose={reachability.dismissDialog}
-        onIgnore={reachability.dismissDialog}
-        onGoToSettings={reachability.goToSettings}
-      />
     </>
   );
 };
@@ -165,8 +107,7 @@ const TopBarRightClusterImpl: React.FC = () => {
 /**
  * Memoised so a re-render of `:class:`DesktopTopBar` for an unrelated
  * reason (e.g. `showTopPanel` flipping on scroll) doesn't push a
- * re-render through the cluster's `useServiceReachability` poll, its
- * user-avatar re-read, or its anchor state. The cluster has no props,
- * so the shallow comparison is exact.
+ * re-render through the cluster's user-avatar re-read or its anchor
+ * state. The cluster has no props, so the shallow comparison is exact.
  */
 export const TopBarRightCluster = React.memo(TopBarRightClusterImpl);

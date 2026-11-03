@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import {
   Avatar,
+  Badge,
   Box,
   CircularProgress,
   Divider,
@@ -27,6 +28,7 @@ import LightModeIcon from "@mui/icons-material/LightMode";
 import LockIcon from "@mui/icons-material/Lock";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
 import Logout from "@mui/icons-material/Logout";
+import NotificationsIcon from "@mui/icons-material/Notifications";
 import RuleFolderIcon from "@mui/icons-material/RuleFolder";
 import SettingsIcon from "@mui/icons-material/Settings";
 import ShareIcon from "@mui/icons-material/Share";
@@ -48,6 +50,9 @@ import { Pages } from "./Pages";
 import { useSelectedShelfStore } from "../../zustand/useSelectedShelfStore";
 import { useCloudPreferences } from "../../hooks/useCloudPreferences";
 import { handleLogout as performLogout } from "../../utils/logout";
+import useInfoStore from "../../zustand/InfoStore";
+import { useNotificationsStore } from "../../zustand/useNotificationsStore";
+import { useServiceReachability } from "./useServiceReachability";
 
 export interface UserMenuProps {
   /** Fired after the user picks a row; parent closes the surrounding Menu. */
@@ -85,6 +90,23 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
   } = useCloudPreferences();
   const navigate = useNavigate();
   const selectedShelfId = useSelectedShelfStore((s) => s.selectedShelfId);
+  const notifications = useInfoStore((s) => s.logs);
+  const setIsNotificationsOpen = useNotificationsStore((s) => s.setIsDialogOpen);
+  const reachability = useServiceReachability();
+
+  // Unread count drives the menu row badge; "mark all as read" in the
+  // panel flips every `readAt`, so this recomputes automatically.
+  const unreadCount = notifications.reduce(
+    (n, e) => n + (e.readAt === undefined ? 1 : 0),
+    0,
+  );
+  const notificationsBadgeInvisible =
+    unreadCount === 0 && reachability.servicesReachable;
+
+  const handleOpenNotifications = () => {
+    onRequestClose();
+    setIsNotificationsOpen(true);
+  };
 
   // Anonymous viewers on a public share can rename their generated
   // handle inline. Logged-in users keep the read-only Discord name.
@@ -408,6 +430,36 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
           </>
         )}
       </Stack>
+
+      <Divider />
+
+      <MenuItem
+        onClick={handleOpenNotifications}
+        sx={{
+          "&:hover": { backgroundColor: theme.palette.action.hover },
+          minHeight: 52,
+        }}
+      >
+        <ListItemIcon>
+          <Badge
+            color={
+              !reachability.servicesReachable && unreadCount === 0
+                ? "error"
+                : "primary"
+            }
+            variant={unreadCount > 0 ? "standard" : "dot"}
+            badgeContent={unreadCount > 0 ? unreadCount : undefined}
+            invisible={notificationsBadgeInvisible}
+            overlap="circular"
+          >
+            <NotificationsIcon fontSize="small" />
+          </Badge>
+        </ListItemIcon>
+        <ListItemText
+          primary="Notifications"
+          secondary={unreadCount > 0 ? `${unreadCount} unread` : undefined}
+        />
+      </MenuItem>
 
       <Divider />
 

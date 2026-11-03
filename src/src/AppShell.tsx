@@ -25,6 +25,8 @@ import { FeatureFlagName, useFeatureStore } from "./zustand/FeatureStore";
 import AppBackground from "./components/AppBackground";
 import { GlobalShortcuts } from "./components/GlobalShortcuts";
 import { TranslucentPaper } from "./components/TranslucentPaper";
+import { NotificationsDialog } from "./components/TopBar/NotificationsDialog";
+import { ServiceFailureDialogHost } from "./components/TopBar/ServiceFailureDialogHost";
 
 // Path patterns that gate the auto-hide topbar behaviour. The topbar
 // only collapses on scroll, and only re-reveals via cursor, while
@@ -241,10 +243,12 @@ export const AppShell: React.FC = () => {
               overflow: "hidden",
               minWidth: 0,
               minHeight: 0,
-              // On mobile the right rail renders as a fixed drawer; a
-              // z-index here would create a stacking context that
-              // traps it below the root-level bottom bar.
-              zIndex: isMobile ? undefined : 0,
+              // Must stay a z-index:0 stacking context so the main
+              // surface paints above `AppBackground` (which is also
+              // z-index:0 but earlier in tree order). The mobile right
+              // drawer portals out to the body precisely so this
+              // context can stay intact.
+              zIndex: 0,
             }}
           >
             <Box
@@ -256,7 +260,10 @@ export const AppShell: React.FC = () => {
                 display: "flex",
                 flexDirection: "column",
                 scrollbarWidth: "none",
-                p: isLoginPage ? 0 : M2,
+                // Horizontal padding is dropped on mobile note pages so
+                // the editor card can span the full viewport width.
+                pt: isLoginPage ? 0 : M2,
+                px: isLoginPage || (isMobile && isNotesPage) ? 0 : M2,
                 // pt: isMobile ? M2 : showTopPanel ? M2 : 0,
                 paddingBottom: isLoginPage
                   ? 0
@@ -285,6 +292,14 @@ export const AppShell: React.FC = () => {
           </TranslucentPaper>
         </Box>
       </Box>
+
+      {/* Notifications moved off the top bar / mobile bottom bar and
+          into the user menu; this always-mounted dialog owns the
+          panel so it survives the menu closing. Likewise the
+          backend-reachability modal is now a single shell-level
+          mount rather than per-bar. */}
+      <NotificationsDialog />
+      <ServiceFailureDialogHost />
       <GlobalShortcuts />
     </>
   );

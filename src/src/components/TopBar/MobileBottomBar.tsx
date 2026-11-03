@@ -1,16 +1,15 @@
 import {
   Avatar,
-  Badge,
   Box,
   IconButton,
   Menu,
   Paper,
-  Popover,
   Stack,
   Tooltip,
   Typography,
 } from "@mui/material";
-import NotificationsIcon from "@mui/icons-material/Notifications";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import SearchIcon from "@mui/icons-material/Search";
 import {
   useMemo,
@@ -28,11 +27,9 @@ import { usePublicUserStore } from "../../zustand/usePublicUserStore";
 import { useSearchNotesStore } from "../../zustand/useSearchNotesStore";
 import { PublicUserAvatar } from "./PublicUserAvatar";
 import { SearchResultsOverlay } from "../search/Main";
-import { useServiceReachability } from "./useServiceReachability";
 import { useMobileActionsStore } from "../../zustand/useMobileActionsStore";
+import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
 import { UserMenu } from "./UserMenu";
-import { NotificationsPanel } from "./NotificationsPanel";
-import { ServiceFailureDialog } from "./ServiceFailureDialog";
 
 /**
  * Minimum horizontal travel (px) before a swipe is recognised as
@@ -62,14 +59,19 @@ const SWIPE_UP_MAX_DRIFT_PX = 24;
  *   - Avatar sits inside the bar (no upward overflow); tapping it
  *     opens the user menu.
  *   - Username with chevron in the middle.
- *   - Search shortcut and notifications bell on the right;
- *     service reachability drives the bell's red dot.
+ *   - Search shortcut and a hide-bar chevron on the right.
  *   - iOS-style home indicator strip below the bar.
  *
  * Like the desktop top panel, it hides while scrolling down and
  * returns while scrolling up. The AppShell drives this through the
  * shared `showTopPanel` scroll watchdog on every mobile route, so the
  * behaviour is identical on Home, directory and note pages.
+ *
+ * The right-hand chevron hides the bar on demand (it sets
+ * `showTopPanel` to false); while hidden, a floating chevron at the
+ * bottom edge brings it back. Notifications no longer live here --
+ * they are reached from the user menu (`UserMenu` ->
+ * Notifications).
  *
  * Horizontal swipes are the only way to open / close the side
  * rails on mobile (there are no collapse buttons): swipe right
@@ -85,7 +87,12 @@ const SWIPE_UP_MAX_DRIFT_PX = 24;
  */
 export const MobileBottomBar: React.FC = () => {
   const { theme } = useThemeStore();
-  const reachability = useServiceReachability();
+  // Match the main shell surface: with FlatLayout the canvas is
+  // `background.default`, so the bar should use the same tone instead
+  // of a contrasting paper block floating above the page.
+  const flatLayout = useFeatureStore(
+    (s) => s.flags[FeatureFlagName.FlatLayout],
+  );
   const { data: user } = useUser();
   const { isPublic } = usePublicRouteReady({ timeoutMs: 0 });
   // Anonymous viewers on a public share: no Discord profile, so the
@@ -107,6 +114,7 @@ export const MobileBottomBar: React.FC = () => {
     setRightPanelOpen,
     setRightPanelUserOverride,
     showTopPanel: showBottomBar,
+    setShowTopPanel,
   } = useLayout();
   const actionsByOwner = useMobileActionsStore((s) => s.actionsByOwner);
   const mobileActions = useMemo(
@@ -114,12 +122,11 @@ export const MobileBottomBar: React.FC = () => {
     [actionsByOwner],
   );
 
-  // Anchors for the user menu and notifications popover
+  // Anchor for the user menu. Notifications no longer live on the
+  // bar; they are reached from `UserMenu`.
   const [userMenuAnchor, setUserMenuAnchor] = useState<HTMLElement | null>(
     null,
   );
-  const [notificationsAnchor, setNotificationsAnchor] =
-    useState<HTMLElement | null>(null);
 
   // Swipe state. Lives in a ref so it never re-renders the bar
   // mid-swipe; the up-handler is the only consumer.
@@ -217,6 +224,9 @@ export const MobileBottomBar: React.FC = () => {
           bottom: "calc(env(safe-area-inset-bottom, 0px) + 1.25rem)",
           zIndex: (t) => t.zIndex.appBar,
           color: theme.palette.text.primary,
+          backgroundColor: flatLayout
+            ? theme.palette.background.default
+            : undefined,
           borderRadius: 9999,
           boxShadow: theme.shadows[6],
           paddingInline: M3,
@@ -326,8 +336,9 @@ export const MobileBottomBar: React.FC = () => {
         </Stack>
 
         {/* Right cluster: page / editor actions + search shortcut +
-            notifications bell. The search shortcut mirrors the desktop
-            top bar's SearchBar: Ctrl+K / tap opens the search dialog. */}
+            the hide-bar control. The search shortcut mirrors the
+            desktop top bar's SearchBar: Ctrl+K / tap opens the
+            search dialog. Notifications moved into the user menu. */}
         <Stack direction="row" spacing={M1} sx={{ alignItems: "center" }}>
           {/* Page-provided actions (e.g. the create FABs) render here
               on mobile instead of floating over the canvas. */}
@@ -353,30 +364,53 @@ export const MobileBottomBar: React.FC = () => {
               <SearchIcon />
             </IconButton>
           </Tooltip>
-          <Tooltip
-            title={
-              reachability.servicesReachable
-                ? "Open notifications"
-                : "Backend services unreachable"
-            }
-          >
+          <Tooltip title="Hide bar">
             <IconButton
-              onClick={(e) => setNotificationsAnchor(e.currentTarget)}
+              onClick={() => setShowTopPanel(false)}
               size="medium"
+              aria-label="Hide bottom bar"
               sx={{ p: 1 }}
             >
-              <Badge
-                color="error"
-                variant="dot"
-                invisible={reachability.servicesReachable}
-                overlap="circular"
-              >
-                <NotificationsIcon />
-              </Badge>
+              <KeyboardArrowDownIcon />
             </IconButton>
           </Tooltip>
         </Stack>
       </Paper>
+
+      {/* Collapsed-state affordance: when the bar has slid away
+          (scroll down or manual hide), a small floating chevron at
+          the bottom edge brings it back. */}
+      <Tooltip title="Show bar">
+        <IconButton
+          onClick={() => setShowTopPanel(true)}
+          aria-label="Show bottom bar"
+          sx={{
+            position: "fixed",
+            left: "50%",
+            bottom: "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)",
+            transform: `translateX(-50%) translateY(${
+              showBottomBar ? "200%" : "0"
+            })`,
+            opacity: showBottomBar ? 0 : 1,
+            pointerEvents: showBottomBar ? "none" : "auto",
+            zIndex: (t) => t.zIndex.appBar,
+            color: theme.palette.text.primary,
+            backgroundColor: flatLayout
+              ? theme.palette.background.default
+              : theme.palette.background.paper,
+            boxShadow: theme.shadows[6],
+            transition: theme.transitions.create(
+              ["transform", "opacity"],
+              {
+                duration: theme.transitions.duration.standard,
+                easing: theme.transitions.easing.easeInOut,
+              },
+            ),
+          }}
+        >
+          <KeyboardArrowUpIcon />
+        </IconButton>
+      </Tooltip>
 
       <Menu
         anchorEl={userMenuAnchor}
@@ -387,27 +421,6 @@ export const MobileBottomBar: React.FC = () => {
       >
         <UserMenu onRequestClose={() => setUserMenuAnchor(null)} />
       </Menu>
-      <Popover
-        anchorEl={notificationsAnchor}
-        open={Boolean(notificationsAnchor)}
-        onClose={() => setNotificationsAnchor(null)}
-        anchorOrigin={{ vertical: "top", horizontal: "right" }}
-        transformOrigin={{ vertical: "bottom", horizontal: "right" }}
-        slotProps={{
-          paper: {
-            sx: { width: 320, maxWidth: "calc(100vw - 2rem)" },
-          },
-        }}
-      >
-        <NotificationsPanel />
-      </Popover>
-      <ServiceFailureDialog
-        open={reachability.dialogOpen}
-        unreachableServices={reachability.unreachableServices}
-        onClose={reachability.dismissDialog}
-        onIgnore={reachability.dismissDialog}
-        onGoToSettings={reachability.goToSettings}
-      />
       {/* Mobile search shortcut mirrors the desktop `SearchBar`:
           the overlay has to be mounted here too because the
           desktop `SearchBar` (which owns the overlay) only

@@ -53,6 +53,15 @@ const notificationBgForSeverity = (
   }
 };
 
+export interface NotificationsPanelProps {
+  /**
+   * When provided, renders a close button in the panel header.
+   * Omitted when the panel is hosted somewhere that owns its own
+   * dismissal (e.g. a popover closing on outside click).
+   */
+  onClose?: () => void;
+}
+
 /**
  * Notification log rendered inside the user drawer.
  *
@@ -62,7 +71,9 @@ const notificationBgForSeverity = (
  * individually expandable so a long description doesn't dominate
  * the drawer height by default.
  */
-export const NotificationsPanel: React.FC = () => {
+export const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
+  onClose,
+}) => {
   const { theme } = useThemeStore();
   const logs = useInfoStore((s) => s.logs);
   const removeLog = useInfoStore((s) => s.removeLog);
@@ -160,6 +171,17 @@ export const NotificationsPanel: React.FC = () => {
               </IconButton>
             </span>
           </Tooltip>
+          {onClose && (
+            <Tooltip title="Close">
+              <IconButton
+                size="small"
+                aria-label="close notifications"
+                onClick={onClose}
+              >
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
         </Stack>
       </Stack>
       <Divider />
