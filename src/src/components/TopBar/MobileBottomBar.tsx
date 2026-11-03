@@ -66,9 +66,10 @@ const SWIPE_UP_MAX_DRIFT_PX = 24;
  *     service reachability drives the bell's red dot.
  *   - iOS-style home indicator strip below the bar.
  *
- * Unlike `DesktopTopBar`, this is always visible: mobile chrome
- * doesn't auto-hide on scroll because there's no chrome above the
- * canvas to reclaim.
+ * Like the desktop top panel, it hides while scrolling down and
+ * returns while scrolling up. The AppShell drives this through the
+ * shared `showTopPanel` scroll watchdog on every mobile route, so the
+ * behaviour is identical on Home, directory and note pages.
  *
  * Horizontal swipes are the only way to open / close the side
  * rails on mobile (there are no collapse buttons): swipe right

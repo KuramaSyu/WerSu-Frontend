@@ -263,6 +263,14 @@ export const AppShell: React.FC = () => {
                   : isMobile
                     ? `calc(env(safe-area-inset-bottom, 0px) + ${MOBILE_BOTTOM_BAR_CLEARANCE})`
                     : M2,
+                // While the mobile bottom bar overlays the viewport, keep
+                // scroll-into-view (caret reveal, focused inputs) above it.
+                // Without this the editor's caret lands behind the bar when
+                // typing near the bottom of a long note.
+                scrollPaddingBottom:
+                  isMobile && showTopPanel
+                    ? `calc(env(safe-area-inset-bottom, 0px) + ${MOBILE_BOTTOM_BAR_CLEARANCE})`
+                    : undefined,
                 transition: `padding-top ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
                 minWidth: 0,
                 minHeight: 0,
