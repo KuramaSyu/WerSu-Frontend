@@ -96,7 +96,7 @@ const PanelSectionTitle: React.FC<PanelSectionTitleProps> = ({
             width: 24,
             height: 24,
             px: M1,
-            color: theme.palette.text.secondary,
+            color: theme.palette.text.primary,
             ...iconTransition.root,
           }}
         >
@@ -107,6 +107,7 @@ const PanelSectionTitle: React.FC<PanelSectionTitleProps> = ({
         variant="body1"
         sx={{
           textTransform: "uppercase",
+          color: "text.primary",
           ...iconTransition.root,
           zindex: 10,
         }}

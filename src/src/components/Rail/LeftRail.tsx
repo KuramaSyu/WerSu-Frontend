@@ -171,7 +171,6 @@ export const LeftRail: React.FC<LeftRailProps> = ({ children }) => {
               flex: 1,
               overflowY: "auto",
               minHeight: 0,
-              px: M2,
               pb: M2,
               scrollbarWidth: "thin",
               scrollbarColor: `transparent transparent`,

@@ -50,7 +50,7 @@ export const UpperPanel: React.FC<UpperPanelProps> = ({
     >
       <Box sx={{ overflowY: "auto", flex: 1, minHeight: 0 }}>
         {header}
-        <Box sx={{ py: 2, pr: 2, pl: 1 }}>
+        <Box sx={{ py: 2 }}>
           <Stack spacing={spacing} direction="column">
             {children}
           </Stack>
