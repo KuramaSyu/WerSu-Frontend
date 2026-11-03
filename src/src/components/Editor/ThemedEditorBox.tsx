@@ -15,6 +15,7 @@ import type { Editor } from "@tiptap/core";
 import type { latex } from "codemirror-lang-latex";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useAppearanceSettings } from "../../zustand/useAppearanceSettings";
+import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { loadCodeBlockTheme } from "./lowlight";
 
 export const ThemedEditorBox = ({
@@ -25,6 +26,7 @@ export const ThemedEditorBox = ({
   editor: Editor | null;
 }) => {
   const { editMode } = useEditorSettings();
+  const { isMobile } = useBreakpoint();
   const { theme } = useThemeStore();
   const { codeBlockThemeLight, codeBlockThemeDark } = useAppearanceSettings();
   const codeBlockTheme =
@@ -43,7 +45,9 @@ export const ThemedEditorBox = ({
         borderRadius: theme.shape.borderRadius,
         // p: M2,
         my: theme.spacing(2), // spacing top and bottom
-        mr: theme.spacing(2), // spacing right
+        // On mobile the editor is full-bleed, so drop the right inset;
+        // the ProseMirror gutter provides symmetric inner padding instead.
+        mr: isMobile ? 0 : theme.spacing(2), // spacing right
 
         // Disable the border around the editor
         "& .ProseMirror": {

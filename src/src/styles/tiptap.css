@@ -20,6 +20,15 @@
   caret-color: transparent;
 }
 
+/* Mobile: the editor card is full-bleed, so use a smaller, symmetric
+   inner gutter. It still clears the drag handle's -10px offset. */
+@media (max-width: 899.95px) {
+  .tiptap .ProseMirror {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
 /* Block-level children must not exceed the editor box on narrow
    viewports. Without this, a single oversized image or YouTube
    embed inside a table cell still grows the entire document width. */
