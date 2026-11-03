@@ -11,7 +11,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import { alpha } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { M1, M2, M3 } from "../../statics";
@@ -27,6 +27,7 @@ import TranslucentPaper from "../../components/TranslucentPaper";
 import { useAllDirectoriesQuery } from "../../api/queries/directoryQueries";
 import type { DirectoryReply } from "../../api/models/directory";
 import type { MinimalNote, MinimalTag } from "../../api/models/search";
+import { themeAttachmentKey } from "../../utils/syncedThemeImages";
 
 /** Fixed card dimensions, matching the directory card grid. */
 const CARD_WIDTH = 220;
@@ -151,8 +152,7 @@ export const RecentNoteRow: React.FC<RecentNoteRowProps> = ({
 
   const stampValue = timestamp ?? note.updated_at;
   const updatedAt = stampValue ? new Date(stampValue) : null;
-  const hasUpdatedAt =
-    updatedAt !== null && !Number.isNaN(updatedAt.getTime());
+  const hasUpdatedAt = updatedAt !== null && !Number.isNaN(updatedAt.getTime());
 
   // Hover popover showing the stripped content. Opening is debounced so
   // skimming across rows does not flash a card for every one.
@@ -259,9 +259,7 @@ export const RecentNoteRow: React.FC<RecentNoteRowProps> = ({
                   label={label}
                   color={colorFromString(label, theme)}
                   onClick={
-                    onDirectoryClick
-                      ? () => onDirectoryClick(id)
-                      : undefined
+                    onDirectoryClick ? () => onDirectoryClick(id) : undefined
                   }
                 />
               );
@@ -538,6 +536,7 @@ export const NoteList: React.FC<NoteListProps> = ({
   // Resolve folder / tag ids from the app-wide data rather than the search
   // reply, which may omit entries for ids the notes reference.
   const { byId: directoriesById } = useAllDirectoriesQuery();
+  const { theme } = useThemeStore();
   const tagsById = useTagStore((state) => state.tagsById);
 
   if (notes.length === 0) {
@@ -573,7 +572,13 @@ export const NoteList: React.FC<NoteListProps> = ({
   return bare ? (
     list
   ) : (
-    <TranslucentPaper elevation={1} sx={{ overflow: "hidden" }}>
+    <TranslucentPaper
+      elevation={0}
+      sx={{
+        overflow: "hidden",
+        backgroundColor: theme.palette.background.default,
+      }}
+    >
       {list}
     </TranslucentPaper>
   );
@@ -614,7 +619,13 @@ export const RecentNotes: React.FC<RecentNotesProps> = ({
 
   if (!notes) {
     return (
-      <TranslucentPaper elevation={0} sx={{ overflow: "hidden" }}>
+      <TranslucentPaper
+        elevation={0}
+        sx={{
+          overflow: "hidden",
+          backgroundColor: theme.palette.background.default,
+        }}
+      >
         <Stack divider={<Divider flexItem />}>
           {Array.from({ length: 4 }).map((_, index) => (
             <NoteRowSkeleton key={`recent-note-skeleton-${index}`} />
