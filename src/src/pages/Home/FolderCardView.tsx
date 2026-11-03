@@ -19,10 +19,10 @@ export type CardSize = "small" | "medium" | "large";
 
 /**
  * Requested width for backend-hosted book covers. Cards render at most
- * 300px wide, so 480px still covers ~2x DPR without shipping the full
- * original (often multi-megabyte) attachment.
+ * 300px wide; 360px keeps the covers sharp enough while still avoiding
+ * the full original (often multi-megabyte) attachment.
  */
-const BOOK_COVER_IMAGE_WIDTH = 480;
+const BOOK_COVER_IMAGE_WIDTH = 360;
 
 interface CardDimensions {
   width: number;
@@ -142,7 +142,7 @@ export const FolderCardView: React.FC<FolderCardViewProps> = ({
   const transition = `${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`;
   // Normalise absolute / blob / backend-relative image URLs. Covers that
   // live on our backend are rebuilt through the link builder so the
-  // homescreen downloads a 480px variant instead of the original object;
+  // homescreen downloads a 360px variant instead of the original object;
   // external / data / blob URLs are left untouched.
   const resolvedImageUrl = imageUrl
     ? toAttachmentImageUrl(prepareBackendLink(imageUrl), BOOK_COVER_IMAGE_WIDTH)
