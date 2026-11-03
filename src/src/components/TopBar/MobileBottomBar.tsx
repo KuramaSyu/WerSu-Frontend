@@ -1,10 +1,12 @@
 import {
+  alpha,
   Avatar,
   Box,
   IconButton,
-  Menu,
+  MenuList,
   Paper,
   Stack,
+  SwipeableDrawer,
   Tooltip,
   Typography,
 } from "@mui/material";
@@ -51,6 +53,16 @@ const SWIPE_UP_MIN_PX = 64;
  * Maximum horizontal drift (px) allowed during a vertical swipe.
  */
 const SWIPE_UP_MAX_DRIFT_PX = 24;
+
+/**
+ * Shared styling for the bar's right-cluster icon buttons. Drops the
+ * chunky Material padding so the glyphs themselves can be larger
+ * (28px instead of 24px) without growing the bar.
+ */
+const iconButtonSx = {
+  p: 0.5,
+  "& .MuiSvgIcon-root": { fontSize: 28 },
+};
 
 /**
  * Mobile bottom bar (Discord-inspired):
@@ -122,11 +134,8 @@ export const MobileBottomBar: React.FC = () => {
     [actionsByOwner],
   );
 
-  // Anchor for the user menu. Notifications no longer live on the
-  // bar; they are reached from `UserMenu`.
-  const [userMenuAnchor, setUserMenuAnchor] = useState<HTMLElement | null>(
-    null,
-  );
+  // The user menu opens as a draggable bottom drawer on mobile.
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   // Swipe state. Lives in a ref so it never re-renders the bar
   // mid-swipe; the up-handler is the only consumer.
@@ -229,11 +238,11 @@ export const MobileBottomBar: React.FC = () => {
             : undefined,
           borderRadius: 9999,
           boxShadow: theme.shadows[6],
-          paddingInline: M3,
-          paddingBlock: "0.625rem",
+          paddingInline: M2,
+          paddingBlock: "0.25rem",
           display: "flex",
           alignItems: "center",
-          gap: M2,
+          gap: M1,
           // Hide with the topbar on scroll down; return on scroll up.
           transform: showBottomBar ? "translateY(0)" : "translateY(200%)",
           opacity: showBottomBar ? 1 : 0,
@@ -265,48 +274,48 @@ export const MobileBottomBar: React.FC = () => {
           }
         }}
       >
-        {/* Avatar: sits inside the bar (no upward overflow).
-            Tap to open the user menu. */}
-        <Box sx={{ flexShrink: 0 }}>
-          <Tooltip
-            title={
-              isAnonymousPublic
-                ? publicUserName
-                : user
-                  ? user.username
-                  : "Open user menu"
-            }
-          >
-            <IconButton
-              onClick={(e) => setUserMenuAnchor(e.currentTarget)}
-              size="medium"
-              sx={{ padding: 0 }}
-            >
-              {isAnonymousPublic ? (
-                <PublicUserAvatar size={44} fontSize={16} />
-              ) : (
-                <Avatar
-                  src={user ? user.getAvatarUrl() : undefined}
-                  alt={user ? user.username : ""}
-                  sx={{ width: 44, height: 44 }}
-                />
-              )}
-            </IconButton>
-          </Tooltip>
-        </Box>
-
         {/* Username + Online subtitle, stacked. Tap anywhere on
             the text block to also open the user menu. */}
         <Stack
-          spacing={0}
+          spacing={2}
           sx={{
             flex: 1,
             minWidth: 0,
             cursor: "pointer",
             userSelect: "none",
           }}
-          onClick={(e) => setUserMenuAnchor(e.currentTarget as HTMLElement)}
+          onClick={() => setUserMenuOpen(true)}
+          direction={"row"}
         >
+          {/* Avatar: sits inside the bar (no upward overflow).
+            Tap to open the user menu. */}
+          <Box sx={{ flexShrink: 0 }}>
+            <Tooltip
+              title={
+                isAnonymousPublic
+                  ? publicUserName
+                  : user
+                    ? user.username
+                    : "Open user menu"
+              }
+            >
+              <IconButton
+                onClick={() => setUserMenuOpen(true)}
+                size="medium"
+                sx={{ padding: 0 }}
+              >
+                {isAnonymousPublic ? (
+                  <PublicUserAvatar size={60} fontSize={20} />
+                ) : (
+                  <Avatar
+                    src={user ? user.getAvatarUrl() : undefined}
+                    alt={user ? user.username : ""}
+                    sx={{ width: 52, height: 52 }}
+                  />
+                )}
+              </IconButton>
+            </Tooltip>
+          </Box>
           <Typography
             variant="body1"
             noWrap
@@ -349,7 +358,7 @@ export const MobileBottomBar: React.FC = () => {
                 size="medium"
                 aria-label={action.label}
                 disabled={action.disabled}
-                sx={{ p: 1 }}
+                sx={iconButtonSx}
               >
                 {action.icon}
               </IconButton>
@@ -359,7 +368,7 @@ export const MobileBottomBar: React.FC = () => {
             <IconButton
               onClick={() => setIsDialogOpen(true)}
               size="medium"
-              sx={{ p: 1 }}
+              sx={iconButtonSx}
             >
               <SearchIcon />
             </IconButton>
@@ -369,7 +378,7 @@ export const MobileBottomBar: React.FC = () => {
               onClick={() => setShowTopPanel(false)}
               size="medium"
               aria-label="Hide bottom bar"
-              sx={{ p: 1 }}
+              sx={iconButtonSx}
             >
               <KeyboardArrowDownIcon />
             </IconButton>
@@ -399,28 +408,95 @@ export const MobileBottomBar: React.FC = () => {
               ? theme.palette.background.default
               : theme.palette.background.paper,
             boxShadow: theme.shadows[6],
-            transition: theme.transitions.create(
-              ["transform", "opacity"],
-              {
-                duration: theme.transitions.duration.standard,
-                easing: theme.transitions.easing.easeInOut,
-              },
-            ),
+            transition: theme.transitions.create(["transform", "opacity"], {
+              duration: theme.transitions.duration.standard,
+              easing: theme.transitions.easing.easeInOut,
+            }),
           }}
         >
           <KeyboardArrowUpIcon />
         </IconButton>
       </Tooltip>
 
-      <Menu
-        anchorEl={userMenuAnchor}
-        open={Boolean(userMenuAnchor)}
-        onClose={() => setUserMenuAnchor(null)}
-        anchorOrigin={{ vertical: "top", horizontal: "left" }}
-        transformOrigin={{ vertical: "bottom", horizontal: "left" }}
+      {/* User menu as a draggable bottom sheet: drag the handle (or
+          swipe) down, tap the scrim, or pick a row to dismiss. */}
+      <SwipeableDrawer
+        anchor="bottom"
+        open={userMenuOpen}
+        onOpen={() => setUserMenuOpen(true)}
+        onClose={() => setUserMenuOpen(false)}
+        disableSwipeToOpen
+        // Wide grab strip at the top edge so the pull-down-to-close
+        // gesture is easy to discover.
+        swipeAreaWidth={56}
+        slotProps={{
+          paper: {
+            sx: {
+              backgroundColor: flatLayout
+                ? theme.palette.background.default
+                : theme.palette.background.paper,
+              borderTopLeftRadius: M3,
+              borderTopRightRadius: M3,
+              border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+              maxHeight: "85%",
+              // Clear the iOS home indicator / safe area.
+              pb: "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)",
+            },
+          },
+          backdrop: {
+            sx: {
+              backgroundColor: alpha(
+                theme.blendAgainstContrast(
+                  theme.palette.background.default,
+                  0.5,
+                  undefined,
+                ),
+                0.8,
+              ),
+            },
+          },
+        }}
       >
-        <UserMenu onRequestClose={() => setUserMenuAnchor(null)} />
-      </Menu>
+        {/* `pan-y` lets the menu scroll while the drawer's own
+            swipe-down-to-close gesture still works. */}
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            touchAction: "pan-y",
+            pt: M1,
+          }}
+        >
+          {/* Drag handle: visible affordance for the swipe-down
+              gesture. The drawer's swipe area already captures the
+              top strip, this is just the cue. */}
+          <Box
+            aria-hidden
+            onClick={() => setUserMenuOpen(false)}
+            sx={{
+              alignSelf: "center",
+              width: 100,
+              height: 4,
+              borderRadius: 9999,
+              mb: M1,
+              backgroundColor: alpha(theme.palette.text.primary, 0.4),
+              "&:hover": {
+                backgroundColor: alpha(theme.palette.text.primary, 0.6),
+              },
+              transition: theme.transitions.create("background-color", {
+                duration: theme.transitions.duration.short,
+              }),
+            }}
+          />
+          {/* `MenuList` supplies the context `MenuItem`s require.
+              `component="div"` keeps the drawer's non-menu chrome
+              (profile header, theme picker) from being emitted as
+              invalid `<div>`s inside a `<ul>`. */}
+          <MenuList component="div" sx={{ py: 0 }}>
+            <UserMenu onRequestClose={() => setUserMenuOpen(false)} />
+          </MenuList>
+        </Box>
+      </SwipeableDrawer>
       {/* Mobile search shortcut mirrors the desktop `SearchBar`:
           the overlay has to be mounted here too because the
           desktop `SearchBar` (which owns the overlay) only
