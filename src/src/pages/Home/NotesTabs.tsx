@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactElement } from "react";
 import {
   Autocomplete,
   Badge,
@@ -11,6 +11,7 @@ import {
   DialogContent,
   DialogTitle,
   IconButton,
+  MenuItem,
   Stack,
   Tab,
   Tabs,
@@ -39,6 +40,21 @@ import type { MostUsedAlgorithm } from "../../api/models/history";
 const RECENT_TAB = 0;
 const DRAFTS_TAB = 1;
 const FREQUENT_TAB = 2;
+
+/** The three note lists, shared by the desktop tabs and the mobile dropdown. */
+const TAB_OPTIONS: { value: number; label: string; icon: ReactElement }[] = [
+  {
+    value: RECENT_TAB,
+    label: "Recent notes",
+    icon: <NotesIcon fontSize="small" />,
+  },
+  { value: DRAFTS_TAB, label: "Drafts", icon: <DraftsIcon fontSize="small" /> },
+  {
+    value: FREQUENT_TAB,
+    label: "Frequently used",
+    icon: <LocalFireDepartmentIcon fontSize="small" />,
+  },
+];
 
 /** Filter categories offered in the "Filter by:" row. */
 type FilterCategory = "directory" | "window" | "type";
@@ -335,35 +351,57 @@ export const NotesTabs: React.FC<NotesTabsProps> = ({
           borderColor: "divider",
         }}
       >
-        <Tabs
-          value={tab}
-          onChange={(_event, value: number) => setTab(value)}
-          variant="scrollable"
-          scrollButtons="auto"
-          allowScrollButtonsMobile
-          sx={{ flex: 1, minWidth: 0 }}
-        >
-          <Tab
-            icon={<NotesIcon fontSize="small" />}
-            iconPosition="start"
-            label="Recent notes"
-          />
-          <Tab
-            icon={<DraftsIcon fontSize="small" />}
-            iconPosition="start"
-            label="Drafts"
-          />
-          <Tab
-            icon={<LocalFireDepartmentIcon fontSize="small" />}
-            iconPosition="start"
-            label="Frequently used"
-          />
-        </Tabs>
+        {isMobile ? (
+          <TextField
+            select
+            size="small"
+            value={tab}
+            onChange={(event) => setTab(Number(event.target.value))}
+            aria-label="Note list"
+            sx={{
+              flex: "0 0 auto",
+              width: "fit-content",
+              my: 0.5,
+              "& .MuiOutlinedInput-notchedOutline": { border: "none" },
+            }}
+          >
+            {TAB_OPTIONS.map((option) => (
+              <MenuItem key={option.value} value={option.value}>
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{ alignItems: "center" }}
+                >
+                  {option.icon}
+                  <span>{option.label}</span>
+                </Stack>
+              </MenuItem>
+            ))}
+          </TextField>
+        ) : (
+          <Tabs
+            value={tab}
+            onChange={(_event, value: number) => setTab(value)}
+            variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
+            sx={{ flex: 1, minWidth: 0 }}
+          >
+            {TAB_OPTIONS.map((option) => (
+              <Tab
+                key={option.value}
+                icon={option.icon}
+                iconPosition="start"
+                label={option.label}
+              />
+            ))}
+          </Tabs>
+        )}
 
         {isMobile ? (
           <Stack
             direction="row"
-            sx={{ pr: 1, justifyContent: "flex-end", flexShrink: 0 }}
+            sx={{ pr: 1, ml: "auto", justifyContent: "flex-end", flexShrink: 0 }}
           >
             <Tooltip title="Filter">
               <IconButton aria-label="Filter notes" onClick={openFilterModal}>
