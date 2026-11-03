@@ -5,7 +5,7 @@ import { useAllDirectoriesQuery } from "../../api/queries/directoryQueries";
 import { useFavouritesStore } from "../../zustand/useFavouritesStore";
 import { useDirectoryTreeStore } from "../../zustand/useDirectoryTreeStore";
 import { useSelectedShelfStore } from "../../zustand/useSelectedShelfStore";
-import { M1, M3, M4, M5 } from "../../statics";
+import { M3, M4, M5 } from "../../statics";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { FolderCard } from "./FolderCard";
@@ -53,7 +53,7 @@ export const AllDirectories: React.FC<AllDirectoriesProps> = ({
     ? {
         display: "grid",
         gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-        gap: M1,
+        gap: M3,
         alignItems: "start",
       }
     : {
