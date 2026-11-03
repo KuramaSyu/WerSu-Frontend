@@ -88,9 +88,16 @@ export const HomePage: React.FC = () => {
     <Box
       sx={{
         width: "100%",
-        height: "100%",
+        // Grow with the content instead of clamping to the viewport. A
+        // fixed `height: 100%` lets the notes-tabs section overflow past
+        // the AppShell's bottom-bar clearance padding, so the last rows
+        // end up behind the mobile bottom bar and cannot be scrolled clear.
+        minHeight: "100%",
         p: 1,
-        overflow: "auto",
+        // No nested scroll container: let the AppShell's main content box
+        // own the scroll. That keeps the mobile bottom bar's scroll-hide
+        // watchdog working on this route (it observes that box), matching
+        // the directory and note pages.
         // The app has no global border-box reset, so under the default
         // `content-box` this `width: 100%` + padding would render 16px
         // wider than the scroll container and make the page scroll

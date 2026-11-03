@@ -17,6 +17,8 @@ export interface FolderCardProps {
   directoryId: string;
   // Visual size preset forwarded to FolderCardView.
   size?: CardSize;
+  // Stretch the card to fill its container width (mobile grid).
+  fluid?: boolean;
 }
 
 const activityApi = getActivityApi();
@@ -25,6 +27,7 @@ const activityApi = getActivityApi();
 export const FolderCard: React.FC<FolderCardProps> = ({
   directoryId,
   size = "medium",
+  fluid = false,
 }) => {
   const navigate = useNavigate();
   const { byId: directoriesById } = useAllDirectoriesQuery();
@@ -107,6 +110,7 @@ export const FolderCard: React.FC<FolderCardProps> = ({
         loading={isLoading}
         hidden={isRoot || isMissing}
         size={size}
+        fluid={fluid}
         isFavourite={isFavourite}
         // stopPropagation keeps the click from also firing the card's own onClick and navigating into the directory.
         onToggleFavourite={(event) => {

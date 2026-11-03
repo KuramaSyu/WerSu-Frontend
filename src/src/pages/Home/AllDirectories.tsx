@@ -1,12 +1,13 @@
 import { useMemo } from "react";
-import { Box, Stack, Typography } from "@mui/material";
+import { Box, Stack, Typography, type SxProps, type Theme } from "@mui/material";
 import FolderIcon from "@mui/icons-material/Folder";
 import { useAllDirectoriesQuery } from "../../api/queries/directoryQueries";
 import { useFavouritesStore } from "../../zustand/useFavouritesStore";
 import { useDirectoryTreeStore } from "../../zustand/useDirectoryTreeStore";
 import { useSelectedShelfStore } from "../../zustand/useSelectedShelfStore";
-import { M3, M4, M5 } from "../../statics";
+import { M1, M3, M4, M5 } from "../../statics";
 import { useThemeStore } from "../../zustand/useThemeStore";
+import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { FolderCard } from "./FolderCard";
 import { FolderCardView, type CardSize } from "./FolderCardView";
 
@@ -43,6 +44,23 @@ export const AllDirectories: React.FC<AllDirectoriesProps> = ({
   const tree = useDirectoryTreeStore((s) => s.tree);
   const isDirectoryOnShelf = useDirectoryTreeStore((s) => s.isDirectoryOnShelf);
   const { theme } = useThemeStore();
+  const { isMobile } = useBreakpoint();
+
+  // On mobile, force exactly three tiles per row and let each one fill
+  // its column (see `fluid` below) so the grid stays tidy at any width.
+  // Wider screens keep the wrapping flex layout with fixed-size cards.
+  const gridSx: SxProps<Theme> = isMobile
+    ? {
+        display: "grid",
+        gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+        gap: M1,
+        alignItems: "start",
+      }
+    : {
+        display: "flex",
+        flexWrap: "wrap",
+        gap: SIZE_TO_GAP[size],
+      };
 
   // Root-level directories that are not pinned as favourites and, when
   // a shelf is selected, sit on (or transitively descend from) it.
@@ -61,13 +79,14 @@ export const AllDirectories: React.FC<AllDirectoriesProps> = ({
 
   if (isLoading) {
     return (
-      <Box sx={{ display: "flex", flexWrap: "wrap", gap: SIZE_TO_GAP[size] }}>
-        {Array.from({ length: 4 }).map((_, index) => (
+      <Box sx={gridSx}>
+        {Array.from({ length: isMobile ? 6 : 4 }).map((_, index) => (
           <FolderCardView
             key={`skeleton-${index}`}
             displayName=""
             loading
             size={size}
+            fluid={isMobile}
           />
         ))}
       </Box>
@@ -91,15 +110,14 @@ export const AllDirectories: React.FC<AllDirectoriesProps> = ({
   }
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        flexWrap: "wrap",
-        gap: SIZE_TO_GAP[size],
-      }}
-    >
+    <Box sx={gridSx}>
       {visibleDirectories.map((d) => (
-        <FolderCard key={d.id} directoryId={d.id} size={size} />
+        <FolderCard
+          key={d.id}
+          directoryId={d.id}
+          size={size}
+          fluid={isMobile}
+        />
       ))}
     </Box>
   );

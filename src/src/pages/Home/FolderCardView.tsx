@@ -98,6 +98,12 @@ export interface FolderCardViewProps {
   hidden?: boolean;
   /** Visual size preset; defaults to `medium`. */
   size?: CardSize;
+  /**
+   * When true the card stretches to fill its container width instead of
+   * using the fixed width from `size`. Height follows the content so the
+   * cover keeps its aspect ratio at any width (used for the mobile grid).
+   */
+  fluid?: boolean;
   /** Whether the directory is in the user's favourites. Drives the star icon state. */
   isFavourite?: boolean;
   /**
@@ -119,6 +125,7 @@ export const FolderCardView: React.FC<FolderCardViewProps> = ({
   loading = false,
   hidden = false,
   size = "medium",
+  fluid = false,
   isFavourite = false,
   onToggleFavourite,
 }) => {
@@ -149,8 +156,9 @@ export const FolderCardView: React.FC<FolderCardViewProps> = ({
       <Card
         variant="outlined"
         sx={{
-          width: dims.width,
-          height: dims.height,
+          width: fluid ? "100%" : dims.width,
+          height: fluid ? "auto" : dims.height,
+          minWidth: 0,
           display: "flex",
           flexDirection: "column",
         }}
@@ -172,8 +180,9 @@ export const FolderCardView: React.FC<FolderCardViewProps> = ({
     <Card
       variant="outlined"
       sx={{
-        width: dims.width,
-        height: dims.height,
+        width: fluid ? "100%" : dims.width,
+        height: fluid ? "auto" : dims.height,
+        minWidth: 0,
         display: "flex",
         flexDirection: "column",
         cursor: onClick ? "pointer" : "default",
@@ -182,9 +191,11 @@ export const FolderCardView: React.FC<FolderCardViewProps> = ({
         overflow: "hidden",
         // Cover re-frames 16:9 -> 3:2 on hover via aspect-ratio.
         // All source aspects snap to the same uniform crop.
-        "&:hover .folder-card-image-cover": {
-          aspectRatio: "3 / 2",
-        },
+        // Skipped for fluid cards: the card height follows the cover, so
+        // re-framing would grow the tile and shift the surrounding grid.
+        ...(fluid
+          ? {}
+          : { "&:hover .folder-card-image-cover": { aspectRatio: "3 / 2" } }),
         "& .folder-card-subtitle": {
           opacity: 1,
           maxHeight: 40,
