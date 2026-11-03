@@ -1,5 +1,4 @@
 import {
-  Avatar,
   Box,
   Card,
   CardContent,
@@ -146,10 +145,7 @@ export const FolderCardView: React.FC<FolderCardViewProps> = ({
   // homescreen downloads a 480px variant instead of the original object;
   // external / data / blob URLs are left untouched.
   const resolvedImageUrl = imageUrl
-    ? toAttachmentImageUrl(
-        prepareBackendLink(imageUrl),
-        BOOK_COVER_IMAGE_WIDTH,
-      )
+    ? toAttachmentImageUrl(prepareBackendLink(imageUrl), BOOK_COVER_IMAGE_WIDTH)
     : undefined;
   // Avatar initials: first letter of each of the first two words,
   // else first two letters. Uppercased.
@@ -341,9 +337,7 @@ export const FolderCardView: React.FC<FolderCardViewProps> = ({
           <IconButton
             className="folder-card-fav"
             size={dims.starIconSize}
-            aria-label={
-              isFavourite ? "Unfavourite book" : "Favourite book"
-            }
+            aria-label={isFavourite ? "Unfavourite book" : "Favourite book"}
             aria-pressed={isFavourite}
             onClick={onToggleFavourite}
             sx={{
