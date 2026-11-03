@@ -66,7 +66,10 @@ export const LayoutProvider: React.FC<AppLayoutProps> = ({
   const theme = useTheme();
   // On mobile the left rail is an overlay drawer; start it closed so it
   // never flashes open on the first paint before `useLeftPanel` runs.
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  // `noSsr: true` gives the real value on the first client render.
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"), {
+    noSsr: true,
+  });
 
   const [leftPanel, setLeftPanel] = useState<ReactNode | null>(null);
   const [rightPanel, setRightPanel] = useState<ReactNode | null>(null);
@@ -144,27 +147,47 @@ export function useLeftPanel(
   panel: ReactNode | null,
   deps: DependencyList = [],
 ): void {
-  const { setLeftPanel, setLeftPanelOpen, setLeftPanelUserOverride } =
-    useLayout();
+  const {
+    setLeftPanel,
+    setLeftPanelOpen,
+    setLeftPanelUserOverride,
+    leftPanelOpen,
+    leftPanelUserOverride,
+  } = useLayout();
   const theme = useTheme();
-  // On mobile the left rail is an overlay drawer, so a newly mounted
-  // panel starts closed instead of covering the canvas. The user can
-  // still open it via the bottom-bar toggle / swipe gesture.
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  // `noSsr: true` so the value is already correct on the first client
+  // render; the default SSR-safe `false` would otherwise let the mount
+  // effect below open the panel on mobile before the query resolves.
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"), {
+    noSsr: true,
+  });
 
+  // Mount / content change: register the panel and open it by default.
   useEffect(() => {
     setLeftPanel(panel);
     setLeftPanelUserOverride(false);
-    if (panel !== null) {
-      setLeftPanelOpen(!isMobile);
-    } else {
-      setLeftPanelOpen(false);
-    }
+    setLeftPanelOpen(panel !== null);
     // return () => {
     //   setLeftPanel(null);
     // };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
+
+  // Mobile: the left rail is an overlay drawer, so close it whenever the
+  // viewport is mobile and the user has not explicitly opened it. This
+  // also re-runs after route changes reset the user override, which is
+  // what keeps the panel hidden when navigating back to a page like Home.
+  useEffect(() => {
+    if (!isMobile || leftPanelUserOverride || !leftPanelOpen) {
+      return;
+    }
+    setLeftPanelOpen(false);
+  }, [
+    isMobile,
+    leftPanelOpen,
+    leftPanelUserOverride,
+    setLeftPanelOpen,
+  ]);
 }
 
 // Mount `panel` into the right side-panel on mount; clear it on unmount.
@@ -181,26 +204,42 @@ export function useRightPanel(
   panel: ReactNode | null,
   deps: DependencyList = [],
 ): void {
-  const { setRightPanel, setRightPanelOpen, setRightPanelUserOverride } =
-    useLayout();
+  const {
+    setRightPanel,
+    setRightPanelOpen,
+    setRightPanelUserOverride,
+    rightPanelOpen,
+    rightPanelUserOverride,
+  } = useLayout();
   const theme = useTheme();
-  // Mirror `useLeftPanel`: a freshly mounted right panel starts closed
-  // on mobile so the drawer never covers the canvas uninvited.
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  // Mirror `useLeftPanel`; see the `noSsr` rationale there.
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"), {
+    noSsr: true,
+  });
 
+  // Mount / content change: register the panel and open it by default.
   useEffect(() => {
     setRightPanel(panel);
     setRightPanelUserOverride(false);
-    if (panel !== null) {
-      setRightPanelOpen(!isMobile);
-    } else {
-      setRightPanelOpen(false);
-    }
+    setRightPanelOpen(panel !== null);
     // return () => {
     //   setRightPanel(null);
     // };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
+
+  // Mobile: keep the right drawer closed unless the user opened it.
+  useEffect(() => {
+    if (!isMobile || rightPanelUserOverride || !rightPanelOpen) {
+      return;
+    }
+    setRightPanelOpen(false);
+  }, [
+    isMobile,
+    rightPanelOpen,
+    rightPanelUserOverride,
+    setRightPanelOpen,
+  ]);
 }
 
 // MUI-aligned breakpoint tokens that `usePanelSize` accepts for its

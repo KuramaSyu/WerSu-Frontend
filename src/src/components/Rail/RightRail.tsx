@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Box } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { M2, MOBILE_DRAWER_WIDTH } from "../../statics";
@@ -60,7 +61,7 @@ export const RightRail: React.FC<RightRailProps> = ({ children, width }) => {
     return null;
   }
 
-  return (
+  const content = (
     <>
       <MobileDrawerBackdrop
         open={isMobile && rightPanelOpen}
@@ -133,4 +134,14 @@ export const RightRail: React.FC<RightRailProps> = ({ children, width }) => {
     </Box>
     </>
   );
+
+  // Mobile: the rail is an overlay drawer. Portal it to the body so it
+  // is not trapped inside the main wrapper's `z-index: 0` stacking
+  // context (needed to paint above `AppBackground`); at the root its
+  // own z-index can sit above the bottom bar and the left drawer.
+  if (isMobile && typeof document !== "undefined") {
+    return createPortal(content, document.body);
+  }
+
+  return content;
 };
