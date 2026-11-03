@@ -72,8 +72,8 @@ export const FavouriteDirectories: React.FC<FavouriteDirectoriesProps> = ({
       >
         <StarIcon fontSize="small" />
         <Typography variant="body2">
-          No favourite directories yet. Star a directory from its right-panel
-          actions to add it here.
+          No favourite books yet. Star a book from its right-panel actions to
+          add it here.
         </Typography>
       </Stack>
     );

@@ -25,7 +25,7 @@ export const CONDITION_TYPE_LABEL: Record<RuleConditionType, string> = {
 
 // Human-readable label per action type.
 export const ACTION_TYPE_LABEL: Record<RuleActionType, string> = {
-  add_to_directory: "Add note to directory",
+  add_to_directory: "Add note to book or chapter",
   add_tag: "Add tag to note",
 };
 
@@ -36,8 +36,8 @@ export const ACTION_TYPE_LABEL: Record<RuleActionType, string> = {
 export const EVENT_TYPE_WHEN_LABEL: Record<string, string> = {
   NoteCreated: "a note was created",
   NoteUpdated: "a note was updated",
-  DirectoryCreated: "a directory was created",
-  DirectoryUpdated: "a directory was updated",
+  DirectoryCreated: "a book or chapter was created",
+  DirectoryUpdated: "a book or chapter was updated",
 };
 
 // Returns the canonical event_type for the dropdown default.

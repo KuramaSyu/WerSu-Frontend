@@ -8,6 +8,7 @@ import {
 } from "../zustand/useMobileActionsStore";
 import { FabSlot } from "./FabSlot";
 import CreateFab, { type CreateFabProps } from "./CreateFab";
+import { directoryTerms } from "../models/directoryTerminology";
 
 /**
  * Responsive wrapper around the two "create" actions.
@@ -20,6 +21,7 @@ import CreateFab, { type CreateFabProps } from "./CreateFab";
 export const CreateActions: React.FC<CreateFabProps> = ({
   onCreateNote,
   onCreateDirectory,
+  directoryKind = "chapter",
 }) => {
   const { isMobile } = useBreakpoint();
   const ownerId = useId();
@@ -51,14 +53,21 @@ export const CreateActions: React.FC<CreateFabProps> = ({
     if (hasDirectoryAction) {
       actions.push({
         id: `${ownerId}-directory`,
-        label: "New directory",
+        label: `New ${directoryTerms(directoryKind).singularLower}`,
         icon: <CreateNewFolderIcon />,
         onClick: () => handlersRef.current.onCreateDirectory?.(),
       });
     }
     setActions(ownerId, actions);
     return () => clearActions(ownerId);
-  }, [isMobile, ownerId, hasDirectoryAction, setActions, clearActions]);
+  }, [
+    isMobile,
+    ownerId,
+    hasDirectoryAction,
+    directoryKind,
+    setActions,
+    clearActions,
+  ]);
 
   if (isMobile) {
     return null;
@@ -69,6 +78,7 @@ export const CreateActions: React.FC<CreateFabProps> = ({
       <CreateFab
         onCreateNote={onCreateNote}
         onCreateDirectory={onCreateDirectory}
+        directoryKind={directoryKind}
       />
     </FabSlot>
   );

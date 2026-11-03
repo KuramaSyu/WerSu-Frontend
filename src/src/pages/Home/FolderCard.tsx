@@ -62,7 +62,7 @@ export const FolderCard: React.FC<FolderCardProps> = ({
       .getState()
       .setMessage(
         new SnackbarUpdateImpl(
-          "Favourite directory removed: access denied",
+          "Favourite book removed: access denied",
           "info",
         ),
       );

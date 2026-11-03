@@ -166,7 +166,7 @@ export const SharesPage: React.FC = () => {
       return (
         directoryQuery.data?.display_name ??
         directoryQuery.data?.name ??
-        "Directory"
+        "Book/Chapter"
       );
     }
     if (shelfId) {

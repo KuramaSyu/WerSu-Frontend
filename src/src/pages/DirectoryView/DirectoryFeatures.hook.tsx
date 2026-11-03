@@ -13,6 +13,10 @@ import { getNoteParentDirectoryIds } from "../../utils/fileGraphUtils";
 import { useLatestNotes } from "../../api/queries/useNoteQueries";
 import { useDirectoryDelete } from "../../api/queries/useDirectoryMutations";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
+import {
+  directoryKindOfNode,
+  directoryTerms,
+} from "../../models/directoryTerminology";
 
 export interface UseDirectoryFeaturesOptions {
   /**
@@ -187,6 +191,8 @@ export function useDirectoryFeatures(
     [directoryHierarchy, directoryId],
   );
 
+  const dirTerms = directoryTerms(directoryKindOfNode(currentNode));
+
   // Directory-scoped fetch: `GET /api/directories/:id/notes?limit=500&offset=0`. Disabled on the root.
   const directoryNotesQuery = useMemo<ListDirectoryNotesQuery>(
     () => ({ limit: 500, offset: 0 }),
@@ -261,7 +267,7 @@ export function useDirectoryFeatures(
   }, [currentNode, notesByDirectory, notesInDirectory]);
 
   const title =
-    currentNode.getId() === "root" ? "Directory View" : currentNode.getName();
+    currentNode.getId() === "root" ? "Books" : currentNode.getName();
 
   /**
    * Asks the host to open the shared `CreateNote` dialog, scoped to the
@@ -302,7 +308,7 @@ export function useDirectoryFeatures(
   const handleEditDirectory = () => {
     if (currentNode.getId() === "root") {
       setMessage(
-        new SnackbarUpdateImpl("Root directory cannot be edited", "info"),
+        new SnackbarUpdateImpl("Root cannot be edited", "info"),
       );
       return;
     }
@@ -325,18 +331,23 @@ export function useDirectoryFeatures(
     const targetId = currentNode.getId();
     if (targetId === "root") {
       setMessage(
-        new SnackbarUpdateImpl("Root directory cannot be deleted", "info"),
+        new SnackbarUpdateImpl("Root cannot be deleted", "info"),
       );
       return false;
     }
 
     const deleted = await deleteDirectory(targetId);
     if (!deleted) {
-      setMessage(new SnackbarUpdateImpl("Failed to delete directory", "error"));
+      setMessage(
+        new SnackbarUpdateImpl(
+          `Failed to delete ${dirTerms.singularLower}`,
+          "error",
+        ),
+      );
       return false;
     }
 
-    setMessage(new SnackbarUpdateImpl("Directory deleted", "success"));
+    setMessage(new SnackbarUpdateImpl(`${dirTerms.singular} deleted`, "success"));
     return true;
   };
 

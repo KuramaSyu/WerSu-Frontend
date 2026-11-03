@@ -14,6 +14,10 @@ import { DirectoryParentChipSelect } from "../../components/DirectoryEdit/Direct
 import { DirectoryShelfChipSelect } from "../../components/DirectoryEdit/DirectoryShelfChipSelect";
 import { ImageUploadModal } from "../../components/DirectoryEdit/ImageUploadModal";
 import { serializeReadme } from "../../utils/readme";
+import {
+  directoryTerms,
+  type DirectoryKind,
+} from "../../models/directoryTerminology";
 
 export interface DirectoryFormFieldsProps {
   /** Section title shown above the fields. `undefined` hides the heading block. */
@@ -44,6 +48,11 @@ export interface DirectoryFormFieldsProps {
 
   /** When true, the directory image field is editable (Edit mode). */
   showImageUrlField?: boolean;
+  /**
+   * Whether the directory being created / edited is a Book or a Chapter.
+   * Drives every user-visible label on the form.
+   */
+  directoryKind?: DirectoryKind;
   /**
    * Edit-only: README state for the image upload modal to call back
    * into. Create mode hides the field entirely.
@@ -80,10 +89,12 @@ export const DirectoryFormFields: React.FC<DirectoryFormFieldsProps> = ({
   shelfIds,
   onShelfChange,
   showImageUrlField = false,
+  directoryKind = "chapter",
   readmeBody = "",
   getReadmeNoteId,
 }) => {
   const [imageModalOpen, setImageModalOpen] = useState(false);
+  const dirTerms = directoryTerms(directoryKind);
 
   return (
     <Stack spacing={2}>
@@ -120,7 +131,7 @@ export const DirectoryFormFields: React.FC<DirectoryFormFieldsProps> = ({
       <Stack direction="row" spacing={1} sx={{ alignItems: "flex-start" }}>
         {showImageUrlField ? (
           <TextField
-            label="Directory image"
+            label={`${dirTerms.singular} image`}
             value={imageUrl}
             onChange={(event) => onImageUrlChange(event.target.value)}
             placeholder="https://..."
@@ -128,7 +139,7 @@ export const DirectoryFormFields: React.FC<DirectoryFormFieldsProps> = ({
           />
         ) : (
           <TextField
-            label="Directory image"
+            label={`${dirTerms.singular} image`}
             value={
               hasPendingImage ? "Image selected (preview on the right)" : ""
             }
@@ -141,7 +152,7 @@ export const DirectoryFormFields: React.FC<DirectoryFormFieldsProps> = ({
           <Box
             component="img"
             src={imagePreviewUrl}
-            alt="selected directory image preview"
+            alt={`selected ${dirTerms.singularLower} image preview`}
             sx={{
               width: 56,
               height: 56,
@@ -156,7 +167,7 @@ export const DirectoryFormFields: React.FC<DirectoryFormFieldsProps> = ({
           title={
             showImageUrlField
               ? "Upload an image. WerSu writes the URL into the README header."
-              : "Upload an image. WerSu uploads it, links it to the new directory's README, and writes the URL into the directory on save."
+              : `Upload an image. WerSu uploads it, links it to the new ${dirTerms.singularLower}'s README, and writes the URL into the ${dirTerms.singularLower} on save.`
           }
         >
           <span>
@@ -164,7 +175,7 @@ export const DirectoryFormFields: React.FC<DirectoryFormFieldsProps> = ({
               color="primary"
               onClick={() => setImageModalOpen(true)}
               sx={{ mt: 0.5 }}
-              aria-label="upload directory image"
+              aria-label={`upload ${dirTerms.singularLower} image`}
             >
               <EditIcon />
             </IconButton>

@@ -124,7 +124,7 @@ export const DirectoryItemMenu: React.FC<DirectoryItemMenuProps> = ({
       if (target.kind === "directory") {
         const ok = await deleteDirectory(target.directoryId);
         if (!ok) {
-          setError("Failed to delete directory. Please try again.");
+          setError("Failed to delete chapter. Please try again.");
           return;
         }
         setConfirmOpen(false);
@@ -155,7 +155,7 @@ export const DirectoryItemMenu: React.FC<DirectoryItemMenuProps> = ({
       )}
       <ConfirmationModal
         title={
-          isDirectory ? "Delete this directory?" : "Delete this note?"
+          isDirectory ? "Delete this chapter?" : "Delete this note?"
         }
         message={
           target.kind === "directory"

@@ -102,8 +102,8 @@ export const AllDirectories: React.FC<AllDirectoriesProps> = ({
       >
         <FolderIcon fontSize="small" />
         <Typography variant="body2">
-          No other root-level directories. Create one from the Actions panel, or
-          unstar a favourite to see it here.
+          No other books. Create one from the Actions panel, or unstar a
+          favourite to see it here.
         </Typography>
       </Stack>
     );

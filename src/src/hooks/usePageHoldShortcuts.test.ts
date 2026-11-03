@@ -30,7 +30,7 @@ describe("usePageHoldShortcuts", () => {
     const { result } = renderHook(() => usePageHoldShortcuts("home", {}));
 
     expect(result.current.map((action) => action.label)).toEqual([
-      "New directory",
+      "New book",
       "New note",
     ]);
     expect(result.current.map((action) => action.key)).toEqual(["d", "n"]);
@@ -42,9 +42,9 @@ describe("usePageHoldShortcuts", () => {
     );
 
     expect(result.current.map((action) => action.label)).toEqual([
-      "New directory",
+      "New chapter",
       "New note",
-      "Edit this directory",
+      "Edit this book or chapter",
     ]);
   });
 

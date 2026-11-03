@@ -242,7 +242,7 @@ export function FileGraphPage(): React.ReactElement {
           directoryId,
         ]);
         if (!updated) {
-          setLinkStatus("Failed to update directory parent.");
+          setLinkStatus("Failed to update parent book or chapter.");
           return;
         }
         setDirectories((prev) =>
@@ -252,7 +252,7 @@ export function FileGraphPage(): React.ReactElement {
               : directory,
           ),
         );
-        setLinkStatus("Directory parent updated.");
+        setLinkStatus("Parent book or chapter updated.");
         return;
       }
 
@@ -296,7 +296,7 @@ export function FileGraphPage(): React.ReactElement {
       if (link.type === "directory") {
         const updated = await directoryApi.setParent(link.target, null);
         if (!updated) {
-          setLinkStatus("Failed to remove directory parent.");
+          setLinkStatus("Failed to remove parent book or chapter.");
           return;
         }
         setDirectories((prev) =>
@@ -306,7 +306,7 @@ export function FileGraphPage(): React.ReactElement {
               : directory,
           ),
         );
-        setLinkStatus("Directory parent removed.");
+        setLinkStatus("Parent book or chapter removed.");
         return;
       }
 
@@ -454,7 +454,7 @@ export function FileGraphPage(): React.ReactElement {
               justifyContent: "center",
             }}
           >
-            <Typography>No directories or notes yet.</Typography>
+            <Typography>No books, chapters, or notes yet.</Typography>
           </Stack>
         ) : (
           <Box

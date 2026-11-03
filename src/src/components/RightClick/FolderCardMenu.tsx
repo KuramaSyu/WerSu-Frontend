@@ -85,7 +85,7 @@ export const FolderCardMenu: React.FC<FolderCardMenuProps> = ({
     try {
       const ok = await deleteDirectory(directoryId);
       if (!ok) {
-        setError("Failed to delete directory. Please try again.");
+        setError("Failed to delete book. Please try again.");
         return;
       }
       setConfirmOpen(false);
@@ -102,7 +102,7 @@ export const FolderCardMenu: React.FC<FolderCardMenuProps> = ({
     <Box sx={{ display: "contents" }} onContextMenu={onContextMenu}>
       {children}
       <ConfirmationModal
-        title="Delete this directory?"
+        title="Delete this book?"
         message={`${name} and everything inside it will be deleted.`}
         confirmLabel="Delete"
         open={confirmOpen}

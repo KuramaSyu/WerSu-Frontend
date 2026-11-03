@@ -303,7 +303,7 @@ function placeholderFor(kind: RuleEntityKind): string {
     case "shelf":
       return "Pick a shelf";
     case "directory":
-      return "Pick a directory";
+      return "Pick a book or chapter";
     case "note":
       return "Pick a note";
     case "tag":

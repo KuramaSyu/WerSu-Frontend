@@ -228,7 +228,7 @@ const ShelfMenuImpl: React.FC = () => {
           <MenuItem disabled>
             <ListItemText
               primary="No shelves yet"
-              secondary="Create one from the directory tree"
+              secondary="Create one from the book tree"
             />
           </MenuItem>
         )}

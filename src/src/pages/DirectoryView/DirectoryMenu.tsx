@@ -19,6 +19,11 @@ import { useFavouritesStore } from "../../zustand/useFavouritesStore";
 import { ConfirmationModal } from "../Settings/ConfirmationModal";
 import type { HirarchyItem } from "../../models/HirarchyItem";
 import type { CascadePreview } from "./DirectoryFeatures.hook";
+import {
+  directoryKindOfNode,
+  directoryTerms,
+  type DirectoryKind,
+} from "../../models/directoryTerminology";
 
 export interface DirectoryMenuProps {
   currentNode: HirarchyItem;
@@ -40,20 +45,24 @@ export interface DirectoryMenuProps {
 const DeletePreviewMessage: React.FC<{
   directoryName: string;
   preview: CascadePreview;
-}> = ({ directoryName, preview }) => {
+  kind: DirectoryKind;
+}> = ({ directoryName, preview, kind }) => {
   const { directNotes, subdirectories, totalSubdirectories, totalNotes } =
     preview;
+  const dirTerms = directoryTerms(kind);
 
   if (totalNotes === 0 && totalSubdirectories === 0) {
     return (
       <p style={{ fontSize: "0.8rem" }}>
-        {directoryName} is empty. Deleting it removes only the directory itself.
+        {directoryName} is empty. Deleting it removes only the{" "}
+        {dirTerms.singularLower} itself.
       </p>
     );
   }
 
   const noteWord = (n: number) => (n === 1 ? "note" : "notes");
-  const subWord = (n: number) => (n === 1 ? "subdirectory" : "subdirectories");
+  const subWord = (n: number) =>
+    n === 1 ? "subchapter" : "subchapters";
 
   return (
     <Stack spacing={1.5}>
@@ -101,6 +110,8 @@ export const DirectoryMenu: React.FC<DirectoryMenuProps> = ({
   const { id: directoryId } = useParams();
   const navigate = useNavigate();
   const isRoot = currentNode.getId() === "root";
+  const directoryKind = directoryKindOfNode(currentNode);
+  const dirTerms = directoryTerms(directoryKind);
 
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -132,7 +143,7 @@ export const DirectoryMenu: React.FC<DirectoryMenuProps> = ({
         setConfirmDeleteOpen(false);
         navigate("/");
       } else {
-        setDeleteError("Failed to delete directory. Please try again.");
+        setDeleteError(`Failed to delete ${dirTerms.singularLower}. Please try again.`);
       }
     } catch (e) {
       setDeleteError(
@@ -146,7 +157,7 @@ export const DirectoryMenu: React.FC<DirectoryMenuProps> = ({
   return (
     <>
       <IconButton
-        aria-label="Directory actions"
+        aria-label={`${dirTerms.singular} actions`}
         onClick={openMenu}
         size="small"
         disabled={isRoot}
@@ -212,11 +223,12 @@ export const DirectoryMenu: React.FC<DirectoryMenuProps> = ({
         </MenuItem>
       </Menu>
       <ConfirmationModal
-        title="Delete this directory?"
+        title={`Delete this ${dirTerms.singularLower}?`}
         message={
           <DeletePreviewMessage
             directoryName={currentNode.getName()}
             preview={cascadePreview}
+            kind={directoryKind}
           />
         }
         confirmLabel="Delete"

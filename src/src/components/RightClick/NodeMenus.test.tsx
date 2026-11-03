@@ -216,7 +216,7 @@ describe("DirectoryItemMenu", () => {
       request?.overrides?.delete?.handler?.(undefined);
     });
     expect(
-      await screen.findByText("Delete this directory?"),
+      await screen.findByText("Delete this chapter?"),
     ).toBeInTheDocument();
     expect(mocks.deleteDirectory).not.toHaveBeenCalled();
 

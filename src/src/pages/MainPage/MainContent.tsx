@@ -87,7 +87,7 @@ export const MainContent: React.FC = () => {
   };
 
   const handleCreateDirectory = async (): Promise<void> => {
-    const nextName = window.prompt("New directory name");
+    const nextName = window.prompt("New book name");
     if (!nextName || nextName.trim() === "") {
       return;
     }
@@ -100,12 +100,12 @@ export const MainContent: React.FC = () => {
     });
 
     if (!created) {
-      setMessage(new SnackbarUpdateImpl("Failed to create directory", "error"));
+      setMessage(new SnackbarUpdateImpl("Failed to create book", "error"));
       return;
     }
 
     upsertDirectory(queryClient, created);
-    setMessage(new SnackbarUpdateImpl("Directory created", "success"));
+    setMessage(new SnackbarUpdateImpl("Book created", "success"));
     navigate(`/d/${created.id}`);
   };
 

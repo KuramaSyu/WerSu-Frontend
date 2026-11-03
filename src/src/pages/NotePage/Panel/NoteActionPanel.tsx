@@ -71,7 +71,7 @@ export const NoteActionPanel: React.FC<NoteActionPanelProps> = ({
 
           <Stack spacing={0.5}>
             <Typography variant="caption" color="textSecondary">
-              Parent directories
+              Parent books or chapters
             </Typography>
             {parentDirectories.length === 0 && (
               <Typography variant="body2" color="textSecondary">
@@ -104,13 +104,13 @@ export const NoteActionPanel: React.FC<NoteActionPanelProps> = ({
                 </ListItem>
               ))}
               <ListItem disablePadding sx={{ width: "auto" }}>
-                <Tooltip title="Add parent directory">
+                <Tooltip title="Add parent book or chapter">
                   <span>
                     <IconButton
                       size="small"
                       onClick={onChangeParentClick}
                       disabled={!canChangeParent}
-                      aria-label="add parent directory"
+                      aria-label="add parent book or chapter"
                       sx={{
                         border: 1,
                         borderColor: "divider",

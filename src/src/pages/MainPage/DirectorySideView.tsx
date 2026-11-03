@@ -149,7 +149,7 @@ const DirectoryTreeNode: React.FC<DirectoryTreeNodeProps> = ({ item }) => {
                   pointerEvents: "auto",
                 }}
               >
-                <Tooltip title="Open directory">
+                <Tooltip title="Open book">
                   <IconButton
                     size="small"
                     onClick={(event) => {
@@ -160,7 +160,7 @@ const DirectoryTreeNode: React.FC<DirectoryTreeNodeProps> = ({ item }) => {
                     <OpenInNewIcon fontSize="small" />
                   </IconButton>
                 </Tooltip>
-                <Tooltip title="Edit directory">
+                <Tooltip title="Edit book">
                   <IconButton
                     size="small"
                     onClick={(event) => {

@@ -236,7 +236,7 @@ export const NotesTabs: React.FC<NotesTabsProps> = ({
               setSelectedDirectoryIds(value.map((option) => option.id))
             }
             renderInput={(params) => (
-              <TextField {...params} label="Directories" />
+              <TextField {...params} label="Books & Chapters" />
             )}
             sx={{ width: "100%", maxWidth: 360 }}
           />
@@ -403,7 +403,7 @@ export const NotesTabs: React.FC<NotesTabsProps> = ({
               }
               sx={PILL_GROUP_SX}
             >
-              <ToggleButton value="directory">Directory</ToggleButton>
+              <ToggleButton value="directory">Book/Chapter</ToggleButton>
               <ToggleButton value="window">Time window</ToggleButton>
               <ToggleButton value="type">Type</ToggleButton>
             </ToggleButtonGroup>
@@ -423,7 +423,7 @@ export const NotesTabs: React.FC<NotesTabsProps> = ({
               size="small"
               color="primary"
               variant="outlined"
-              label={`Directory: ${directoryLabel(id, directoriesById)}`}
+              label={`Book/Chapter: ${directoryLabel(id, directoriesById)}`}
               onDelete={() =>
                 setSelectedDirectoryIds((prev) =>
                   prev.filter((directoryId) => directoryId !== id),
@@ -476,7 +476,7 @@ export const NotesTabs: React.FC<NotesTabsProps> = ({
               }}
               sx={{ ...PILL_GROUP_SX, flexWrap: "wrap" }}
             >
-              <ToggleButton value="directory">Directory</ToggleButton>
+              <ToggleButton value="directory">Book/Chapter</ToggleButton>
               <ToggleButton value="window">Time window</ToggleButton>
               <ToggleButton value="type">Type</ToggleButton>
             </ToggleButtonGroup>

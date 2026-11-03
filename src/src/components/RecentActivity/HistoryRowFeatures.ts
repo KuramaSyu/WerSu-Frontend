@@ -137,22 +137,22 @@ export const VARIANT_META: Record<HistoryRowKind, HistoryRowVariantMeta> = {
   },
   directory_created: {
     icon: CreateNewFolderIcon,
-    label: "Created a Directory",
+    label: "Created a Book/Chapter",
     color: "success",
   },
   directory_viewed: {
     icon: VisibilityIcon,
-    label: "Viewed a Directory",
+    label: "Viewed a Book/Chapter",
     color: "info",
   },
   directory_edited: {
     icon: DriveFileMoveIcon,
-    label: "Edited a Directory",
+    label: "Edited a Book/Chapter",
     color: "info",
   },
   directory_deleted: {
     icon: FolderDeleteIcon,
-    label: "Deleted a Directory",
+    label: "Deleted a Book/Chapter",
     color: "error",
   },
   role_granted: {

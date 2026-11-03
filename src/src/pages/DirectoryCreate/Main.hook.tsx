@@ -141,7 +141,7 @@ export function useCreateSubdirectoryForm(
 
       if (!created) {
         setMessage(
-          new SnackbarUpdateImpl("Failed to create subdirectory", "error"),
+          new SnackbarUpdateImpl("Failed to create chapter", "error"),
         );
         return;
       }
@@ -161,7 +161,7 @@ export function useCreateSubdirectoryForm(
           if (!readmeId) {
             setMessage(
               new SnackbarUpdateImpl(
-                "Directory created, but backend did not return a README id",
+                "Chapter created, but backend did not return a README id",
                 "warning",
               ),
             );
@@ -173,7 +173,7 @@ export function useCreateSubdirectoryForm(
             if (!metadata) {
               setMessage(
                 new SnackbarUpdateImpl(
-                  "Directory created, but image upload failed",
+                  "Chapter created, but image upload failed",
                   "warning",
                 ),
               );
@@ -237,7 +237,7 @@ export function useCreateSubdirectoryForm(
       // (or disappears from) every shelf's book list.
       queryClient.invalidateQueries({ queryKey: ["shelves"] });
 
-      setMessage(new SnackbarUpdateImpl("Subdirectory created", "success"));
+      setMessage(new SnackbarUpdateImpl("Chapter created", "success"));
       navigate(`/d/${created.id}`);
     } finally {
       setIsSaving(false);

@@ -27,6 +27,10 @@ import { useDirectoryTypeAheadStore } from "../../zustand/useDirectoryTypeAheadS
 import { useDirectoryTypeAhead } from "./useDirectoryTypeAhead";
 import TranslucentPaper from "../../components/TranslucentPaper";
 import { useThemeStore } from "../../zustand/useThemeStore";
+import {
+  directoryKindOfNode,
+  directoryTerms,
+} from "../../models/directoryTerminology";
 
 /**
  * Renders the directory view UI, including breadcrumb navigation, child
@@ -76,6 +80,10 @@ export const DirectoryView: React.FC = () => {
       setCreateDirectoryOpen(true);
     },
   });
+
+  // The current node is a Book when it sits at the top of a shelf and a
+  // Chapter once nested, so its labels follow that level.
+  const dirTerms = directoryTerms(directoryKindOfNode(currentNode));
 
   // Hold-to-run shortcuts for this page (see config/shortcuts.json).
   // "Edit" always targets the directory in the URL (`currentNode`),
@@ -208,7 +216,7 @@ export const DirectoryView: React.FC = () => {
 
               {notesInDirectory.length === 0 ? (
                 <Typography variant="body2" color="textSecondary">
-                  No notes yet in this directory.
+                  No notes yet in this {dirTerms.singularLower}.
                 </Typography>
               ) : (
                 notesInDirectory.map((note, index) => (

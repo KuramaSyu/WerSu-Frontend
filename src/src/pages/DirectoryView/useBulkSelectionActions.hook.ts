@@ -139,7 +139,7 @@ export function useBulkSelectionActions(): BulkSelectionActions {
       if (directoryIds.length > 0) {
         setMessage(
           new SnackbarUpdateImpl(
-            "Copying directories is not supported yet",
+            "Copying books/chapters is not supported yet",
             "info",
           ),
         );

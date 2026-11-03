@@ -112,7 +112,9 @@ export const MoveCopyTargetDialog: React.FC<{
           </ListItemIcon>
           <ListItemText
             primary={labels.get(dir) ?? dir.display_name ?? dir.id}
-            secondary={forbidden ? "Cannot move a directory into itself" : null}
+            secondary={
+              forbidden ? "Cannot move a book or chapter into itself" : null
+            }
           />
           {kids.length > 0 && (
             <Button

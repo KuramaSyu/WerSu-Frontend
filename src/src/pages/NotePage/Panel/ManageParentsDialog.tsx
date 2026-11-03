@@ -49,12 +49,12 @@ export const ManageParentsDialog: React.FC<ManageParentsDialogProps> = ({
 
   return (
     <Dialog open={open} onClose={onCancel} fullWidth maxWidth="xs">
-      <DialogTitle>Manage parent directories</DialogTitle>
+      <DialogTitle>Manage parent books or chapters</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ pt: 1 }}>
           <Typography variant="body2" color="textSecondary">
-            Pick a directory to add it as an additional parent, or choose Root
-            to remove the note from all parents.
+            Pick a book or chapter to add it as an additional parent, or choose
+            Root to remove the note from all parents.
           </Typography>
           <DirectorySelect
             value={selectedParentId}

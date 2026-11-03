@@ -20,6 +20,7 @@ export const DirectoryActions: React.FC<DirectoryActionsProps> = ({
     <CreateActions
       onCreateNote={handleCreateNote}
       onCreateDirectory={handleCreateSubdirectory}
+      directoryKind="chapter"
     />
   );
 };

@@ -5,6 +5,10 @@ import NoteAddIcon from "@mui/icons-material/NoteAdd";
 import { ShortcutHint } from "./ShortcutHint";
 import { isCtrlPlus } from "../utils/CtrlPlus";
 import { useThemeStore } from "../zustand/useThemeStore";
+import {
+  directoryTerms,
+  type DirectoryKind,
+} from "../models/directoryTerminology";
 
 export interface CreateFabProps {
   onCreateNote: () => void;
@@ -14,6 +18,11 @@ export interface CreateFabProps {
    * all-notes landing) only pass `onCreateNote`.
    */
   onCreateDirectory?: () => void;
+  /**
+   * Whether the directory created here is a Book (upper-level of a
+   * shelf) or a Chapter (nested). Drives the FAB + mobile labels.
+   */
+  directoryKind?: DirectoryKind;
 }
 
 /**
@@ -25,8 +34,10 @@ export interface CreateFabProps {
 const CreateFab: React.FC<CreateFabProps> = ({
   onCreateNote,
   onCreateDirectory,
+  directoryKind = "chapter",
 }) => {
   const { theme } = useThemeStore();
+  const dirTerms = directoryTerms(directoryKind);
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (isCtrlPlus(event, "n", { alt: true })) {
@@ -75,7 +86,7 @@ const CreateFab: React.FC<CreateFabProps> = ({
         <ShortcutHint shortcut="ctrl+alt+d" placement="bottom">
           <Fab
             color="primary"
-            aria-label="New directory"
+            aria-label={`New ${dirTerms.singularLower}`}
             onClick={onCreateDirectory}
             variant="extended"
             size="medium"
@@ -94,7 +105,7 @@ const CreateFab: React.FC<CreateFabProps> = ({
                 ),
               }}
             />
-            <Typography>Folder</Typography>
+            <Typography>{dirTerms.singular}</Typography>
           </Fab>
         </ShortcutHint>
       )}

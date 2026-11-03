@@ -113,7 +113,7 @@ export const HomePage: React.FC = () => {
             <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
               <StarIcon color="primary" fontSize="small" />
               <Typography variant="h5" color="textPrimary">
-                Favourite directories
+                Favourite books
               </Typography>
             </Stack>
             <FavouriteDirectories />
@@ -124,7 +124,7 @@ export const HomePage: React.FC = () => {
           <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
             <FolderIcon color="primary" fontSize="small" />
             <Typography variant="h5" color="textPrimary">
-              All directories
+              All books
             </Typography>
           </Stack>
           <AllDirectories />
@@ -135,6 +135,7 @@ export const HomePage: React.FC = () => {
       <CreateActions
         onCreateNote={() => setCreateNoteOpen(true)}
         onCreateDirectory={() => setCreateDirectoryOpen(true)}
+        directoryKind="book"
       />
       <CreateNote open={createNoteOpen} onOpenChange={setCreateNoteOpen} />
       <CreateDirectoryModal

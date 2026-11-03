@@ -15,6 +15,13 @@ import { DirectoryFormFields } from "../DirectoryEdit/DirectoryFormFields";
 import { useCreateSubdirectoryForm } from "../DirectoryCreate/Main.hook";
 import { useDirectoryEditForm } from "../DirectoryEdit/Main.hook";
 import { ModalShell } from "../../components/ModalShell";
+import { useAllDirectoriesQuery } from "../../api/queries/directoryQueries";
+import {
+  directoryKindOf,
+  directoryKindOfParentId,
+  directoryTerms,
+  type DirectoryKind,
+} from "../../models/directoryTerminology";
 
 export type CreateDirectoryMode = "create" | "edit";
 
@@ -46,6 +53,18 @@ export const CreateDirectoryModal: React.FC<CreateDirectoryModalProps> = ({
   parentId,
 }) => {
   const [snackbarState, setSnackbarState] = useState({ open: false });
+
+  // Resolve whether the modal is creating / editing a Book (upper-level
+  // shelf directory) or a Chapter (nested directory) so every label
+  // matches the level the user is working on.
+  const { byId: directoriesById } = useAllDirectoriesQuery();
+  const directoryKind: DirectoryKind =
+    mode === "edit"
+      ? directoryId && directoriesById[directoryId]
+        ? directoryKindOf(directoriesById[directoryId])
+        : "chapter"
+      : directoryKindOfParentId(parentId);
+  const dirTerms = directoryTerms(directoryKind);
 
   const createForm = useCreateSubdirectoryForm({
     parentId,
@@ -112,11 +131,14 @@ export const CreateDirectoryModal: React.FC<CreateDirectoryModalProps> = ({
     onOpenChange(false);
   };
 
-  const title = mode === "create" ? "New directory" : "Edit directory";
+  const title =
+    mode === "create"
+      ? `New ${dirTerms.singular}`
+      : `Edit ${dirTerms.singular}`;
   const subtitle =
     mode === "create"
-      ? "Save now or jump straight into the new directory"
-      : "Update name, description, image, and parent directory";
+      ? `Save now or jump straight into the new ${dirTerms.singularLower}`
+      : `Update name, description, image, and parent ${dirTerms.singularLower}`;
 
   return (
     <>
@@ -129,7 +151,7 @@ export const CreateDirectoryModal: React.FC<CreateDirectoryModalProps> = ({
         actions={
           <>
             {mode === "edit" && handleDelete && (
-              <Tooltip title="Delete this directory">
+              <Tooltip title={`Delete this ${dirTerms.singularLower}`}>
                 <span>
                   <Button
                     color="error"
@@ -176,6 +198,7 @@ export const CreateDirectoryModal: React.FC<CreateDirectoryModalProps> = ({
             shelves={shelves}
             shelfIds={shelfIds}
             onShelfChange={setShelfIds}
+            directoryKind={directoryKind}
           />
         ) : (
           <DirectoryFormFields
@@ -198,6 +221,7 @@ export const CreateDirectoryModal: React.FC<CreateDirectoryModalProps> = ({
             showImageUrlField
             readmeBody={readmeBody}
             getReadmeNoteId={getReadmeNoteId}
+            directoryKind={directoryKind}
           />
         )}
 
@@ -219,7 +243,11 @@ export const CreateDirectoryModal: React.FC<CreateDirectoryModalProps> = ({
         open={snackbarState.open}
         onClose={() => setSnackbarState({ open: false })}
         slots={{ transition: Slide }}
-        message={mode === "create" ? "Directory created" : "Directory saved"}
+        message={
+          mode === "create"
+            ? `${dirTerms.singular} created`
+            : `${dirTerms.singular} saved`
+        }
         autoHideDuration={1200}
       />
     </>

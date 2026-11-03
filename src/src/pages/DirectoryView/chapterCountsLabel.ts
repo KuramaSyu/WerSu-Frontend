@@ -14,7 +14,8 @@ export function chapterCountsLabel(
     parts.push(`${pages} ${pages === 1 ? "page" : "pages"}`);
   }
   if (subdirectories > 0) {
-    const subdirWord = subdirectories === 1 ? "subdirectory" : "subdirectories";
+    const subdirWord =
+      subdirectories === 1 ? "subchapter" : "subchapters";
     parts.push(`${subdirectories} ${subdirWord}`);
   }
   return parts.join(" \u00B7 ");

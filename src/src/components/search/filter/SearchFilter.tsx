@@ -55,10 +55,12 @@ export const SearchFilter: React.FC = () => {
       sx={{ width: 0.5, alignItems: "center" }}
     >
       <FormControl size="small" sx={{ width: 5 / 13 }}>
-        <InputLabel id="search-dir-mode-label">Directories</InputLabel>
+        <InputLabel id="search-dir-mode-label">
+          Books &amp; Chapters
+        </InputLabel>
         <Select
           labelId="search-dir-mode-label"
-          label="Directories"
+          label="Books & Chapters"
           value={mode}
           onChange={(e) => setFilterMode(e.target.value as SearchFilterMode)}
         >
@@ -71,10 +73,12 @@ export const SearchFilter: React.FC = () => {
       {mode !== "all" && (
         <>
           <FormControl size="small" sx={{ width: 5 / 13 }}>
-            <InputLabel id="search-dir-list-label">Directories</InputLabel>
+            <InputLabel id="search-dir-list-label">
+              Books &amp; Chapters
+            </InputLabel>
             <Select
               labelId="search-dir-list-label"
-              label="Directories"
+              label="Books & Chapters"
               multiple
               value={selectedDirs}
               onChange={(e) => {

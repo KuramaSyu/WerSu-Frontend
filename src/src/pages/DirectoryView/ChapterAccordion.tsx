@@ -168,7 +168,7 @@ export const ChapterAccordion: React.FC<ChapterAccordionProps> = ({
             tabIndex={-1}
             disableRipple
             sx={{ p: 0.5, mr: 0.5 }}
-            aria-label="Select directory"
+            aria-label="Select chapter"
           />
         )}
           <ChapterRowView

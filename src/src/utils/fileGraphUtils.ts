@@ -41,7 +41,7 @@ export function getNoteParentDirectoryIds(directoryIds?: string[]): string[] {
 /** Returns a human-readable directory label. */
 export function getDirectoryLabel(directory: DirectoryReply): string {
   return (
-    directory.display_name?.trim() || directory.name || "Untitled Directory"
+    directory.display_name?.trim() || directory.name || "Untitled"
   );
 }
 

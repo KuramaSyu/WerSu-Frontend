@@ -24,8 +24,9 @@ export const queryCacheGroups: readonly QueryCacheGroup[] = [
   },
   {
     id: "directories",
-    label: "Directories",
-    description: "Directory list, single-directory detail, and notes inside.",
+    label: "Books & Chapters",
+    description:
+      "Book & chapter list, single book/chapter detail, and notes inside.",
     roots: ["directories", "directory"],
   },
   {

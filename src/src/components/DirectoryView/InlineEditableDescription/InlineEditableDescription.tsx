@@ -192,7 +192,7 @@ export const InlineEditableDescription: React.FC<
       }}
       tabIndex={0}
       role="textbox"
-      aria-label="Directory description"
+      aria-label="Edit description"
     >
       {isEmpty ? EMPTY_PLACEHOLDER : initialDescription}
     </Typography>

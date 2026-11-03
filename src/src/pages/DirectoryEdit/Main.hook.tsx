@@ -7,6 +7,10 @@ import type { ShelfReply } from "../../api/models/shelf";
 import type { MinimalNote } from "../../api/models/search";
 import { getNoteApi, type INoteApi } from "../../api/NoteApi";
 import { useDirectory } from "../../api/queries/useDirectoryQuery";
+import {
+  directoryKindOf,
+  directoryTerms,
+} from "../../models/directoryTerminology";
 import { directoryQueryKeys as singleDirectoryQueryKeys } from "../../api/queries/useDirectoryQuery";
 import { useAllDirectoriesQuery } from "../../api/queries/directoryQueries";
 import { useDirectoryNotesQuery } from "../../api/queries/useDirectoryNotesQuery";
@@ -159,6 +163,11 @@ export function useDirectoryEditForm(
     cachedDirectory ?? fetchedDirectory ?? null;
   const isLoadingDirectory = !!id && isDirectoryPending && !cachedDirectory;
 
+  // User-facing noun for the record being edited (Book vs Chapter).
+  const dirTerms = directoryTerms(
+    directory ? directoryKindOf(directory) : "chapter",
+  );
+
   // 2. README discovery. The hook fetches the directory's notes; the
   //    README (if any) is the entry with `title === "README.md"`. We
   //    hydrate form state once per directory id.
@@ -220,7 +229,7 @@ export function useDirectoryEditForm(
       if (!created) {
         setMessage(
           new SnackbarUpdateImpl(
-            "README created, but failed to assign to this directory",
+            `README created, but failed to assign to this ${dirTerms.singularLower}`,
             "warning",
           ),
         );
@@ -260,7 +269,7 @@ export function useDirectoryEditForm(
     }
     if (id === ROOT_PARENT_ID) {
       setMessage(
-        new SnackbarUpdateImpl("Root directory cannot be edited", "info"),
+        new SnackbarUpdateImpl("Root cannot be edited", "info"),
       );
       return;
     }
@@ -310,7 +319,7 @@ export function useDirectoryEditForm(
         if (!patched) {
           setMessage(
             new SnackbarUpdateImpl(
-              "Directory updated, but failed to save README",
+              `${dirTerms.singular} updated, but failed to save README`,
               "warning",
             ),
           );
@@ -327,7 +336,7 @@ export function useDirectoryEditForm(
         if (!created) {
           setMessage(
             new SnackbarUpdateImpl(
-              "README created, but failed to assign to this directory",
+              `README created, but failed to assign to this ${dirTerms.singularLower}`,
               "warning",
             ),
           );
@@ -369,7 +378,10 @@ export function useDirectoryEditForm(
         });
         if (!updated) {
           setMessage(
-            new SnackbarUpdateImpl("Failed to update directory", "error"),
+            new SnackbarUpdateImpl(
+              `Failed to update ${dirTerms.singularLower}`,
+              "error",
+            ),
           );
           return;
         }
@@ -393,7 +405,7 @@ export function useDirectoryEditForm(
         });
       }
 
-      setMessage(new SnackbarUpdateImpl("Directory saved", "success"));
+      setMessage(new SnackbarUpdateImpl(`${dirTerms.singular} saved`, "success"));
       navigate(`/d/${id}`);
     } finally {
       setIsSaving(false);
@@ -405,7 +417,7 @@ export function useDirectoryEditForm(
       return;
     }
     const confirmed = window.confirm(
-      "Delete this directory? Notes inside may become unassigned.",
+      `Delete this ${dirTerms.singularLower}? Notes inside may become unassigned.`,
     );
     if (!confirmed) {
       return;
@@ -415,7 +427,10 @@ export function useDirectoryEditForm(
       const deleted = await createDirectoryApi().delete(id);
       if (!deleted) {
         setMessage(
-          new SnackbarUpdateImpl("Failed to delete directory", "error"),
+          new SnackbarUpdateImpl(
+            `Failed to delete ${dirTerms.singularLower}`,
+            "error",
+          ),
         );
         return;
       }
@@ -425,7 +440,7 @@ export function useDirectoryEditForm(
       queryClient.removeQueries({
         queryKey: singleDirectoryQueryKeys.detail(userKey, id),
       });
-      setMessage(new SnackbarUpdateImpl("Directory deleted", "success"));
+      setMessage(new SnackbarUpdateImpl(`${dirTerms.singular} deleted`, "success"));
       navigate("/");
     } finally {
       setIsDeleting(false);

@@ -181,8 +181,8 @@ function LinkActions(props: LinkActionsProps): React.ReactElement {
         renderInput={(params) => (
           <TextField
             {...params}
-            label="Add parent directory"
-            placeholder="Search directories…"
+            label="Add parent book or chapter"
+            placeholder="Search books & chapters…"
           />
         )}
       />

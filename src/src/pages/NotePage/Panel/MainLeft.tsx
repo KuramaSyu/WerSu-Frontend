@@ -208,15 +208,18 @@ export const NoteLeftPanel: React.FC<NoteLeftPanelProps> = ({
 
       setMessage(
         new SnackbarUpdateImpl(
-          isRoot ? "Moved to Root" : "Parent directory added",
+          isRoot ? "Moved to Root" : "Parent book or chapter added",
           "success",
         ),
       );
       setMoveDialogOpen(false);
     } catch (error) {
-      console.error("Failed to update parent directories", error);
+      console.error("Failed to update parent books or chapters", error);
       setMessage(
-        new SnackbarUpdateImpl("Failed to update parent directories", "error"),
+        new SnackbarUpdateImpl(
+          "Failed to update parent books or chapters",
+          "error",
+        ),
       );
     } finally {
       setIsUpdatingParent(false);
@@ -233,10 +236,10 @@ export const NoteLeftPanel: React.FC<NoteLeftPanelProps> = ({
       if (parentDirectoryIds.length <= 1) {
         setMessage(
           new SnackbarUpdateImpl(
-            "Cannot remove the only parent directory",
+            "Cannot remove the only parent book or chapter",
             "error",
             undefined,
-            "A note must have at least one directory",
+            "A note must have at least one parent book or chapter",
           ),
         );
         return;
@@ -251,12 +254,15 @@ export const NoteLeftPanel: React.FC<NoteLeftPanelProps> = ({
         await onNoteUpdated(updatedNote);
 
         setMessage(
-          new SnackbarUpdateImpl("Parent directory removed", "success"),
+          new SnackbarUpdateImpl("Parent book or chapter removed", "success"),
         );
       } catch (error) {
-        console.error("Failed to remove parent directory", error);
+        console.error("Failed to remove parent book or chapter", error);
         setMessage(
-          new SnackbarUpdateImpl("Failed to remove parent directory", "error"),
+          new SnackbarUpdateImpl(
+            "Failed to remove parent book or chapter",
+            "error",
+          ),
         );
       }
     },

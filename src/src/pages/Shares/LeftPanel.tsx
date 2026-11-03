@@ -146,8 +146,8 @@ export const SharesLeftPanel: React.FC<SharesLeftPanelProps> = ({
             renderInput={(params) => (
               <TextField
                 {...params}
-                label="Directory"
-                placeholder="All directories"
+                label="Book/Chapter"
+                placeholder="All books & chapters"
               />
             )}
           />

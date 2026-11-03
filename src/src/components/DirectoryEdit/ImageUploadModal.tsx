@@ -186,7 +186,7 @@ export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
       if (!readmeNoteId) {
         setMessage(
           new SnackbarUpdateImpl(
-            "Failed to resolve the directory's README note",
+            "Failed to resolve the README note",
             "error",
           ),
         );
@@ -229,7 +229,7 @@ export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Upload directory image</DialogTitle>
+      <DialogTitle>Upload image</DialogTitle>
       <DialogContent>
         <AnimatePresence>
           {dragging && (
@@ -323,7 +323,7 @@ export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                 <Box
                   component="img"
                   src={initialPreview}
-                  alt="current directory image"
+                  alt="current image"
                   sx={{
                     maxWidth: "100%",
                     maxHeight: 240,

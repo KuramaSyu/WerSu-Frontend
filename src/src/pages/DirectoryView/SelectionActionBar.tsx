@@ -76,7 +76,7 @@ export const SelectionActionBar: React.FC<{
             <Typography variant="subtitle2" sx={{ fontWeight: 600, mr: 1 }}>
               {count} selected
             </Typography>
-            <Tooltip title="Move to directory">
+            <Tooltip title="Move to book or chapter">
               <span>
                 <Button
                   size="small"
@@ -92,8 +92,8 @@ export const SelectionActionBar: React.FC<{
             <Tooltip
               title={
                 actions.hasDirectory
-                  ? "Copying directories is not supported"
-                  : "Copy to directory"
+                  ? "Copying books/chapters is not supported"
+                  : "Copy to book or chapter"
               }
             >
               <span>

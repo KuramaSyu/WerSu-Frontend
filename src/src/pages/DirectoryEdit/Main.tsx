@@ -12,6 +12,11 @@ import { M3, M4 } from "../../statics";
 import { useRightPanel } from "../../LayoutProvider";
 import { DirectoryFormFields } from "./DirectoryFormFields";
 import { useDirectoryEditForm } from "./Main.hook";
+import { useAllDirectoriesQuery } from "../../api/queries/directoryQueries";
+import {
+  directoryKindOf,
+  directoryTerms,
+} from "../../models/directoryTerminology";
 
 /**
  * The form body. Lives in its own component so the parent page can
@@ -56,6 +61,12 @@ const DirectoryEditForm: React.FC = () => {
     hasDirectoryId,
   } = useDirectoryEditForm();
 
+  const { id } = useParams();
+  const { byId: directoriesById } = useAllDirectoriesQuery();
+  const directoryKind =
+    id && directoriesById[id] ? directoryKindOf(directoriesById[id]) : "chapter";
+  const dirTerms = directoryTerms(directoryKind);
+
   if (isLoadingDirectory) {
     return (
       <Box
@@ -94,7 +105,7 @@ const DirectoryEditForm: React.FC = () => {
       >
         <Stack spacing={0.5}>
           <Typography variant="h4" sx={{ fontWeight: 600 }}>
-            Edit directory
+            Edit {dirTerms.singular}
           </Typography>
         </Stack>
 
@@ -118,6 +129,7 @@ const DirectoryEditForm: React.FC = () => {
           showImageUrlField
           readmeBody={readmeBody}
           getReadmeNoteId={getReadmeNoteId}
+          directoryKind={directoryKind}
         />
 
         <Divider />
@@ -140,7 +152,7 @@ const DirectoryEditForm: React.FC = () => {
             onClick={() => void handleDelete()}
             disabled={isDeleting || !hasDirectoryId}
           >
-            Delete directory
+            Delete {dirTerms.singularLower}
           </Button>
         </Stack>
       </Stack>

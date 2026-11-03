@@ -98,7 +98,7 @@ export const DirectoryParentChipSelect: React.FC<
         renderInput={(params) => (
           <TextField
             {...params}
-            label="Parent directories"
+            label="Parent books & chapters"
             placeholder="Type to filter"
             error={!isValid}
             helperText={

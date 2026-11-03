@@ -13,9 +13,17 @@ import { formatDistanceToNow } from "date-fns";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { blendWithContrast } from "../../utils/blendWithContrast";
 import { prepareBackendLink } from "../../utils/prepareBackendLink";
+import { toAttachmentImageUrl } from "../../utils/syncedThemeImages";
 
 /** Visual size preset for the card; resolved to concrete dimensions below. */
 export type CardSize = "small" | "medium" | "large";
+
+/**
+ * Requested width for backend-hosted book covers. Cards render at most
+ * 300px wide, so 480px still covers ~2x DPR without shipping the full
+ * original (often multi-megabyte) attachment.
+ */
+const BOOK_COVER_IMAGE_WIDTH = 480;
 
 interface CardDimensions {
   width: number;
@@ -133,8 +141,16 @@ export const FolderCardView: React.FC<FolderCardViewProps> = ({
   const dims = CARD_DIMENSIONS[size];
   // AppShell-style transition; shared by every hover motion below.
   const transition = `${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`;
-  // Normalise absolute / blob / backend-relative image URLs.
-  const resolvedImageUrl = imageUrl ? prepareBackendLink(imageUrl) : undefined;
+  // Normalise absolute / blob / backend-relative image URLs. Covers that
+  // live on our backend are rebuilt through the link builder so the
+  // homescreen downloads a 480px variant instead of the original object;
+  // external / data / blob URLs are left untouched.
+  const resolvedImageUrl = imageUrl
+    ? toAttachmentImageUrl(
+        prepareBackendLink(imageUrl),
+        BOOK_COVER_IMAGE_WIDTH,
+      )
+    : undefined;
   // Avatar initials: first letter of each of the first two words,
   // else first two letters. Uppercased.
   const placeholderText = (() => {
@@ -326,7 +342,7 @@ export const FolderCardView: React.FC<FolderCardViewProps> = ({
             className="folder-card-fav"
             size={dims.starIconSize}
             aria-label={
-              isFavourite ? "Unfavourite directory" : "Favourite directory"
+              isFavourite ? "Unfavourite book" : "Favourite book"
             }
             aria-pressed={isFavourite}
             onClick={onToggleFavourite}

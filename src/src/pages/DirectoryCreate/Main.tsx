@@ -67,11 +67,11 @@ const CreateSubdirectoryForm: React.FC = () => {
       >
         <Stack spacing={0.5}>
           <Typography variant="h4" sx={{ fontWeight: 600 }}>
-            Create subdirectory
+            Create chapter
           </Typography>
           <Typography variant="body2" color="textSecondary">
-            Configure the new directory. The parent is pre-selected with the
-            directory you came from.
+            Configure the new chapter. The parent is pre-selected with the
+            book or chapter you came from.
           </Typography>
         </Stack>
 
@@ -95,8 +95,8 @@ const CreateSubdirectoryForm: React.FC = () => {
         />
 
         <Alert severity="info">
-          After creation the directory opens immediately. You can edit the
-          description, image, and parent at any time from the directory view.
+          After creation the chapter opens immediately. You can edit the
+          description, image, and parent at any time from the chapter view.
         </Alert>
 
         <Stack direction="row" spacing={2}>
@@ -105,7 +105,7 @@ const CreateSubdirectoryForm: React.FC = () => {
             onClick={() => void handleSave()}
             disabled={isSaving || isUploadingImage || !parentIsValid}
           >
-            Create subdirectory
+            Create chapter
           </Button>
           <Button variant="outlined" onClick={handleCancel}>
             Cancel

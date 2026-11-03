@@ -5,6 +5,10 @@ import type { DirectoryReply } from "../../../api/models/directory";
 import { colorFromString } from "../../../utils/blendWithContrast";
 import { fuzzyMatch } from "../../../utils/fuzzySearch";
 import { directoryLabel, directoryPathString } from "./directoryPath";
+import {
+  directoryKindOf,
+  directoryTerms,
+} from "../../../models/directoryTerminology";
 import type {
   SearchResult,
   SearchResultContent,
@@ -143,7 +147,7 @@ export class DirectorySearchResult implements SearchResult {
     if (description) return description;
     return (
       <Typography variant="body2" color="text.secondary">
-        Directory
+        {directoryTerms(directoryKindOf(this.directory)).singular}
       </Typography>
     );
   }
@@ -153,7 +157,7 @@ export class DirectorySearchResult implements SearchResult {
   }
 
   get_type_label(): string {
-    return "Directory";
+    return directoryTerms(directoryKindOf(this.directory)).singular;
   }
 
   get_accent_color(): string {

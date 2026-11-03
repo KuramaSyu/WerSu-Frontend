@@ -218,7 +218,7 @@ export const RuleFormFields: React.FC<RuleFormFieldsProps> = ({
                 inputProps={{ "aria-label": "attached entity type" }}
               >
                 <MenuItem value="shelf">shelf</MenuItem>
-                <MenuItem value="directory">directory</MenuItem>
+                <MenuItem value="directory">book/chapter</MenuItem>
                 <MenuItem value="note">note</MenuItem>
               </Select>
             </FormControl>
@@ -555,7 +555,7 @@ const RawConditionField: React.FC<{
 function contextLabelFor(field: string): string {
   switch (field) {
     case "directory_id":
-      return "Target directory";
+      return "Target book or chapter";
     case "tag_id":
       return "Target tag";
     case "shelf_id":
