@@ -185,57 +185,65 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
   if (collapsible) {
     return (
       <ThemeProvider theme={activeTheme}>
-        <Accordion
-          expanded={expanded}
-          onChange={(_, isExpanded) => setExpanded(isExpanded)}
-          disableGutters
-          elevation={0}
-          square
-          sx={{
-            position: "relative",
-            ...frameSx,
-            zindex: 10,
-            // adjust accordion paddings to
-            // spare a lot of otherwise wasted space
-            // in a side rail
-            backgroundColor: "transparent",
-            "&:before": { display: "none" },
-            "&.MuiAccordion-root": {
-              margin: 0,
-            },
-            "& .MuiAccordionSummary-root": {
-              minHeight: 32,
-              px: 0,
-              "&.Mui-expanded": {
+        {/* Wrap the accordion so `leftEdgeHandle` stays a sibling of the
+            summary: MUI treats the Accordion's first child as its summary,
+            so a handle rendered inside broke the controlled expand state
+            and the section could not collapse. */}
+        <Box sx={{ position: "relative", minWidth: 0 }}>
+          {leftEdgeHandle}
+          <Accordion
+            expanded={expanded}
+            onChange={(_, isExpanded) => setExpanded(isExpanded)}
+            disableGutters
+            elevation={0}
+            square
+            sx={{
+              position: "relative",
+              ...frameSx,
+              zindex: 10,
+              // adjust accordion paddings to
+              // spare a lot of otherwise wasted space
+              // in a side rail
+              backgroundColor: "transparent",
+              "&:before": { display: "none" },
+              // NOTE: do not reset `margin` here. `disableGutters` already
+              // removes MUI's default expanded Accordion margin, and a
+              // `.MuiAccordion-root` margin rule would out-specify the
+              // parent `Stack`'s spacing margin, flattening the gap for
+              // collapsible sections on the right rail.
+              "& .MuiAccordionSummary-root": {
                 minHeight: 32,
-              },
-              "& .MuiAccordionSummary-content": {
-                my: 0,
+                px: 0,
                 "&.Mui-expanded": {
+                  minHeight: 32,
+                },
+                "& .MuiAccordionSummary-content": {
                   my: 0,
+                  "&.Mui-expanded": {
+                    my: 0,
+                  },
                 },
               },
-            },
-            "& .MuiAccordionDetails-root": {
-              px: 0,
-              py: 1,
-            },
-          }}
-        >
-          {leftEdgeHandle}
-          <AccordionSummary expandIcon={<ExpandMoreIcon fontSize="small" />}>
-            <PanelSectionTitle
-              inAccordion
-              title={title}
-              titleIcon={titleIcon}
-              titleAction={titleAction}
-            />
-          </AccordionSummary>
-          {renderDivider && <Divider sx={{ opacity: dividerOpacity }} />}
-          <AccordionDetails>
-            <Box sx={{ px: M3, flex: 1, minWidth: 0 }}>{body}</Box>
-          </AccordionDetails>
-        </Accordion>
+              "& .MuiAccordionDetails-root": {
+                px: 0,
+                py: 1,
+              },
+            }}
+          >
+            <AccordionSummary expandIcon={<ExpandMoreIcon fontSize="small" />}>
+              <PanelSectionTitle
+                inAccordion
+                title={title}
+                titleIcon={titleIcon}
+                titleAction={titleAction}
+              />
+            </AccordionSummary>
+            {renderDivider && <Divider sx={{ opacity: dividerOpacity }} />}
+            <AccordionDetails>
+              <Box sx={{ px: M3, flex: 1, minWidth: 0 }}>{body}</Box>
+            </AccordionDetails>
+          </Accordion>
+        </Box>
       </ThemeProvider>
     );
   }
