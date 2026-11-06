@@ -2,82 +2,74 @@
 // OutlineBridge
 // Mirrors the editor's heading outline into useOutlineStore. It only
 // pushes on structural heading changes (level, text content, count, or
-// presence), skipped via a cached `level:textContent` signature; this
-// keeps the bridge silent while the user types into body paragraphs.
-// Each heading gets a stable kebab slug stamped on its DOM node for the
-// URL `?section=<id>` param, deep-link, and click-to-scroll. Renders nothing.
+// presence). Heading slugs are stamped as DOM ids by the HeadingIds
+// decoration plugin; this bridge reads that same slug list so the TOC ids
+// and the DOM ids can never disagree. Renders nothing.
 // ---------------------------------------------------------------------------
 
 import { memo, useEffect } from "react";
 import type { Editor } from "@tiptap/core";
 import { useOutlineStore } from "../../zustand/outlineStore";
-import { uniqueSlugify } from "../../utils/slugify";
+import { headingIdsPluginKey } from "./headingIds";
 import { logRerender } from "./editorRenderLog";
 
 export interface OutlineBridgeProps {
   editor: Editor | null;
 }
 
+/**
+ * How long typing in a heading must pause before the outline store is
+ * updated. Rebuilding the tree + re-rendering the panel on every keystroke
+ * is what made editing headings feel laggy; a short trailing debounce
+ * collapses a burst of edits into one rebuild. The HeadingIds decoration
+ * pass (which keeps the DOM ids correct) is cheap and stays per-change.
+ */
+const PUSH_DEBOUNCE_MS = 450;
+
+/** Stable structural signature for the outline entries. */
+const signatureOf = (
+  entries: ReadonlyArray<{ level: number; textContent: string }>,
+): string => entries.map((entry) => `${entry.level}:${entry.textContent}`).join("|");
+
 const OutlineBridgeImpl: React.FC<OutlineBridgeProps> = ({ editor }) => {
   logRerender("OutlineBridge", { hasEditor: !!editor });
   useEffect(() => {
     if (!editor) return;
 
-    // Cheap structural signature: walks the doc once and serializes the
-    // heading sequence as `level:textContent` tokens. Stable across body
-    // edits so the per-keystroke outline rebuild is skipped while typing.
-    const signature = (doc: typeof editor.state.doc): string => {
-      const parts: string[] = [];
-      doc.descendants((node) => {
-        if (node.type.name !== "heading") return;
-        if (node.textContent.length === 0) return;
-        parts.push(`${node.attrs.level ?? 1}:${node.textContent}`);
-      });
-      return parts.join("|");
-    };
+    // New editor instance: reset the store and bump the epoch so the
+    // TOC can tell this outline apart from the previous one.
+    useOutlineStore.getState().beginSession();
 
-    let prevSig = signature(editor.state.doc);
+    // The HeadingIds plugin owns both the slug list and the DOM ids.
+    const entries = () =>
+      headingIdsPluginKey.getState(editor.state)?.entries ?? [];
+    let prevSig = signatureOf(entries());
 
     const push = () => {
-      const doc = editor.state.doc;
-      const headings: {
-        level: number;
-        textContent: string;
-        dom: HTMLElement;
-      }[] = [];
-      doc.descendants((node, pos) => {
-        if (node.type.name !== "heading") return;
-        const textContent = node.textContent;
-        if (textContent.length === 0) return;
-        const dom = editor.view.nodeDOM(pos) as HTMLElement | null;
-        if (!dom) return;
-        headings.push({
-          level: node.attrs.level ?? 1,
-          textContent,
-          dom,
-        });
-      });
-
-      prevSig = signature(doc);
-
-      if (headings.length === 0) {
+      const current = entries();
+      prevSig = signatureOf(current);
+      if (current.length === 0) {
         useOutlineStore.getState().clear();
         return;
       }
+      useOutlineStore.getState().setItems(
+        current.map((entry) => ({
+          id: entry.id,
+          level: entry.level,
+          textContent: entry.textContent,
+        })),
+      );
+    };
 
-      const slugs = uniqueSlugify(headings.map((h) => h.textContent));
-      for (let i = 0; i < headings.length; i++) {
-        const dom = headings[i].dom;
-        if (dom.id !== slugs[i]) {
-          dom.id = slugs[i];
-        }
-      }
-      const items = headings.map((heading, index) => ({
-        id: slugs[index],
-        level: heading.level,
-        textContent: heading.textContent,
-      }));
-      useOutlineStore.getState().setItems(items);
+    // Trailing debounce for structural changes. `push` also runs once
+    // immediately on bind so the panel is populated without delay.
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const schedulePush = () => {
+      if (debounceTimer !== null) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        debounceTimer = null;
+        push();
+      }, PUSH_DEBOUNCE_MS);
     };
 
     const onTransaction = ({
@@ -89,15 +81,24 @@ const OutlineBridgeImpl: React.FC<OutlineBridgeProps> = ({ editor }) => {
       // change) can't affect the heading list -> skip the rebuild.
       if (!transaction.docChanged) return;
       // Heading list unchanged -> skip. This is the per-keystroke skip
-      // for body typing that used to re-walk + re-slug + re-render.
-      if (signature(editor.state.doc) === prevSig) return;
-      push();
+      // for body typing that used to re-render the panel.
+      const nextSig = signatureOf(entries());
+      if (nextSig === prevSig) return;
+      // The list appearing (document/Y.Doc load) or vanishing (last
+      // heading removed) is structural, not a text edit: reflect it
+      // immediately so the TOC is not blank while the doc loads.
+      if (prevSig === "" || nextSig === "") {
+        push();
+        return;
+      }
+      schedulePush();
     };
 
     editor.on("transaction", onTransaction);
     push();
     return () => {
       editor.off("transaction", onTransaction);
+      if (debounceTimer !== null) clearTimeout(debounceTimer);
       useOutlineStore.getState().clear();
     };
   }, [editor]);

@@ -21,6 +21,7 @@ import Placeholder from "@tiptap/extension-placeholder";
 import { Markdown } from "@tiptap/markdown";
 import { DetailsContent, DetailsSummary } from "@tiptap/extension-details";
 import { CaretAnimation } from "./CaretAnimation";
+import { HeadingIds } from "./headingIds";
 import * as Y from "yjs";
 import { Awareness } from "y-protocols/awareness";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
@@ -190,6 +191,9 @@ export const useNoteEditor = (params: UseNoteEditorParams): Editor | null => {
           hardBreak: false,
         }),
         CustomHardBreak,
+        // Stamps heading slugs as DOM ids (decorations, not imperative
+        // assignment) so they survive collaborative re-renders.
+        HeadingIds,
         CustomLink.configure({ openOnClick: true }),
         // Smooth caret overlay for the local user. Built on top of
         // `Decoration.widget` (the same primitive

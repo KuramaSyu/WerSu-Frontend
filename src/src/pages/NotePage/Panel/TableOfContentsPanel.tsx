@@ -38,6 +38,16 @@ import { timelineItemClasses } from "@mui/lab/TimelineItem";
 /** Side-panel section listing every heading. Click scrolls; scroll-spy tints. */
 const ACTIVE_OFFSET_PX = 16; // band for "in view" scroll-spy
 
+/**
+ * After a read -> write flip the write editor's outline must stop
+ * changing before we trust it to restore the scroll position (the
+ * Y.Doc syncs asynchronously and may land in several chunks).
+ */
+const RESTORE_SETTLE_MS = 250;
+
+/** Give up waiting for the rebuild and leave the viewport alone. */
+const RESTORE_DEADLINE_MS = 20000;
+
 /** Diameter of a heading node, in px. Must stay larger than the connector. */
 const NODE_SIZE_PX = 10;
 
@@ -199,6 +209,8 @@ const TocRow = memo(function TocRow({
 }: TocRowProps) {
   return (
     <TimelineItem
+      // Lets the panel find and reveal the active row's scroll into view.
+      data-toc-id={item.id}
       sx={{
         // Drop 70px minHeight; otherwise items are miss-aligned
         minHeight: 0,
@@ -353,6 +365,10 @@ const TocRow = memo(function TocRow({
 
 export const TableOfContentsPanel: React.FC = () => {
   const items = useOutlineStore((s) => s.items);
+  // Bumped whenever a new editor instance binds (read <-> write swap),
+  // so we can tell the rebuilt outline from the stale one.
+  const editorEpoch = useOutlineStore((s) => s.editorEpoch);
+  const { editMode } = useEditorSettings();
   // `primaryId` = active heading (bright). `visibleIds` = every on-screen heading.
   const [primaryId, setPrimaryId] = useState<string | null>(null);
   const [visibleIds, setVisibleIds] = useState<ReadonlySet<string>>(
@@ -362,6 +378,11 @@ export const TableOfContentsPanel: React.FC = () => {
   // Stable ref so the scroll listener never reattaches on items change.
   const itemsRef = useRef(items);
   itemsRef.current = items;
+
+  // rAF-throttled recompute handle owned by the scroll-spy effect below.
+  // Kept as a ref so toggles and mode flips can request a refresh without
+  // rebinding the scroll listener.
+  const requestRecomputeRef = useRef<() => void>(() => {});
 
   // Headings deeper than `MAX_RENDERED_LEVEL` are never shown.
   const renderableItems = useMemo(
@@ -454,6 +475,8 @@ export const TableOfContentsPanel: React.FC = () => {
       next.set(id, !isExpanded);
       return next;
     });
+    // Rows were just added/removed; refresh the spy after the DOM commits.
+    requestRecomputeRef.current();
   }, []);
 
   // Subscribe to the scroll-container ref, not to `items`.
@@ -462,11 +485,12 @@ export const TableOfContentsPanel: React.FC = () => {
   // rAF-throttled scroll-spy; updates `primaryId` and `visibleIds`.
   // The listener is bound to the container only; re-binds on container
   // change. The `itemsRef` lets it read the live list without re-binding.
-  const requestRecomputeRef = useRef<() => void>(() => {});
   useEffect(() => {
     if (!scrollContainer) return;
-    if (itemsRef.current.length === 0) return;
-
+    // Attach even with an empty outline: the outline repopulates
+    // asynchronously (e.g. when the editor re-mounts on the read <->
+    // edit flip) and the spy must stay callable. `recompute` already
+    // handles the empty case, so there is nothing to guard.
     let rafHandle = 0;
     const recompute = () => {
       rafHandle = 0;
@@ -499,6 +523,41 @@ export const TableOfContentsPanel: React.FC = () => {
     };
   }, [scrollContainer]);
 
+  // Keep the active row centred in the rail's own scroll viewport. On a
+  // long outline the marker otherwise sits off-screen while the user
+  // reads further down. We scroll the *rail's* box directly (found by
+  // climbing to the nearest scrollable ancestor) instead of
+  // `scrollIntoView`, so this can never move the editor content.
+  useEffect(() => {
+    if (!primaryId) return;
+    const row = document.querySelector<HTMLElement>(
+      `[data-toc-id="${primaryId}"]`,
+    );
+    if (!row) return;
+    let box: HTMLElement | null = row.parentElement;
+    while (box && box !== document.body) {
+      const overflowY = window.getComputedStyle(box).overflowY;
+      if (
+        (overflowY === "auto" || overflowY === "scroll") &&
+        box.scrollHeight > box.clientHeight
+      ) {
+        break;
+      }
+      box = box.parentElement;
+    }
+    if (!box || box === document.body) {
+      row.scrollIntoView({ block: "center", behavior: "smooth" });
+      return;
+    }
+    const boxRect = box.getBoundingClientRect();
+    const rowRect = row.getBoundingClientRect();
+    const centered =
+      box.scrollTop +
+      (rowRect.top - boxRect.top) -
+      (box.clientHeight - rowRect.height) / 2;
+    box.scrollTo({ top: centered, behavior: "smooth" });
+  }, [primaryId]);
+
   // Re-seed when items structurally change (mount, headings added/removed/renamed).
   // Does NOT rebind the scroll listener; just rAF-schedules a recompute.
   useEffect(() => {
@@ -511,16 +570,77 @@ export const TableOfContentsPanel: React.FC = () => {
     requestRecomputeRef.current();
   }, [items, scrollContainer]);
 
-  // Rows appearing or disappearing after an expand/collapse change what
-  // counts as active/on-screen, so re-run the spy without a scroll event.
+  // Track the active section by name so we can find it again after the
+  // editor is re-created on a read <-> edit flip: heading ids follow the
+  // DOM, but the text survives the rebuild.
+  const lastActiveNameRef = useRef<string | null>(null);
   useEffect(() => {
+    if (!primaryId) return;
+    const active = itemsRef.current.find((it) => it.id === primaryId);
+    if (active) lastActiveNameRef.current = active.textContent;
+  }, [primaryId]);
+
+  // Pending read <-> write scroll restore. Set when the mode flips;
+  // resolved once the *new* editor has bound (a newer epoch) and its
+  // outline has settled. `sinceEpoch` guards against matching the
+  // still-mounted outgoing editor's outline during the swap.
+  const pendingRestoreRef = useRef<{
+    name: string | null;
+    sinceEpoch: number;
+    deadline: number;
+  } | null>(null);
+  const prevEditModeRef = useRef(editMode);
+  useEffect(() => {
+    if (editMode === prevEditModeRef.current) return;
+    prevEditModeRef.current = editMode;
+    // Either way the rows may change; refresh the spy after commit.
     requestRecomputeRef.current();
-  }, [visibleItems]);
+    // Both directions rebuild the editor around a different Y.Doc, so
+    // restore in both: remember where we were and let the resolver below
+    // wait for the rebuilt outline to carry that heading again.
+    pendingRestoreRef.current = {
+      name: lastActiveNameRef.current,
+      // The outgoing editor is still bound at this instant; the new one
+      // binds later and pushes the epoch past this.
+      sinceEpoch: editorEpoch,
+      deadline: Date.now() + RESTORE_DEADLINE_MS,
+    };
+  }, [editMode, editorEpoch]);
+
+  // Resolve the pending restore. The incoming editor binds to a fresh
+  // Y.Doc (write) or a freshly seeded one (read) that may start empty,
+  // so we wait for a newer epoch, a non-empty outline, and a short quiet
+  // period before touching the viewport. Falling back to the top when the
+  // remembered heading is gone matches "start at the beginning" instead
+  // of stranding the user mid-doc.
+  useEffect(() => {
+    const pending = pendingRestoreRef.current;
+    if (!pending) return;
+    if (editorEpoch <= pending.sinceEpoch) return; // outgoing editor still bound
+    if (items.length === 0) return; // incoming doc not populated yet
+
+    const timer = window.setTimeout(() => {
+      const current = pendingRestoreRef.current;
+      if (!current) return;
+      pendingRestoreRef.current = null;
+      if (Date.now() > current.deadline) return;
+      const match = current.name
+        ? itemsRef.current.find((it) => it.textContent === current.name)
+        : undefined;
+      const element = match ? document.getElementById(match.id) : null;
+      if (element) {
+        element.scrollIntoView({ block: "start", behavior: "auto" });
+      } else {
+        scrollContainer?.scrollTo({ top: 0, behavior: "auto" });
+      }
+    }, RESTORE_SETTLE_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [editorEpoch, items, scrollContainer]);
 
   // Skip the first primaryId change so we don't overwrite a freshly
   // stripped invalid `?section` from `useScrollToSectionOnLoad`.
   const skipNextSyncRef = useRef(true);
-  const { editMode } = useEditorSettings();
 
   // Sync `?section=<primaryId>` via replaceState so the URL tracks the
   // active heading (scroll-spy on scroll, setPrimaryId on click).
@@ -538,20 +658,16 @@ export const TableOfContentsPanel: React.FC = () => {
     window.history.replaceState(null, "", url.toString());
   }, [primaryId, editMode]);
 
-  // Stable per-row click handler. View-mode behavior is identical to
-  // before (click highlight + smooth scroll); edit mode only flips the
-  // highlight, never moves the view.
-  const handleActivate = useCallback(
-    (id: string) => {
-      setPrimaryId(id);
-      if (editMode) return;
-      document.getElementById(id)?.scrollIntoView({
-        block: "start",
-        behavior: "smooth",
-      });
-    },
-    [editMode],
-  );
+  // Stable per-row click handler: select and scroll the heading into
+  // view. `scrollIntoView` does not move the caret, so this is safe to
+  // use while editing too.
+  const handleActivate = useCallback((id: string) => {
+    setPrimaryId(id);
+    document.getElementById(id)?.scrollIntoView({
+      block: "start",
+      behavior: "smooth",
+    });
+  }, []);
 
   if (items.length === 0) {
     return (

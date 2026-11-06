@@ -15,8 +15,17 @@ export interface OutlineItem {
 
 interface OutlineState {
   items: OutlineItem[];
+  /**
+   * Bumped every time a new editor instance binds (the read <-> write
+   * swap recreates the editor around a fresh Y.Doc). Consumers use it
+   * to tell a stale outline from the rebuilt one, since heading ids
+   * and text can be identical across the two.
+   */
+  editorEpoch: number;
   setItems: (items: OutlineItem[]) => void;
   clear: () => void;
+  /** Mark the start of a new editor binding: empties and bumps epoch. */
+  beginSession: () => void;
 }
 
 /** Elementwise equality for the outline array; order matters. */
@@ -50,9 +59,12 @@ const sameItems = (
  */
 export const useOutlineStore = create<OutlineState>((set) => ({
   items: [],
+  editorEpoch: 0,
   setItems: (items) =>
     set((state) => (sameItems(state.items, items) ? state : { items })),
   clear: () => set({ items: [] }),
+  beginSession: () =>
+    set((state) => ({ items: [], editorEpoch: state.editorEpoch + 1 })),
 }));
 
 interface ScrollElementState {
