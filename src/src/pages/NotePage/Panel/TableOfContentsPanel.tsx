@@ -6,9 +6,17 @@ import {
   TimelineItem,
   TimelineSeparator,
 } from "@mui/lab";
-import { Box, ListItemButton, ListItemText, Typography } from "@mui/material";
+import {
+  Box,
+  IconButton,
+  ListItemButton,
+  ListItemText,
+  Typography,
+} from "@mui/material";
 import type { SxProps, Theme } from "@mui/material/styles";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import TocIcon from "@mui/icons-material/Toc";
+import { useSearchParams } from "react-router-dom";
 import {
   memo,
   useCallback,
@@ -44,6 +52,16 @@ const connectorSx: SxProps<Theme> = {
 };
 
 /**
+ * Headings at this level and deeper start collapsed inside their parent,
+ * which then gets an expand/collapse control. This is the single knob
+ * for the outline's initial density: lower it to hide more.
+ */
+const AUTO_COLLAPSE_LEVEL = 3;
+
+/** Headings deeper than this are omitted from the outline entirely. */
+const MAX_RENDERED_LEVEL = 4;
+
+/**
  * Pick the active heading and every on-screen heading in one pass.
  * `items` must be source-ordered so we can break after the first
  * heading that's below the viewport bottom.
@@ -76,6 +94,78 @@ const calculateVisibleSections = (
   return { primaryId: primary, visibleIds: visible };
 };
 
+/** Cheap set equality for scroll-spy state, to avoid re-render churn. */
+const sameIdSet = (
+  a: ReadonlySet<string>,
+  b: ReadonlySet<string>,
+): boolean => {
+  if (a === b) return true;
+  if (a.size !== b.size) return false;
+  for (const id of a) {
+    if (!b.has(id)) return false;
+  }
+  return true;
+};
+
+interface TocNode {
+  item: OutlineItem;
+  /** Indent depth, relative to the shallowest heading (capped at 4). */
+  depth: number;
+  parentId: string | null;
+  childIds: string[];
+}
+
+interface TocTree {
+  nodes: Map<string, TocNode>;
+  roots: TocNode[];
+}
+
+/** Fold the source-ordered outline into a parent/child tree. */
+const buildTocTree = (
+  items: ReadonlyArray<OutlineItem>,
+  minLevel: number,
+): TocTree => {
+  const nodes = new Map<string, TocNode>();
+  const roots: TocNode[] = [];
+  const stack: TocNode[] = [];
+  for (const item of items) {
+    if (item.level > MAX_RENDERED_LEVEL) continue;
+    const node: TocNode = {
+      item,
+      depth: Math.min(item.level - minLevel, 4),
+      parentId: null,
+      childIds: [],
+    };
+    // Nearest preceding heading with a strictly lower level is the parent.
+    while (
+      stack.length > 0 &&
+      stack[stack.length - 1].item.level >= item.level
+    ) {
+      stack.pop();
+    }
+    const parent = stack[stack.length - 1];
+    if (parent) {
+      node.parentId = parent.item.id;
+      parent.childIds.push(item.id);
+    } else {
+      roots.push(node);
+    }
+    nodes.set(item.id, node);
+    stack.push(node);
+  }
+  return { nodes, roots };
+};
+
+/** Whether a node's children are hidden until the user opens it. */
+const nodeStartsCollapsed = (
+  node: TocNode,
+  nodes: ReadonlyMap<string, TocNode>,
+): boolean => {
+  if (node.childIds.length === 0) return false;
+  const firstChild = nodes.get(node.childIds[0]);
+  return (firstChild?.item.level ?? Infinity) >= AUTO_COLLAPSE_LEVEL;
+};
+
 interface TocRowProps {
   item: OutlineItem;
   indent: number;
@@ -83,6 +173,9 @@ interface TocRowProps {
   isVisible: boolean;
   isFirst: boolean;
   isLast: boolean;
+  hasChildren: boolean;
+  isExpanded: boolean;
+  onToggle: (id: string, isExpanded: boolean) => void;
   onActivate: (id: string) => void;
 }
 
@@ -99,6 +192,9 @@ const TocRow = memo(function TocRow({
   isVisible,
   isFirst,
   isLast,
+  hasChildren,
+  isExpanded,
+  onToggle,
   onActivate,
 }: TocRowProps) {
   return (
@@ -187,27 +283,66 @@ const TocRow = memo(function TocRow({
           }}
         >
           <ListItemText
-            sx={{ minWidth: 0 }}
+            sx={{ minWidth: 0, my: 0 }}
             primary={
-              <Typography
-                variant="body2"
-                noWrap
-                title={item.textContent}
+              <Box
                 sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  minWidth: 0,
                   // Precomputed indent (each level capped at 4).
                   pl: `${indent}rem`,
-                  fontSize:
-                    item.level === 1
-                      ? "0.95rem"
-                      : item.level === 2
-                        ? "0.85rem"
-                        : "0.8rem",
-                  fontWeight: isPrimary ? "bold" : "normal",
-                  color: isPrimary ? "text.primary" : "text.secondary",
                 }}
               >
-                {item.textContent}
-              </Typography>
+                <Typography
+                  variant="body2"
+                  noWrap
+                  title={item.textContent}
+                  sx={{
+                    flex: 1,
+                    minWidth: 0,
+                    fontSize:
+                      item.level === 1
+                        ? "0.95rem"
+                        : item.level === 2
+                          ? "0.85rem"
+                          : "0.8rem",
+                    fontWeight: isPrimary ? "bold" : "normal",
+                    color: isPrimary ? "text.primary" : "text.secondary",
+                  }}
+                >
+                  {item.textContent}
+                </Typography>
+                {hasChildren && (
+                  <IconButton
+                    size="small"
+                    aria-label={isExpanded ? "Collapse" : "Expand"}
+                    aria-expanded={isExpanded}
+                    onClick={(event) => {
+                      // Toggle only; never scroll or re-highlight the row.
+                      event.preventDefault();
+                      event.stopPropagation();
+                      onToggle(item.id, isExpanded);
+                    }}
+                    sx={{
+                      p: 0.25,
+                      ml: 0.5,
+                      flexShrink: 0,
+                      color: "text.secondary",
+                    }}
+                  >
+                    <ExpandMoreIcon
+                      sx={{
+                        fontSize: 18,
+                        transition: "transform 150ms",
+                        transform: isExpanded
+                          ? "rotate(0deg)"
+                          : "rotate(-90deg)",
+                      }}
+                    />
+                  </IconButton>
+                )}
+              </Box>
             }
           />
         </ListItemButton>
@@ -228,15 +363,98 @@ export const TableOfContentsPanel: React.FC = () => {
   const itemsRef = useRef(items);
   itemsRef.current = items;
 
+  // Headings deeper than `MAX_RENDERED_LEVEL` are never shown.
+  const renderableItems = useMemo(
+    () => items.filter((item) => item.level <= MAX_RENDERED_LEVEL),
+    [items],
+  );
+
   // Precompute minLevel once per items change so per-row indent is
   // O(1) instead of O(N) inside the map (was O(N^2) per render).
   const minLevel = useMemo(() => {
     let min = Infinity;
-    for (const it of items) {
+    for (const it of renderableItems) {
       if (it.level < min) min = it.level;
     }
     return Number.isFinite(min) ? min : 1;
-  }, [items]);
+  }, [renderableItems]);
+
+  // Nest the flat outline so a heading can own the rows beneath it.
+  const { nodes, roots } = useMemo(
+    () => buildTocTree(renderableItems, minLevel),
+    [renderableItems, minLevel],
+  );
+
+  // `?section=` deep-link target. Read once for expanded-on-load: the
+  // panel's own URL sync uses `history.replaceState`, which does not
+  // update react-router's params.
+  const [searchParams] = useSearchParams();
+  const sectionId = searchParams.get("section");
+
+  // Explicit expand/collapse choices; ids without an entry fall back to
+  // the automatic rules below.
+  const [expandOverrides, setExpandOverrides] = useState<
+    ReadonlyMap<string, boolean>
+  >(() => new Map());
+
+  // A collapsed node is auto-expanded while the active heading, any
+  // on-screen heading, or the deep-linked heading lives inside it, so
+  // the section being read reveals itself as the viewport reaches it.
+  const autoExpandIds = useMemo(() => {
+    const ids = new Set<string>();
+    const addChain = (id: string | null | undefined) => {
+      let current = id ?? null;
+      while (current && nodes.has(current)) {
+        ids.add(current);
+        current = nodes.get(current)?.parentId ?? null;
+      }
+    };
+    addChain(primaryId);
+    for (const id of visibleIds) addChain(id);
+    addChain(sectionId);
+    return ids;
+  }, [primaryId, visibleIds, sectionId, nodes]);
+
+  // Effective expanded set: a user choice wins, then auto-expansion,
+  // then the default (nodes whose children start at/under
+  // `AUTO_COLLAPSE_LEVEL` render collapsed).
+  const expandedIdSet = useMemo(() => {
+    const expanded = new Set<string>();
+    nodes.forEach((node, id) => {
+      if (node.childIds.length === 0) return;
+      const override = expandOverrides.get(id);
+      if (override !== undefined) {
+        if (override) expanded.add(id);
+        return;
+      }
+      if (autoExpandIds.has(id) || !nodeStartsCollapsed(node, nodes)) {
+        expanded.add(id);
+      }
+    });
+    return expanded;
+  }, [nodes, expandOverrides, autoExpandIds]);
+
+  // Flat list of rows to render, honouring collapsed ancestors.
+  const visibleItems = useMemo(() => {
+    const rows: OutlineItem[] = [];
+    const walk = (id: string) => {
+      const node = nodes.get(id);
+      if (!node) return;
+      rows.push(node.item);
+      if (!expandedIdSet.has(id)) return;
+      for (const childId of node.childIds) walk(childId);
+    };
+    for (const root of roots) walk(root.item.id);
+    return rows;
+  }, [nodes, roots, expandedIdSet]);
+
+  const handleToggle = useCallback((id: string, isExpanded: boolean) => {
+    setExpandOverrides((prev) => {
+      const next = new Map(prev);
+      next.set(id, !isExpanded);
+      return next;
+    });
+  }, []);
 
   // Subscribe to the scroll-container ref, not to `items`.
   const scrollContainer = useScrollElementStore((s) => s.element);
@@ -262,8 +480,9 @@ export const TableOfContentsPanel: React.FC = () => {
       const { primaryId: primary, visibleIds: visible } =
         calculateVisibleSections(liveItems, rect.top, rect.bottom);
       // Fallback: at the very top of the doc, no heading is past the active line.
-      setPrimaryId(primary ?? liveItems[0].id);
-      setVisibleIds(visible);
+      const nextPrimary = primary ?? liveItems[0].id;
+      setPrimaryId((prev) => (prev === nextPrimary ? prev : nextPrimary));
+      setVisibleIds((prev) => (sameIdSet(prev, visible) ? prev : visible));
     };
     const schedule = () => {
       if (rafHandle) return;
@@ -291,6 +510,12 @@ export const TableOfContentsPanel: React.FC = () => {
     }
     requestRecomputeRef.current();
   }, [items, scrollContainer]);
+
+  // Rows appearing or disappearing after an expand/collapse change what
+  // counts as active/on-screen, so re-run the spy without a scroll event.
+  useEffect(() => {
+    requestRecomputeRef.current();
+  }, [visibleItems]);
 
   // Skip the first primaryId change so we don't overwrite a freshly
   // stripped invalid `?section` from `useScrollToSectionOnLoad`.
@@ -362,19 +587,21 @@ export const TableOfContentsPanel: React.FC = () => {
           },
         }}
       >
-        {items.map((item, idx) => {
-          if (item.level > 4) {
-            return null;
-          }
+        {visibleItems.map((item, idx) => {
+          const node = nodes.get(item.id);
+          const hasChildren = (node?.childIds.length ?? 0) > 0;
           return (
             <TocRow
               key={item.id}
               item={item}
-              indent={Math.min(item.level - minLevel, 4)}
+              indent={node?.depth ?? 0}
               isPrimary={item.id === primaryId}
               isVisible={visibleIds.has(item.id)}
               isFirst={idx === 0}
-              isLast={idx === items.length - 1}
+              isLast={idx === visibleItems.length - 1}
+              hasChildren={hasChildren}
+              isExpanded={hasChildren && expandedIdSet.has(item.id)}
+              onToggle={handleToggle}
               onActivate={handleActivate}
             />
           );
