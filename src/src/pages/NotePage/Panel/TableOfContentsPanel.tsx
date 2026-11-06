@@ -7,6 +7,7 @@ import {
   TimelineSeparator,
 } from "@mui/lab";
 import { Box, ListItemButton, ListItemText, Typography } from "@mui/material";
+import type { SxProps, Theme } from "@mui/material/styles";
 import TocIcon from "@mui/icons-material/Toc";
 import {
   memo,
@@ -28,6 +29,19 @@ import { timelineItemClasses } from "@mui/lab/TimelineItem";
 
 /** Side-panel section listing every heading. Click scrolls; scroll-spy tints. */
 const ACTIVE_OFFSET_PX = 16; // band for "in view" scroll-spy
+
+/** Diameter of a heading node, in px. Must stay larger than the connector. */
+const NODE_SIZE_PX = 10;
+
+/**
+ * Hairline that links two heading nodes. A bare number in `sx` would be
+ * read as px, but spelling the unit out keeps the intent obvious and
+ * guarantees it stays thinner than `NODE_SIZE_PX`.
+ */
+const connectorSx: SxProps<Theme> = {
+  width: "2px",
+  backgroundColor: (theme) => theme.palette.divider,
+};
 
 /**
  * Pick the active heading and every on-screen heading in one pass.
@@ -97,31 +111,50 @@ const TocRow = memo(function TocRow({
       <TimelineSeparator>
         {!isFirst && (
           // Top-half connector (flex-grow:1); pairs with bottom-half to center the dot.
-          <TimelineConnector />
+          <TimelineConnector sx={connectorSx} />
         )}
         {isFirst && (
           // spacer keeps the dot centered
-          <Box sx={{ flexGrow: 1 }} />
+          <Box sx={{ flexGrow: 1, width: "2px" }} />
         )}
+        {/*
+         * One node per heading. Three tiers match the row backgrounds:
+         * active -> solid primary disc, on-screen -> half-strength disc,
+         * off-screen -> hollow outline.
+         */}
         <TimelineDot
-          color={isPrimary || isVisible ? "primary" : "grey"}
           sx={{
-            // Strip defaults (padding/border/shadow/margin) -> clean 1.5px disc.
+            // Strip MUI's padding/border/shadow/margin so we control the disc.
+            alignSelf: "center",
             m: 0,
             p: 0,
-            border: 0,
             boxShadow: "none",
-            width: 1.5,
-            height: 1.5,
+            width: NODE_SIZE_PX,
+            height: NODE_SIZE_PX,
+            borderRadius: "50%",
+            backgroundColor: (theme) =>
+              isPrimary
+                ? theme.palette.primary.main
+                : isVisible
+                  ? theme.alpha(theme.palette.primary.main, 0.3)
+                  : "transparent",
+            border: (theme) =>
+              `1.5px solid ${
+                isPrimary
+                  ? theme.palette.primary.main
+                  : isVisible
+                    ? theme.alpha(theme.palette.primary.main, 0.7)
+                    : theme.alpha(theme.palette.text.primary, 0.3)
+              }`,
           }}
         />
         {!isLast && (
           // Bottom-half connector (flex-grow:1); see top-half comment.
-          <TimelineConnector />
+          <TimelineConnector sx={connectorSx} />
         )}
         {isLast && (
           // Symmetric to first-row spacer.
-          <Box sx={{ flexGrow: 1 }} />
+          <Box sx={{ flexGrow: 1, width: "2px" }} />
         )}
       </TimelineSeparator>
       <TimelineContent sx={{ p: 0, minWidth: 0 }}>
