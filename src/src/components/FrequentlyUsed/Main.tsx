@@ -84,7 +84,7 @@ export const FrequentlyUsedPanel: React.FC<FrequentlyUsedPanelProps> = ({
   );
 };
 
-/** Shows the most recently viewed notes (last-N note_viewed events).
+/** Shows the most recently used notes, counting both views and edits.
  *  Defaults to the last 3 unique notes. Duplicates collapsed by note_id. Rows have no icon (flush left padding). */
 export const LastUsedPanel: React.FC<LastUsedPanelProps> = ({
   title = "Last used",

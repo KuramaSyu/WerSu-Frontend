@@ -1,5 +1,6 @@
 import React from "react";
 import { Box, Stack } from "@mui/material";
+import { M2 } from "../../statics";
 
 export interface UpperPanelProps {
   /** Sections stacked vertically inside the panel body. */
@@ -18,6 +19,14 @@ export interface UpperPanelProps {
    * without inheriting the body's padding.
    */
   header?: React.ReactNode;
+  /**
+   * Inset the scroll container horizontally. Required when a section
+   * hosts a `leftEdgeHandle` that straddles its left border: the handle
+   * sticks out past the section and would otherwise be clipped by the
+   * scroll container. Defaults to false so the flush left rail stays
+   * flush.
+   */
+  inset?: boolean;
 }
 
 /**
@@ -38,6 +47,7 @@ export const UpperPanel: React.FC<UpperPanelProps> = ({
   children,
   spacing = 2,
   header,
+  inset = false,
 }) => {
   return (
     <Box
@@ -48,7 +58,15 @@ export const UpperPanel: React.FC<UpperPanelProps> = ({
         width: "100%",
       }}
     >
-      <Box sx={{ overflowY: "auto", flex: 1, minHeight: 0 }}>
+      <Box
+        sx={{
+          overflowY: "auto",
+          overflowX: "hidden",
+          px: inset ? M2 : 0,
+          flex: 1,
+          minHeight: 0,
+        }}
+      >
         {header}
         <Box sx={{ py: 2 }}>
           <Stack spacing={spacing} direction="column">

@@ -67,71 +67,80 @@ export const RightRail: React.FC<RightRailProps> = ({ children, width }) => {
         open={isMobile && rightPanelOpen}
         onClose={() => setRightPanelOpen(false)}
       />
-    <Box
-      sx={{
-        // Mobile: slide in from the right as an overlay drawer.
-        // Desktop: the in-flow column with an animated width.
-        position: isMobile ? "fixed" : "relative",
-        top: isMobile ? 0 : undefined,
-        right: isMobile ? 0 : undefined,
-        bottom: isMobile ? 0 : undefined,
-        width: isMobile ? MOBILE_DRAWER_WIDTH : width,
-        height: "100%",
-        flexShrink: 0,
-        transform: isMobile
-          ? `translateX(${rightPanelOpen ? "0" : "100%"})`
-          : undefined,
-        transition: isMobile
-          ? theme.transitions.create("transform", {
-              duration: theme.transitions.duration.standard,
-              easing: theme.transitions.easing.easeInOut,
-            })
-          : theme.transitions.create("width"),
-        zIndex: isMobile ? (t) => t.zIndex.appBar + 1 : 2,
-        boxShadow: isMobile && rightPanelOpen ? theme.shadows[8] : undefined,
-        // The rail is normally transparent over the main paper; as a
-        // drawer it needs its own opaque surface.
-        backgroundColor: isMobile ? theme.palette.background.default : undefined,
-        borderLeft: isMobile ? `1px solid ${theme.palette.divider}` : undefined,
-      }}
-    >
       <Box
         sx={{
-          display: "flex",
-          flexDirection: "column",
+          // Mobile: slide in from the right as an overlay drawer.
+          // Desktop: the in-flow column with an animated width.
+          position: isMobile ? "fixed" : "relative",
+          top: isMobile ? 0 : undefined,
+          right: isMobile ? 0 : undefined,
+          bottom: isMobile ? 0 : undefined,
+          width: isMobile ? MOBILE_DRAWER_WIDTH : width,
           height: "100%",
-          overflow: "hidden",
-          minWidth: 0,
+          flexShrink: 0,
+          transform: isMobile
+            ? `translateX(${rightPanelOpen ? "0" : "100%"})`
+            : undefined,
+          transition: isMobile
+            ? theme.transitions.create("transform", {
+                duration: theme.transitions.duration.standard,
+                easing: theme.transitions.easing.easeInOut,
+              })
+            : theme.transitions.create("width"),
+          zIndex: isMobile ? (t) => t.zIndex.appBar + 1 : 2,
+          boxShadow: isMobile && rightPanelOpen ? theme.shadows[8] : undefined,
+          // The rail is normally transparent over the main paper; as a
+          // drawer it needs its own opaque surface.
+          backgroundColor: isMobile
+            ? theme.palette.background.default
+            : undefined,
+          borderLeft: isMobile
+            ? `1px solid ${theme.palette.divider}`
+            : undefined,
         }}
       >
         <Box
           sx={{
-            flex: 1,
-            alignSelf: "flex-start",
-            width: isMobile ? "100%" : rightPanelSize,
-            minWidth: isMobile ? 0 : rightPanelSize,
-            overflowY: "auto",
-            minHeight: 0,
-            px: M2,
-            pb: M2,
+            display: "flex",
+            flexDirection: "column",
+            height: "100%",
+            overflow: "hidden",
+            minWidth: 0,
           }}
         >
-          {children}
+          <Box
+            sx={{
+              flex: 1,
+              alignSelf: "flex-start",
+              // The content box is given the rail's width plus horizontal
+              // padding. Without `border-box` (the app has no global reset)
+              // that padding is added on top, so the box overflows the rail
+              // by 1rem and the right padding gets clipped away.
+              boxSizing: "border-box",
+              width: isMobile ? "100%" : rightPanelSize,
+              minWidth: isMobile ? 0 : rightPanelSize,
+              overflowY: "auto",
+              minHeight: 0,
+              px: M2,
+              pb: M2,
+            }}
+          >
+            {children}
+          </Box>
         </Box>
-      </Box>
 
-      {/* Collapsed-only expand handle. Mirrors the left rail so the
+        {/* Collapsed-only expand handle. Mirrors the left rail so the
           panel stays reopenable once its content is clipped away. */}
-      {!isMobile && children != null && !rightPanelOpen && (
-        <PanelEdgeHandle
-          side="right"
-          open={false}
-          onClick={handleToggle}
-          collapseTitle="Collapse all boxes"
-          expandTitle="Expand right panel"
-        />
-      )}
-    </Box>
+        {!isMobile && children != null && !rightPanelOpen && (
+          <PanelEdgeHandle
+            side="right"
+            open={false}
+            onClick={handleToggle}
+            collapseTitle="Collapse all boxes"
+            expandTitle="Expand right panel"
+          />
+        )}
+      </Box>
     </>
   );
 

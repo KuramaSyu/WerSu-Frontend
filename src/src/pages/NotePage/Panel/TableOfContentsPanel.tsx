@@ -7,6 +7,7 @@ import {
   TimelineSeparator,
 } from "@mui/lab";
 import { Box, ListItemButton, ListItemText, Typography } from "@mui/material";
+import TocIcon from "@mui/icons-material/Toc";
 import {
   memo,
   useCallback,
@@ -123,7 +124,7 @@ const TocRow = memo(function TocRow({
           <Box sx={{ flexGrow: 1 }} />
         )}
       </TimelineSeparator>
-      <TimelineContent sx={{ p: 0 }}>
+      <TimelineContent sx={{ p: 0, minWidth: 0 }}>
         <ListItemButton
           dense
           disableGutters
@@ -134,6 +135,8 @@ const TocRow = memo(function TocRow({
           sx={{
             pl: 1,
             borderRadius: 1,
+            minWidth: 0,
+            overflow: "hidden",
             // Three tiers: primary (strong), visible (40%), off-screen (transparent).
             backgroundColor: isPrimary
               ? (theme) =>
@@ -151,10 +154,12 @@ const TocRow = memo(function TocRow({
           }}
         >
           <ListItemText
+            sx={{ minWidth: 0 }}
             primary={
               <Typography
                 variant="body2"
                 noWrap
+                title={item.textContent}
                 sx={{
                   // Precomputed indent (each level capped at 4).
                   pl: `${indent}rem`,
@@ -292,7 +297,12 @@ export const TableOfContentsPanel: React.FC = () => {
 
   if (items.length === 0) {
     return (
-      <PanelSection title="Table of Contents" collapsible defaultExpanded>
+      <PanelSection
+        title="Table of Contents"
+        titleIcon={<TocIcon fontSize="small" />}
+        collapsible
+        defaultExpanded
+      >
         <Typography variant="body2" color="text.secondary">
           No headings yet.
         </Typography>
@@ -301,11 +311,17 @@ export const TableOfContentsPanel: React.FC = () => {
   }
 
   return (
-    <PanelSection title="Table of Contents" collapsible defaultExpanded>
+    <PanelSection
+      title="Table of Contents"
+      titleIcon={<TocIcon fontSize="small" />}
+      collapsible
+      defaultExpanded
+    >
       <Timeline
         sx={{
           p: 0,
           m: 0,
+          minWidth: 0,
 
           // Drop the default `::before` spacer (no TimelineOppositeContent).
           [`& .${timelineItemClasses.root}:before`]: {

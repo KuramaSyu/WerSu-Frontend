@@ -8,6 +8,7 @@ import {
   Typography,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { PanelSection } from "../../../components/Panels/PanelSection";
 import { TitleValuePill } from "../../../components/TitleValuePill";
 import { useNoteStatsStore } from "../../../zustand/noteStatsStore";
@@ -55,7 +56,12 @@ export const NoteActionPanel: React.FC<NoteActionPanelProps> = ({
   const stats = useNoteStatsStore((s) => s.stats);
 
   return (
-    <PanelSection title="Metadata" collapsible defaultExpanded>
+    <PanelSection
+      title="Metadata"
+      titleIcon={<InfoOutlinedIcon fontSize="small" />}
+      collapsible
+      defaultExpanded
+    >
       {isLoading ? (
         <Typography variant="body2" color="textSecondary">
           Loading metadata...

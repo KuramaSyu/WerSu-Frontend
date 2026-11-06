@@ -86,9 +86,19 @@ export const PanelEdgeHandle: React.FC<PanelEdgeHandleProps> = ({
           top: centerInViewport
             ? "calc(50vh - var(--panel-top-offset, 0px))"
             : "50%",
+          // While the panel is open the handle straddles its border
+          // (half in, half out). Once collapsed the rail track is `0px`
+          // wide, so straddling would push half the button off-screen --
+          // the left handle off the viewport's left edge, the right
+          // handle off its right edge. Pin it fully inside the viewport
+          // instead.
           ...(side === "left"
-            ? { right: 0, transform: "translate(50%, -50%)" }
-            : { left: 0, transform: "translate(-50%, -50%)" }),
+            ? open
+              ? { right: 0, transform: "translate(50%, -50%)" }
+              : { left: 0, transform: "translate(0, -50%)" }
+            : open
+              ? { left: 0, transform: "translate(-50%, -50%)" }
+              : { right: 0, transform: "translate(0, -50%)" }),
           zIndex: 3,
           width: "1rem",
           height: "3.25rem",

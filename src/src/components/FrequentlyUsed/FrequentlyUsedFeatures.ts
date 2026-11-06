@@ -86,7 +86,11 @@ export function useFrequentlyUsedRows(
   };
 }
 
-/** Fetches the most recent note_viewed activity rows for the Last Used panel. Lifts title / description from metadata_json. */
+/**
+ * Fetches the most recent note interaction rows for the Last Used panel.
+ * Both views and edits count, so a note the user only read still shows
+ * up. Title / description are lifted from `metadata_json`.
+ */
 export function useLastUsedRows(
   limit: number = 3,
   days: number = 30,
@@ -94,7 +98,7 @@ export function useLastUsedRows(
   const filter = useMemo<HistoryFilter>(
     () => ({
       mode: "history",
-      actions: ["note_viewed"],
+      actions: ["note_viewed", "note_edited"],
       limit,
       days,
     }),

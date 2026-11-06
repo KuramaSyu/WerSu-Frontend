@@ -170,6 +170,7 @@ export const LeftRail: React.FC<LeftRailProps> = ({ children }) => {
               flexDirection: "column",
               flex: 1,
               overflowY: "auto",
+              overflowX: "hidden",
               minHeight: 0,
               pb: M2,
               scrollbarWidth: "thin",

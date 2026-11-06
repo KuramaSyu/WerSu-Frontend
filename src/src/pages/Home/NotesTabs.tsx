@@ -119,6 +119,8 @@ export interface NotesTabsProps {
   notes?: MinimalNote[];
   /** Tab to select on first render. Defaults to "Recent notes". */
   initialTab?: number;
+  /** Most recent view/edit time per note id (ms since epoch). */
+  lastActivityById?: ReadonlyMap<string, number>;
 }
 
 /**
@@ -132,6 +134,7 @@ export interface NotesTabsProps {
 export const NotesTabs: React.FC<NotesTabsProps> = ({
   notes,
   initialTab = RECENT_TAB,
+  lastActivityById,
 }) => {
   const { isMobile } = useBreakpoint();
   const theme = useTheme();
@@ -595,6 +598,7 @@ export const NotesTabs: React.FC<NotesTabsProps> = ({
             notes={notes}
             filterDirectoryIds={filterDirectoryIds}
             maxAgeDays={days}
+            lastActivityById={lastActivityById}
             onDirectoryClick={handleDirectoryClick}
           />
         )}

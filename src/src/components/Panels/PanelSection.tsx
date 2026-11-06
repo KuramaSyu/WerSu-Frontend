@@ -233,7 +233,7 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
           </AccordionSummary>
           {renderDivider && <Divider sx={{ opacity: dividerOpacity }} />}
           <AccordionDetails>
-            <Box sx={{ px: M3 }}>{body}</Box>
+            <Box sx={{ px: M3, flex: 1, minWidth: 0 }}>{body}</Box>
           </AccordionDetails>
         </Accordion>
       </ThemeProvider>
@@ -244,7 +244,7 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
   return (
     // px used to allign with padding of accordion
     <ThemeProvider theme={activeTheme}>
-      <Box sx={{ position: "relative", ...frameSx, px: M2 }}>
+      <Box sx={{ position: "relative", ...frameSx, px: M2, minWidth: 0 }}>
         {leftEdgeHandle}
         <PanelSectionTitle
           inAccordion={false}

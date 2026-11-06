@@ -27,6 +27,10 @@ import { AllDirectories } from "./AllDirectories";
 import { HomeGreeting } from "./HomeGreeting";
 import { NotesTabs } from "./NotesTabs";
 import { useNotesByScope } from "../../api/queries/useNotesByScope";
+import {
+  orderNotesByRecency,
+  useRecentNoteActivityOrder,
+} from "../../api/queries/recentNoteActivity";
 import { useCreateModalsFromUrl } from "../../hooks/useCreateModalsFromUrl";
 import { usePageHoldShortcuts } from "../../hooks/usePageHoldShortcuts";
 import { HoldKeyActionBar } from "../../components/HoldKeyActionBar";
@@ -53,6 +57,17 @@ export const HomePage: React.FC = () => {
   // Shared by the Recent notes list and the notes tabs so both sections
   // resolve from a single cached request.
   const { data: recentNotes } = useNotesByScope({ limit: 50 });
+
+  // Rank the recent list by the last view *or* edit, not just
+  // `updated_at`, so notes the user only read still surface as recent.
+  const recentActivityOrder = useRecentNoteActivityOrder();
+  const orderedRecentNotes = React.useMemo(
+    () =>
+      recentNotes
+        ? orderNotesByRecency(recentNotes, recentActivityOrder)
+        : recentNotes,
+    [recentNotes, recentActivityOrder],
+  );
 
   // Only surface the favourites section once the user actually has one on
   // the current shelf; the empty-state copy lives here rather than in a
@@ -130,7 +145,10 @@ export const HomePage: React.FC = () => {
           <AllDirectories />
         </Stack>
 
-        <NotesTabs notes={recentNotes} />
+        <NotesTabs
+          notes={orderedRecentNotes}
+          lastActivityById={recentActivityOrder}
+        />
       </Stack>
       <CreateActions
         onCreateNote={() => setCreateNoteOpen(true)}

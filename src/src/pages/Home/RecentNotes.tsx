@@ -28,6 +28,7 @@ import { useAllDirectoriesQuery } from "../../api/queries/directoryQueries";
 import type { DirectoryReply } from "../../api/models/directory";
 import type { MinimalNote, MinimalTag } from "../../api/models/search";
 import { themeAttachmentKey } from "../../utils/syncedThemeImages";
+import { noteRecencyStamp } from "../../api/queries/recentNoteActivity";
 
 /** Fixed card dimensions, matching the directory card grid. */
 const CARD_WIDTH = 220;
@@ -595,6 +596,8 @@ export interface RecentNotesProps {
   filterDirectoryIds?: string[];
   /** Only keep notes updated within this many days. */
   maxAgeDays?: number;
+  /** Most recent view/edit time per note id (ms since epoch). */
+  lastActivityById?: ReadonlyMap<string, number>;
   /** Called when a note's folder chip is clicked. */
   onDirectoryClick?: (directoryId: string) => void;
 }
@@ -613,9 +616,26 @@ export const RecentNotes: React.FC<RecentNotesProps> = ({
   emptyText = "No notes yet. Create one from the Actions panel to see it here.",
   filterDirectoryIds,
   maxAgeDays,
+  lastActivityById,
   onDirectoryClick,
 }) => {
   const { theme } = useThemeStore();
+
+  // Show the later of the last view/edit and `updated_at` in each row's
+  // time cell, so a read note reads as "viewed X ago" too.
+  const timestampById = useMemo(() => {
+    if (!notes || !lastActivityById || lastActivityById.size === 0) {
+      return undefined;
+    }
+    const map: Record<string, number> = {};
+    for (const note of notes) {
+      const stamp = noteRecencyStamp(note, lastActivityById);
+      if (Number.isFinite(stamp)) {
+        map[note.id] = stamp;
+      }
+    }
+    return map;
+  }, [notes, lastActivityById]);
 
   if (!notes) {
     return (
@@ -657,11 +677,11 @@ export const RecentNotes: React.FC<RecentNotesProps> = ({
       }
     }
     if (maxAgeDays !== undefined) {
-      const updatedAt = new Date(note.updated_at).getTime();
+      const stamp = noteRecencyStamp(note, lastActivityById);
       if (
-        Number.isFinite(updatedAt) &&
+        Number.isFinite(stamp) &&
         // eslint-disable-next-line react-hooks/purity -- age cutoff needs wall-clock time
-        updatedAt < Date.now() - maxAgeDays * 86_400_000
+        stamp < Date.now() - maxAgeDays * 86_400_000
       ) {
         return false;
       }
@@ -673,6 +693,7 @@ export const RecentNotes: React.FC<RecentNotesProps> = ({
     <NoteList
       notes={filtered.slice(0, limit)}
       emptyText={emptyText}
+      timestampById={timestampById}
       onDirectoryClick={onDirectoryClick}
     />
   );
