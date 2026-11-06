@@ -19,7 +19,7 @@ export const EditorShortcutsPanel: React.FC = () => {
       titleIcon={<KeyboardIcon fontSize="small" />}
       bordered
     >
-      <Stack spacing={1.5}>
+      <Stack spacing={1}>
         {shortcuts.map((shortcut) => (
           <Box
             key={`${shortcut.key}-${shortcut.label}`}

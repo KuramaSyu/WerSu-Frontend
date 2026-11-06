@@ -45,11 +45,8 @@ export interface LeftRailProps {
  * width.
  */
 export const LeftRail: React.FC<LeftRailProps> = ({ children }) => {
-  const {
-    leftPanelOpen,
-    setLeftPanelOpen,
-    setLeftPanelUserOverride,
-  } = useLayout();
+  const { leftPanelOpen, setLeftPanelOpen, setLeftPanelUserOverride } =
+    useLayout();
   const { theme } = useThemeStore();
   const { isMobile } = useBreakpoint();
 
@@ -77,131 +74,131 @@ export const LeftRail: React.FC<LeftRailProps> = ({ children }) => {
         open={isMobile && leftPanelOpen}
         onClose={() => setLeftPanelOpen(false)}
       />
-    <Box
-      sx={{
-        // Mobile: escape the grid and slide over the canvas as a
-        // drawer. Desktop: a normal grid column whose width is owned
-        // by AppShell.
-        gridColumn: "1",
-        position: isMobile ? "fixed" : "relative",
-        top: isMobile ? 0 : undefined,
-        left: isMobile ? 0 : undefined,
-        bottom: isMobile ? 0 : undefined,
-        width: isMobile ? MOBILE_DRAWER_WIDTH : undefined,
-        transform: isMobile
-          ? `translateX(${leftPanelOpen ? "0" : "-100%"})`
-          : undefined,
-        transition: isMobile
-          ? theme.transitions.create("transform", {
-              duration: theme.transitions.duration.standard,
-              easing: theme.transitions.easing.easeInOut,
-            })
-          : undefined,
-        display: "flex",
-        flexDirection: "column",
-        minWidth: 0,
-        zIndex: isMobile ? (t) => t.zIndex.appBar + 1 : 2,
-        boxShadow: isMobile && leftPanelOpen ? theme.shadows[8] : undefined,
-      }}
-    >
-      <TranslucentPaper
-        elevation={RAIL_ELEVATION}
-        square
+      <Box
         sx={{
-          flex: 1,
+          // Mobile: escape the grid and slide over the canvas as a
+          // drawer. Desktop: a normal grid column whose width is owned
+          // by AppShell.
+          gridColumn: "1",
+          position: isMobile ? "fixed" : "relative",
+          top: isMobile ? 0 : undefined,
+          left: isMobile ? 0 : undefined,
+          bottom: isMobile ? 0 : undefined,
+          width: isMobile ? MOBILE_DRAWER_WIDTH : undefined,
+          transform: isMobile
+            ? `translateX(${leftPanelOpen ? "0" : "-100%"})`
+            : undefined,
+          transition: isMobile
+            ? theme.transitions.create("transform", {
+                duration: theme.transitions.duration.standard,
+                easing: theme.transitions.easing.easeInOut,
+              })
+            : undefined,
           display: "flex",
           flexDirection: "column",
-          backgroundColor: theme.palette.background.default,
-          overflow: "hidden",
           minWidth: 0,
-          zIndex: 1,
-          borderRight: `1px solid ${theme.palette.divider}`,
+          zIndex: isMobile ? (t) => t.zIndex.appBar + 1 : 2,
+          boxShadow: isMobile && leftPanelOpen ? theme.shadows[8] : undefined,
         }}
       >
-        {/* Every colour inside the rail is muted until the pointer is
-            over it. This wrapper fades the content toward the rail's
-            own surface -- `backgroundColor` is painted on the
-            `TranslucentPaper` above, so it keeps its colour and only
-            the content loses luminance. */}
-        <Box
+        <TranslucentPaper
+          elevation={RAIL_ELEVATION}
+          square
           sx={{
             flex: 1,
             display: "flex",
             flexDirection: "column",
-            minHeight: 0,
+            backgroundColor: theme.palette.background.default,
+            overflow: "hidden",
             minWidth: 0,
-            // The hover-mute reads poorly on touch; keep the drawer at
-            // full opacity on mobile.
-            opacity: isMobile ? 1 : RAIL_INACTIVE_OPACITY,
-            transition: theme.transitions.create("opacity"),
-            "&:hover": { opacity: 1 },
+            zIndex: 1,
+            borderRight: `1px solid ${theme.palette.divider}`,
           }}
         >
-          {isCollapsed ? (
-            // Collapsed rail: just the search shortcut so Ctrl+K
-            // stays reachable even when the top panel is hidden. The
-            // expand toggle lives in the top bar (`<LeftPanelToggle />`)
-            // and in the edge handle below.
-            <Stack spacing={0.5} sx={{ pt: 0.5, alignItems: "center" }}>
-              <Tooltip title="Search (Ctrl+K)">
-                <IconButton
-                  onClick={() =>
-                    useSearchNotesStore.getState().setIsDialogOpen(true)
-                  }
-                  sx={panelIconButtonSx}
-                >
-                  <SearchIcon sx={panelIconSvgSx} />
-                </IconButton>
-              </Tooltip>
-            </Stack>
-          ) : null}
+          {/* Every colour inside the rail is muted until the pointer is
+            over it. This wrapper fades the content toward the rail's
+            own surface -- `backgroundColor` is painted on the
+            `TranslucentPaper` above, so it keeps its colour and only
+            the content loses luminance. */}
+          <Box
+            sx={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              minHeight: 0,
+              minWidth: 0,
+              // The hover-mute reads poorly on touch; keep the drawer at
+              // full opacity on mobile.
+              opacity: isMobile ? 1 : RAIL_INACTIVE_OPACITY,
+              transition: theme.transitions.create("opacity"),
+              "&:hover": { opacity: 1 },
+            }}
+          >
+            {isCollapsed ? (
+              // Collapsed rail: just the search shortcut so Ctrl+K
+              // stays reachable even when the top panel is hidden. The
+              // expand toggle lives in the top bar (`<LeftPanelToggle />`)
+              // and in the edge handle below.
+              <Stack spacing={0.5} sx={{ pt: 0.5, alignItems: "center" }}>
+                <Tooltip title="Search (Ctrl+K)">
+                  <IconButton
+                    onClick={() =>
+                      useSearchNotesStore.getState().setIsDialogOpen(true)
+                    }
+                    sx={panelIconButtonSx}
+                  >
+                    <SearchIcon sx={panelIconSvgSx} />
+                  </IconButton>
+                </Tooltip>
+              </Stack>
+            ) : null}
 
-          {/* Keep the panel content mounted while the rail is collapsed.
+            {/* Keep the panel content mounted while the rail is collapsed.
               Unmounting it here made expanding rebuild the whole subtree
               (directory hierarchy, table of contents, attachments…) in the
               same frame as the shell's grid transition, which blocked the
               main thread for hundreds of ms on the note page. `display:
               none` keeps the React tree alive without taking up space. */}
-          <Box
-            sx={{
-              // On mobile keep the content mounted while closed so the
-              // drawer can animate in / out instead of popping.
-              display: isMobile || !isCollapsed ? "flex" : "none",
-              flexDirection: "column",
-              flex: 1,
-              overflowY: "auto",
-              overflowX: "hidden",
-              minHeight: 0,
-              pb: M2,
-              scrollbarWidth: "thin",
-              scrollbarColor: `transparent transparent`,
-              "&:hover": {
-                scrollbarColor: `${theme.palette.secondary.dark} transparent`,
-              },
-              transition: theme.transitions.create(),
-            }}
-          >
-            {children}
+            <Box
+              sx={{
+                // On mobile keep the content mounted while closed so the
+                // drawer can animate in / out instead of popping.
+                display: isMobile || !isCollapsed ? "flex" : "none",
+                flexDirection: "column",
+                flex: 1,
+                overflowY: "auto",
+                overflowX: "hidden",
+                minHeight: 0,
+                pb: M2,
+                scrollbarWidth: "thin",
+                scrollbarColor: `transparent transparent`,
+                "&:hover": {
+                  scrollbarColor: `${theme.palette.secondary.dark} transparent`,
+                },
+                transition: theme.transitions.create(),
+              }}
+            >
+              {children}
+            </Box>
           </Box>
-        </Box>
-      </TranslucentPaper>
+        </TranslucentPaper>
 
-      {/* Vertically centred handle on the rail's right border. Only
+        {/* Vertically centred handle on the rail's right border. Only
           mounted when a panel is actually present so it does not
           float over the canvas on routes without a left panel. On
           mobile the drawer is closed by tapping the scrim, so the
           edge handle is redundant. */}
-      {!isMobile && children != null && (
-        <PanelEdgeHandle
-          side="left"
-          open={leftPanelOpen}
-          onClick={handleToggle}
-          collapseTitle="Collapse left panel"
-          expandTitle="Expand left panel"
-          centerInViewport
-        />
-      )}
-    </Box>
+        {!isMobile && children != null && (
+          <PanelEdgeHandle
+            side="left"
+            open={leftPanelOpen}
+            onClick={handleToggle}
+            collapseTitle="Collapse left panel"
+            expandTitle="Expand left panel"
+            centerInViewport
+          />
+        )}
+      </Box>
     </>
   );
 };
