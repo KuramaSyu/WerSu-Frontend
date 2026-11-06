@@ -19,6 +19,13 @@ export interface UpperPanelProps {
    * without inheriting the body's padding.
    */
   header?: React.ReactNode;
+  /**
+   * Add a left gutter to the scroll box. Only the right rail needs it:
+   * a first section's `leftEdgeHandle` straddles the section border and
+   * would otherwise be clipped by this scroll box. The left rail stays
+   * flush so its content keeps the window edge. Defaults to false.
+   */
+  leftGutter?: boolean;
 }
 
 /**
@@ -39,10 +46,11 @@ export const UpperPanel: React.FC<UpperPanelProps> = ({
   children,
   spacing = 2,
   header,
+  leftGutter = false,
 }) => {
   return (
     <Box
-      aria-label="Right Rail Content Wrapper"
+      aria-label="Rail Content Wrapper"
       sx={{
         display: "flex",
         flexDirection: "column",
@@ -54,13 +62,12 @@ export const UpperPanel: React.FC<UpperPanelProps> = ({
         sx={{
           overflowY: "auto",
           overflowX: "hidden",
-          // Left gutter for every side panel. On the right rail it gives
-          // a first section's `leftEdgeHandle` room to straddle the
-          // section border without being clipped by this scroll box; on
-          // the left rail it insets the content from the window edge.
-          // The matching outer padding is dropped from the main
-          // content/outlet in `AppShell` so the gap is not doubled.
-          pl: M3,
+          // Right-rail-only left gutter: gives a first section's
+          // `leftEdgeHandle` room to straddle the section border without
+          // being clipped by this scroll box. The matching outer padding
+          // is dropped from the main content/outlet in `AppShell` so the
+          // gap is not doubled.
+          pl: leftGutter ? M3 : 0,
           flex: 1,
           minHeight: 0,
         }}

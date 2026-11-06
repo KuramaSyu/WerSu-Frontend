@@ -262,13 +262,12 @@ export const AppShell: React.FC = () => {
                 pt: isLoginPage ? 0 : M2,
                 pl: isLoginPage || (isMobile && isNotesPage) ? 0 : M3,
                 // The right rail owns the gutter between itself and the
-                // outlet: `UpperPanel` adds `pl: M3` to every rail's
-                // scroll box (which also gives a first card's edge
-                // handle room to straddle the border without clipping).
-                // The outlet has no right padding of its own, so it is
-                // not doubled when a rail is present and does not leave
-                // a stray gutter on routes without a right rail
-                // (login / home).
+                // outlet: its `UpperPanel` adds `pl: M3` to the scroll box
+                // (which also gives a first card's edge handle room to
+                // straddle the border without clipping). The outlet has
+                // no right padding of its own, so it is not doubled when
+                // a rail is present and does not leave a stray gutter on
+                // routes without a right rail (login / home).
                 pr: 0,
                 // pt: isMobile ? M2 : showTopPanel ? M2 : 0,
                 paddingBottom: isLoginPage

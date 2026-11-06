@@ -33,7 +33,7 @@ export const NoteRightPanel: React.FC<NoteRightPanelProps> = ({ noteId }) => {
   const editMode = useEditorSettings((s) => s.editMode);
   const edgeHandle = <RightPanelEdgeToggle />;
   return (
-    <UpperPanel spacing={3}>
+    <UpperPanel spacing={3} leftGutter>
       <FormattingPanel leftEdgeHandle={editMode ? edgeHandle : undefined} />
       <VersionInfo
         noteId={noteId}
