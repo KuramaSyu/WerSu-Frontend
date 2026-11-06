@@ -14,8 +14,12 @@ import { useRightClickMenuStore } from "../../zustand/useRightClickMenuStore";
 import { useDirectoryDelete } from "../../api/queries/useDirectoryMutations";
 import { useDeleteNote } from "../../api/queries/useNoteQueries";
 import { ConfirmationModal } from "../../pages/Settings/ConfirmationModal";
-import { useRightClickMenu, type RightClickMenuSpec } from "./useRightClickMenu";
+import {
+  useRightClickMenu,
+  type RightClickMenuSpec,
+} from "./useRightClickMenu";
 import { NoteRenameDialog } from "./NoteRenameDialog";
+import { PermissionEditor } from "../Permissions/PermissionEditor";
 
 export type DirectoryItemMenuTarget =
   | { kind: "directory"; directoryId: string; name: string; isRoot: boolean }
@@ -30,6 +34,7 @@ const ROW_BUTTONS: RightClickMenuSpec["buttons"] = [
   "copy",
   "paste",
   "edit",
+  "permissions",
   "delete",
 ];
 
@@ -38,6 +43,7 @@ const NOTE_ROW_BUTTONS: RightClickMenuSpec["buttons"] = [
   "paste",
   "edit",
   "rename",
+  "permissions",
   "delete",
 ];
 
@@ -54,6 +60,7 @@ export const DirectoryItemMenu: React.FC<DirectoryItemMenuProps> = ({
   const deleteNote = useDeleteNote();
 
   const [renameOpen, setRenameOpen] = useState(false);
+  const [permissionsOpen, setPermissionsOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -93,6 +100,15 @@ export const DirectoryItemMenu: React.FC<DirectoryItemMenuProps> = ({
           handler: () => {
             setError(null);
             setConfirmOpen(true);
+            return true;
+          },
+        };
+      }
+
+      if (!isRoot) {
+        overrides.permissions = {
+          handler: () => {
+            setPermissionsOpen(true);
             return true;
           },
         };
@@ -153,10 +169,17 @@ export const DirectoryItemMenu: React.FC<DirectoryItemMenuProps> = ({
           onClose={() => setRenameOpen(false)}
         />
       )}
-      <ConfirmationModal
-        title={
-          isDirectory ? "Delete this chapter?" : "Delete this note?"
+      <PermissionEditor
+        open={permissionsOpen}
+        onClose={() => setPermissionsOpen(false)}
+        objectType={isDirectory ? "directory" : "note"}
+        objectId={
+          target.kind === "directory" ? target.directoryId : target.noteId
         }
+        title={target.kind === "directory" ? target.name : target.title}
+      />
+      <ConfirmationModal
+        title={isDirectory ? "Delete this chapter?" : "Delete this note?"}
         message={
           target.kind === "directory"
             ? `${target.name} and everything inside it will be deleted.`

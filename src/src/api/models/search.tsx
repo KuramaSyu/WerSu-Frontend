@@ -119,15 +119,33 @@ export interface NotesReply {
   tags: MinimalTag[];
 }
 
+export type PermissionResourceType = "note" | "directory" | "shelf" | "role";
+
 export type PermissionObjectType =
-  | "note"
-  | "directory"
+  | PermissionResourceType
   | "user"
-  | "PERMISSION_OBJECT_TYPE_USER"
+  | "attachment"
   | "PERMISSION_OBJECT_TYPE_UNSPECIFIED"
+  | "PERMISSION_OBJECT_TYPE_USER"
   | "PERMISSION_OBJECT_TYPE_NOTE"
   | "PERMISSION_OBJECT_TYPE_DIRECTORY"
+  | "PERMISSION_OBJECT_TYPE_SHELF"
+  | "PERMISSION_OBJECT_TYPE_ROLE"
   | "PERMISSION_OBJECT_TYPE_ATTACHMENT";
+
+/** Relations that can be written through the REST permission endpoints. */
+export type PermissionRelation =
+  | "admin"
+  | "writer"
+  | "reader"
+  | "grant_read"
+  | "grant_write"
+  | "grant_admin"
+  | "delegate_read"
+  | "delegate_write"
+  | "delegate_admin"
+  | "grant_member"
+  | "delegate_member";
 
 export interface PermissionResourceReply {
   object_id: string;
@@ -137,6 +155,8 @@ export interface PermissionResourceReply {
 export interface PermissionSubjectReply {
   object_id: string;
   object_type: PermissionObjectType;
+  /** Set to `member` when the subject is a role userset. */
+  optional_relation?: string;
 }
 
 export interface PermissionRelationshipReply {
@@ -147,25 +167,20 @@ export interface PermissionRelationshipReply {
 
 export interface PermissionResourceRequest {
   object_id: string;
-  object_type: "note" | "directory";
+  object_type: PermissionResourceType;
 }
 
 export interface PermissionSubjectRequest {
   object_id: string;
-  object_type: "user" | "directory";
+  object_type: "user" | "role";
+  /** Role subjects default to `member`; user subjects must omit it. */
+  optional_relation?: "member";
 }
 
 export interface PermissionRelationshipRequest {
-  relation:
-    | "owner"
-    | "admin"
-    | "writer"
-    | "reader"
-    | "parent"
-    | "parent_directory"
-    | "parent_note";
+  relation: PermissionRelation;
   resource?: PermissionResourceRequest;
-  subject?: PermissionSubjectRequest;
+  subject: PermissionSubjectRequest;
 }
 
 export interface PermissionsReply {
@@ -174,24 +189,29 @@ export interface PermissionsReply {
     | "PERMISSION_OBJECT_TYPE_UNSPECIFIED"
     | "PERMISSION_OBJECT_TYPE_NOTE"
     | "PERMISSION_OBJECT_TYPE_DIRECTORY"
+    | "PERMISSION_OBJECT_TYPE_SHELF"
+    | "PERMISSION_OBJECT_TYPE_ROLE"
     | "PERMISSION_OBJECT_TYPE_ATTACHMENT";
   relationships: PermissionRelationshipReply[];
 }
 
 export interface ReplacePermissionsBody {
   object_id: string;
-  object_type: "note" | "directory" | "attachment";
+  object_type: PermissionResourceType;
   relationships: PermissionRelationshipRequest[];
 }
 
 export interface CreatePermissionBody {
   object_id: string;
-  object_type: "note" | "directory" | "attachment";
+  object_type: PermissionResourceType;
   relationship: PermissionRelationshipRequest;
 }
 
 export interface DeletePermissionBody {
   object_id: string;
-  object_type: "note" | "directory" | "attachment";
+  object_type: PermissionResourceType;
   relationship: PermissionRelationshipRequest;
 }
+
+/** Object type accepted by `GET /api/permissions`. */
+export type PermissionObjectQueryType = PermissionResourceType;

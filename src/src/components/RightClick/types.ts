@@ -14,7 +14,8 @@ export type RightClickButtonId =
   | "edit"
   | "rename"
   | "delete"
-  | "favourite";
+  | "favourite"
+  | "permissions";
 
 /** Canonical catalogue order. The resolver sorts by this so menus never reflow per call site. */
 export const RIGHT_CLOCK_BUTTON_ORDER: readonly RightClickButtonId[] = [
@@ -27,6 +28,7 @@ export const RIGHT_CLOCK_BUTTON_ORDER: readonly RightClickButtonId[] = [
   "rename",
   "delete",
   "favourite",
+  "permissions",
 ];
 
 /** Handlers return false when there was nothing to act on, so the row can grey out. */

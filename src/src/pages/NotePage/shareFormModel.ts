@@ -65,6 +65,8 @@ export interface ShareFormValue {
   permission: Permission;
   onlineUntil: string;
   description: string;
+  /** Target user id when `visibility` is "user". */
+  userId: string;
 }
 
 /**
@@ -95,5 +97,6 @@ export const blankShareFormValue = (noteTitle?: string): ShareFormValue => {
     permission: "read",
     onlineUntil: oneMonthFromNow,
     description: defaultShareDescription(noteTitle ?? ""),
+    userId: "",
   };
 };

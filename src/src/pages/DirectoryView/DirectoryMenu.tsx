@@ -14,9 +14,11 @@ import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ShareIcon from "@mui/icons-material/Share";
+import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import { useNavigate, useParams } from "react-router-dom";
 import { useFavouritesStore } from "../../zustand/useFavouritesStore";
 import { ConfirmationModal } from "../Settings/ConfirmationModal";
+import { PermissionEditor } from "../../components/Permissions/PermissionEditor";
 import type { HirarchyItem } from "../../models/HirarchyItem";
 import type { CascadePreview } from "./DirectoryFeatures.hook";
 import {
@@ -61,8 +63,7 @@ const DeletePreviewMessage: React.FC<{
   }
 
   const noteWord = (n: number) => (n === 1 ? "note" : "notes");
-  const subWord = (n: number) =>
-    n === 1 ? "subchapter" : "subchapters";
+  const subWord = (n: number) => (n === 1 ? "subchapter" : "subchapters");
 
   return (
     <Stack spacing={1.5}>
@@ -115,6 +116,7 @@ export const DirectoryMenu: React.FC<DirectoryMenuProps> = ({
 
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [permissionsOpen, setPermissionsOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
@@ -143,7 +145,9 @@ export const DirectoryMenu: React.FC<DirectoryMenuProps> = ({
         setConfirmDeleteOpen(false);
         navigate("/");
       } else {
-        setDeleteError(`Failed to delete ${dirTerms.singularLower}. Please try again.`);
+        setDeleteError(
+          `Failed to delete ${dirTerms.singularLower}. Please try again.`,
+        );
       }
     } catch (e) {
       setDeleteError(
@@ -201,6 +205,18 @@ export const DirectoryMenu: React.FC<DirectoryMenuProps> = ({
             {isFavourite ? "Unfavourite" : "Favourite"}
           </ListItemText>
         </MenuItem>
+        <MenuItem
+          disabled={isRoot}
+          onClick={() => {
+            closeMenu();
+            setPermissionsOpen(true);
+          }}
+        >
+          <ListItemIcon>
+            <AdminPanelSettingsIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Permissions</ListItemText>
+        </MenuItem>
         <MenuItem disabled={isRoot} onClick={openDeleteDialog}>
           <ListItemIcon>
             <DeleteIcon fontSize="small" />
@@ -222,6 +238,13 @@ export const DirectoryMenu: React.FC<DirectoryMenuProps> = ({
           <ListItemText>Shares</ListItemText>
         </MenuItem>
       </Menu>
+      <PermissionEditor
+        open={permissionsOpen}
+        onClose={() => setPermissionsOpen(false)}
+        objectType="directory"
+        objectId={directoryId ?? ""}
+        title={currentNode.getName()}
+      />
       <ConfirmationModal
         title={`Delete this ${dirTerms.singularLower}?`}
         message={

@@ -1,15 +1,18 @@
 // REST client for the user-management surface.
 
 import { BACKEND_BASE } from "../statics";
-import { requestJson } from "./utils/request_helpers";
+import { requestJson, toQueryString } from "./utils/request_helpers";
 import { apiRegistry, type ApiToken } from "./apiRegistry";
 import type { JsUserAuth } from "./models/passkey";
 import {
   assertPatchNoConflict,
   type ChangePasswordRequest,
+  type GetUsersByIdsRequest,
   type LoginPasswordRequest,
   type PatchUserRequest,
   type PostUserRequest,
+  type SearchUserReply,
+  type SearchUsersRequest,
   type SignupRequest,
 } from "./models/userManagement";
 
@@ -29,6 +32,9 @@ export interface IUserManagementApi {
 
   /** POST /api/auth/password/change (self) */
   changePassword(payload: ChangePasswordRequest): Promise<void>;
+
+  /** GET /api/users/search?query=� (authenticated user discovery) */
+  searchUsers(request: SearchUsersRequest): Promise<SearchUserReply[]>;
 }
 
 export class UserManagementApi implements IUserManagementApi {
@@ -71,6 +77,28 @@ export class UserManagementApi implements IUserManagementApi {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
+  }
+
+  async searchUsers(request: SearchUsersRequest): Promise<SearchUserReply[]> {
+    const endpoint = `${BACKEND_BASE}/api/users/search${toQueryString({
+      query: request.query,
+    })}`;
+    return await requestJson<SearchUserReply[]>(endpoint, {
+      method: "GET",
+    });
+  }
+
+  async getUsersByIds(
+    request: GetUsersByIdsRequest,
+  ): Promise<SearchUserReply[]> {
+    return await requestJson<SearchUserReply[]>(
+      `${BACKEND_BASE}/api/users/by-ids`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request),
+      },
+    );
   }
 }
 

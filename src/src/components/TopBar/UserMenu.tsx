@@ -17,6 +17,7 @@ import {
   Typography,
 } from "@mui/material";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
+import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import CheckIcon from "@mui/icons-material/Check";
 import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
@@ -80,18 +81,14 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
   } = useThemeStore();
   const { data: user } = useUser();
   const { isPublic } = usePublicRouteReady({ timeoutMs: 0 });
-  const {
-    canUpload,
-    canDownload,
-    isUploading,
-    upload,
-    progress,
-    download,
-  } = useCloudPreferences();
+  const { canUpload, canDownload, isUploading, upload, progress, download } =
+    useCloudPreferences();
   const navigate = useNavigate();
   const selectedShelfId = useSelectedShelfStore((s) => s.selectedShelfId);
   const notifications = useInfoStore((s) => s.logs);
-  const setIsNotificationsOpen = useNotificationsStore((s) => s.setIsDialogOpen);
+  const setIsNotificationsOpen = useNotificationsStore(
+    (s) => s.setIsDialogOpen,
+  );
   const reachability = useServiceReachability();
 
   // Unread count drives the menu row badge; "mark all as read" in the
@@ -188,6 +185,11 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
     onRequestClose();
   };
 
+  const handleOpenRoles = () => {
+    navigate(Pages.ROLES);
+    onRequestClose();
+  };
+
   const handleOpenHome = () => {
     navigate(Pages.HOME);
     onRequestClose();
@@ -250,8 +252,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
     // 3. Otherwise any theme of that mode.
     const activeGenerated = editableThemesByName.get(themeName) ?? null;
     const sibling = editableThemes.find(
-      (r) =>
-        r.groupId === activeGenerated?.groupId && r.mode === otherMode,
+      (r) => r.groupId === activeGenerated?.groupId && r.mode === otherMode,
     );
     if (sibling !== undefined) {
       void selectTheme(sibling.name);
@@ -297,7 +298,9 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
           <TextField
             value={nameDraft}
             onChange={(event) =>
-              setNameDraft(event.target.value.slice(0, PUBLIC_USER_NAME_MAX_LENGTH))
+              setNameDraft(
+                event.target.value.slice(0, PUBLIC_USER_NAME_MAX_LENGTH),
+              )
             }
             onKeyDown={(event) => {
               if (event.key === "Enter") {
@@ -390,7 +393,9 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
                   {isUploading ? (
                     <CircularProgress
                       size={16}
-                      variant={progress !== null ? "determinate" : "indeterminate"}
+                      variant={
+                        progress !== null ? "determinate" : "indeterminate"
+                      }
                       value={
                         progress !== null && progress.total > 0
                           ? (progress.completed / progress.total) * 100
@@ -636,6 +641,18 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
           <ShareIcon fontSize="small" />
         </ListItemIcon>
         <ListItemText primary="Shares" />
+      </MenuItem>
+      <MenuItem
+        onClick={handleOpenRoles}
+        sx={{
+          "&:hover": { backgroundColor: theme.palette.action.hover },
+          minHeight: 52,
+        }}
+      >
+        <ListItemIcon>
+          <AdminPanelSettingsIcon fontSize="small" />
+        </ListItemIcon>
+        <ListItemText primary="Roles" />
       </MenuItem>
       <MenuItem
         onClick={handleOpenShortcuts}

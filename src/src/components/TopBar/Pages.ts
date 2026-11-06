@@ -13,6 +13,7 @@ export const Pages = {
   SETTINGSV2: "/settings-v2",
   GRAPH: "/graph",
   SHARES: "/shares",
+  ROLES: "/roles",
   SHORTCUTS: "/shortcuts",
 } as const;
 

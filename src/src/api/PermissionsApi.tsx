@@ -2,108 +2,68 @@ import { BACKEND_BASE } from "../statics";
 import type {
   CreatePermissionBody,
   DeletePermissionBody,
+  PermissionObjectQueryType,
   PermissionsReply,
   ReplacePermissionsBody,
 } from "./models/search";
+import { requestJson, toQueryString } from "./utils/request_helpers";
 import { apiRegistry, type ApiToken } from "./apiRegistry";
 
-export type PermissionObjectQueryType = "note" | "directory";
+export type { PermissionObjectQueryType };
 
 export interface IPermissionsApi {
   get(
     object_type: PermissionObjectQueryType,
     object_id: string,
-  ): Promise<PermissionsReply | undefined>;
-  put(payload: ReplacePermissionsBody): Promise<PermissionsReply | undefined>;
-  post(payload: CreatePermissionBody): Promise<PermissionsReply | undefined>;
-  delete(payload: DeletePermissionBody): Promise<PermissionsReply | undefined>;
+  ): Promise<PermissionsReply>;
+  put(payload: ReplacePermissionsBody): Promise<PermissionsReply>;
+  post(payload: CreatePermissionBody): Promise<PermissionsReply>;
+  delete(payload: DeletePermissionBody): Promise<PermissionsReply>;
 }
 
-export class PermissionsApi implements IPermissionsApi {
-  private logError(url_part: string, error: unknown): void {
-    console.error(
-      `Error fetching ${BACKEND_BASE}${url_part}:`,
-      JSON.stringify(error),
-    );
-  }
+const PERMISSIONS_ENDPOINT = `${BACKEND_BASE}/api/permissions`;
 
+/**
+ * REST client for `/api/permissions`.
+ *
+ * Mutations return the full permission set for the target object, so
+ * callers can update a local cache or simply invalidate the query.
+ */
+export class PermissionsApi implements IPermissionsApi {
   async get(
     object_type: PermissionObjectQueryType,
     object_id: string,
-  ): Promise<PermissionsReply | undefined> {
-    const url = new URL(`${BACKEND_BASE}/api/permissions`);
-    url.searchParams.append("object_type", object_type);
-    url.searchParams.append("object_id", object_id);
-
-    const response = await fetch(url.toString(), {
-      method: "GET",
-      credentials: "include",
-    });
-
-    if (!response.ok) {
-      this.logError(
-        "/api/permissions",
-        `Response not ok: ${response.status}; ${response.statusText}`,
-      );
-      return undefined;
-    }
-
-    const permissions = await response.json().catch((e) => {
-      this.logError("/api/permissions", e);
-      return null;
-    });
-
-    return permissions ?? undefined;
+  ): Promise<PermissionsReply> {
+    return await requestJson<PermissionsReply>(
+      `${PERMISSIONS_ENDPOINT}${toQueryString({ object_type, object_id })}`,
+      { method: "GET" },
+    );
   }
 
-  async put(
-    payload: ReplacePermissionsBody,
-  ): Promise<PermissionsReply | undefined> {
-    return this.requestWithBody("PUT", payload);
+  async put(payload: ReplacePermissionsBody): Promise<PermissionsReply> {
+    return await this.requestWithBody("PUT", payload);
   }
 
-  async post(
-    payload: CreatePermissionBody,
-  ): Promise<PermissionsReply | undefined> {
-    return this.requestWithBody("POST", payload);
+  async post(payload: CreatePermissionBody): Promise<PermissionsReply> {
+    return await this.requestWithBody("POST", payload);
   }
 
-  async delete(
-    payload: DeletePermissionBody,
-  ): Promise<PermissionsReply | undefined> {
-    return this.requestWithBody("DELETE", payload);
+  async delete(payload: DeletePermissionBody): Promise<PermissionsReply> {
+    return await this.requestWithBody("DELETE", payload);
   }
 
   private async requestWithBody(
     method: "PUT" | "POST" | "DELETE",
     payload:
-      | ReplacePermissionsBody
-      | CreatePermissionBody
-      | DeletePermissionBody,
-  ): Promise<PermissionsReply | undefined> {
-    const response = await fetch(`${BACKEND_BASE}/api/permissions`, {
+      ReplacePermissionsBody | CreatePermissionBody | DeletePermissionBody,
+  ): Promise<PermissionsReply> {
+    return await requestJson<PermissionsReply>(PERMISSIONS_ENDPOINT, {
       method,
-      credentials: "include",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload),
     });
-
-    if (!response.ok) {
-      this.logError(
-        "/api/permissions",
-        `Response not ok: ${response.status}; ${response.statusText}`,
-      );
-      return undefined;
-    }
-
-    const permissions = await response.json().catch((e) => {
-      this.logError("/api/permissions", e);
-      return null;
-    });
-
-    return permissions ?? undefined;
   }
 }
 

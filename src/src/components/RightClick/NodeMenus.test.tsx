@@ -6,7 +6,13 @@
 
 import "../../test/setup";
 
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
@@ -89,7 +95,13 @@ describe("NoteCardMenu", () => {
     const request = openMenu("note-body");
 
     expect(request?.targetId).toBe("n1");
-    expect(request?.buttons).toEqual(["copy", "paste", "edit", "delete"]);
+    expect(request?.buttons).toEqual([
+      "copy",
+      "paste",
+      "edit",
+      "permissions",
+      "delete",
+    ]);
     expect(request?.overrides?.delete?.handler).toBeTypeOf("function");
   });
 
@@ -108,9 +120,7 @@ describe("NoteCardMenu", () => {
     expect(mocks.deleteNote).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
-    await waitFor(() =>
-      expect(mocks.deleteNote).toHaveBeenCalledWith("n1"),
-    );
+    await waitFor(() => expect(mocks.deleteNote).toHaveBeenCalledWith("n1"));
   });
 
   it("edit opens the rename dialog", async () => {
@@ -142,6 +152,7 @@ describe("FolderCardMenu", () => {
       "paste",
       "favourite",
       "edit",
+      "permissions",
       "delete",
     ]);
     act(() => {
@@ -184,7 +195,13 @@ describe("DirectoryItemMenu", () => {
     );
     const request = openMenu("root-row");
 
-    expect(request?.buttons).toEqual(["copy", "paste", "edit", "delete"]);
+    expect(request?.buttons).toEqual([
+      "copy",
+      "paste",
+      "edit",
+      "permissions",
+      "delete",
+    ]);
     expect(request?.overrides?.edit).toBeUndefined();
     expect(request?.overrides?.delete).toBeUndefined();
   });
@@ -215,9 +232,7 @@ describe("DirectoryItemMenu", () => {
     act(() => {
       request?.overrides?.delete?.handler?.(undefined);
     });
-    expect(
-      await screen.findByText("Delete this chapter?"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Delete this chapter?")).toBeInTheDocument();
     expect(mocks.deleteDirectory).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
@@ -241,6 +256,7 @@ describe("DirectoryItemMenu", () => {
       "paste",
       "edit",
       "rename",
+      "permissions",
       "delete",
     ]);
     expect(request?.overrides?.rename?.handler).toBeTypeOf("function");

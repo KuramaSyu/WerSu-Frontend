@@ -14,6 +14,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import DriveFileRenameOutlineIcon from "@mui/icons-material/DriveFileRenameOutline";
 import DeleteIcon from "@mui/icons-material/Delete";
 import StarIcon from "@mui/icons-material/Star";
+import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import { copyToClipboard } from "../../zustand/InfoStore";
 import {
   copyEditorSelection,
@@ -119,5 +120,11 @@ export const rightClickMenuButtons: RightClickButtonRegistry = {
     id: "favourite",
     label: "Favourite",
     icon: <StarIcon fontSize="small" />,
+  },
+  // Handlerless on purpose: each surface opens its own permission editor.
+  permissions: {
+    id: "permissions",
+    label: "Permissions",
+    icon: <AdminPanelSettingsIcon fontSize="small" />,
   },
 };

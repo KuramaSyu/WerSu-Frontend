@@ -38,6 +38,8 @@ import { LoginPage } from "./pages/LoginPage/Main";
 import { RulesPage } from "./pages/Rules/RulesPage";
 import { ShelfEditPage } from "./pages/ShelfEdit/Main";
 import { SharesPage } from "./pages/Shares/Main";
+import { RolesPage } from "./pages/Roles/RolesPage";
+import { RoleDetailPage } from "./pages/Roles/RoleDetailPage";
 import { ShortcutsPage } from "./pages/Shortcuts/Main";
 
 /**
@@ -91,6 +93,8 @@ function App() {
                 <Route path="/d/:id/new" element={<CreateSubdirectoryPage />} />
                 <Route path="/graph" element={<FileGraphPage />} />
                 <Route path="/shares" element={<SharesPage />} />
+                <Route path="/roles" element={<RolesPage />} />
+                <Route path="/role/:id" element={<RoleDetailPage />} />
                 <Route path="/shortcuts" element={<ShortcutsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/shelves/:shelfId/rules" element={<RulesPage />} />

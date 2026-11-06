@@ -14,6 +14,8 @@ export interface DiscordLinkedAccount {
   id: string;
   /** Default-avatar URL the SPA can render without a Discord API call. */
   getDefaultAvatarUrl(): string;
+  /** Avatar URL for a Discord avatar hash, or the default when empty. */
+  getAvatarUrl(avatarHash?: string): string;
   /** Account-creation date derived from the snowflake. */
   getCreatedAt(): Date;
 }
@@ -31,6 +33,30 @@ export class DiscordLinkedAccountImpl implements DiscordLinkedAccount {
       // so the row still renders.
       return `https://cdn.discordapp.com/embed/avatars/0.png`;
     }
+  }
+
+  /**
+   * Resolve a Discord avatar hash to its CDN URL.
+   *
+   * Discord hashes may already include an extension; bare hashes default
+   * to png. An empty hash falls back to the deterministic default avatar.
+   */
+  getAvatarUrl(avatarHash?: string): string {
+    const hash = avatarHash?.trim() ?? "";
+    if (!hash) {
+      return this.getDefaultAvatarUrl();
+    }
+    try {
+      BigInt(this.id);
+    } catch {
+      return this.getDefaultAvatarUrl();
+    }
+    const ext = /\.[a-z0-9]+$/i.test(hash)
+      ? ""
+      : hash.endsWith("_a")
+        ? ".gif"
+        : ".png";
+    return `https://cdn.discordapp.com/avatars/${this.id}/${hash}${ext}`;
   }
 
   getCreatedAt(): Date {

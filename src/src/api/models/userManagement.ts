@@ -36,6 +36,29 @@ export interface PatchUserRequest {
   avatar_url_clear?: boolean;
 }
 
+/** Query for `GET /api/users/search`. */
+export interface SearchUsersRequest {
+  query: string;
+}
+
+/** Body for `POST /api/users/by-ids`. */
+export interface GetUsersByIdsRequest {
+  ids: string[];
+}
+
+/**
+ * One hit from `GET /api/users/search`.
+ *
+ * The route deliberately omits email addresses from responses.
+ */
+export interface SearchUserReply {
+  id: string;
+  discord_id?: string;
+  username: string;
+  discriminator?: string;
+  avatar?: string;
+}
+
 /** POST /api/auth/password/change body. Both fields are plaintext. */
 export interface ChangePasswordRequest {
   /**

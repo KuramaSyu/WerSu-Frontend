@@ -10,7 +10,11 @@ import { useFavouritesStore } from "../../zustand/useFavouritesStore";
 import { useRightClickMenuStore } from "../../zustand/useRightClickMenuStore";
 import { useDirectoryDelete } from "../../api/queries/useDirectoryMutations";
 import { ConfirmationModal } from "../../pages/Settings/ConfirmationModal";
-import { useRightClickMenu, type RightClickMenuSpec } from "./useRightClickMenu";
+import {
+  useRightClickMenu,
+  type RightClickMenuSpec,
+} from "./useRightClickMenu";
+import { PermissionEditor } from "../Permissions/PermissionEditor";
 
 export interface FolderCardMenuProps {
   directoryId: string;
@@ -23,6 +27,7 @@ const CARD_BUTTONS: RightClickMenuSpec["buttons"] = [
   "paste",
   "favourite",
   "edit",
+  "permissions",
   "delete",
 ];
 
@@ -39,6 +44,7 @@ export const FolderCardMenu: React.FC<FolderCardMenuProps> = ({
   const deleteDirectory = useDirectoryDelete();
 
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [permissionsOpen, setPermissionsOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,6 +69,12 @@ export const FolderCardMenu: React.FC<FolderCardMenuProps> = ({
           edit: {
             handler: () => {
               openDirectoryDialog({ mode: "edit", directoryId });
+              return true;
+            },
+          },
+          permissions: {
+            handler: () => {
+              setPermissionsOpen(true);
               return true;
             },
           },
@@ -101,6 +113,13 @@ export const FolderCardMenu: React.FC<FolderCardMenuProps> = ({
   return (
     <Box sx={{ display: "contents" }} onContextMenu={onContextMenu}>
       {children}
+      <PermissionEditor
+        open={permissionsOpen}
+        onClose={() => setPermissionsOpen(false)}
+        objectType="directory"
+        objectId={directoryId}
+        title={name}
+      />
       <ConfirmationModal
         title="Delete this book?"
         message={`${name} and everything inside it will be deleted.`}

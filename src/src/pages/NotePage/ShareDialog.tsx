@@ -3,9 +3,6 @@ import {
   Box,
   Button,
   CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
   Divider,
   IconButton,
   ListItemIcon,
@@ -19,9 +16,7 @@ import {
 import ShareIcon from "@mui/icons-material/Share";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
-import { useThemeStore } from "../../zustand/useThemeStore";
 import { M1, M2, M3, M4 } from "../../statics";
-import RotatingStrokeBox from "../../components/RotatingCirle";
 import {
   useCreateShare,
   useDeleteShares,
@@ -43,6 +38,7 @@ import type { NoteShareReply } from "../../api/models/sharing";
 import { ShareCard } from "./ShareCard";
 import { buildShareUrl } from "./shareUrl";
 import { useActiveNoteStore } from "../../zustand/editorStore";
+import { useCreatePermission } from "../../api/queries/permissionQueries";
 import ModalShell from "../../components/ModalShell";
 
 export interface ShareDialogProps {
@@ -91,6 +87,10 @@ const validateShareForm = (formValue: ShareFormValue): string | null => {
   if (!permission || permission === SHARE_PERMISSION_UNSPECIFIED) {
     return "Please select an access level (read or write) before sharing.";
   }
+  // User shares grant a direct permission and do not carry an expiry.
+  if (formValue.visibility === "user") {
+    return null;
+  }
   // Empty `onlineUntil` means "Never expires" (the new chip) — a
   // legitimate state, so we short-circuit before the parse/future check.
   if (formValue.onlineUntil.trim() === "") {
@@ -114,6 +114,7 @@ interface EditBaseline {
   permission: Permission;
   onlineUntil: string;
   description: string;
+  userId: string;
 }
 
 const baselineFromShare = (
@@ -133,6 +134,7 @@ const baselineFromShare = (
   description: share.description?.trim()
     ? share.description
     : defaultShareDescription(noteTitle),
+  userId: "",
 });
 
 const valueFromBaseline = (b: EditBaseline): ShareFormValue => ({
@@ -140,19 +142,20 @@ const valueFromBaseline = (b: EditBaseline): ShareFormValue => ({
   permission: b.permission,
   onlineUntil: b.onlineUntil,
   description: b.description,
+  userId: b.userId,
 });
 
 const isFormDirty = (value: ShareFormValue, baseline: EditBaseline): boolean =>
   value.permission !== baseline.permission ||
   value.onlineUntil !== baseline.onlineUntil ||
-  value.description !== baseline.description;
+  value.description !== baseline.description ||
+  value.userId !== baseline.userId;
 
 export const ShareDialog: React.FC<ShareDialogProps> = ({
   noteId,
   open,
   onClose,
 }) => {
-  const { theme } = useThemeStore();
   const setMessage = useInfoStore((s) => s.setMessage);
   // The active note's current title — used to seed the share form's
   // default description (so new shares aren't blank by default) and
@@ -268,6 +271,17 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
     },
   });
 
+  const createPermission = useCreatePermission({
+    onError: (error) => {
+      setMessage(
+        new SnackbarUpdateImpl(
+          `Error granting permission: ${error.message}`,
+          "error",
+        ),
+      );
+    },
+  });
+
   const deleteShares = useDeleteShares({
     onSuccess: () => {
       setMessage(new SnackbarUpdateImpl(`Share deleted`));
@@ -291,7 +305,7 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
   const dirty =
     isEditMode && baseline !== null && isFormDirty(formValue, baseline);
 
-  const handleShare = () => {
+  const handleShare = async () => {
     // The caller passes `""` when no note is loaded; refuse to send
     // an empty `note_id` rather than fire a request the backend will reject.
     if (!noteId) {
@@ -309,6 +323,46 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
     const validationError = validateShareForm(formValue);
     if (validationError) {
       setMessage(new SnackbarUpdateImpl(validationError, "error"));
+      return;
+    }
+
+    // User visibility grants a direct permission relationship instead of
+    // creating a public link share.
+    if (formValue.visibility === "user") {
+      const targetUserId = formValue.userId.trim();
+      if (!targetUserId) {
+        setMessage(
+          new SnackbarUpdateImpl(
+            "Please enter the user id to share with.",
+            "error",
+          ),
+        );
+        return;
+      }
+      try {
+        await createPermission.mutateAsync({
+          object_type: "note",
+          object_id: noteId,
+          relationship: {
+            relation: formValue.permission === "write" ? "writer" : "reader",
+            subject: {
+              object_type: "user",
+              object_id: targetUserId,
+            },
+          },
+        });
+        setMessage(
+          new SnackbarUpdateImpl(
+            `Note shared with user (${
+              formValue.permission === "write" ? "edit" : "view"
+            } access)`,
+            "success",
+          ),
+        );
+        enterCreateMode();
+      } catch {
+        // The mutation's onError already surfaced the message.
+      }
       return;
     }
 

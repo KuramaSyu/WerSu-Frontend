@@ -12,6 +12,7 @@ import ShareIcon from "@mui/icons-material/Share";
 import SaveIcon from "@mui/icons-material/Save";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import DeleteIcon from "@mui/icons-material/Delete";
+import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useActiveNoteStore } from "../../../zustand/editorStore";
@@ -25,6 +26,7 @@ import { getNoteActionVisibility } from "./noteActionVisibility";
 import { NoteWidthToggle } from "./NoteWidthToggle";
 import { ShareDialog } from "../ShareDialog";
 import { ConfirmationModal } from "../../Settings/ConfirmationModal";
+import { PermissionEditor } from "../../../components/Permissions/PermissionEditor";
 
 /**
  * Stable id used to register this toolbar in :class:`useTopBarStore`.
@@ -95,6 +97,7 @@ export const NoteActionsToolbarInner: React.FC = () => {
     editMode,
   });
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [permissionsOpen, setPermissionsOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const navigate = useNavigate();
@@ -198,6 +201,17 @@ export const NoteActionsToolbarInner: React.FC = () => {
               onClose={closeMenu}
               slotProps={{ list: { dense: true } }}
             >
+              <MenuItem
+                onClick={() => {
+                  closeMenu();
+                  setPermissionsOpen(true);
+                }}
+              >
+                <ListItemIcon>
+                  <AdminPanelSettingsIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>Permissions</ListItemText>
+              </MenuItem>
               <MenuItem onClick={handleMenuDelete}>
                 <ListItemIcon sx={{ color: "error.main" }}>
                   <DeleteIcon fontSize="small" />
@@ -214,6 +228,12 @@ export const NoteActionsToolbarInner: React.FC = () => {
         noteId={noteId ?? ""}
         open={shareDialogOpen}
         onClose={() => setShareDialogOpen(false)}
+      />
+      <PermissionEditor
+        open={permissionsOpen}
+        onClose={() => setPermissionsOpen(false)}
+        objectType="note"
+        objectId={noteId ?? ""}
       />
       <ConfirmationModal
         title="Delete this note?"

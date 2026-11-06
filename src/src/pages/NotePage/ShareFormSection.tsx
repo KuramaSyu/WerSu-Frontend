@@ -13,6 +13,7 @@ import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import EditIcon from "@mui/icons-material/Edit";
 import CollapseToggleButton from "../../components/CollapseToggleButton";
+import { UserSearchPicker } from "../../components/Users/UserSearchPicker";
 import { M1, M2, M3 } from "../../statics";
 import {
   NEVER_EXPIRES,
@@ -232,6 +233,20 @@ export const ShareFormSection: React.FC<ShareFormSectionProps> = ({
         </ToggleButtonGroup>
       </Stack>
 
+      {value.visibility === "user" && (
+        <Stack direction="column" spacing={0.75}>
+          <Typography variant="subtitle2" sx={SECTION_LABEL_SX}>
+            User
+          </Typography>
+          <UserSearchPicker
+            label="User"
+            value={value.userId}
+            onChange={(userId) => update("userId", userId)}
+            helperText="The selected user receives the access level below."
+          />
+        </Stack>
+      )}
+
       {/* --- Access --- */}
       <Stack direction="column" spacing={0.75}>
         <Typography variant="subtitle2" sx={SECTION_LABEL_SX}>
@@ -282,71 +297,77 @@ export const ShareFormSection: React.FC<ShareFormSectionProps> = ({
         </ToggleButtonGroup>
       </Stack>
 
-      {/* --- Expires at --- */}
-      <Stack direction="column" spacing={0.75}>
-        <Typography variant="subtitle2" sx={SECTION_LABEL_SX}>
-          Expires at
-        </Typography>
-        <TextField
-          type="datetime-local"
-          value={isoToDatetimeLocal(value.onlineUntil)}
-          onChange={(e) => {
-            const iso = datetimeLocalToIso(e.target.value);
-            // An empty `local` (cleared input) means "Never expires";
-            // any non-empty unparseable string lands here as `null`
-            // too, but the parent validator (in ShareDialog) will
-            // reject that with a user-facing message before submit.
-            update("onlineUntil", iso ?? "");
-          }}
-          slotProps={{
-            // MUI v5/v6 doesn't accept native `<input>` attrs (like
-            // `min`) directly on `<TextField>`; pass them via
-            // `slotProps.htmlInput` so the native datetime picker can
-            // disable past dates.
-            htmlInput: { min: minDatetimeLocal },
-          }}
-          variant="outlined"
-          size="small"
-        />
-
-        {/* Quick-pick chips — clicking one resolves "now + N" and writes
-            the resulting absolute timestamp into the form. */}
-        <Stack
-          direction="row"
-          spacing={M1}
-          sx={{ flexWrap: "wrap", rowGap: M1 }}
-        >
-          {SCHEDULE_OPTIONS.map((item) => (
-            <Chip
-              // `children` is unique across options and stable, so it's
-              // a safe React key even for the "Never" entry whose
-              // `value` collapses to `null`.
-              key={item.children}
-              label={item.whenSelected}
+      {value.visibility !== "user" && (
+        <>
+          {/* --- Expires at --- */}
+          <Stack direction="column" spacing={0.75}>
+            <Typography variant="subtitle2" sx={SECTION_LABEL_SX}>
+              Expires at
+            </Typography>
+            <TextField
+              type="datetime-local"
+              value={isoToDatetimeLocal(value.onlineUntil)}
+              onChange={(e) => {
+                const iso = datetimeLocalToIso(e.target.value);
+                // An empty `local` (cleared input) means "Never expires";
+                // any non-empty unparseable string lands here as `null`
+                // too, but the parent validator (in ShareDialog) will
+                // reject that with a user-facing message before submit.
+                update("onlineUntil", iso ?? "");
+              }}
+              slotProps={{
+                // MUI v5/v6 doesn't accept native `<input>` attrs (like
+                // `min`) directly on `<TextField>`; pass them via
+                // `slotProps.htmlInput` so the native datetime picker can
+                // disable past dates.
+                htmlInput: { min: minDatetimeLocal },
+              }}
+              variant="outlined"
               size="small"
-              clickable
-              color={activeChipValue === item.value ? "primary" : "default"}
-              variant={activeChipValue === item.value ? "filled" : "outlined"}
-              onClick={() => handleChipClick(item)}
             />
-          ))}
-        </Stack>
-      </Stack>
 
-      {/* --- Description --- */}
-      <Stack direction="column" spacing={0.75}>
-        <Typography variant="subtitle2" sx={SECTION_LABEL_SX}>
-          Description
-        </Typography>
-        <TextField
-          value={value.description}
-          onChange={(e) => update("description", e.target.value)}
-          variant="outlined"
-          size="small"
-          multiline
-          minRows={2}
-        />
-      </Stack>
+            {/* Quick-pick chips — clicking one resolves "now + N" and writes
+                the resulting absolute timestamp into the form. */}
+            <Stack
+              direction="row"
+              spacing={M1}
+              sx={{ flexWrap: "wrap", rowGap: M1 }}
+            >
+              {SCHEDULE_OPTIONS.map((item) => (
+                <Chip
+                  // `children` is unique across options and stable, so it's
+                  // a safe React key even for the "Never" entry whose
+                  // `value` collapses to `null`.
+                  key={item.children}
+                  label={item.whenSelected}
+                  size="small"
+                  clickable
+                  color={activeChipValue === item.value ? "primary" : "default"}
+                  variant={
+                    activeChipValue === item.value ? "filled" : "outlined"
+                  }
+                  onClick={() => handleChipClick(item)}
+                />
+              ))}
+            </Stack>
+          </Stack>
+
+          {/* --- Description --- */}
+          <Stack direction="column" spacing={0.75}>
+            <Typography variant="subtitle2" sx={SECTION_LABEL_SX}>
+              Description
+            </Typography>
+            <TextField
+              value={value.description}
+              onChange={(e) => update("description", e.target.value)}
+              variant="outlined"
+              size="small"
+              multiline
+              minRows={2}
+            />
+          </Stack>
+        </>
+      )}
     </Stack>
   );
 };

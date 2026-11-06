@@ -9,8 +9,12 @@ import type { MinimalNote } from "../../api/models/search";
 import { copyToClipboard } from "../../zustand/InfoStore";
 import { useDeleteNote } from "../../api/queries/useNoteQueries";
 import { ConfirmationModal } from "../../pages/Settings/ConfirmationModal";
-import { useRightClickMenu, type RightClickMenuSpec } from "./useRightClickMenu";
+import {
+  useRightClickMenu,
+  type RightClickMenuSpec,
+} from "./useRightClickMenu";
 import { NoteRenameDialog } from "./NoteRenameDialog";
+import { PermissionEditor } from "../Permissions/PermissionEditor";
 
 export interface NoteCardMenuProps {
   note: MinimalNote;
@@ -21,6 +25,7 @@ const CARD_BUTTONS: RightClickMenuSpec["buttons"] = [
   "copy",
   "paste",
   "edit",
+  "permissions",
   "delete",
 ];
 
@@ -33,6 +38,7 @@ export const NoteCardMenu: React.FC<NoteCardMenuProps> = ({
 
   const [renameOpen, setRenameOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [permissionsOpen, setPermissionsOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,6 +57,12 @@ export const NoteCardMenu: React.FC<NoteCardMenuProps> = ({
           edit: {
             handler: () => {
               setRenameOpen(true);
+              return true;
+            },
+          },
+          permissions: {
+            handler: () => {
+              setPermissionsOpen(true);
               return true;
             },
           },
@@ -90,6 +102,13 @@ export const NoteCardMenu: React.FC<NoteCardMenuProps> = ({
         noteId={note.id}
         initialTitle={note.title}
         onClose={() => setRenameOpen(false)}
+      />
+      <PermissionEditor
+        open={permissionsOpen}
+        onClose={() => setPermissionsOpen(false)}
+        objectType="note"
+        objectId={note.id}
+        title={note.title}
       />
       <ConfirmationModal
         title="Delete this note?"
