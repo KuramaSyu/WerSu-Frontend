@@ -15,7 +15,8 @@ import {
 } from "../../api/queries/useNoteQueries";
 import { useUser } from "../../api/queries/useUser";
 import { useLeftPanel, usePanelSize } from "../../LayoutProvider";
-import { useRightPanel } from "../../LayoutProvider";
+import { useRightPanel, useLayout } from "../../LayoutProvider";
+import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { NoteEditorSkeleton } from "./NoteEditorSkeleton";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useScrollToSectionOnLoad } from "../../hooks/useScrollToSectionOnLoad";
@@ -85,6 +86,11 @@ export const NotePage: React.FC = () => {
     [id],
   );
   useRightPanel(<NoteRightPanel noteId={id} />, [id]);
+  // When the right rail is collapsed its `pl: M3` gutter goes away with
+  // it, so the note would sit flush against the window. Add the matching
+  // right padding to the editor instead. Mobile is always full-bleed.
+  const { rightPanelOpen } = useLayout();
+  const { isMobile } = useBreakpoint();
   usePanelSize({
     left: `clamp(15rem, 25vw, 30rem)`,
     right: "21rem",
@@ -142,6 +148,7 @@ export const NotePage: React.FC = () => {
             display: "flex",
             flexDirection: "row",
             height: "100%",
+            pr: !isMobile && !rightPanelOpen ? M3 : 0,
           }}
         >
           <Box

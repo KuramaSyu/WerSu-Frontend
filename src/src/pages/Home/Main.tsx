@@ -10,6 +10,7 @@ import {
   useLeftPanel,
   useRightPanel,
 } from "../../LayoutProvider";
+import { M2, M3 } from "../../statics";
 import { UpperPanel } from "../../components/Panels/UpperPanel";
 import { PanelSection } from "../../components/Panels/PanelSection";
 import { RecentActivityPanel } from "../../components/RecentActivity/Main";
@@ -109,6 +110,12 @@ export const HomePage: React.FC = () => {
         // end up behind the mobile bottom bar and cannot be scrolled clear.
         minHeight: "100%",
         p: 1,
+        // The outlet only supplies a left gutter (`pl: M3`); with no right
+        // rail there is nothing to balance it, so add the matching right
+        // gutter here rather than on the shared outlet (which would also
+        // pad the editor). `M3 + M2` = the outlet's M3 plus this box's own
+        // `p: 1` left padding.
+        pr: `calc(${M3} + ${M2})`,
         // No nested scroll container: let the AppShell's main content box
         // own the scroll. That keeps the mobile bottom bar's scroll-hide
         // watchdog working on this route (it observes that box), matching
