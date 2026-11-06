@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Stack } from "@mui/material";
-import { M2 } from "../../statics";
+import { M3 } from "../../statics";
 
 export interface UpperPanelProps {
   /** Sections stacked vertically inside the panel body. */
@@ -19,14 +19,6 @@ export interface UpperPanelProps {
    * without inheriting the body's padding.
    */
   header?: React.ReactNode;
-  /**
-   * Inset the scroll container horizontally. Required when a section
-   * hosts a `leftEdgeHandle` that straddles its left border: the handle
-   * sticks out past the section and would otherwise be clipped by the
-   * scroll container. Defaults to false so the flush left rail stays
-   * flush.
-   */
-  inset?: boolean;
 }
 
 /**
@@ -47,10 +39,10 @@ export const UpperPanel: React.FC<UpperPanelProps> = ({
   children,
   spacing = 2,
   header,
-  inset = false,
 }) => {
   return (
     <Box
+      aria-label="Right Rail Content Wrapper"
       sx={{
         display: "flex",
         flexDirection: "column",
@@ -62,7 +54,13 @@ export const UpperPanel: React.FC<UpperPanelProps> = ({
         sx={{
           overflowY: "auto",
           overflowX: "hidden",
-          px: inset ? M2 : 0,
+          // Left gutter for every side panel. On the right rail it gives
+          // a first section's `leftEdgeHandle` room to straddle the
+          // section border without being clipped by this scroll box; on
+          // the left rail it insets the content from the window edge.
+          // The matching outer padding is dropped from the main
+          // content/outlet in `AppShell` so the gap is not doubled.
+          pl: M3,
           flex: 1,
           minHeight: 0,
         }}

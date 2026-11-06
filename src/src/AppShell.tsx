@@ -4,6 +4,7 @@ import {
   COLLAPSED_PANEL_SIZE,
   MAIN_PANEL_ELEVATION,
   M2,
+  M3,
   MOBILE_BOTTOM_BAR_CLEARANCE,
   TOP_BAR_HEIGHT,
 } from "./statics";
@@ -205,11 +206,7 @@ export const AppShell: React.FC = () => {
               isMobile || !showTopPanel ? "0px" : TOP_BAR_HEIGHT,
             //transition: `grid-template-columns ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
             transition: `grid-template-columns ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}, margin-top ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
-            marginTop: isMobile
-              ? 0
-              : showTopPanel
-                ? TOP_BAR_HEIGHT
-                : 0,
+            marginTop: isMobile ? 0 : showTopPanel ? TOP_BAR_HEIGHT : 0,
             // flex: 1 to fill whatever the remaining vertical space is
             // e.g. with or without topbar
             flex: 1,
@@ -263,7 +260,16 @@ export const AppShell: React.FC = () => {
                 // Horizontal padding is dropped on mobile note pages so
                 // the editor card can span the full viewport width.
                 pt: isLoginPage ? 0 : M2,
-                px: isLoginPage || (isMobile && isNotesPage) ? 0 : M2,
+                pl: isLoginPage || (isMobile && isNotesPage) ? 0 : M3,
+                // The right rail owns the gutter between itself and the
+                // outlet: `UpperPanel` adds `pl: M3` to every rail's
+                // scroll box (which also gives a first card's edge
+                // handle room to straddle the border without clipping).
+                // The outlet has no right padding of its own, so it is
+                // not doubled when a rail is present and does not leave
+                // a stray gutter on routes without a right rail
+                // (login / home).
+                pr: 0,
                 // pt: isMobile ? M2 : showTopPanel ? M2 : 0,
                 paddingBottom: isLoginPage
                   ? 0
