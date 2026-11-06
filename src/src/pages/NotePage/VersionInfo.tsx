@@ -5,7 +5,6 @@ import {
   Chip,
   CircularProgress,
   Grow,
-  IconButton,
   Paper,
   Popper,
   Stack,
@@ -16,12 +15,6 @@ import {
 import WifiIcon from "@mui/icons-material/Wifi";
 import WifiOffIcon from "@mui/icons-material/WifiOff";
 import { PanelSection } from "../../components/Panels/PanelSection";
-import Timeline from "@mui/lab/Timeline";
-import TimelineItem, { timelineItemClasses } from "@mui/lab/TimelineItem";
-import TimelineSeparator from "@mui/lab/TimelineSeparator";
-import TimelineConnector from "@mui/lab/TimelineConnector";
-import TimelineContent from "@mui/lab/TimelineContent";
-import TimelineDot from "@mui/lab/TimelineDot";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { IconChevronDown, IconChevronUp } from "@tabler/icons-react";
 import { useUser, useUsers } from "../../api/queries/useUser";
@@ -188,8 +181,7 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({
 
   const status = useCollabStatus(noteId);
   const liveVisual = liveStatusVisual(status);
-  const isOffline =
-    status === "editingOffline" || status === "disconnected";
+  const isOffline = status === "editingOffline" || status === "disconnected";
   const editingMode: EditingMode = isOffline ? "offline" : "live";
   // Only the selected segment tints its icon; the other stays neutral.
   const isLiveSelected = editingMode === "live";
@@ -222,9 +214,9 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({
     // local buffer diverged from the pre-offline server snapshot, hand
     // off to the merge modal so the user chooses what wins.
     const entry = isPublic
-      ? (await import("../../hooks/usePublicNoteCollaboration")).getPublicCollabEntry(
-          noteId,
-        )
+      ? (
+          await import("../../hooks/usePublicNoteCollaboration")
+        ).getPublicCollabEntry(noteId)
       : (await import("../../hooks/useNoteCollaboration")).getCollabEntry(
           noteId,
         );
@@ -245,9 +237,8 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({
       return;
     }
     if (isPublic) {
-      const { goPublicOnline } = await import(
-        "../../hooks/usePublicNoteCollaboration"
-      );
+      const { goPublicOnline } =
+        await import("../../hooks/usePublicNoteCollaboration");
       goPublicOnline(noteId);
     } else {
       const { goOnline } = await import("../../hooks/useNoteCollaboration");
@@ -278,14 +269,10 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({
       const cached = queryClient.getQueryData<Note>(["notes", noteId]);
       const liveMarkdown = useActiveNoteStore.getState().getContent();
       const preOfflineCloudMarkdown =
-        liveMarkdown ||
-        cached?.content ||
-        cached?.stripped_content ||
-        null;
+        liveMarkdown || cached?.content || cached?.stripped_content || null;
       if (isPublic) {
-        const { goPublicOffline } = await import(
-          "../../hooks/usePublicNoteCollaboration"
-        );
+        const { goPublicOffline } =
+          await import("../../hooks/usePublicNoteCollaboration");
         await goPublicOffline(noteId, "manual", preOfflineCloudMarkdown);
       } else {
         const { goOffline } = await import("../../hooks/useNoteCollaboration");
@@ -358,10 +345,7 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({
                   {liveVisual.spinner ? (
                     <CircularProgress size={14} sx={{ color: liveIconColor }} />
                   ) : (
-                    <WifiIcon
-                      fontSize="small"
-                      sx={{ color: liveIconColor }}
-                    />
+                    <WifiIcon fontSize="small" sx={{ color: liveIconColor }} />
                   )}
                   Live
                 </ToggleButton>
@@ -389,17 +373,7 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({
             </Stack>
           </Box>
         )}
-        <Timeline
-          sx={{
-            padding: 0,
-            margin: 0,
-
-            // Drop the default `::before` spacer (no TimelineOppositeContent).
-            [`& .${timelineItemClasses.root}:before`]: {
-              display: "none",
-            },
-          }}
-        >
+        <Stack spacing={1}>
           {/* Offline/disconnected means we are not a live editor any
               more, so the draft entry must not list us (nor anyone
               else stale in the awareness store). */}
@@ -409,9 +383,8 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({
           />
           {visibleVersions.map((version, index) => {
             // Blend ratio uses the full history so the chip color stays
-            // stable as the user expands / collapses the timeline.
+            // stable as the user expands / collapses the list.
             const totalLen = versions?.length ?? 0;
-            const isLastVisible = index === visibleVersions.length - 1;
             const isSelected =
               selectedVersion?.version_index === version.version_index;
             const bg = rgbToHex(
@@ -428,153 +401,80 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({
             );
 
             return (
-              <TimelineItem
+              <Stack
                 key={version.version_index}
-                sx={{
-                  // Drop the 70px `TimelineItem` minimum so each row hugs its
-                  // content. The connector stretches to fill what remains,
-                  // so dots stay aligned in one column and the line between
-                  // rows reaches the next dot.
-                  minHeight: 0,
-                }}
+                direction="row"
+                spacing={1}
+                sx={{ alignItems: "center" }}
               >
-                <TimelineSeparator>
-                  {/* Top connector pairs with the bottom connector of the row
-                      above (or the draft row's bottom connector for row 0) to
-                      draw a continuous line down to this dot. */}
-                  <TimelineConnector />
-                  <TimelineDot
-                    color={isSelected ? "primary" : "grey"}
-                    sx={{
-                      m: 0,
-                      p: 0,
-                      border: 0,
-                      boxShadow: "none",
-                      width: 1.5,
-                      height: 1.5,
+                <Button
+                  onClick={async () => {
+                    selectVersion(version);
+                    const note = await queryClient.fetchQuery({
+                      queryKey: ["versions", noteId, version.version_index],
+                      queryFn: async () =>
+                        await new NoteApi().getVersion(
+                          noteId!,
+                          version.version_index,
+                        ),
+                    });
+                    await restoreVersion(version, note);
+                  }}
+                  sx={{
+                    backgroundColor: bg,
+                    color: textColor,
+                    width: "fit-content",
+                    height: "fit-content",
+                    padding: theme.spacing(0.5, 2),
+                    borderRadius: theme.shape.borderRadius,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  v{version.version_index}
+                </Button>
+                <Chip size="small" variant="outlined" label={relativeDate} />
+                {isSelected && user && (
+                  <UserHoverCard
+                    user={{
+                      id: user.id,
+                      name: user.username,
+                      color: theme.palette.primary.main,
+                      avatarUrl: user.getAvatarUrl(),
                     }}
-                  />
-                  {/* Bottom connector pairs with the top connector of the row
-                      below to draw a continuous line down to the next dot;
-                      the last visible row skips it so the timeline tail
-                      matches the first row's leading spacer on `draft`. */}
-                  {!isLastVisible && <TimelineConnector />}
-                  {isLastVisible && !showVersionToggle && (
-                    <Box sx={{ flexGrow: 1 }} />
-                  )}
-                </TimelineSeparator>
-                <TimelineContent sx={{ p: 0, m: "auto 0" }}>
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    sx={{ alignItems: "center", py: 0.5 }}
                   >
-                    <Button
-                      onClick={async () => {
-                        selectVersion(version);
-                        const note = await queryClient.fetchQuery({
-                          queryKey: ["versions", noteId, version.version_index],
-                          queryFn: async () =>
-                            await new NoteApi().getVersion(
-                              noteId!,
-                              version.version_index,
-                            ),
-                        });
-                        await restoreVersion(version, note);
-                      }}
-                      sx={{
-                        backgroundColor: bg,
-                        color: textColor,
-                        width: "fit-content",
-                        height: "fit-content",
-                        padding: theme.spacing(0.5, 2),
-                        borderRadius: theme.shape.borderRadius,
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      v{version.version_index}
-                    </Button>
-                    <Chip
-                      size="small"
-                      variant="outlined"
-                      label={relativeDate}
+                    <Avatar
+                      src={user.getAvatarUrl()}
+                      alt={user.username}
+                      sx={{ width: 24, height: 24 }}
                     />
-                    {isSelected && user && (
-                      <UserHoverCard
-                        user={{
-                          id: user.id,
-                          name: user.username,
-                          color: theme.palette.primary.main,
-                          avatarUrl: user.getAvatarUrl(),
-                        }}
-                      >
-                        <Avatar
-                          src={user.getAvatarUrl()}
-                          alt={user.username}
-                          sx={{ width: 24, height: 24 }}
-                        />
-                      </UserHoverCard>
-                    )}
-                  </Stack>
-                </TimelineContent>
-              </TimelineItem>
+                  </UserHoverCard>
+                )}
+              </Stack>
             );
           })}
           {showVersionToggle && (
-            <TimelineItem sx={{ minHeight: 0 }}>
-              <TimelineSeparator>
-                <TimelineConnector />
-                <TimelineDot
-                  sx={{
-                    m: 0,
-                    p: 0,
-                    border: 0,
-                    boxShadow: "none",
-                    bgcolor: "transparent",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <IconButton
-                    size="small"
-                    aria-label={
-                      versionsExpanded
-                        ? "Show fewer versions"
-                        : "Show more versions"
-                    }
-                    onClick={() => setVersionsExpanded((v) => !v)}
-                    sx={{ p: 0.25 }}
-                  >
-                    {versionsExpanded ? (
-                      <IconChevronUp size={18} />
-                    ) : (
-                      <IconChevronDown size={18} />
-                    )}
-                  </IconButton>
-                </TimelineDot>
-                {/* Stretch the trailing spacer so the chevron stays aligned
-                    with the version dots above it, matching the layout the
-                    last visible row uses when the toggle is hidden. */}
-                <Box sx={{ flexGrow: 1 }} />
-              </TimelineSeparator>
-              <TimelineContent sx={{ p: 0, m: "auto 0" }}>
-                <Button
-                  size="small"
-                  onClick={() => setVersionsExpanded((v) => !v)}
-                  sx={{
-                    textTransform: "none",
-                    minWidth: 0,
-                    p: 0,
-                    color: "text.secondary",
-                  }}
-                >
-                  {versionsExpanded ? "Show less" : "Show more"}
-                </Button>
-              </TimelineContent>
-            </TimelineItem>
+            <Button
+              size="small"
+              onClick={() => setVersionsExpanded((v) => !v)}
+              startIcon={
+                versionsExpanded ? (
+                  <IconChevronUp size={18} />
+                ) : (
+                  <IconChevronDown size={18} />
+                )
+              }
+              sx={{
+                textTransform: "none",
+                minWidth: 0,
+                alignSelf: "flex-start",
+                p: 0,
+                color: "text.secondary",
+              }}
+            >
+              {versionsExpanded ? "Show less" : "Show more"}
+            </Button>
           )}
-        </Timeline>
+        </Stack>
       </PanelSection>
       {/* Right-side version history drawer */}
       <NoteVersionsDrawer
@@ -592,8 +492,8 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({
 };
 
 /**
- * The in-progress version entry. Renders the `draft` pill connected by
- * the timeline to the live authors editing the note.
+ * The in-progress version entry: the `draft` pill plus the live
+ * authors currently editing the note.
  */
 const DraftVersionItem = ({
   users,
@@ -605,69 +505,40 @@ const DraftVersionItem = ({
   const { theme } = useThemeStore();
 
   return (
-    <TimelineItem
-      sx={{
-        // Drop the 70px `TimelineItem` minimum so the row hugs the
-        // content; the connector stretches to fill what remains so the
-        // `draft` dot aligns with the version dots below it.
-        minHeight: 0,
-      }}
-    >
-      <TimelineSeparator>
-        <TimelineConnector />
-        <TimelineDot
-          sx={{
-            m: 0,
-            p: 0,
-            border: 0,
-            boxShadow: "none",
-            width: 1.5,
-            height: 1.5,
-          }}
-        />
-        <TimelineConnector />
-      </TimelineSeparator>
-      <TimelineContent sx={{ p: 0, m: "auto 0" }}>
-        <Stack
-          direction="row"
-          spacing={1}
-          sx={{ alignItems: "center", py: 0.5 }}
-        >
-          <Box
-            role="button"
-            tabIndex={0}
-            onClick={onClick}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                onClick();
-              }
-            }}
-            sx={{
-              cursor: "pointer",
-              backgroundColor: "action.hover",
-              border: `1px solid ${theme.palette.divider}`,
-              width: "fit-content",
-              height: "fit-content",
-              padding: theme.spacing(0.5, 2),
-              borderRadius: theme.shape.borderRadius,
-            }}
-          >
-            draft
-          </Box>
-          <Grow
-            in={users.length > 0}
-            mountOnEnter
-            unmountOnExit
-            timeout={theme.transitions.duration.complex}
-          >
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <LiveUserAvatars users={users} />
-            </Box>
-          </Grow>
-        </Stack>
-      </TimelineContent>
-    </TimelineItem>
+    <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+      <Box
+        role="button"
+        tabIndex={0}
+        onClick={onClick}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onClick();
+          }
+        }}
+        sx={{
+          cursor: "pointer",
+          backgroundColor: "action.hover",
+          border: `1px solid ${theme.palette.divider}`,
+          width: "fit-content",
+          height: "fit-content",
+          padding: theme.spacing(0.5, 2),
+          borderRadius: theme.shape.borderRadius,
+        }}
+      >
+        draft
+      </Box>
+      <Grow
+        in={users.length > 0}
+        mountOnEnter
+        unmountOnExit
+        timeout={theme.transitions.duration.complex}
+      >
+        <Box sx={{ display: "flex", alignItems: "center" }}>
+          <LiveUserAvatars users={users} />
+        </Box>
+      </Grow>
+    </Stack>
   );
 };
 
