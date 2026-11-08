@@ -114,6 +114,15 @@ export function ImageNodeView({
   const openPreview = useAttachmentPreviewStore((s) => s.open);
   const shareAttachmentTokens = useAuthStore((s) => s.shareAttachmentTokens);
   const tokensLoaded = useAuthStore((s) => s.shareAttachmentTokensLoaded);
+  // Per-attachment JWTs are exclusively a public-share mechanism. The
+  // `shareAccessToken` is set only while a share session is active
+  // (anonymous viewer, or a logged-in viewer on `/public/*`). Logged-in
+  // users off `/public` authenticate via the session cookie and the
+  // proxy resolves the attachment without any JWT, so neither fetching
+  // a fresh token nor appending one is warranted there.
+  const isPublicShareSession = useAuthStore(
+    (s) => s.shareAccessToken !== null,
+  );
 
   const rawSrc = node.attrs.src ?? "";
   const preparedSrc = prepareBackendLink(rawSrc);
@@ -130,7 +139,11 @@ export function ImageNodeView({
   // session; if we still have no JWT for the key, ask the backend for a
   // fresh scoped one. The hook merges it into the auth store, which
   // re-renders this node view and appends it to the image `src` below.
-  const needsAttachmentToken = Boolean(attachmentKey) && !jwt && tokensLoaded;
+  const needsAttachmentToken =
+    Boolean(attachmentKey) &&
+    !jwt &&
+    tokensLoaded &&
+    isPublicShareSession;
   useShareAttachmentToken(attachmentKey, needsAttachmentToken);
 
   // One-time diagnostic dump: list the map's keys vs the key the
@@ -202,6 +215,11 @@ export function ImageNodeView({
       );
       return;
     }
+    if (!isPublicShareSession) {
+      // Logged-in users off `/public` get the image through the session
+      // cookie; a missing per-attachment JWT is expected, not a bug.
+      return;
+    }
     if (jwt) {
       // eslint-disable-next-line no-console
       console.log(
@@ -232,14 +250,24 @@ export function ImageNodeView({
     console.warn(
       `${TAG} No share-attachment JWT found for attachment key ${attachmentKey} (resolved=${resolvedKey ?? "<none>"}). The image WILL not load for public users. tokensLoaded=${tokensLoaded} mapSize=${Object.keys(shareAttachmentTokens).length}`,
     );
-  }, [attachmentKey, jwt, tokensLoaded, shareAttachmentTokens, rawSrc]);
+  }, [
+    attachmentKey,
+    jwt,
+    tokensLoaded,
+    isPublicShareSession,
+    shareAttachmentTokens,
+    rawSrc,
+  ]);
 
   // Append the share JWT so public users can load backend images. The
   // resolved key is what the backend stored in the tokens map, so the
   // builder has to use it for the JWT lookup to line up.
   const linkKey = resolvedKey ?? attachmentKey;
+  // Only public-share sessions put a JWT on the image URL. For logged-in
+  // users the plain URL is correct and cheaper (no token in the query
+  // string, so the browser/proxy can cache normally).
   const src =
-    !linkKey || !jwt
+    !linkKey || !jwt || !isPublicShareSession
       ? preparedSrc
       : new AttachmentLinkBuilder(new AttachmentApi())
           .setJwt(jwt)

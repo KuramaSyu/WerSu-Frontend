@@ -88,6 +88,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   shareAttachmentTokensLoaded: false,
   resetShareAttachmentTokens: () => {
+    const { shareAttachmentTokens, shareAttachmentTokensLoaded } = get();
+    // No-op when there is nothing to clear so callers can reset
+    // unconditionally (e.g. on every route/user change) without
+    // triggering needless subscriber re-renders.
+    if (
+      !shareAttachmentTokensLoaded &&
+      Object.keys(shareAttachmentTokens).length === 0
+    ) {
+      return;
+    }
     // eslint-disable-next-line no-console
     console.log("[auth-store] resetShareAttachmentTokens (clearing map)");
     set({ shareAttachmentTokens: {}, shareAttachmentTokensLoaded: false });

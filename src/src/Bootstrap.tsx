@@ -109,6 +109,11 @@ function useShareTokenMode() {
         "[share-token-mode] logged-in user off /public - clearing share provider",
       );
       apiRegistry.installShareTokenProvider(null);
+      // Drop any per-attachment token map left over from an earlier
+      // public-share visit. Without this, a stale `tokensLoaded` flag
+      // makes ImageNodeView request per-attachment JWTs for a logged-in
+      // user - the proxy already resolves those via the cookie.
+      useAuthStore.getState().resetShareAttachmentTokens();
       return;
     }
 
@@ -120,6 +125,9 @@ function useShareTokenMode() {
     apiRegistry.installShareTokenProvider(
       () => useAuthStore.getState().shareAccessToken,
     );
+    // No share is active here either, so purge any stale per-attachment
+    // token map (see the logged-in branch above).
+    useAuthStore.getState().resetShareAttachmentTokens();
     return () => apiRegistry.installShareTokenProvider(null);
   }, [user, pathname]);
 }
