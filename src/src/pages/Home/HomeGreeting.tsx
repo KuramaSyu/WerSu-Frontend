@@ -290,7 +290,7 @@ export const HomeGreeting: React.FC = () => {
   // changes the page height and nothing below the header jumps. The slot
   // clips the slides, which keeps the travel to the header's own height.
   const layerSx = { gridArea: "1 / 1", minWidth: 0 } as const;
-  const slideContainer = () => slotRef.current;
+  const slideContainer = () => slotRef.current as HTMLElement;
 
   return (
     <Box
