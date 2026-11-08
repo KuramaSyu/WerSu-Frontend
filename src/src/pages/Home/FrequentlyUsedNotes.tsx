@@ -142,7 +142,11 @@ export const FrequentlyUsedNotes: React.FC<FrequentlyUsedNotesProps> = ({
     return bare ? (
       skeleton
     ) : (
-      <TranslucentPaper elevation={1} sx={{ overflow: "hidden" }}>
+      <TranslucentPaper
+        elevation={1}
+        transparentWithoutBackground
+        sx={{ overflow: "hidden" }}
+      >
         {skeleton}
       </TranslucentPaper>
     );

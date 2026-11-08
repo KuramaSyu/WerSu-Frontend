@@ -575,6 +575,7 @@ export const NoteList: React.FC<NoteListProps> = ({
   ) : (
     <TranslucentPaper
       elevation={0}
+      transparentWithoutBackground
       sx={{
         overflow: "hidden",
         backgroundColor: theme.palette.background.default,
@@ -641,6 +642,7 @@ export const RecentNotes: React.FC<RecentNotesProps> = ({
     return (
       <TranslucentPaper
         elevation={0}
+        transparentWithoutBackground
         sx={{
           overflow: "hidden",
           backgroundColor: theme.palette.background.default,
