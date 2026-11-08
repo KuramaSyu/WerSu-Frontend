@@ -47,6 +47,8 @@ import {
   usePublicUserStore,
 } from "../../zustand/usePublicUserStore";
 import { PublicUserAvatar } from "./PublicUserAvatar";
+import { ShelfCreateDialog } from "./ShelfCreateDialog";
+import { ShelfMenuList } from "./ShelfMenuList";
 import { M1, M2, M4 } from "../../statics";
 import { ThemeColorCircles } from "../ThemeColorCircles";
 import { ThemeEditModal } from "../ThemeEditModal";
@@ -144,6 +146,9 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
   );
   // Control the theme Select so opening the edit modal closes its list.
   const [themeSelectOpen, setThemeSelectOpen] = useState(false);
+  // "Add new shelf" opens a dialog instead of navigating away, so the
+  // mobile drawer can keep the user's current context while creating.
+  const [isShelfDialogOpen, setIsShelfDialogOpen] = useState(false);
 
   // Generated and synced themes are editable; look their records up by slug.
   const editableThemes = useMemo(
@@ -628,6 +633,17 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
 
       <Divider />
 
+      <SectionLabel>Shelf</SectionLabel>
+      <ShelfMenuList
+        onPick={onRequestClose}
+        onNavigate={onRequestClose}
+        onAddShelf={() => setIsShelfDialogOpen(true)}
+        canAdd={!isAnonymousPublic}
+        revealEditActionsOnHover={false}
+      />
+
+      <Divider />
+
       <SectionLabel>Pages</SectionLabel>
       <MenuItem
         onClick={handleOpenHome}
@@ -735,6 +751,13 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
         open={editingTheme !== null}
         onClose={() => setEditingTheme(null)}
       />
+
+      {isShelfDialogOpen && (
+        <ShelfCreateDialog
+          open={isShelfDialogOpen}
+          onClose={() => setIsShelfDialogOpen(false)}
+        />
+      )}
     </Stack>
   );
 };
