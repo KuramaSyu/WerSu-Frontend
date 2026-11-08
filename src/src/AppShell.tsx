@@ -1,4 +1,4 @@
-import { Box, Paper, Stack } from "@mui/material";
+import { Box } from "@mui/material";
 import { Outlet, useLocation } from "react-router-dom";
 import {
   COLLAPSED_PANEL_SIZE,
@@ -9,7 +9,7 @@ import {
   TOP_BAR_HEIGHT,
 } from "./statics";
 import { useLayout } from "./LayoutProvider";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { LoadingPage } from "./pages/LoadingPage/Main";
 import { LeftRail } from "./components/Rail/LeftRail";
@@ -28,6 +28,9 @@ import { GlobalShortcuts } from "./components/GlobalShortcuts";
 import { TranslucentPaper } from "./components/TranslucentPaper";
 import { NotificationsDialog } from "./components/TopBar/NotificationsDialog";
 import { ServiceFailureDialogHost } from "./components/TopBar/ServiceFailureDialogHost";
+import { useHasBackgroundImage } from "./hooks/useHasBackgroundImage";
+import { buildDotGridBackground } from "./utils/dotGridBackground";
+import { useAppearanceSettings } from "./zustand/useAppearanceSettings";
 
 // Path patterns that gate the auto-hide topbar behaviour. The topbar
 // only collapses on scroll, and only re-reveals via cursor, while
@@ -60,6 +63,68 @@ export const AppShell: React.FC = () => {
     (state) => state.flags[FeatureFlagName.FlatLayout],
   );
   const { isMobile } = useBreakpoint();
+  const hasBackgroundImage = useHasBackgroundImage();
+  const dotGridEnabled = useAppearanceSettings((s) => s.dotGridEnabled);
+  const dotGridAlgorithm = useAppearanceSettings((s) => s.dotGridAlgorithm);
+  const dotGridSpacing = useAppearanceSettings((s) => s.dotGridSpacing);
+  const dotGridMinOpacity = useAppearanceSettings(
+    (s) => s.dotGridMinOpacity,
+  );
+  const dotGridMaxOpacity = useAppearanceSettings(
+    (s) => s.dotGridMaxOpacity,
+  );
+  const dotGridLightAngle = useAppearanceSettings(
+    (s) => s.dotGridLightAngle,
+  );
+  const dotGridRelief = useAppearanceSettings((s) => s.dotGridRelief);
+  const dotGridDotRadius = useAppearanceSettings(
+    (s) => s.dotGridDotRadius,
+  );
+  const dotGridFormStrength = useAppearanceSettings(
+    (s) => s.dotGridFormStrength,
+  );
+  const dotGridUniformIllumination = useAppearanceSettings(
+    (s) => s.dotGridUniformIllumination,
+  );
+  const dotGridUniformOpacity = useAppearanceSettings(
+    (s) => s.dotGridUniformOpacity,
+  );
+  // Generated only when it can actually be seen: no theme image and the
+  // user hasn't switched the texture off. The tile itself is an SVG whose
+  // dots are lit by a configurable procedural height field.
+  const dotGrid = useMemo(
+    () =>
+      dotGridEnabled && !hasBackgroundImage
+        ? buildDotGridBackground({
+            color: theme.palette.text.primary,
+            algorithm: dotGridAlgorithm,
+            spacing: dotGridSpacing,
+            minOpacity: dotGridMinOpacity,
+            maxOpacity: dotGridMaxOpacity,
+            lightAngle: dotGridLightAngle,
+            relief: dotGridRelief,
+            dotRadius: dotGridDotRadius,
+            formStrength: dotGridFormStrength,
+            uniformIllumination: dotGridUniformIllumination,
+            uniformOpacity: dotGridUniformOpacity,
+          })
+        : null,
+    [
+      dotGridEnabled,
+      hasBackgroundImage,
+      theme.palette.text.primary,
+      dotGridAlgorithm,
+      dotGridSpacing,
+      dotGridMinOpacity,
+      dotGridMaxOpacity,
+      dotGridLightAngle,
+      dotGridRelief,
+      dotGridDotRadius,
+      dotGridFormStrength,
+      dotGridUniformIllumination,
+      dotGridUniformOpacity,
+    ],
+  );
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(
     null,
   );
@@ -284,6 +349,13 @@ export const AppShell: React.FC = () => {
                     ? `calc(env(safe-area-inset-bottom, 0px) + ${MOBILE_BOTTOM_BAR_CLEARANCE})`
                     : undefined,
                 transition: `padding-top ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
+                // Themes without a background image would otherwise leave
+                // the outlet as one flat slab. The procedurally lit dot grid
+                // gives it a little texture without competing with the
+                // content. It stays off whenever an image is painted
+                // underneath or the user disabled it in Appearance.
+                backgroundImage: dotGrid?.image,
+                backgroundSize: dotGrid?.size,
                 minWidth: 0,
                 minHeight: 0,
               }}

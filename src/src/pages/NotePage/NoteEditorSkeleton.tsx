@@ -1,5 +1,8 @@
 import React from "react";
 import { Box, Skeleton, Stack } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
+import { useHasBackgroundImage } from "../../hooks/useHasBackgroundImage";
+import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
 
 export interface NoteEditorSkeletonProps {
   showSourceEditor?: boolean;
@@ -8,9 +11,17 @@ export interface NoteEditorSkeletonProps {
 export const NoteEditorSkeleton: React.FC<NoteEditorSkeletonProps> = ({
   showSourceEditor = false,
 }) => {
+  const theme = useTheme();
+  const hasBackgroundImage = useHasBackgroundImage();
+  const flatLayout = useFeatureStore(
+    (s) => s.flags[FeatureFlagName.FlatLayout],
+  );
+
   return (
-    // Transparent: the AppShell wrapper provides the paper + elevation 1
-    // surface; the editor sits on top of it without nesting a second card.
+    // Transparent with an image: the AppShell wrapper provides the paper
+    // surface and the image shows through. Without one the shell's dot
+    // texture sits behind this skeleton, so paint the base colour to keep
+    // the note surface opaque.
     <Box
       sx={{
         flex: 1,
@@ -21,7 +32,11 @@ export const NoteEditorSkeleton: React.FC<NoteEditorSkeletonProps> = ({
         flexDirection: "column",
         gap: 3,
         minHeight: 500,
-        backgroundColor: "transparent",
+        backgroundColor: hasBackgroundImage
+          ? "transparent"
+          : flatLayout
+            ? theme.palette.background.default
+            : theme.palette.background.paper,
       }}
     >
       <Stack

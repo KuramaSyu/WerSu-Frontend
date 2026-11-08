@@ -67,10 +67,14 @@ export const settingsCategories: SettingsCategory[] = [
     icon: <PaletteIcon />,
     settingsContent: <AppearanceSection />,
     resetLogic: () => {
-      const { setCodeBlockThemeLight, setCodeBlockThemeDark } =
-        useAppearanceSettings.getState();
+      const {
+        setCodeBlockThemeLight,
+        setCodeBlockThemeDark,
+        resetDotGridSettings,
+      } = useAppearanceSettings.getState();
       setCodeBlockThemeLight("tokyo-night-light");
       setCodeBlockThemeDark("material-palenight");
+      resetDotGridSettings();
       // Developer mode is part of appearance prefs; reset alongside.
       useFeatureStore.getState().setFlag(FeatureFlagName.DeveloperMode, false);
     },

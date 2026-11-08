@@ -1,8 +1,7 @@
 import { Paper, type PaperProps, type SxProps } from "@mui/material";
 import { alpha, useTheme, type Theme } from "@mui/material/styles";
 import type { ReactNode } from "react";
-import { useThemeStore } from "../zustand/useThemeStore";
-import { FeatureFlagName, useFeatureStore } from "../zustand/FeatureStore";
+import { useHasBackgroundImage } from "../hooks/useHasBackgroundImage";
 
 // Opacity per elevation level (0..11). Elevation 1 is the main shell (50%),
 // elevation 4 is the top bar / rails (90%).
@@ -28,6 +27,10 @@ export interface TranslucentPaperProps extends Omit<PaperProps, "elevation"> {
   elevation?: number;
   // Optional background color override. Tinted with the elevation alpha.
   backgroundColor?: string;
+  // Paint no fill at all when the theme has no background image. With an
+  // image the usual translucent tint still applies so the surface stays
+  // readable over the artwork.
+  transparentWithoutBackground?: boolean;
   children?: ReactNode;
 }
 
@@ -81,14 +84,6 @@ function withoutBackgroundColor(
   }) as SxProps<Theme>;
 }
 
-// Match AppBackground: a URL is active when the theme supplies one.
-function pickBackgroundUrl(themeImage: string | undefined): string | undefined {
-  if (themeImage !== undefined && themeImage.length > 0) {
-    return themeImage;
-  }
-  return undefined;
-}
-
 // A Paper whose opacity is tied to its elevation. With an active
 // background the paper color is alpha-tinted so the image shines
 // through; without a background the paper is solid and the whole
@@ -96,26 +91,23 @@ function pickBackgroundUrl(themeImage: string | undefined): string | undefined {
 export const TranslucentPaper: React.FC<TranslucentPaperProps> = ({
   elevation = 1,
   backgroundColor,
+  transparentWithoutBackground = false,
   children,
   sx,
   ...paperProps
 }) => {
   const theme = useTheme();
-  const themeBackground = useThemeStore((s) => {
-    const custom = s.theme.custom;
-    return custom.chosenBackgroundImage ?? custom.backgroundImages[0] ?? "";
-  });
-  const ignoreBackgroundImage = useFeatureStore(
-    (s) => s.flags[FeatureFlagName.IgnoreBackgroundImage],
-  );
-  const hasBackground =
-    !ignoreBackgroundImage && pickBackgroundUrl(themeBackground) !== undefined;
+  const hasBackground = useHasBackgroundImage();
 
   const safeElevation = Math.max(0, Math.min(11, Math.round(elevation)));
   const opacity = ELEVATION_OPACITY[safeElevation] ?? DEFAULT_OPACITY;
   const sxBg = extractBackgroundColor(sx);
   const base = backgroundColor ?? sxBg ?? theme.palette.background.paper;
-  const tinted = hasBackground ? alpha(base, opacity) : base;
+  const tinted = hasBackground
+    ? alpha(base, opacity)
+    : transparentWithoutBackground
+      ? "transparent"
+      : base;
   const cleanedSx = withoutBackgroundColor(sx);
   const surfaceSx: SxProps<Theme> = {
     backgroundImage: "none",

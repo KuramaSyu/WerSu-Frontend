@@ -303,7 +303,16 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
           // The frosted layer below is absolutely positioned relative to
           // this card.
           position: "relative",
-          backgroundColor: "transparent",
+          // With a background image the card stays transparent so the
+          // blurred backdrop / image shows through. Without one there is
+          // nothing to reveal, and the outlet's dot texture must not bleed
+          // through the note surface -- so paint the same base colour the
+          // shell paper uses.
+          backgroundColor: themeHasBackgroundImage
+            ? "transparent"
+            : flatLayout
+              ? theme.palette.background.default
+              : theme.palette.background.paper,
           borderRadius: 2,
           // On mobile the outer Paper has no padding so the editor fills
           // the screen; AppShell's safe-area padding still applies below.
