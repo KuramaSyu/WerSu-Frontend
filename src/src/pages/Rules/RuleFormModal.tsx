@@ -12,7 +12,10 @@ import type {
 } from "../../api/models/rule";
 import { RuleFormFields, type RuleFormState } from "./RuleFormFields";
 import { useCreateRule, useUpdateRule } from "../../api/queries/rulesQueries";
-import { normalizeEventType } from "./ruleFormShared";
+import {
+  normalizeConditionType,
+  normalizeEventType,
+} from "./ruleFormShared";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 
 export interface RuleFormModalProps {
@@ -61,19 +64,7 @@ const buildEditInitialState = (
 // Falls back to always_true so the form keeps working with new types.
 const readConditionType = (
   condition: Record<string, unknown> | undefined,
-): RuleConditionType => {
-  const t = condition?.["type"];
-  if (typeof t === "string") {
-    if (
-      t === "always_true" ||
-      t === "note_content_contains" ||
-      t === "note_title_contains"
-    ) {
-      return t;
-    }
-  }
-  return "always_true";
-};
+): RuleConditionType => normalizeConditionType(condition?.["type"]);
 
 // Pull the action type back out of a stored reply.
 const readActionType = (rule: RuleReply): RuleActionType => {
