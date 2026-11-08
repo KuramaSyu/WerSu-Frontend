@@ -36,6 +36,8 @@ export const PerformanceModeSection: React.FC = () => {
   );
   const {
     hint,
+    networkQualityLabel,
+    isBelow4G,
     isConstrained: isConstrainedDevice,
     isSlowConnection,
     isRecommendationDismissed,
@@ -45,21 +47,28 @@ export const PerformanceModeSection: React.FC = () => {
     !performanceMode &&
     !isRecommendationDismissed &&
     (isConstrainedDevice || isSlowConnection);
-  const detectionHint = isSlowConnection
-    ? "Slow connection detected — Performance mode is recommended."
-    : isConstrainedDevice
-      ? "This device looks constrained — Performance mode is recommended."
-      : null;
-  const statusLabel = isSlowConnection
-    ? "Slow connection detected"
-    : isConstrainedDevice
-      ? "Performance issue detected"
-      : "No performance issue detected";
-  const statusColor = isSlowConnection
-    ? "warning"
-    : isConstrainedDevice
-      ? "info"
-      : "success";
+  const detectionHint = isBelow4G
+    ? performanceMode
+      ? `${networkQualityLabel} network detected — Performance mode is enabled.`
+      : `${networkQualityLabel} network detected — Performance mode is recommended.`
+    : isSlowConnection
+      ? "Slow connection detected — Performance mode is recommended."
+      : isConstrainedDevice
+        ? "This device looks constrained — Performance mode is recommended."
+        : null;
+  const statusLabel = isBelow4G
+    ? `${networkQualityLabel} network detected`
+    : isSlowConnection
+      ? "Slow connection detected"
+      : isConstrainedDevice
+        ? "Performance issue detected"
+        : "No performance issue detected";
+  const statusColor =
+    isBelow4G || isSlowConnection
+      ? "warning"
+      : isConstrainedDevice
+        ? "info"
+        : "success";
 
   return (
     <Stack
@@ -107,9 +116,10 @@ export const PerformanceModeSection: React.FC = () => {
         <Stack direction="column" spacing={1}>
           <Typography variant="subtitle1">Performance mode</Typography>
           <Typography variant="body2" color="text.secondary">
-            Reduce visual effects for low-end devices. Enabling this turns on
-            all three sub-options below; you can switch any of them off
-            individually afterwards.
+            Reduce visual effects for low-end devices and slow connections.
+            Performance mode is enabled automatically below 4G; turning it on
+            also enables all three sub-options below. You can switch any of them
+            off individually afterwards.
           </Typography>
           {detectionHint !== null && (
             <Typography variant="caption" color="text.secondary">
@@ -200,7 +210,12 @@ export const PerformanceModeSection: React.FC = () => {
       </Stack>
       <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
         <Chip size="small" color={statusColor} label={statusLabel} />
-        <Chip size="small" variant="outlined" label={`Hint: ${hint}`} />
+        <Chip
+          size="small"
+          variant="outlined"
+          label={`Network: ${networkQualityLabel}`}
+        />
+        <Chip size="small" variant="outlined" label={`Device: ${hint}`} />
       </Stack>
     </Stack>
   );

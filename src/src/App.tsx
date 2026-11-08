@@ -11,6 +11,7 @@ import { useThemeStore } from "./zustand/useThemeStore";
 import { useThemePreferenceSync } from "./hooks/useThemePreferenceSync";
 import { useCustomThemesSync } from "./hooks/useCustomThemes";
 import { useThemeImageRepair } from "./hooks/useThemeImageRepair";
+import { useDevicePerformanceHint } from "./hooks/useDevicePerformanceHint";
 import { FeatureFlagName, useFeatureStore } from "./zustand/FeatureStore";
 
 import "./App.css";
@@ -88,6 +89,11 @@ function App() {
   // Re-download corrupt sources and regenerate missing blurred blobs for
   // device-local generated themes after a lost IndexedDB state.
   useThemeImageRepair();
+
+  // Turn Performance mode on automatically when the Network Information
+  // API reports a sub-4G link. Settings/UserMenu call the same hook for
+  // display; the auto-enable guard makes this idempotent.
+  useDevicePerformanceHint({ sampleRuntime: false });
 
   // QueryClientProvider lives in main.tsx; do not add a second one here
   return (

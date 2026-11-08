@@ -93,10 +93,14 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
     (s) => s.setIsDialogOpen,
   );
   const reachability = useServiceReachability();
-  const { isSlowConnection } = useDevicePerformanceHint();
+  const { isSlowConnection, isBelow4G, networkQualityLabel } =
+    useDevicePerformanceHint();
   // The avatar menu is the fast path for a genuinely slow link. Device
   // hints still surface the one-time suggestion in Settings > Network.
   const showPerformanceSection = isSlowConnection;
+  const performanceHint = isBelow4G
+    ? `${networkQualityLabel} network detected — Performance mode is recommended.`
+    : "Slow connection detected — Performance mode is recommended.";
 
   // Unread count drives the menu row badge; "mark all as read" in the
   // panel flips every `readAt`, so this recomputes automatically.
@@ -678,7 +682,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
         <>
           <Divider />
           <SectionLabel>Performance</SectionLabel>
-          <PerformanceMenuSection hint="Slow connection detected — Performance mode is recommended." />
+          <PerformanceMenuSection hint={performanceHint} />
         </>
       )}
 
