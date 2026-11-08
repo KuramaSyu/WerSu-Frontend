@@ -8,6 +8,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import CreateNewFolderIcon from "@mui/icons-material/CreateNewFolder";
 import DeleteIcon from "@mui/icons-material/Delete";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
@@ -145,7 +146,13 @@ export const CreateDirectoryModal: React.FC<CreateDirectoryModalProps> = ({
       <ModalShell
         open={open}
         onClose={cancel}
-        icon={<CreateNewFolderIcon fontSize="small" />}
+        icon={
+          directoryKind === "book" ? (
+            <AutoStoriesIcon fontSize="small" />
+          ) : (
+            <CreateNewFolderIcon fontSize="small" />
+          )
+        }
         title={title}
         subtitle={subtitle}
         actions={

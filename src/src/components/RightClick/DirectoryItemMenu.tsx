@@ -20,6 +20,8 @@ import {
 } from "./useRightClickMenu";
 import { NoteRenameDialog } from "./NoteRenameDialog";
 import { AddToDirectoryDialog } from "./AddToDirectoryDialog";
+import { addToMenuIcon, addToMenuLabel } from "./addToMenu";
+import type { DirectoryKind } from "../../models/directoryTerminology";
 import { PermissionEditor } from "../Permissions/PermissionEditor";
 
 export type DirectoryItemMenuTarget =
@@ -28,6 +30,11 @@ export type DirectoryItemMenuTarget =
 
 export interface DirectoryItemMenuProps {
   target: DirectoryItemMenuTarget;
+  /**
+   * Level the row lives on, used for the picker wording. Defaults to
+   * "book"; note rows inside a chapter pass "chapter".
+   */
+  targetKind?: DirectoryKind;
   children: ReactNode;
 }
 
@@ -51,6 +58,7 @@ const NOTE_ROW_BUTTONS: RightClickMenuSpec["buttons"] = [
 
 export const DirectoryItemMenu: React.FC<DirectoryItemMenuProps> = ({
   target,
+  targetKind = "book",
   children,
 }) => {
   const navigate = useNavigate();
@@ -125,6 +133,8 @@ export const DirectoryItemMenu: React.FC<DirectoryItemMenuProps> = ({
           },
         };
         overrides.addToDirectory = {
+          label: addToMenuLabel(targetKind),
+          icon: addToMenuIcon(targetKind),
           handler: () => {
             setAddToDirectoryOpen(true);
             return true;
@@ -139,7 +149,7 @@ export const DirectoryItemMenu: React.FC<DirectoryItemMenuProps> = ({
         overrides,
       });
     },
-    [target, isRoot, menu, openDirectoryDialog, navigate],
+    [target, isRoot, menu, openDirectoryDialog, navigate, targetKind],
   );
 
   const runDelete = async () => {
@@ -183,6 +193,7 @@ export const DirectoryItemMenu: React.FC<DirectoryItemMenuProps> = ({
             onClose={() => setAddToDirectoryOpen(false)}
             noteId={target.noteId}
             noteTitle={target.title}
+            defaultKind={targetKind}
           />
         </>
       )}

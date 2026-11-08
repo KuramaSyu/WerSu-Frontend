@@ -13,10 +13,13 @@ import {
   type DirectoryItemMenuTarget,
 } from "../../components/RightClick/DirectoryItemMenu";
 import { useDirectoryTypeAheadStore } from "../../zustand/useDirectoryTypeAheadStore";
+import type { DirectoryKind } from "../../models/directoryTerminology";
 
 interface BaseProps {
   onClick: () => void;
   index: number;
+  /** Level of the directory this row lives in; drives picker wording. */
+  targetKind?: DirectoryKind;
 }
 
 interface DirectoryVariantProps extends BaseProps {
@@ -47,7 +50,7 @@ const itemToEntry = (props: DirectoryItemProps): SelectionEntry =>
  * Long-press activates select-mode for this row.
  */
 export const DirectoryItem: React.FC<DirectoryItemProps> = (props) => {
-  const { onClick, index, variant } = props;
+  const { onClick, index, variant, targetKind } = props;
   const { theme } = useThemeStore();
   const NOTE_COLORS = [
     theme.palette.secondary.main,
@@ -96,7 +99,7 @@ export const DirectoryItem: React.FC<DirectoryItemProps> = (props) => {
       : { kind: "note", noteId: props.note.id, title: props.note.title };
 
   return (
-    <DirectoryItemMenu target={menuTarget}>
+    <DirectoryItemMenu target={menuTarget} targetKind={targetKind}>
     <ButtonBase
       {...bindings}
       data-directory-nav={navKey}

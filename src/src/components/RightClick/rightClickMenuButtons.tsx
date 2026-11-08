@@ -12,7 +12,6 @@ import AddIcon from "@mui/icons-material/Add";
 import TableChartIcon from "@mui/icons-material/TableChart";
 import EditIcon from "@mui/icons-material/Edit";
 import DriveFileRenameOutlineIcon from "@mui/icons-material/DriveFileRenameOutline";
-import CreateNewFolderIcon from "@mui/icons-material/CreateNewFolder";
 import DeleteIcon from "@mui/icons-material/Delete";
 import StarIcon from "@mui/icons-material/Star";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
@@ -23,6 +22,7 @@ import {
   cutEditorSelection,
   pasteIntoEditor,
 } from "./editorClipboard";
+import { addToMenuIcon, addToMenuLabel } from "./addToMenu";
 import type { RightClickButtonRegistry, RightClickHandler } from "./types";
 
 // The plain-text selection on the page, used when no editor is mounted.
@@ -111,11 +111,13 @@ export const rightClickMenuButtons: RightClickButtonRegistry = {
     label: "Rename",
     icon: <DriveFileRenameOutlineIcon fontSize="small" />,
   },
-  // Handlerless on purpose: each note surface opens the directory picker.
+  // Handlerless on purpose: each note surface opens the book/chapter
+  // picker. Surfaces sitting inside a chapter relabel the row through
+  // an override (see addToMenu.tsx).
   addToDirectory: {
     id: "addToDirectory",
-    label: "Add to directory",
-    icon: <CreateNewFolderIcon fontSize="small" />,
+    label: addToMenuLabel("book"),
+    icon: addToMenuIcon("book"),
   },
   delete: {
     id: "delete",

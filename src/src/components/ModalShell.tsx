@@ -21,8 +21,8 @@ export interface ModalShellProps {
   onClose: () => void;
   /** MUI icon rendered inside the top-left chip. */
   icon: React.ReactNode;
-  /** Title shown in the header next to the icon. */
-  title: string;
+  /** Title shown in the header next to the icon. Strings or inline JSX. */
+  title: React.ReactNode;
   /** Smaller line below the title. Optional. */
   subtitle?: string;
   /** Body content rendered inside `DialogContent`. */
@@ -65,7 +65,10 @@ export const ModalShell: React.FC<ModalShellProps> = ({
 }) => {
   const { theme } = useThemeStore();
   const labelledBy =
-    ariaLabelledBy ?? `modal-shell-title-${title.replace(/\s+/g, "-")}`;
+    ariaLabelledBy ??
+    (typeof title === "string"
+      ? `modal-shell-title-${title.replace(/\s+/g, "-")}`
+      : "modal-shell-title");
 
   // Some dialogs own their context menu entirely. A capture-phase
   // document listener is more reliable than a React handler here

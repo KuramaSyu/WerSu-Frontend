@@ -12,7 +12,6 @@ import {
 import SearchIcon from "@mui/icons-material/Search";
 import FolderOpenIcon from "@mui/icons-material/FolderOpen";
 import DriveFileMoveIcon from "@mui/icons-material/DriveFileMove";
-import CreateNewFolderIcon from "@mui/icons-material/CreateNewFolder";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { ModalShell } from "../ModalShell";
 import { FolderCardView } from "../../pages/Home/FolderCardView";
@@ -22,6 +21,13 @@ import { disambiguateLabels } from "../../utils/disambiguateLabels";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import type { DirectoryReply } from "../../api/models/directory";
+import {
+  directoryKindOf,
+  directoryTerms,
+  type DirectoryKind,
+} from "../../models/directoryTerminology";
+import { addToMenuIcon } from "./addToMenu";
+import { ACCENT_FONT_FAMILY } from "../../theme/customTheme";
 
 export interface AddToDirectoryDialogProps {
   open: boolean;
@@ -31,6 +37,12 @@ export interface AddToDirectoryDialogProps {
   noteTitle?: string;
   /** Called after a move/add succeeds. */
   onDone?: () => void;
+  /**
+   * Level the note lives on: a book for Home surfaces, a chapter inside
+   * the directory view. Drives the header vocabulary until the user
+   * selects a destination, which then supplies its own kind.
+   */
+  defaultKind?: DirectoryKind;
 }
 
 const labelOf = (directory: DirectoryReply): string =>
@@ -48,12 +60,13 @@ const isTopLevel = (directory: DirectoryReply): boolean => {
 };
 
 /**
- * Picker used by the note "Add to directory" context-menu action.
+ * Picker used by the note "Add to book" / "Add to chapter" context-menu
+ * action.
  *
- * Shows top-level folders as the same cards used on Home. Search spans
- * every folder, including nested chapters. The Open action drills into
- * the selected folder; Move to replaces the note's parents and Add to
- * appends the selected folder without removing existing parents.
+ * Shows top-level books as the same cards used on Home. Search spans
+ * every book and chapter. The Open action drills into the selected
+ * chapter; Move to replaces the note's parents and Add to appends the
+ * selected destination without removing existing parents.
  */
 export const AddToDirectoryDialog: React.FC<AddToDirectoryDialogProps> = ({
   open,
@@ -61,6 +74,7 @@ export const AddToDirectoryDialog: React.FC<AddToDirectoryDialogProps> = ({
   noteId,
   noteTitle,
   onDone,
+  defaultKind = "book",
 }) => {
   const { theme } = useThemeStore();
   const { setMessage } = useInfoStore();
@@ -134,6 +148,15 @@ export const AddToDirectoryDialog: React.FC<AddToDirectoryDialogProps> = ({
   const selected = selectedId
     ? directories.find((directory) => directory.id === selectedId)
     : undefined;
+
+  // Selecting a destination switches the wording to its level: a
+  // top-level directory is a Book, anything nested is a Chapter.
+  const destinationKind: DirectoryKind = selected
+    ? directoryKindOf(selected)
+    : defaultKind;
+  const destinationTerms = directoryTerms(destinationKind);
+  const destinationLower = destinationTerms.singularLower;
+  const destinationIcon = addToMenuIcon(destinationKind);
   const viewed = viewId
     ? directories.find((directory) => directory.id === viewId)
     : undefined;
@@ -190,8 +213,8 @@ export const AddToDirectoryDialog: React.FC<AddToDirectoryDialogProps> = ({
       setMessage(
         new SnackbarUpdateImpl(
           mode === "add"
-            ? "Note added to directory"
-            : "Note moved to directory",
+            ? `Note added to a ${destinationLower}`
+            : `Note moved to a ${destinationLower}`,
           "success",
         ),
       );
@@ -208,14 +231,32 @@ export const AddToDirectoryDialog: React.FC<AddToDirectoryDialogProps> = ({
 
   const title = noteTitle ?? note?.title ?? "this note";
 
+  // The note name carries the accent display face so it reads as a name
+  // without needing quotes around it. Weight stays at the header's
+  // default so it sits flush with the rest of the title.
+  const titleNode = (
+    <>
+      Add{" "}
+      <Box
+        component="span"
+        sx={{
+          fontFamily: theme.custom?.accentFontFamily ?? ACCENT_FONT_FAMILY,
+        }}
+      >
+        {title}
+      </Box>{" "}
+      to a {destinationLower}
+    </>
+  );
+
   return (
     <ModalShell
       open={open}
       onClose={handleClose}
       disableContextMenu
-      icon={<CreateNewFolderIcon fontSize="small" />}
-      title={`Add "${title}" to a directory`}
-      subtitle="Pick a folder, then add or move the note there."
+      icon={destinationIcon}
+      title={titleNode}
+      subtitle={`Pick a ${destinationLower}, then add or move the note there.`}
       maxWidth="md"
       actions={
         <>
@@ -236,7 +277,7 @@ export const AddToDirectoryDialog: React.FC<AddToDirectoryDialogProps> = ({
             onClick={() => void runAction("move")}
             disabled={!selectedId || !note || busy || noteLoading}
           >
-            Move to
+            {`Move to ${destinationLower}`}
           </Button>
           <Button
             variant="contained"
@@ -244,13 +285,13 @@ export const AddToDirectoryDialog: React.FC<AddToDirectoryDialogProps> = ({
               busy ? (
                 <CircularProgress size={16} color="inherit" />
               ) : (
-                <CreateNewFolderIcon fontSize="small" />
+                destinationIcon
               )
             }
             onClick={() => void runAction("add")}
             disabled={!selectedId || !note || busy || noteLoading}
           >
-            Add to
+            {`Add to ${destinationLower}`}
           </Button>
         </>
       }
@@ -262,7 +303,7 @@ export const AddToDirectoryDialog: React.FC<AddToDirectoryDialogProps> = ({
           autoFocus
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search all folders, including nested chapters"
+          placeholder="Search all books and chapters"
           slotProps={{
             input: {
               startAdornment: (
@@ -301,8 +342,8 @@ export const AddToDirectoryDialog: React.FC<AddToDirectoryDialogProps> = ({
             {query.trim()
               ? `Search results for "${query.trim()}"`
               : viewId
-                ? `Inside ${viewedLabel || "selected folder"}`
-                : "Top-level folders"}
+                ? `Inside ${viewedLabel || "selected destination"}`
+                : "Top-level books"}
           </Typography>
           {selected && (
             <Typography
@@ -340,8 +381,8 @@ export const AddToDirectoryDialog: React.FC<AddToDirectoryDialogProps> = ({
         ) : visibleDirectories.length === 0 ? (
           <Typography variant="body2" color="textSecondary" sx={{ py: 3 }}>
             {query.trim()
-              ? "No folders match this search."
-              : "No folders in this directory."}
+              ? "No books or chapters match this search."
+              : "No chapters here."}
           </Typography>
         ) : (
           <Box

@@ -83,7 +83,8 @@ export const DirectoryView: React.FC = () => {
 
   // The current node is a Book when it sits at the top of a shelf and a
   // Chapter once nested, so its labels follow that level.
-  const dirTerms = directoryTerms(directoryKindOfNode(currentNode));
+  const directoryKind = directoryKindOfNode(currentNode);
+  const dirTerms = directoryTerms(directoryKind);
 
   // Hold-to-run shortcuts for this page (see config/shortcuts.json).
   // "Edit" always targets the directory in the URL (`currentNode`),
@@ -225,6 +226,7 @@ export const DirectoryView: React.FC = () => {
                     variant="note"
                     index={index}
                     note={note}
+                    targetKind={directoryKind}
                     onClick={() => navigate(`/n/${note.id}`)}
                   />
                 ))

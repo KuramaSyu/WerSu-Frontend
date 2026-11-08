@@ -46,6 +46,14 @@ export function directoryTerms(kind: DirectoryKind): DirectoryTerms {
 }
 
 /**
+ * "Add to book" / "Add to chapter" -- the action that opens the
+ * directory picker for a note.
+ */
+export function addToLabel(kind: DirectoryKind): string {
+  return `Add to ${TERMS[kind].singularLower}`;
+}
+
+/**
  * Book when the directory has no parent directory, Chapter otherwise.
  * Used for directory reply / form payload shapes.
  */

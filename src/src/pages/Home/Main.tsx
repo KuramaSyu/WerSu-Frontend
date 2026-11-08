@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Box, Stack, Typography } from "@mui/material";
-import FolderIcon from "@mui/icons-material/Folder";
+import AutoStoriesIcon from "@mui/icons-material/AutoStories";
 import HistoryIcon from "@mui/icons-material/History";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
 import ScheduleIcon from "@mui/icons-material/Schedule";
@@ -144,7 +144,7 @@ export const HomePage: React.FC = () => {
 
         <Stack direction="column" spacing={2}>
           <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-            <FolderIcon color="primary" fontSize="small" />
+            <AutoStoriesIcon color="primary" fontSize="small" />
             <Typography variant="h5" color="textPrimary">
               All books
             </Typography>

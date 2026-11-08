@@ -313,6 +313,7 @@ const NoteRowWithSelection: React.FC<{
   return (
     <DirectoryItemMenu
       target={{ kind: "note", noteId: note.id, title: note.title }}
+      targetKind="chapter"
     >
       <Box
         {...bindings}
