@@ -229,6 +229,25 @@ export class CustomThemeImpl implements CustomTheme {
       panel: this.palette.surfaces?.panel ?? computedPanel,
     };
     this.typography.fontFamily = BODY_FONT_FAMILY;
+    // Fira Sans 300 is no longer loaded; keep light headings at regular
+    // weight so the browser never falls back to a synthesized 300 face.
+    this.typography.fontWeightLight = 400;
+    this.typography.h1.fontWeight = 400;
+    this.typography.h2.fontWeight = 400;
+    // MUI's typography variants (`body1`, `button`, `h5`, ...) each carry
+    // their own `fontFamily`. Updating only the root leaves every MUI
+    // component on the default Roboto stack, even though inherited text
+    // and raw elements use the root family. Keep both in sync.
+    for (const [variant, style] of Object.entries(this.typography)) {
+      if (
+        variant !== "inherit" &&
+        style &&
+        typeof style === "object" &&
+        "fontFamily" in style
+      ) {
+        style.fontFamily = BODY_FONT_FAMILY;
+      }
+    }
 
     // Wrap methods to handle string | number parameters
     this.alpha = (color: string, value: string | number) => {
