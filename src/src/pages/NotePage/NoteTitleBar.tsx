@@ -8,6 +8,7 @@ import { memo } from "react";
 import { Box, Input, Stack } from "@mui/material";
 import { M2, M3 } from "../../statics";
 import { useThemeStore } from "../../zustand/useThemeStore";
+import { ACCENT_FONT_FAMILY } from "../../theme/customTheme";
 import { logRerender } from "./editorRenderLog";
 
 export interface NoteTitleBarProps {
@@ -50,6 +51,9 @@ const NoteTitleBarImpl: React.FC<NoteTitleBarProps> = ({
           disableUnderline
           sx={{
             fontSize: theme.typography.h3,
+            fontFamily: theme.custom?.accentFontFamily ?? ACCENT_FONT_FAMILY,
+            fontWeight: 400,
+            fontOpticalSizing: "auto",
             pr: forceFullWidth ? 0 : M2,
             // Wrap and grow vertically; no horizontal scroll.
             "& textarea": {

@@ -62,7 +62,6 @@ export const AppearanceSection: React.FC = () => {
     (state) => state.flags[FeatureFlagName.DeveloperMode],
   );
   const setFlag = useFeatureStore((state) => state.setFlag);
-
   return (
     <Stack direction="column" spacing={3}>
       <Stack
@@ -114,8 +113,8 @@ export const AppearanceSection: React.FC = () => {
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Blur the theme background image behind the note editor. This is
-              only active when the current theme has a background image. Turn
-              it off for better performance on slower devices.
+              only active when the current theme has a background image. Turn it
+              off for better performance on slower devices.
             </Typography>
           </Stack>
           <Switch

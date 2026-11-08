@@ -4,6 +4,12 @@ import "@mui/material/styles";
 export interface ThemeCustomExtension {
   themeName: string; // Short identifier, e.g. 'ocean'
   longName: string; // Descriptive name, e.g. 'Ocean Breeze'
+  /**
+   * Display/accent font family used for names and editorial highlights.
+   * Kept on the theme so swapping the accent typeface is a single value
+   * change instead of a hunt through components.
+   */
+  accentFontFamily: string;
   /** Background image URLs this theme supports. May be empty for plain themes. */
   backgroundImages: string[];
   /** The single image picked for the current theme instance; null when no image is set. */

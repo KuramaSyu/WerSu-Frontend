@@ -17,7 +17,7 @@ import { SUPPORTED_LANGUAGES } from "../lowlight";
 
 // Shared metrics so the line-number gutter and the code content always sit
 // on the same baseline grid. Applied to both the `<pre>` and the gutter.
-const CODE_FONT_FAMILY = "'JetBrainsMono', monospace";
+const CODE_FONT_FAMILY = "'JetBrains Mono', monospace";
 const CODE_FONT_SIZE = "0.8rem";
 const CODE_LINE_HEIGHT = 1.5;
 
@@ -143,7 +143,9 @@ export const CodeBlockNodeView: React.FC<NodeViewProps> = memo(
       // Measure after layout so the rendered rows are final.
       const frame = window.requestAnimationFrame(measure);
       const observer =
-        typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+        typeof ResizeObserver === "undefined"
+          ? null
+          : new ResizeObserver(measure);
       observer?.observe(content);
       return () => {
         window.cancelAnimationFrame(frame);

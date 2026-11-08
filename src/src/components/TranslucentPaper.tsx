@@ -2,6 +2,7 @@ import { Paper, type PaperProps, type SxProps } from "@mui/material";
 import { alpha, useTheme, type Theme } from "@mui/material/styles";
 import type { ReactNode } from "react";
 import { useThemeStore } from "../zustand/useThemeStore";
+import { FeatureFlagName, useFeatureStore } from "../zustand/FeatureStore";
 
 // Opacity per elevation level (0..11). Elevation 1 is the main shell (50%),
 // elevation 4 is the top bar / rails (90%).
@@ -104,7 +105,11 @@ export const TranslucentPaper: React.FC<TranslucentPaperProps> = ({
     const custom = s.theme.custom;
     return custom.chosenBackgroundImage ?? custom.backgroundImages[0] ?? "";
   });
-  const hasBackground = pickBackgroundUrl(themeBackground) !== undefined;
+  const ignoreBackgroundImage = useFeatureStore(
+    (s) => s.flags[FeatureFlagName.IgnoreBackgroundImage],
+  );
+  const hasBackground =
+    !ignoreBackgroundImage && pickBackgroundUrl(themeBackground) !== undefined;
 
   const safeElevation = Math.max(0, Math.min(11, Math.round(elevation)));
   const opacity = ELEVATION_OPACITY[safeElevation] ?? DEFAULT_OPACITY;

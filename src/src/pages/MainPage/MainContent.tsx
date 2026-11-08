@@ -172,7 +172,6 @@ export const MainContent: React.FC = () => {
           height: "100%",
           width: "100%",
           alignSelf: "center",
-          fontFamily: "Open Sans",
           display: "flex",
           // overflow: "auto",
         }}

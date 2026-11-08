@@ -424,8 +424,10 @@ export const ThemeGeneratorSection: React.FC = () => {
       // the background renders without a runtime transform. When the
       // pre-render flag is off the sharp source is blurred on the fly at
       // render time instead, so no second cache entry is written.
+      const flags = useFeatureStore.getState().flags;
       const preRenderBlur =
-        useFeatureStore.getState().flags[FeatureFlagName.PreRenderThemeBlur];
+        flags[FeatureFlagName.PreRenderThemeBlur] &&
+        !flags[FeatureFlagName.DisableBlur];
       let blurredBackgroundImage = "";
       let blurActive = false;
       if (sourceBlob !== null) {
@@ -536,8 +538,8 @@ export const ThemeGeneratorSection: React.FC = () => {
         <Typography variant="subtitle1">Theme generator</Typography>
         <Typography variant="body2" color="text.secondary">
           Upload an image and a color scheme is extracted from it. A matched
-          dark and light variant are saved together, so the top-bar mode
-          toggle switches straight to the sibling.
+          dark and light variant are saved together, so the top-bar mode toggle
+          switches straight to the sibling.
         </Typography>
       </Stack>
 
@@ -603,8 +605,8 @@ export const ThemeGeneratorSection: React.FC = () => {
           </Stack>
           <Typography variant="caption" color="text.secondary">
             The host must allow cross-origin reads (an
-            <code> Access-Control-Allow-Origin </code> header). If it does
-            not, download the image and use “Choose image”.
+            <code> Access-Control-Allow-Origin </code> header). If it does not,
+            download the image and use “Choose image”.
           </Typography>
         </Stack>
       ) : null}

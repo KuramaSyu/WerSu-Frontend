@@ -6,12 +6,14 @@ import CodeIcon from "@mui/icons-material/Code";
 import LockIcon from "@mui/icons-material/Lock";
 import PaletteIcon from "@mui/icons-material/Palette";
 import SearchIcon from "@mui/icons-material/Search";
+import WifiIcon from "@mui/icons-material/Wifi";
 import type { SettingsCategory } from "./types";
 import { BookstackImportSection } from "./BookstackImportSection";
 import { ThemeGeneratorSection } from "./ThemeGeneratorSection";
 import { CacheSection } from "./CacheSection";
 import { AdministrationSection } from "./AdministrationSection";
 import { AppearanceSection } from "./AppearanceSection";
+import { NetworkSection } from "./NetworkSection";
 import { DeveloperSection } from "./DeveloperSection";
 import { SearchSection } from "./SearchSection";
 import { SecuritySection } from "./SecuritySection";
@@ -66,6 +68,15 @@ export const settingsCategories: SettingsCategory[] = [
       setCodeBlockThemeDark("material-palenight");
       // Developer mode is part of appearance prefs; reset alongside.
       useFeatureStore.getState().setFlag(FeatureFlagName.DeveloperMode, false);
+    },
+  },
+  {
+    id: "network",
+    label: "Network",
+    icon: <WifiIcon />,
+    settingsContent: <NetworkSection />,
+    resetLogic: () => {
+      useFeatureStore.getState().setPerformanceMode(false);
     },
   },
   {

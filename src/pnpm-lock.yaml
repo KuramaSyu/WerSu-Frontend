@@ -29,11 +29,14 @@ importers:
       '@floating-ui/react':
         specifier: ^0.27.19
         version: 0.27.20(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@fontsource-variable/fraunces':
+        specifier: ^5.3.0
+        version: 5.3.0
       '@fontsource/fira-sans':
         specifier: ^5.2.7
         version: 5.3.0
-      '@fontsource/open-sans':
-        specifier: ^5.2.7
+      '@fontsource/jetbrains-mono':
+        specifier: ^5.3.0
         version: 5.3.0
       '@hocuspocus/provider':
         specifier: ^4.2.0
@@ -158,6 +161,9 @@ importers:
       date-fns:
         specifier: ^4.4.0
         version: 4.4.0
+      dompurify:
+        specifier: ^3.4.17
+        version: 3.4.17
       framer-motion:
         specifier: ^12.23.25
         version: 12.43.0(@emotion/is-prop-valid@1.4.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -687,11 +693,14 @@ packages:
   '@floating-ui/utils@0.2.12':
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
 
+  '@fontsource-variable/fraunces@5.3.0':
+    resolution: {integrity: sha512-9BYGySn4AHEJdgp9Z28tQ3X+laJMEOITXkQarZXeloWQZDq5oOvXJ3kDA8c7MGIfpogIaZfjrQBqmda8POOCKA==}
+
   '@fontsource/fira-sans@5.3.0':
     resolution: {integrity: sha512-z1SKSG7eRhm3srlb7rQ3j77QP4TP7OFxCZ4wUWhCdt+3hOF9K0AyvybpAsz6+JWNcCVV7AqC7dbOT3e67P2r5A==}
 
-  '@fontsource/open-sans@5.3.0':
-    resolution: {integrity: sha512-V1bdMlGNyZrJwzrdusshMOw2YR0aqYDL7kOo9dkxUEKl8dFv66A9HLckOOXl572sG/7ohhDQrCrTFGSn9LZcSw==}
+  '@fontsource/jetbrains-mono@5.3.0':
+    resolution: {integrity: sha512-fqDfB5I9f1p1TV486aUgB9t8zP84P0O1FtQR5Ol9vjwPy+S+EIGlVYm1cvj2W5shcZMTg2nZFdVMoH5wFu8a1A==}
 
   '@hocuspocus/common@4.7.0':
     resolution: {integrity: sha512-KyS6dXoIcWsd+v3gwd6nnZW04M77df5XstPNkOwqoDxwuncygobEN7xsf0x2PmdvlQdQyRaLm2SF4r1GZZGRnA==}
@@ -2455,6 +2464,9 @@ packages:
 
   dompurify@3.4.15:
     resolution: {integrity: sha512-EUBjM+B+lkDE41iE82DDSCfkoPGfXx8IxFxPMjNzm/Uk4xDet77rTN9wqlxlVg71kK7XGuUMv6wUxJUwwv+Xyw==}
+
+  dompurify@3.4.17:
+    resolution: {integrity: sha512-B/pSlYVHQ58kqISD/yDjuJ1yfzI34m1gF4lAod2bwSRhiN4K5Cl3H8Af7hqB2PmTL911tdEudnnXn5FnhRoz0w==}
 
   drange@1.1.1:
     resolution: {integrity: sha512-pYxfDYpued//QpnLIm4Avk7rsNtAtQkUES2cwAYSvD/wd2pKD71gN2Ebj3e7klzXwjocvE8c5vx/1fxwpqmSxA==}
@@ -5010,9 +5022,11 @@ snapshots:
 
   '@floating-ui/utils@0.2.12': {}
 
+  '@fontsource-variable/fraunces@5.3.0': {}
+
   '@fontsource/fira-sans@5.3.0': {}
 
-  '@fontsource/open-sans@5.3.0': {}
+  '@fontsource/jetbrains-mono@5.3.0': {}
 
   '@hocuspocus/common@4.7.0':
     dependencies:
@@ -7183,6 +7197,10 @@ snapshots:
       csstype: 3.2.3
 
   dompurify@3.4.15:
+    optionalDependencies:
+      '@types/trusted-types': 2.0.7
+
+  dompurify@3.4.17:
     optionalDependencies:
       '@types/trusted-types': 2.0.7
 

@@ -21,38 +21,55 @@ import { useThemeBackgroundStore } from "../zustand/useThemeBackgroundStore";
 // When `PreRenderThemeBlur` is off, the sharp source is fetched at display
 // resolution and blurred on the fly (a canvas transform, not a CSS filter on
 // the box) so the pre-rendered second cache copy is not needed.
+//
+// Performance mode can override both paths: `DisableBlur` shows the sharp
+// source without any blur work, and `IgnoreBackgroundImage` hides the image
+// entirely while leaving the image-derived palette untouched.
 const AppBackground: React.FC = () => {
   const { theme } = useThemeStore();
   const preRenderBlur = useFeatureStore(
     (s) => s.flags[FeatureFlagName.PreRenderThemeBlur],
   );
+  const disableBlur = useFeatureStore(
+    (s) => s.flags[FeatureFlagName.DisableBlur],
+  );
+  const ignoreBackgroundImage = useFeatureStore(
+    (s) => s.flags[FeatureFlagName.IgnoreBackgroundImage],
+  );
   const custom = theme.custom;
   const sharpImage = custom.backgroundImages[0] ?? "";
   const chosenImage = custom.chosenBackgroundImage ?? "";
   const blur = custom.blur ?? 0;
+  const effectiveBlur = disableBlur ? 0 : blur;
 
   // Only read the pre-rendered variant from the cache when it actually
   // exists and differs from the sharp source. An empty/unknown chosen value
   // disables the lookup so the sharp source is never shown for a blurred
   // theme.
   const storedUrl = useCachedImageUrl(
-    blur <= 0
-      ? chosenImage.length > 0
-        ? chosenImage
-        : sharpImage
-      : preRenderBlur &&
-          chosenImage.length > 0 &&
-          chosenImage !== sharpImage
-        ? chosenImage
-        : "",
+    ignoreBackgroundImage
+      ? ""
+      : effectiveBlur <= 0
+        ? chosenImage.length > 0
+          ? sharpImage || chosenImage
+          : sharpImage
+        : preRenderBlur && chosenImage.length > 0 && chosenImage !== sharpImage
+          ? chosenImage
+          : "",
   );
   // Manual mode only; passing "" disables the lookup.
   const manualUrl = useManualBlurImageUrl(
-    preRenderBlur || blur <= 0 ? "" : sharpImage,
-    blur,
+    ignoreBackgroundImage || preRenderBlur || effectiveBlur <= 0
+      ? ""
+      : sharpImage,
+    ignoreBackgroundImage ? 0 : effectiveBlur,
   );
 
-  const resolved = blur > 0 && !preRenderBlur ? manualUrl : storedUrl;
+  const resolved = ignoreBackgroundImage
+    ? null
+    : effectiveBlur > 0 && !preRenderBlur
+      ? manualUrl
+      : storedUrl;
 
   // Publish the resolved URL so other surfaces can render a matching copy
   // of the backdrop without resolving (and, in manual-blur mode,

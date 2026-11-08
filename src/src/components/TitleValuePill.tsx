@@ -1,98 +1,140 @@
-import { Box, darken, Paper, Stack, Typography } from "@mui/material";
+import { Box, Paper, Typography } from "@mui/material";
 import { useThemeStore } from "../zustand/useThemeStore";
 
 /**
- * Pill with a soft `muted`-palette backdrop, a textual `title` on the
- * left, and a brighter `value` chip on the right. Used wherever a label
- * and its value should read as one unit in the metadata blocks (parent
- * directories, content stats, permission rows, ...).
+ * Pill with a title capsule cut into a value-coloured outer pill.
+ *
+ * The outer container carries the value colour. The title capsule sits on
+ * top of that background and overlaps the value side, so its rounded right
+ * edge reads as a cut-out in the value rather than as a second pill beside
+ * it. The value text then runs to the right edge on the outer background.
  *
  * Sizes map to MUI's `Typography` variants and trim padding proportionally:
  *   - `small` (default) -> caption title + body2 value, pill stays a single text-line tall
  *   - `medium` -> body2 title + body1 value, more breathing room
+ *   - `large` -> subtitle1 title + h6 value, for prominent inline summaries
+ *
+ * Set `inline` to render the pill as an inline-flex span so it can sit inside
+ * a sentence without breaking the paragraph into block-level rows.
+ *
+ * `color` selects the value background palette; it defaults to `secondary`.
  */
-export type TitleValuePillSize = "small" | "medium";
+export type TitleValuePillSize = "small" | "medium" | "large";
+export type TitleValuePillColor = "primary" | "secondary";
 
 export interface TitleValuePills {
   title: string;
   value: string;
   size?: TitleValuePillSize;
+  inline?: boolean;
+  color?: TitleValuePillColor;
 }
 
-// Two size tables so the rendering style and the vertical padding live
-// next to each other; flip a row to retune one pill size in isolation.
-const TITLE_VARIANT_BY_SIZE: Record<TitleValuePillSize, "caption" | "body2"> = {
+const TITLE_VARIANT_BY_SIZE: Record<
+  TitleValuePillSize,
+  "caption" | "body2" | "subtitle1"
+> = {
   small: "caption",
   medium: "body2",
+  large: "subtitle1",
 };
 
-const VALUE_VARIANT_BY_SIZE: Record<TitleValuePillSize, "body2" | "body1"> = {
+const VALUE_VARIANT_BY_SIZE: Record<
+  TitleValuePillSize,
+  "body2" | "body1" | "h6"
+> = {
   small: "body2",
   medium: "body1",
+  large: "h6",
 };
 
-const PILL_PY_BY_SIZE: Record<TitleValuePillSize, number> = {
-  small: 0,
+const TITLE_PX_BY_SIZE: Record<TitleValuePillSize, number> = {
+  small: 0.75,
   medium: 1,
+  large: 1,
+};
+
+const VALUE_PX_BY_SIZE: Record<TitleValuePillSize, number> = {
+  small: 0.75,
+  medium: 1,
+  large: 1,
 };
 
 const VALUE_PY_BY_SIZE: Record<TitleValuePillSize, number> = {
   small: 0.125,
   medium: 0.25,
-};
-
-const VALUE_PX_BY_SIZE: Record<TitleValuePillSize, number> = {
-  small: 0.5,
-  medium: 0.75,
+  large: 0.25,
 };
 
 export const TitleValuePill: React.FC<TitleValuePills> = ({
   title,
   value,
   size = "small",
+  inline = false,
+  color = "secondary",
 }) => {
   const { theme } = useThemeStore();
+  const component = inline ? "span" : "div";
+  const valuePalette =
+    color === "primary" ? theme.palette.primary : theme.palette.secondary;
+
   return (
-    <Paper elevation={1} sx={{ borderRadius: theme.shape.borderRadius }}>
-      <Stack
+    <Paper
+      component={component}
+      elevation={0}
+      sx={{
+        display: inline ? "inline-flex" : "flex",
+        verticalAlign: inline ? "middle" : undefined,
+        alignItems: "stretch",
+        borderRadius: 999,
+        overflow: "hidden",
+        backgroundColor: valuePalette.main,
+        color: valuePalette.contrastText,
+        mx: inline ? 0.25 : 0,
+      }}
+    >
+      <Box
+        component={component}
         sx={{
-          pl: 0.75,
-          pr: VALUE_PX_BY_SIZE[size],
-          py: PILL_PY_BY_SIZE[size],
+          position: "relative",
+          zIndex: 1,
+          display: "inline-flex",
           alignItems: "center",
-          gap: 0.5,
-          lineHeight: 1,
+          flexShrink: 0,
+          px: TITLE_PX_BY_SIZE[size],
+          borderRadius: 999,
+          border: 1,
+          borderColor: "divider",
+          backgroundColor: theme.palette.background.paper,
+          color: theme.palette.text.primary,
         }}
-        direction="row"
       >
         <Typography
           variant={TITLE_VARIANT_BY_SIZE[size]}
-          sx={{ textTransform: "capitalize", lineHeight: 1.4 }}
+          sx={{ textTransform: "capitalize", lineHeight: 1.4, fontWeight: 600 }}
         >
           {title}
         </Typography>
-        <Box
-          sx={{
-            backgroundColor: theme.palette.secondary.main,
-            color: theme.palette.secondary.contrastText,
-            zIndex: 2,
-            borderRadius: theme.shape.borderRadius,
-            px: VALUE_PX_BY_SIZE[size],
-            py: VALUE_PY_BY_SIZE[size],
-            display: "inline-flex",
-            alignItems: "center",
-            lineHeight: 1,
-          }}
+      </Box>
+      <Box
+        component={component}
+        sx={{
+          display: "flex",
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          px: VALUE_PX_BY_SIZE[size],
+          py: VALUE_PY_BY_SIZE[size],
+        }}
+      >
+        <Typography
+          variant={VALUE_VARIANT_BY_SIZE[size]}
+          component="span"
+          sx={{ lineHeight: 1 }}
         >
-          <Typography
-            variant={VALUE_VARIANT_BY_SIZE[size]}
-            component="span"
-            sx={{ lineHeight: 1 }}
-          >
-            {value}
-          </Typography>
-        </Box>
-      </Stack>
+          {value}
+        </Typography>
+      </Box>
     </Paper>
   );
 };

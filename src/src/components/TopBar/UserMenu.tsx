@@ -12,6 +12,7 @@ import {
   MenuItem,
   Select,
   Stack,
+  Switch,
   TextField,
   Tooltip,
   Typography,
@@ -36,6 +37,8 @@ import ShareIcon from "@mui/icons-material/Share";
 import KeyboardIcon from "@mui/icons-material/Keyboard";
 import { useNavigate } from "react-router-dom";
 import { useThemeStore } from "../../zustand/useThemeStore";
+import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
+import { useDevicePerformanceHint } from "../../hooks/useDevicePerformanceHint";
 import { useUser } from "../../api/queries/useUser";
 import { usePublicRouteReady } from "../../hooks/usePublicRouteReady";
 import {
@@ -90,6 +93,10 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
     (s) => s.setIsDialogOpen,
   );
   const reachability = useServiceReachability();
+  const { isSlowConnection } = useDevicePerformanceHint();
+  // The avatar menu is the fast path for a genuinely slow link. Device
+  // hints still surface the one-time suggestion in Settings > Network.
+  const showPerformanceSection = isSlowConnection;
 
   // Unread count drives the menu row badge; "mark all as read" in the
   // panel flips every `readAt`, so this recomputes automatically.
@@ -667,6 +674,14 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
         <ListItemText primary="Shortcuts" />
       </MenuItem>
 
+      {showPerformanceSection && (
+        <>
+          <Divider />
+          <SectionLabel>Performance</SectionLabel>
+          <PerformanceMenuSection hint="Slow connection detected — Performance mode is recommended." />
+        </>
+      )}
+
       <Divider />
 
       <MenuItem
@@ -703,6 +718,110 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
     </Stack>
   );
 };
+
+/**
+ * Compact Performance controls shown in the avatar menu when the device or
+ * connection looks constrained. Mirrors the master switch + sub-flags in
+ * Settings > Appearance without forcing a navigation away from the menu.
+ */
+const PerformanceMenuSection: React.FC<{ hint?: string }> = ({ hint }) => {
+  const performanceMode = useFeatureStore(
+    (s) => s.flags[FeatureFlagName.PerformanceMode],
+  );
+  const reduceMotion = useFeatureStore(
+    (s) => s.flags[FeatureFlagName.ReduceMotion],
+  );
+  const disableBlur = useFeatureStore(
+    (s) => s.flags[FeatureFlagName.DisableBlur],
+  );
+  const ignoreBackgroundImage = useFeatureStore(
+    (s) => s.flags[FeatureFlagName.IgnoreBackgroundImage],
+  );
+  const setFlag = useFeatureStore((s) => s.setFlag);
+  const setPerformanceMode = useFeatureStore((s) => s.setPerformanceMode);
+
+  return (
+    <Box sx={{ px: M2, pb: M2 }}>
+      {hint !== undefined && (
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ display: "block", pb: 0.5 }}
+        >
+          {hint}
+        </Typography>
+      )}
+      <PerformanceSwitchRow
+        label="Performance mode"
+        checked={performanceMode}
+        onChange={(checked) => setPerformanceMode(checked)}
+        ariaLabel="Performance mode toggle"
+      />
+      <PerformanceSwitchRow
+        label="Reduce motion"
+        checked={reduceMotion}
+        disabled={!performanceMode}
+        onChange={(checked) => setFlag(FeatureFlagName.ReduceMotion, checked)}
+        ariaLabel="Reduce motion toggle"
+        indent
+      />
+      <PerformanceSwitchRow
+        label="Disable blur"
+        checked={disableBlur}
+        disabled={!performanceMode}
+        onChange={(checked) => setFlag(FeatureFlagName.DisableBlur, checked)}
+        ariaLabel="Disable blur toggle"
+        indent
+      />
+      <PerformanceSwitchRow
+        label="Ignore background image"
+        checked={ignoreBackgroundImage}
+        disabled={!performanceMode}
+        onChange={(checked) =>
+          setFlag(FeatureFlagName.IgnoreBackgroundImage, checked)
+        }
+        ariaLabel="Ignore background image toggle"
+        indent
+      />
+    </Box>
+  );
+};
+
+const PerformanceSwitchRow: React.FC<{
+  label: string;
+  checked: boolean;
+  disabled?: boolean;
+  indent?: boolean;
+  ariaLabel: string;
+  onChange: (checked: boolean) => void;
+}> = ({
+  label,
+  checked,
+  disabled = false,
+  indent = false,
+  ariaLabel,
+  onChange,
+}) => (
+  <Stack
+    direction="row"
+    spacing={1}
+    sx={{
+      alignItems: "center",
+      justifyContent: "space-between",
+      minHeight: 40,
+      pl: indent ? 2 : 0,
+    }}
+  >
+    <Typography variant={indent ? "body2" : "subtitle2"}>{label}</Typography>
+    <Switch
+      size="small"
+      checked={checked}
+      disabled={disabled}
+      onChange={(_, next) => onChange(next)}
+      slotProps={{ input: { "aria-label": ariaLabel } }}
+    />
+  </Stack>
+);
 
 /**
  * Small overline used as a section header inside the menu

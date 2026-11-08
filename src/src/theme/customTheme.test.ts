@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getContrastRatio } from "@mui/system/colorManipulator";
+import { ACCENT_FONT_FAMILY } from "./customTheme";
 import { customThemes } from "./themes";
 
 // The right-click delete rows and other semantic text pick up
@@ -27,6 +28,16 @@ describe("spacing scale", () => {
   });
 });
 
+describe("accent font", () => {
+  it("exposes the configured accent family on every registered theme", () => {
+    for (const theme of customThemes) {
+      expect(theme.custom.accentFontFamily, theme.custom.themeName).toBe(
+        ACCENT_FONT_FAMILY,
+      );
+    }
+  });
+});
+
 describe("semantic text tones", () => {
   it("gives every theme readable text on the elevated menu paper", () => {
     for (const theme of customThemes) {
@@ -35,10 +46,9 @@ describe("semantic text tones", () => {
         const tone = theme.palette[key].text;
         const label = `${theme.custom.themeName}.${key}`;
         expect(tone, label).toBeTruthy();
-        expect(
-          getContrastRatio(tone!, surface),
-          label,
-        ).toBeGreaterThanOrEqual(CONTRAST_TARGET);
+        expect(getContrastRatio(tone!, surface), label).toBeGreaterThanOrEqual(
+          CONTRAST_TARGET,
+        );
       }
     }
   });

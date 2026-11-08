@@ -1,5 +1,8 @@
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  /* Keep the global/root typeface in sync with the MUI theme. MUI's
+     ThemeProvider only applies typography to MUI components; raw text
+     and inherited styles otherwise fall back to this value. */
+  font-family: "Fira Sans", sans-serif;
   line-height: 1.5;
   font-weight: 400;
 

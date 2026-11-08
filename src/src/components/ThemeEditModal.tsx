@@ -207,8 +207,10 @@ export const ThemeEditModal: React.FC<ThemeEditModalProps> = ({
       const isSourceKey =
         blurredBackgroundImage === record.backgroundImage ||
         blurredBackgroundImage === originalKey;
+      const flags = useFeatureStore.getState().flags;
       const preRenderBlur =
-        useFeatureStore.getState().flags[FeatureFlagName.PreRenderThemeBlur];
+        flags[FeatureFlagName.PreRenderThemeBlur] &&
+        !flags[FeatureFlagName.DisableBlur];
 
       if (blur === 0 || !preRenderBlur) {
         // No blur, or manual-blur mode: drop any pre-rendered variant. The
@@ -377,7 +379,9 @@ export const ThemeEditModal: React.FC<ThemeEditModalProps> = ({
                 }}
               />
             ) : (
-              <Box sx={{ display: "grid", placeItems: "center", height: "100%" }}>
+              <Box
+                sx={{ display: "grid", placeItems: "center", height: "100%" }}
+              >
                 <ImageIcon fontSize="small" color="disabled" />
               </Box>
             )}
@@ -395,8 +399,8 @@ export const ThemeEditModal: React.FC<ThemeEditModalProps> = ({
 
         {!loadingOriginal && usingFallbackOnly ? (
           <Typography variant="caption" color="warning.main">
-            The original image could not be loaded, so only a compressed copy
-            is available. Blur changes will be applied once the original can be
+            The original image could not be loaded, so only a compressed copy is
+            available. Blur changes will be applied once the original can be
             fetched again.
           </Typography>
         ) : null}

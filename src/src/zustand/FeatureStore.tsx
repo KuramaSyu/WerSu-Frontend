@@ -60,6 +60,17 @@ export enum FeatureFlagName {
    * render time instead, so only the source ends up in the cache.
    */
   PreRenderThemeBlur = "PreRenderThemeBlur",
+  /**
+   * Master switch for the low-end-device preset. Turning it on enables the
+   * three sub-flags below; each can then be turned off individually.
+   */
+  PerformanceMode = "PerformanceMode",
+  /** Suppress non-essential animation and CSS transitions. */
+  ReduceMotion = "ReduceMotion",
+  /** Skip the expensive blur pipelines for theme and editor backdrops. */
+  DisableBlur = "DisableBlur",
+  /** Keep image-derived theme colours but never paint the source image. */
+  IgnoreBackgroundImage = "IgnoreBackgroundImage",
 }
 
 const FEATURE_FLAG_NAMES = Object.values(FeatureFlagName);
@@ -78,6 +89,10 @@ const DEFAULT_FEATURE_FLAGS: Record<FeatureFlagName, boolean> = {
   [FeatureFlagName.BackgroundImageDebug]: false,
   [FeatureFlagName.NoteEditorBackgroundBlur]: true,
   [FeatureFlagName.PreRenderThemeBlur]: true,
+  [FeatureFlagName.PerformanceMode]: false,
+  [FeatureFlagName.ReduceMotion]: false,
+  [FeatureFlagName.DisableBlur]: false,
+  [FeatureFlagName.IgnoreBackgroundImage]: false,
 };
 
 const isBooleanRecord = (value: unknown): value is Record<string, boolean> =>
@@ -95,6 +110,8 @@ const isBooleanRecord = (value: unknown): value is Record<string, boolean> =>
 interface FeatureFlagsState {
   flags: Record<FeatureFlagName, boolean>;
   setFlag: (name: FeatureFlagName, value: boolean) => void;
+  /** Enable/disable performance mode and its sub-flags together. */
+  setPerformanceMode: (enabled: boolean) => void;
   resetFlags: () => void;
 }
 
@@ -104,6 +121,16 @@ export const useFeatureStore = create<FeatureFlagsState>()(
       flags: { ...DEFAULT_FEATURE_FLAGS },
       setFlag: (name, value) =>
         set((state) => ({ flags: { ...state.flags, [name]: value } })),
+      setPerformanceMode: (enabled) =>
+        set((state) => ({
+          flags: {
+            ...state.flags,
+            [FeatureFlagName.PerformanceMode]: enabled,
+            [FeatureFlagName.ReduceMotion]: enabled,
+            [FeatureFlagName.DisableBlur]: enabled,
+            [FeatureFlagName.IgnoreBackgroundImage]: enabled,
+          },
+        })),
       resetFlags: () => set({ flags: { ...DEFAULT_FEATURE_FLAGS } }),
     }),
     {

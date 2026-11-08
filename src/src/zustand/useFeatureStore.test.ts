@@ -66,8 +66,34 @@ describe("useFeatureStore", () => {
 
   it("FlatLayout defaults to true", () => {
     useFeatureStore.getState().resetFlags();
-    expect(
-      useFeatureStore.getState().flags[FeatureFlagName.FlatLayout],
-    ).toBe(true);
+    expect(useFeatureStore.getState().flags[FeatureFlagName.FlatLayout]).toBe(
+      true,
+    );
+  });
+
+  it("performance mode and its sub-flags default to off", () => {
+    useFeatureStore.getState().resetFlags();
+    const flags = useFeatureStore.getState().flags;
+    expect(flags[FeatureFlagName.PerformanceMode]).toBe(false);
+    expect(flags[FeatureFlagName.ReduceMotion]).toBe(false);
+    expect(flags[FeatureFlagName.DisableBlur]).toBe(false);
+    expect(flags[FeatureFlagName.IgnoreBackgroundImage]).toBe(false);
+  });
+
+  it("setPerformanceMode toggles the preset as a group", () => {
+    const { setPerformanceMode } = useFeatureStore.getState();
+    setPerformanceMode(true);
+    let flags = useFeatureStore.getState().flags;
+    expect(flags[FeatureFlagName.PerformanceMode]).toBe(true);
+    expect(flags[FeatureFlagName.ReduceMotion]).toBe(true);
+    expect(flags[FeatureFlagName.DisableBlur]).toBe(true);
+    expect(flags[FeatureFlagName.IgnoreBackgroundImage]).toBe(true);
+
+    setPerformanceMode(false);
+    flags = useFeatureStore.getState().flags;
+    expect(flags[FeatureFlagName.PerformanceMode]).toBe(false);
+    expect(flags[FeatureFlagName.ReduceMotion]).toBe(false);
+    expect(flags[FeatureFlagName.DisableBlur]).toBe(false);
+    expect(flags[FeatureFlagName.IgnoreBackgroundImage]).toBe(false);
   });
 });

@@ -1,0 +1,18 @@
+/* Performance mode: stop CSS animations/transitions without touching
+   component-level code. Framer Motion is handled by MotionConfig in App. */
+html[data-reduce-motion="true"] *,
+html[data-reduce-motion="true"] *::before,
+html[data-reduce-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Hold-to-run progress and its completion pulse are functional feedback,
+   not decorative motion. Keep their real duration so the hold still has to
+   be held and the pulse remains visible. */
+html[data-reduce-motion="true"] [data-motion-exempt="true"] {
+  animation-duration: var(--motion-duration, 1ms) !important;
+  transition-duration: var(--motion-duration, 1ms) !important;
+}

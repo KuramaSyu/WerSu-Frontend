@@ -169,6 +169,12 @@ const HoldKeyActionBarContent: React.FC<BarContentProps> = ({
         <Box
           ref={fillRef}
           data-testid={`hold-key-fill-${holding.key}`}
+          data-motion-exempt="true"
+          style={
+            {
+              "--motion-duration": `${holding.duration ?? duration}ms`,
+            } as React.CSSProperties
+          }
           sx={{
             position: "absolute",
             inset: 0,

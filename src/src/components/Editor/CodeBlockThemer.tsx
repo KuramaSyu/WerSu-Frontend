@@ -20,7 +20,7 @@ export const CodeBlockThemer = styled(Box)(({ theme }) => ({
         background: theme.palette.background.paper,
         borderRadius: "0.5rem",
         color: theme.palette.text.primary,
-        fontFamily: `'JetBrainsMono', monospace`,
+        fontFamily: `'JetBrains Mono', monospace`,
         margin: "1.5rem 0",
         padding: "0.75rem 1rem",
         overflowX: "auto",

@@ -21,7 +21,7 @@ export const getGreeting = (hour: number): string => {
  * Note: this only sees the notes passed in. Callers should hand over the
  * recent-notes list; if a user edits more notes today than that list
  * holds, the count under-reports. That is an accepted trade-off for
- * avoiding a dedicated stats endpoint.
+ * avoiding an extra stats request just for the greeting.
  */
 export const countNotesEditedToday = (
   notes: MinimalNote[] | undefined,

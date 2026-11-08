@@ -45,6 +45,12 @@ function readableTextTone(color: string, background: string): string {
   return candidate;
 }
 
+/** Body/UI typeface. Kept here so both typography settings share one source. */
+export const BODY_FONT_FAMILY = '"Fira Sans", sans-serif';
+
+/** Display/accent typeface used for usernames and editorial highlights. */
+export const ACCENT_FONT_FAMILY = '"Fraunces Variable", serif';
+
 export type ColorInput =
   | string
   | "primary"
@@ -191,9 +197,15 @@ export class CustomThemeImpl implements CustomTheme {
         longName: config.longName,
         backgroundImages: config.backgrounds,
         chosenBackgroundImage: config.backgrounds[0],
+        accentFontFamily: ACCENT_FONT_FAMILY,
       };
     } else if ("custom" in theme) {
-      this.custom = (theme as CustomTheme).custom;
+      const existingCustom = (theme as CustomTheme).custom;
+      this.custom = {
+        ...existingCustom,
+        accentFontFamily:
+          existingCustom?.accentFontFamily ?? ACCENT_FONT_FAMILY,
+      };
     }
 
     const { h, s, l } = hexToHsl(theme.palette.primary.main);
@@ -216,7 +228,7 @@ export class CustomThemeImpl implements CustomTheme {
     this.palette.surfaces = {
       panel: this.palette.surfaces?.panel ?? computedPanel,
     };
-    this.typography.fontFamily = '"Fira Sans", sans-serif';
+    this.typography.fontFamily = BODY_FONT_FAMILY;
 
     // Wrap methods to handle string | number parameters
     this.alpha = (color: string, value: string | number) => {

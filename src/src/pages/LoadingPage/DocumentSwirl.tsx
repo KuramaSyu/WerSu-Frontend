@@ -5,12 +5,12 @@ import {
   useAnimationFrame,
   useMotionValue,
   useMotionValueEvent,
-  useReducedMotion,
   useSpring,
   useTransform,
   type MotionValue,
 } from "framer-motion";
 import React from "react";
+import { useAppReducedMotion } from "../../hooks/useAppReducedMotion";
 
 /**
  * DocumentSwirl
@@ -426,7 +426,9 @@ const DocumentSprite: React.FC<DocumentSpriteProps> = ({
   );
 
   return (
-    <motion.div style={{ position: "absolute", left, top, width: 0, height: 0 }}>
+    <motion.div
+      style={{ position: "absolute", left, top, width: 0, height: 0 }}
+    >
       <motion.div
         style={{
           x: "-50%",
@@ -488,7 +490,9 @@ const Pulse: React.FC<PulseProps> = ({ geo, flow, spec, color }) => {
   const scale = useTransform(progress, (p) => 0.5 + 1.4 * p);
 
   return (
-    <motion.div style={{ position: "absolute", left, top, width: 0, height: 0 }}>
+    <motion.div
+      style={{ position: "absolute", left, top, width: 0, height: 0 }}
+    >
       <motion.div
         style={{
           x: "-50%",
@@ -621,7 +625,9 @@ const Burst: React.FC<BurstProps> = ({
   }
 
   return (
-    <motion.div style={{ position: "absolute", left, top, width: 0, height: 0 }}>
+    <motion.div
+      style={{ position: "absolute", left, top, width: 0, height: 0 }}
+    >
       <motion.div
         style={{
           x: "-50%",
@@ -664,7 +670,7 @@ export const DocumentSwirl: React.FC<DocumentSwirlProps> = ({
   sx,
 }) => {
   const theme = useTheme();
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useAppReducedMotion();
 
   // Palette pulled from the theme; the first entry is the base colour and
   // two others become the ribbon gradient. `useId` keeps the <linearGradient>
@@ -841,10 +847,7 @@ export const DocumentSwirl: React.FC<DocumentSwirlProps> = ({
     if (!interactive || reduceMotion) return;
     // Pity system: the chance grows with every miss so a bad run can't
     // drag on forever, while the *base* rate stays around 1 in 42.
-    const chance = Math.min(
-      1,
-      (coffeeMisses.current + 1) / COFFEE_ONE_IN,
-    );
+    const chance = Math.min(1, (coffeeMisses.current + 1) / COFFEE_ONE_IN);
     if (Math.random() < chance) {
       coffeeMisses.current = 0;
       spawnCoffee();

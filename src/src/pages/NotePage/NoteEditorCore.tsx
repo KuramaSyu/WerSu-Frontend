@@ -109,14 +109,22 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
   const noteEditorBackgroundBlur = useFeatureStore(
     (s) => s.flags[FeatureFlagName.NoteEditorBackgroundBlur],
   );
+  const disableBlur = useFeatureStore(
+    (s) => s.flags[FeatureFlagName.DisableBlur],
+  );
+  const ignoreBackgroundImage = useFeatureStore(
+    (s) => s.flags[FeatureFlagName.IgnoreBackgroundImage],
+  );
   const flatLayout = useFeatureStore(
     (s) => s.flags[FeatureFlagName.FlatLayout],
   );
   const { noteEditorBackgroundBlurAmount } = useAppearanceSettings();
   const themeHasBackgroundImage =
-    Boolean(theme.custom.chosenBackgroundImage) ||
-    theme.custom.backgroundImages.length > 0;
+    !ignoreBackgroundImage &&
+    (Boolean(theme.custom.chosenBackgroundImage) ||
+      theme.custom.backgroundImages.length > 0);
   const showBackgroundBlur =
+    !disableBlur &&
     noteEditorBackgroundBlur &&
     themeHasBackgroundImage &&
     noteEditorBackgroundBlurAmount > 0;

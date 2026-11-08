@@ -54,10 +54,13 @@ export const ShortcutPulse: React.FC = () => {
   useEffect(() => {
     if (!pulse) return;
     stopTimer();
-    timerRef.current = window.setTimeout(() => {
-      clearPulse(pulse.id);
-      timerRef.current = null;
-    }, SHORTCUT_PULSE_DURATION_MS * 2 + 250);
+    timerRef.current = window.setTimeout(
+      () => {
+        clearPulse(pulse.id);
+        timerRef.current = null;
+      },
+      SHORTCUT_PULSE_DURATION_MS * 2 + 250,
+    );
     return stopTimer;
   }, [pulse, clearPulse, stopTimer]);
 
@@ -161,6 +164,12 @@ export const ShortcutPulse: React.FC = () => {
           ref={sweepRef}
           aria-hidden
           data-testid="shortcut-pulse-sweep"
+          data-motion-exempt="true"
+          style={
+            {
+              "--motion-duration": `${SHORTCUT_PULSE_DURATION_MS}ms`,
+            } as React.CSSProperties
+          }
           sx={{
             position: "absolute",
             inset: 0,

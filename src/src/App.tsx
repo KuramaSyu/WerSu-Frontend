@@ -6,10 +6,12 @@ import {
   useLocation,
 } from "react-router-dom";
 import { ThemeProvider } from "@mui/material/styles";
+import { MotionConfig } from "framer-motion";
 import { useThemeStore } from "./zustand/useThemeStore";
 import { useThemePreferenceSync } from "./hooks/useThemePreferenceSync";
 import { useCustomThemesSync } from "./hooks/useCustomThemes";
 import { useThemeImageRepair } from "./hooks/useThemeImageRepair";
+import { FeatureFlagName, useFeatureStore } from "./zustand/FeatureStore";
 
 import "./App.css";
 import { HomePage } from "./pages/Home/Main";
@@ -23,10 +25,14 @@ import { CreateSubdirectoryPage } from "./pages/DirectoryCreate/Main";
 import { FileGraphPage } from "./pages/FileGraph/Main";
 import { recordNavigation } from "./utils/navigationMemento";
 import { Bootstrap } from "./Bootstrap";
+import "@fontsource-variable/fraunces";
 import "@fontsource/fira-sans/300.css";
 import "@fontsource/fira-sans/400.css";
 import "@fontsource/fira-sans/500.css";
 import "@fontsource/fira-sans/700.css";
+import "@fontsource/jetbrains-mono/400.css";
+import "@fontsource/jetbrains-mono/500.css";
+import "@fontsource/jetbrains-mono/700.css";
 import { LayoutProvider } from "./LayoutProvider";
 import { AppShell } from "./AppShell";
 import { RequireAuth } from "./components/RequireAuth";
@@ -59,6 +65,17 @@ const NavigationRecorder: React.FC = () => {
 
 function App() {
   const { theme } = useThemeStore();
+  const reduceMotion = useFeatureStore(
+    (s) => s.flags[FeatureFlagName.ReduceMotion],
+  );
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.reduceMotion = reduceMotion ? "true" : "false";
+    return () => {
+      delete root.dataset.reduceMotion;
+    };
+  }, [reduceMotion]);
 
   // Apply the signed-in user's synced theme preference unless this device
   // has pinned its theme (see the lock button in the theme picker).
@@ -75,43 +92,54 @@ function App() {
 
   // QueryClientProvider lives in main.tsx; do not add a second one here
   return (
-    <ThemeProvider theme={theme}>
-      <Router>
-        <Bootstrap />
-        <NavigationRecorder />
-        <LayoutProvider>
-          <Routes>
-            <Route element={<AppShell />}>
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/public/n/:share_id" element={<PublicNotePage />} />
-              <Route path="/docs/*" element={<SwaggerDocs />} />
-              <Route element={<RequireAuth />}>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/n/:id" element={<NotePage />} />
-                <Route path="/d/:id" element={<DirectoryView />} />
-                <Route path="/d/:id/edit" element={<DirectoryEditPage />} />
-                <Route path="/d/:id/new" element={<CreateSubdirectoryPage />} />
-                <Route path="/graph" element={<FileGraphPage />} />
-                <Route path="/shares" element={<SharesPage />} />
-                <Route path="/roles" element={<RolesPage />} />
-                <Route path="/role/:id" element={<RoleDetailPage />} />
-                <Route path="/shortcuts" element={<ShortcutsPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/shelves/:shelfId/rules" element={<RulesPage />} />
+    <MotionConfig reducedMotion={reduceMotion ? "always" : "user"}>
+      <ThemeProvider theme={theme}>
+        <Router>
+          <Bootstrap />
+          <NavigationRecorder />
+          <LayoutProvider>
+            <Routes>
+              <Route element={<AppShell />}>
+                <Route path="/login" element={<LoginPage />} />
                 <Route
-                  path="/shelves/:shelfId/edit"
-                  element={<ShelfEditPage />}
+                  path="/public/n/:share_id"
+                  element={<PublicNotePage />}
                 />
+                <Route path="/docs/*" element={<SwaggerDocs />} />
+                <Route element={<RequireAuth />}>
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/n/:id" element={<NotePage />} />
+                  <Route path="/d/:id" element={<DirectoryView />} />
+                  <Route path="/d/:id/edit" element={<DirectoryEditPage />} />
+                  <Route
+                    path="/d/:id/new"
+                    element={<CreateSubdirectoryPage />}
+                  />
+                  <Route path="/graph" element={<FileGraphPage />} />
+                  <Route path="/shares" element={<SharesPage />} />
+                  <Route path="/roles" element={<RolesPage />} />
+                  <Route path="/role/:id" element={<RoleDetailPage />} />
+                  <Route path="/shortcuts" element={<ShortcutsPage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                  <Route
+                    path="/shelves/:shelfId/rules"
+                    element={<RulesPage />}
+                  />
+                  <Route
+                    path="/shelves/:shelfId/edit"
+                    element={<ShelfEditPage />}
+                  />
+                </Route>
               </Route>
-            </Route>
-          </Routes>
-        </LayoutProvider>
-        <InfoDisplay />
-        <ShortcutPulse />
-        <RightClickMenuHost />
-        <DirectoryDialogHost />
-      </Router>
-    </ThemeProvider>
+            </Routes>
+          </LayoutProvider>
+          <InfoDisplay />
+          <ShortcutPulse />
+          <RightClickMenuHost />
+          <DirectoryDialogHost />
+        </Router>
+      </ThemeProvider>
+    </MotionConfig>
   );
 }
 

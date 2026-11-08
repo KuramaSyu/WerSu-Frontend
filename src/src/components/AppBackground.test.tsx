@@ -16,18 +16,16 @@ interface MockTheme {
 
 const manualMock = vi.hoisted(() => vi.fn());
 const cachedMock = vi.hoisted(() => vi.fn());
-const themeRef = vi.hoisted(
-  (): { current: MockTheme } => ({
-    current: {
-      custom: {
-        backgroundImages: ["https://example.com/sharp.webp"],
-        chosenBackgroundImage: "local:blur",
-        blur: 33,
-      },
-      palette: { background: { default: "#101010" } },
+const themeRef = vi.hoisted((): { current: MockTheme } => ({
+  current: {
+    custom: {
+      backgroundImages: ["https://example.com/sharp.webp"],
+      chosenBackgroundImage: "local:blur",
+      blur: 33,
     },
-  }),
-);
+    palette: { background: { default: "#101010" } },
+  },
+}));
 
 vi.mock("../zustand/useThemeStore", () => ({
   useThemeStore: () => ({ theme: themeRef.current }),
@@ -59,6 +57,10 @@ describe("AppBackground", () => {
     useFeatureStore
       .getState()
       .setFlag(FeatureFlagName.PreRenderThemeBlur, true);
+    useFeatureStore.getState().setFlag(FeatureFlagName.DisableBlur, false);
+    useFeatureStore
+      .getState()
+      .setFlag(FeatureFlagName.IgnoreBackgroundImage, false);
   });
 
   it("uses the manual blur source when pre-rendering is off", () => {
@@ -117,6 +119,30 @@ describe("AppBackground", () => {
     const { unmount } = render(<AppBackground />);
     unmount();
 
+    expect(useThemeBackgroundStore.getState().resolvedUrl).toBeNull();
+  });
+
+  it("disables the blur pipeline and renders the sharp source", () => {
+    useFeatureStore.getState().setFlag(FeatureFlagName.DisableBlur, true);
+    cachedMock.mockReturnValue("blob:sharp");
+
+    render(<AppBackground />);
+
+    expect(cachedMock).toHaveBeenCalledWith("https://example.com/sharp.webp");
+    expect(manualMock).toHaveBeenCalledWith("", 0);
+  });
+
+  it("keeps image-derived colours but renders no image when ignored", () => {
+    useFeatureStore
+      .getState()
+      .setFlag(FeatureFlagName.IgnoreBackgroundImage, true);
+    cachedMock.mockReturnValue("blob:should-not-render");
+
+    const { container } = render(<AppBackground />);
+
+    expect(container.firstChild).toBeNull();
+    expect(cachedMock).toHaveBeenCalledWith("");
+    expect(manualMock).toHaveBeenCalledWith("", 0);
     expect(useThemeBackgroundStore.getState().resolvedUrl).toBeNull();
   });
 
