@@ -15,6 +15,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { useVersionRestore } from "./VersionInfo.hooks";
 import { VersionInfo } from "./VersionInfo";
@@ -26,6 +27,18 @@ import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 
 const drawerCapture = vi.hoisted(() => ({
   onRestoreVersion: null as null | ((v: unknown, n: unknown) => Promise<void>),
+}));
+
+// The restore hook asks the API to restore server-side in edit mode.
+// Swap the registered singleton for a controllable fake.
+const apiCapture = vi.hoisted(() => ({
+  restoreVersion: vi.fn(),
+}));
+vi.mock("../../api/NoteApi", () => ({
+  getNoteApi: () => ({ restoreVersion: apiCapture.restoreVersion }),
+  NoteApi: class {
+    getVersion = vi.fn();
+  },
 }));
 
 // Stubs avoid pulling in @mui/material's react-transition-group /
@@ -158,9 +171,18 @@ function makeNote(
   });
 }
 
+function makeQueryClient() {
+  return new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+}
+
 function routerWrap(pathname: string) {
+  const queryClient = makeQueryClient();
   return ({ children }: { children: ReactNode }) => (
-    <MemoryRouter initialEntries={[pathname]}>{children}</MemoryRouter>
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={[pathname]}>{children}</MemoryRouter>
+    </QueryClientProvider>
   );
 }
 
@@ -172,6 +194,7 @@ function renderRestore(noteId: string | undefined, pathname: string) {
 
 beforeEach(() => {
   drawerCapture.onRestoreVersion = null;
+  apiCapture.restoreVersion.mockReset();
   useEditorSettings.setState({ editMode: false, viewMode: "rich" });
   useActiveNoteStore.setState({
     noteId: undefined,
@@ -221,18 +244,20 @@ describe("useVersionRestore - view mode", () => {
 });
 
 describe("useVersionRestore - edit mode", () => {
-  it("mirrors the historical content without rebuilding the collab session", async () => {
+  it("restores server-side and mirrors the historical content", async () => {
     useEditorSettings.setState({ editMode: true });
+    const restored = makeNote({ title: "V3 title", content: "V3 body" });
+    apiCapture.restoreVersion.mockResolvedValue(restored);
     const { result } = renderRestore("note-1", "/n/note-1");
-    const note = makeNote({ title: "V3 title", content: "V3 body" });
 
     await act(async () => {
       await result.current.restoreVersion(
         makeVersion({ version_index: 3 }),
-        note,
+        makeNote(),
       );
     });
 
+    expect(apiCapture.restoreVersion).toHaveBeenCalledWith("note-1", 3);
     const setTitle = useActiveNoteStore.getState().setTitle;
     const setContent = useActiveNoteStore.getState().setContent;
     expect(setTitle).toHaveBeenCalledWith("V3 title");
@@ -270,11 +295,13 @@ describe("VersionInfo - drawer wiring smoke test", () => {
 
   it("passes a callable onRestoreVersion to the drawer", () => {
     render(
-      <MemoryRouter initialEntries={["/n/note-1"]}>
-        <Routes>
-          <Route path="*" element={<VersionInfo noteId="note-1" />} />
-        </Routes>
-      </MemoryRouter>,
+      <QueryClientProvider client={makeQueryClient()}>
+        <MemoryRouter initialEntries={["/n/note-1"]}>
+          <Routes>
+            <Route path="*" element={<VersionInfo noteId="note-1" />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
     );
 
     expect(drawerCapture.onRestoreVersion).not.toBeNull();

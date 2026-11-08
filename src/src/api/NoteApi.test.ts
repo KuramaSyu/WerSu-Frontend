@@ -337,3 +337,69 @@ describe("NoteApi.post - wire shape (shelf_id / directory_ids)", () => {
     expect(body.directory_ids).toBeUndefined();
   });
 });
+
+describe("NoteApi.restoreVersion - wire shape", () => {
+  const RESTORE_PATH = "http://localhost:8080/api/notes/note-1/versions/3/restore";
+
+  const mockRestore = (body: unknown) => {
+    const calls: Array<{ url: string; init: RequestInit }> = [];
+    const spy = vi.fn(
+      async (url: string | URL | Request, init?: RequestInit) => {
+        calls.push({ url: String(url), init: init ?? {} });
+        return {
+          ok: true,
+          status: 200,
+          headers: new Headers({ "content-type": "application/json" }),
+          json: async () => body,
+          text: async () => JSON.stringify(body),
+        } as Response;
+      },
+    );
+    vi.stubGlobal("fetch", spy);
+    return { calls };
+  };
+
+  it("POSTs to the restore endpoint and returns the restored note", async () => {
+    const api = new NoteApi();
+    const { calls } = mockRestore({
+      id: "note-1",
+      title: "Restored title",
+      content: "Restored body",
+      author_id: "u-1",
+      updated_at: "2026-01-01T00:00:00Z",
+      directory_ids: [],
+      tag_ids: [],
+    });
+
+    const note = await api.restoreVersion("note-1", 3);
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0].url).toBe(RESTORE_PATH);
+    expect(calls[0].init.method).toBe("POST");
+    expect(note.title).toBe("Restored title");
+    expect(note.content).toBe("Restored body");
+  });
+
+  it("throws a UserError when the server rejects the restore", async () => {
+    const api = new NoteApi();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        return {
+          ok: false,
+          status: 403,
+          statusText: "Forbidden",
+          headers: new Headers({ "content-type": "text/plain" }),
+          json: async () => ({}),
+          text: async () => "no permission",
+        } as Response;
+      }),
+    );
+
+    await expect(api.restoreVersion("note-1", 3)).rejects.toMatchObject({
+      name: "UserError",
+      title: "Failed to restore version",
+      status: 403,
+    });
+  });
+});

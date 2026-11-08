@@ -15,6 +15,11 @@ export interface INoteApi {
   get(id: string): Promise<Note | undefined>;
   /** Fetch a specific note version by its monotonic version index. */
   getVersion(id: string, versionIndex: number): Promise<Note | undefined>;
+  /**
+   * Restore a note to a historical version. The backend records the
+   * restore as a new version and returns the restored note.
+   */
+  restoreVersion(id: string, versionIndex: number): Promise<Note>;
   /** Create a note; backend requires shelf_id OR directory_ids. */
   post(
     title: string,
@@ -140,6 +145,40 @@ export class NoteApi extends ShareTokenBearerMixin implements INoteApi {
     });
     if (noteData === null) {
       return undefined;
+    }
+
+    return Note.fromJson(noteData);
+  }
+
+  /**
+   * Restores the note to the given version via
+   * `POST /api/notes/:id/versions/:version_index/restore`. The backend
+   * applies the historical content server-side (so the restore is
+   * durable and shows up in the version history) and returns the
+   * restored note.
+   */
+  async restoreVersion(id: string, versionIndex: number): Promise<Note> {
+    const response = await fetch(
+      `${BACKEND_BASE}/api/notes/${encodeURIComponent(id)}/versions/${versionIndex}/restore`,
+      await this.getFetchParameters("POST"),
+    );
+    if (!response.ok) {
+      throw await this.buildUserError(response, "Failed to restore version");
+    }
+
+    const noteData: NoteData = await response.json().catch((e) => {
+      this.logError(
+        `/api/notes/${id}/versions/${versionIndex}/restore`,
+        e,
+      );
+      return null;
+    });
+    if (noteData === null) {
+      throw new UserError(
+        "Failed to restore version",
+        "The server returned an empty response",
+        response.status,
+      );
     }
 
     return Note.fromJson(noteData);
