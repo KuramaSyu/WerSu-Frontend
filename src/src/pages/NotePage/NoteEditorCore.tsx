@@ -11,6 +11,7 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { Box, Paper, Typography } from "@mui/material";
+import { alpha, getOverlayAlpha } from "@mui/material/styles";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
 import * as Y from "yjs";
 import type { Note } from "../../api/models/search";
@@ -19,6 +20,7 @@ import { useViewConfig } from "../../zustand/useViewConfig";
 import { useActiveNoteStore } from "../../zustand/editorStore";
 import { useDraftStore } from "../../zustand/useDraftStore";
 import { useThemeStore } from "../../zustand/useThemeStore";
+import { useThemeBackgroundStore } from "../../zustand/useThemeBackgroundStore";
 import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
 import { useAppearanceSettings } from "../../zustand/useAppearanceSettings";
 import { useUpdateNote } from "../../api/queries/useNoteQueries";
@@ -55,6 +57,7 @@ import { CollabConflictController } from "./CollabConflictController";
 import { HoldKeyActionBar } from "../../components/HoldKeyActionBar";
 import { useEditorModeShortcuts } from "./Panel/useEditorModeShortcuts";
 import { useNoteWidthMode } from "./Panel/useNoteWidthMode";
+import { useEditorBackdropBlurImage } from "./useEditorBackdropBlurImage";
 
 export interface NoteEditorProps {
   note?: Note;
@@ -106,6 +109,9 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
   const noteEditorBackgroundBlur = useFeatureStore(
     (s) => s.flags[FeatureFlagName.NoteEditorBackgroundBlur],
   );
+  const flatLayout = useFeatureStore(
+    (s) => s.flags[FeatureFlagName.FlatLayout],
+  );
   const { noteEditorBackgroundBlurAmount } = useAppearanceSettings();
   const themeHasBackgroundImage =
     Boolean(theme.custom.chosenBackgroundImage) ||
@@ -114,6 +120,43 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
     noteEditorBackgroundBlur &&
     themeHasBackgroundImage &&
     noteEditorBackgroundBlurAmount > 0;
+  // Match the tint that AppShell's elevation-1 TranslucentPaper applies
+  // to the main surface (50% alpha). The backdrop copy is blurred image
+  // + this uniform tint, which is the same composite the old
+  // backdrop-filter sampled from the layers behind the card.
+  const backdropTint = alpha(
+    flatLayout
+      ? theme.palette.background.default
+      : theme.palette.background.paper,
+    0.5,
+  );
+  // MUI's elevation variant paints a white overlay on Paper in dark mode.
+  // The frosted layer sits on top of the Paper background, so that overlay
+  // has to be reproduced explicitly here; otherwise the card loses its
+  // paper tint.
+  const paperOverlayTint =
+    theme.palette.mode === "dark"
+      ? alpha("#fff", getOverlayAlpha(1))
+      : null;
+  const backdropOverlays = [
+    paperOverlayTint !== null
+      ? `linear-gradient(${paperOverlayTint}, ${paperOverlayTint})`
+      : null,
+    `linear-gradient(${backdropTint}, ${backdropTint})`,
+  ]
+    .filter((layer): layer is string => layer !== null)
+    .join(", ");
+  // Bake the extra blur once. Moving the card during scrolling or the
+  // top-bar hide/reveal animation then only repaints a static image instead
+  // of re-running a blur shader every frame.
+  const editorBackdrop = useEditorBackdropBlurImage(
+    showBackgroundBlur,
+    noteEditorBackgroundBlurAmount,
+  );
+  // The baked image is async (and can fail on browsers without canvas WebP
+  // encoding). Keep the old filter-based layer as an immediate fallback so
+  // the card is never sharp while generation runs.
+  const backgroundSource = useThemeBackgroundStore((s) => s.resolvedUrl);
   const forceFullWidth = isMobile;
   const { body: editorWidth, paper: paperWidth } = getNoteEditorWidths(
     widthMode,
@@ -249,14 +292,11 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
         // sits on top with elevation 0 so it does not double-card.
         elevation={1}
         sx={{
+          // The frosted layer below is absolutely positioned relative to
+          // this card.
+          position: "relative",
           backgroundColor: "transparent",
           borderRadius: 2,
-          ...(showBackgroundBlur
-            ? {
-                backdropFilter: `blur(${noteEditorBackgroundBlurAmount}px)`,
-                WebkitBackdropFilter: `blur(${noteEditorBackgroundBlurAmount}px)`,
-              }
-            : {}),
           // On mobile the outer Paper has no padding so the editor fills
           // the screen; AppShell's safe-area padding still applies below.
           px: forceFullWidth ? 0 : M3,
@@ -272,8 +312,62 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
           flexDirection: "column",
         }}
       >
+        {showBackgroundBlur && editorBackdrop && (
+          // Keep the blurred backdrop itself stationary in the viewport and
+          // clip it to the moving card. Moving / resizing the card then only
+          // changes a cheap clip path instead of repainting the backdrop.
+          <Box
+            aria-hidden
+            sx={{
+              position: "absolute",
+              inset: 0,
+              pointerEvents: "none",
+              clipPath: (t) =>
+                `inset(0 round ${String(Number(t.shape.borderRadius) * 2)}px)`,
+            }}
+          >
+            <Box
+              data-testid="note-editor-backdrop-blur"
+              sx={{
+                position: "fixed",
+                inset: 0,
+                backgroundImage: `${backdropOverlays}, url("${editorBackdrop.url}")`,
+                backgroundSize: `${String(editorBackdrop.width)}px ${String(editorBackdrop.height)}px`,
+                backgroundPosition: `${String(-editorBackdrop.offsetX)}px ${String(-editorBackdrop.offsetY)}px`,
+                backgroundRepeat: "no-repeat",
+              }}
+            />
+          </Box>
+        )}
+        {showBackgroundBlur && !editorBackdrop && backgroundSource && (
+          <Box
+            aria-hidden
+            sx={{
+              position: "absolute",
+              inset: 0,
+              pointerEvents: "none",
+              clipPath: (t) =>
+                `inset(0 round ${String(Number(t.shape.borderRadius) * 2)}px)`,
+            }}
+          >
+            <Box
+              data-testid="note-editor-backdrop-blur-fallback"
+              sx={{
+                position: "fixed",
+                inset: 0,
+                backgroundImage: `${backdropOverlays}, url("${backgroundSource}")`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                backgroundRepeat: "no-repeat",
+                filter: `blur(${noteEditorBackgroundBlurAmount}px)`,
+              }}
+            />
+          </Box>
+        )}
         <Box
           sx={{
+            position: "relative",
+            zIndex: 1,
             height: "auto",
             flex: 1,
             display: "flex",

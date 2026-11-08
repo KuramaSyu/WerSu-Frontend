@@ -1,8 +1,10 @@
 import { Box } from "@mui/material";
+import { useEffect } from "react";
 import { useThemeStore } from "../zustand/useThemeStore";
 import { FeatureFlagName, useFeatureStore } from "../zustand/FeatureStore";
 import { useCachedImageUrl } from "../hooks/useCachedImageUrl";
 import { useManualBlurImageUrl } from "../hooks/useManualBlurImageUrl";
+import { useThemeBackgroundStore } from "../zustand/useThemeBackgroundStore";
 
 // Fullscreen background layer. Renders the active theme's background
 // image (when it has one); themes without an image render nothing.
@@ -52,6 +54,19 @@ const AppBackground: React.FC = () => {
 
   const resolved = blur > 0 && !preRenderBlur ? manualUrl : storedUrl;
 
+  // Publish the resolved URL so other surfaces can render a matching copy
+  // of the backdrop without resolving (and, in manual-blur mode,
+  // regenerating) the image themselves.
+  const setResolvedBackgroundUrl = useThemeBackgroundStore(
+    (s) => s.setResolvedUrl,
+  );
+  useEffect(() => {
+    setResolvedBackgroundUrl(resolved);
+    return () => {
+      setResolvedBackgroundUrl(null);
+    };
+  }, [resolved, setResolvedBackgroundUrl]);
+
   if (resolved === null) {
     return null;
   }
@@ -76,6 +91,12 @@ const AppBackground: React.FC = () => {
           backgroundImage: `url(${resolved})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
+          // Keep the large, static image on its own compositor layer.
+          // Otherwise moving translucent chrome (the top bar revealing /
+          // hiding) invalidates and repaints the full-viewport texture.
+          transform: "translateZ(0)",
+          willChange: "transform",
+          backfaceVisibility: "hidden",
         }}
       />
     </Box>

@@ -41,6 +41,7 @@ vi.mock("../hooks/useManualBlurImageUrl", () => ({
 
 import AppBackground from "./AppBackground";
 import { FeatureFlagName, useFeatureStore } from "../zustand/FeatureStore";
+import { useThemeBackgroundStore } from "../zustand/useThemeBackgroundStore";
 
 describe("AppBackground", () => {
   beforeEach(() => {
@@ -98,6 +99,25 @@ describe("AppBackground", () => {
     const { container } = render(<AppBackground />);
 
     expect(container.firstChild).toBeNull();
+  });
+
+  it("publishes the resolved URL so surfaces can paint a matching backdrop", () => {
+    cachedMock.mockReturnValue("blob:prerendered");
+
+    render(<AppBackground />);
+
+    expect(useThemeBackgroundStore.getState().resolvedUrl).toBe(
+      "blob:prerendered",
+    );
+  });
+
+  it("clears the published URL on unmount", () => {
+    cachedMock.mockReturnValue("blob:prerendered");
+
+    const { unmount } = render(<AppBackground />);
+    unmount();
+
+    expect(useThemeBackgroundStore.getState().resolvedUrl).toBeNull();
   });
 
   it("renders the sharp source when blur is off", () => {

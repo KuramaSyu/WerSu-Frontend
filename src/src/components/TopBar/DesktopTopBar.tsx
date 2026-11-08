@@ -4,8 +4,6 @@ import {
   M1,
   M2,
   M3,
-  M4,
-  M5,
   TOP_BAR_ELEVATION,
   TOP_BAR_HEIGHT,
 } from "../../statics";
@@ -72,6 +70,11 @@ export const DesktopTopBar: React.FC = () => {
           height: TOP_BAR_HEIGHT,
           backgroundColor: theme.palette.background.default,
           borderBottom: `1px solid ${theme.palette.divider}`,
+          // The bar is translucent over the theme image. Hint the browser
+          // to keep it on the compositor while Slide moves it vertically,
+          // instead of re-blending / repainting it every frame.
+          willChange: "transform",
+          backfaceVisibility: "hidden",
         }}
       >
         {/* Far-left: collapse / expand the left rail */}

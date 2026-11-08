@@ -114,3 +114,140 @@ export async function blurImageToWebp(
     bitmap.close();
   }
 }
+
+interface LoadedDrawable {
+  image: CanvasImageSource;
+  width: number;
+  height: number;
+  close: () => void;
+}
+
+/**
+ * Decode a blob for canvas drawing. `createImageBitmap` is the fast path;
+ * older WebKit builds either lack it or reject some image types, so fall
+ * back to an object-URL `<img>`.
+ */
+async function loadDrawable(blob: Blob): Promise<LoadedDrawable> {
+  if (typeof createImageBitmap === "function") {
+    try {
+      const bitmap = await createImageBitmap(blob);
+      return {
+        image: bitmap,
+        width: bitmap.width,
+        height: bitmap.height,
+        close: () => bitmap.close(),
+      };
+    } catch {
+      // Fall through to the <img> path.
+    }
+  }
+
+  const url = URL.createObjectURL(blob);
+  const image = new Image();
+  image.decoding = "async";
+  try {
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error("Could not decode backdrop image"));
+      image.src = url;
+    });
+  } catch (err) {
+    URL.revokeObjectURL(url);
+    throw err;
+  }
+  return {
+    image,
+    width: image.naturalWidth || image.width,
+    height: image.naturalHeight || image.height,
+    close: () => URL.revokeObjectURL(url),
+  };
+}
+
+export interface ViewportBlurImage {
+  blob: Blob;
+  /** Rendered CSS-pixel width of the image, including the padded border. */
+  width: number;
+  /** Rendered CSS-pixel height of the image, including the padded border. */
+  height: number;
+  /** Distance from the viewport origin to the image origin. */
+  offsetX: number;
+  offsetY: number;
+}
+
+/**
+ * Bake a viewport-sized, blurred copy of a theme background.
+ *
+ * The note editor paints this image behind its frosted card instead of
+ * using `backdrop-filter` or a live CSS `filter`. Both of those re-run the
+ * blur shader whenever the card moves (scrolling, top-bar hide/reveal),
+ * which is expensive on WebKit. A baked image only needs to be copied.
+ *
+ * The canvas is padded by twice the blur radius so the filter's
+ * transparent edge fade sits outside the visible viewport. Callers should
+ * paint it at the returned size/offset on a stationary fixed layer.
+ */
+export async function blurImageToViewportWebp(
+  source: string,
+  blurPx: number,
+  viewportWidth: number,
+  viewportHeight: number,
+): Promise<ViewportBlurImage> {
+  if (typeof document === "undefined") {
+    throw new Error("blurImageToViewportWebp requires a browser environment");
+  }
+  const blur = Math.max(1, blurPx);
+  const offset = Math.ceil(blur * 2);
+  const width = Math.max(1, Math.round(viewportWidth)) + offset * 2;
+  const height = Math.max(1, Math.round(viewportHeight)) + offset * 2;
+
+  const sourceBlob =
+    source.startsWith("blob:") || source.startsWith("data:")
+      ? await (await fetch(source)).blob()
+      : await fetchImageBlob(source);
+  const drawable = await loadDrawable(sourceBlob);
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      throw new Error("Could not allocate a 2D canvas context");
+    }
+
+    ctx.filter = `blur(${blur}px)`;
+    const scale = Math.max(width / drawable.width, height / drawable.height);
+    const drawWidth = drawable.width * scale;
+    const drawHeight = drawable.height * scale;
+    ctx.drawImage(
+      drawable.image,
+      (width - drawWidth) / 2,
+      (height - drawHeight) / 2,
+      drawWidth,
+      drawHeight,
+    );
+
+    const toBlob = (type: string): Promise<Blob | null> =>
+      new Promise((resolve) => {
+        canvas.toBlob((b) => resolve(b), type, WEBP_QUALITY);
+      });
+    // Safari has historically refused WebP canvas encoding. The baked
+    // backdrop is a one-off image, so falling back to PNG is cheap enough
+    // and keeps the feature working there.
+    const blob = (await toBlob(OUTPUT_TYPE)) ?? (await toBlob("image/png"));
+    if (blob === null) {
+      throw new Error("Canvas refused to encode the blurred backdrop");
+    }
+    blurLog(
+      `editor backdrop done blur=${String(blurPx)}px size=${String(blob.size)} bytes`,
+    );
+    return {
+      blob,
+      width,
+      height,
+      offsetX: offset,
+      offsetY: offset,
+    };
+  } finally {
+    drawable.close();
+  }
+}
