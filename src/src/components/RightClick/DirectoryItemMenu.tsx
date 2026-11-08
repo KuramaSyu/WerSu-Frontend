@@ -19,6 +19,7 @@ import {
   type RightClickMenuSpec,
 } from "./useRightClickMenu";
 import { NoteRenameDialog } from "./NoteRenameDialog";
+import { AddToDirectoryDialog } from "./AddToDirectoryDialog";
 import { PermissionEditor } from "../Permissions/PermissionEditor";
 
 export type DirectoryItemMenuTarget =
@@ -43,6 +44,7 @@ const NOTE_ROW_BUTTONS: RightClickMenuSpec["buttons"] = [
   "paste",
   "edit",
   "rename",
+  "addToDirectory",
   "permissions",
   "delete",
 ];
@@ -61,6 +63,7 @@ export const DirectoryItemMenu: React.FC<DirectoryItemMenuProps> = ({
 
   const [renameOpen, setRenameOpen] = useState(false);
   const [permissionsOpen, setPermissionsOpen] = useState(false);
+  const [addToDirectoryOpen, setAddToDirectoryOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -121,6 +124,12 @@ export const DirectoryItemMenu: React.FC<DirectoryItemMenuProps> = ({
             return true;
           },
         };
+        overrides.addToDirectory = {
+          handler: () => {
+            setAddToDirectoryOpen(true);
+            return true;
+          },
+        };
       }
 
       menu.onContextMenu(event, {
@@ -162,12 +171,20 @@ export const DirectoryItemMenu: React.FC<DirectoryItemMenuProps> = ({
     <Box sx={{ display: "contents" }} onContextMenu={onContextMenu}>
       {children}
       {target.kind === "note" && (
-        <NoteRenameDialog
-          open={renameOpen}
-          noteId={target.noteId}
-          initialTitle={target.title}
-          onClose={() => setRenameOpen(false)}
-        />
+        <>
+          <NoteRenameDialog
+            open={renameOpen}
+            noteId={target.noteId}
+            initialTitle={target.title}
+            onClose={() => setRenameOpen(false)}
+          />
+          <AddToDirectoryDialog
+            open={addToDirectoryOpen}
+            onClose={() => setAddToDirectoryOpen(false)}
+            noteId={target.noteId}
+            noteTitle={target.title}
+          />
+        </>
       )}
       <PermissionEditor
         open={permissionsOpen}

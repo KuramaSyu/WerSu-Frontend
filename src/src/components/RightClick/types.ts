@@ -13,6 +13,7 @@ export type RightClickButtonId =
   | "table"
   | "edit"
   | "rename"
+  | "addToDirectory"
   | "delete"
   | "favourite"
   | "permissions";
@@ -26,6 +27,7 @@ export const RIGHT_CLOCK_BUTTON_ORDER: readonly RightClickButtonId[] = [
   "table",
   "edit",
   "rename",
+  "addToDirectory",
   "delete",
   "favourite",
   "permissions",

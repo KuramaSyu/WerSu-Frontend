@@ -63,7 +63,15 @@ export const RecentActivityPanel: React.FC<RecentActivityPanelProps> = ({
         const meta = getHistoryRowMeta(e);
         const Icon = meta.icon;
         return (
-          <CopyNameMenu text={e.title ?? ""} targetId={e.note_id}>
+          <CopyNameMenu
+            text={e.title ?? ""}
+            targetId={e.note_id}
+            note={
+              e.note_id && !e.action?.startsWith("directory_")
+                ? { id: e.note_id, title: e.title ?? "" }
+                : undefined
+            }
+          >
             <IconTitleSubtitleRow
               icon={<Icon fontSize="small" color={meta.color} />}
               title={getHistoryRowVariantLabel(e)}

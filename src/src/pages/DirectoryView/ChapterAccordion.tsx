@@ -24,6 +24,7 @@ import type { CustomThemeImpl } from "../../theme/customTheme";
 import type { MinimalNote } from "../../api/models/search";
 import type { UseChapterAccordionResult } from "./ChapterAccordion.hook";
 import { CopyNameMenu } from "../../components/RightClick/CopyNameMenu";
+import { DirectoryItemMenu } from "../../components/RightClick/DirectoryItemMenu";
 import { useDirectoryTypeAheadStore } from "../../zustand/useDirectoryTypeAheadStore";
 
 interface ChapterAccordionProps {
@@ -310,7 +311,9 @@ const NoteRowWithSelection: React.FC<{
   });
 
   return (
-    <CopyNameMenu text={note.title} targetId={note.id}>
+    <DirectoryItemMenu
+      target={{ kind: "note", noteId: note.id, title: note.title }}
+    >
       <Box
         {...bindings}
         role="button"
@@ -389,6 +392,6 @@ const NoteRowWithSelection: React.FC<{
         </Box>
         </Paper>
       </Box>
-    </CopyNameMenu>
+    </DirectoryItemMenu>
   );
 };

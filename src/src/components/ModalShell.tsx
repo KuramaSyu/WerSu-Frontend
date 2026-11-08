@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   Box,
   Dialog,
@@ -32,6 +32,8 @@ export interface ModalShellProps {
   /** Optional `aria-labelledby` id; auto-derived from title if absent. */
   ariaLabelledBy?: string;
   /** When true, renders `Stack direction="row"` actions at the bottom. */
+  /** Suppress the browser context menu inside the dialog. */
+  disableContextMenu?: boolean;
   /** Max width of the dialog; mirrors MUI's `Dialog` `maxWidth` prop. */
   maxWidth?: "xs" | "sm" | "md" | "lg";
   /** Override default minHeight of the content area. */
@@ -59,15 +61,36 @@ export const ModalShell: React.FC<ModalShellProps> = ({
   ariaLabelledBy,
   maxWidth = "md",
   minHeight = "32vh",
+  disableContextMenu = false,
 }) => {
   const { theme } = useThemeStore();
   const labelledBy =
     ariaLabelledBy ?? `modal-shell-title-${title.replace(/\s+/g, "-")}`;
 
+  // Some dialogs own their context menu entirely. A capture-phase
+  // document listener is more reliable than a React handler here
+  // because the global RightClickMenuHost also listens on document.
+  useEffect(() => {
+    if (!disableContextMenu || !open) return;
+    const handleContextMenu = (event: MouseEvent) => {
+      const target = event.target;
+      if (target instanceof Element && target.closest(".MuiModal-root")) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+    document.addEventListener("contextmenu", handleContextMenu, true);
+    return () =>
+      document.removeEventListener("contextmenu", handleContextMenu, true);
+  }, [disableContextMenu, open]);
+
   return (
     <Dialog
       open={open}
       onClose={onClose}
+      onContextMenu={
+        disableContextMenu ? (event) => event.preventDefault() : undefined
+      }
       fullWidth
       maxWidth={maxWidth}
       slotProps={{

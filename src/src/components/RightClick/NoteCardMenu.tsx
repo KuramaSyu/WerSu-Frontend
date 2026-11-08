@@ -1,7 +1,8 @@
 // Right-click menu for a main-page note card.
 //
-// Buttons: copy, paste, edit, delete. Edit renames the note (decision
-// 4); delete confirms, then removes it through useDeleteNote.
+// Buttons: copy, paste, edit, add to directory, permissions, delete.
+// Edit renames the note (decision 4); delete confirms, then removes it
+// through useDeleteNote.
 
 import { useCallback, useState, type ReactNode } from "react";
 import { Box } from "@mui/material";
@@ -14,6 +15,7 @@ import {
   type RightClickMenuSpec,
 } from "./useRightClickMenu";
 import { NoteRenameDialog } from "./NoteRenameDialog";
+import { AddToDirectoryDialog } from "./AddToDirectoryDialog";
 import { PermissionEditor } from "../Permissions/PermissionEditor";
 
 export interface NoteCardMenuProps {
@@ -25,6 +27,7 @@ const CARD_BUTTONS: RightClickMenuSpec["buttons"] = [
   "copy",
   "paste",
   "edit",
+  "addToDirectory",
   "permissions",
   "delete",
 ];
@@ -39,6 +42,7 @@ export const NoteCardMenu: React.FC<NoteCardMenuProps> = ({
   const [renameOpen, setRenameOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [permissionsOpen, setPermissionsOpen] = useState(false);
+  const [addToDirectoryOpen, setAddToDirectoryOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,6 +61,12 @@ export const NoteCardMenu: React.FC<NoteCardMenuProps> = ({
           edit: {
             handler: () => {
               setRenameOpen(true);
+              return true;
+            },
+          },
+          addToDirectory: {
+            handler: () => {
+              setAddToDirectoryOpen(true);
               return true;
             },
           },
@@ -102,6 +112,12 @@ export const NoteCardMenu: React.FC<NoteCardMenuProps> = ({
         noteId={note.id}
         initialTitle={note.title}
         onClose={() => setRenameOpen(false)}
+      />
+      <AddToDirectoryDialog
+        open={addToDirectoryOpen}
+        onClose={() => setAddToDirectoryOpen(false)}
+        noteId={note.id}
+        noteTitle={note.title}
       />
       <PermissionEditor
         open={permissionsOpen}

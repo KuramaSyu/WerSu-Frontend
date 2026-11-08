@@ -12,6 +12,7 @@ import AddIcon from "@mui/icons-material/Add";
 import TableChartIcon from "@mui/icons-material/TableChart";
 import EditIcon from "@mui/icons-material/Edit";
 import DriveFileRenameOutlineIcon from "@mui/icons-material/DriveFileRenameOutline";
+import CreateNewFolderIcon from "@mui/icons-material/CreateNewFolder";
 import DeleteIcon from "@mui/icons-material/Delete";
 import StarIcon from "@mui/icons-material/Star";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
@@ -109,6 +110,12 @@ export const rightClickMenuButtons: RightClickButtonRegistry = {
     id: "rename",
     label: "Rename",
     icon: <DriveFileRenameOutlineIcon fontSize="small" />,
+  },
+  // Handlerless on purpose: each note surface opens the directory picker.
+  addToDirectory: {
+    id: "addToDirectory",
+    label: "Add to directory",
+    icon: <CreateNewFolderIcon fontSize="small" />,
   },
   delete: {
     id: "delete",

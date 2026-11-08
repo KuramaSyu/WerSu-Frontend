@@ -36,6 +36,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("../../api/queries/useNoteQueries", () => ({
   useDeleteNote: () => ({ mutateAsync: mocks.deleteNote }),
   useUpdateNote: () => ({ mutateAsync: mocks.renameNote, isPending: false }),
+  useNote: () => ({ data: undefined, isLoading: false }),
 }));
 
 vi.mock("../../api/queries/useDirectoryMutations", () => ({
@@ -99,6 +100,7 @@ describe("NoteCardMenu", () => {
       "copy",
       "paste",
       "edit",
+      "addToDirectory",
       "permissions",
       "delete",
     ]);
@@ -256,6 +258,7 @@ describe("DirectoryItemMenu", () => {
       "paste",
       "edit",
       "rename",
+      "addToDirectory",
       "permissions",
       "delete",
     ]);

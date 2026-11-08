@@ -70,7 +70,15 @@ export const FrequentlyUsedPanel: React.FC<FrequentlyUsedPanelProps> = ({
       renderRow={(entry) => {
         const e = entry as HistoryRowEntry;
         return (
-          <CopyNameMenu text={e.title ?? ""} targetId={e.note_id}>
+          <CopyNameMenu
+            text={e.title ?? ""}
+            targetId={e.note_id}
+            note={
+              e.note_id && !e.action?.startsWith("directory_")
+                ? { id: e.note_id, title: e.title ?? "" }
+                : undefined
+            }
+          >
             <IconTitleSubtitleRow
               title={e.title ?? ""}
               subtitle={e.description ?? undefined}
@@ -127,7 +135,16 @@ export const LastUsedPanel: React.FC<LastUsedPanelProps> = ({
         const e = entry as HistoryRowEntry;
         const key = e.id ?? e.note_id;
         return (
-          <CopyNameMenu key={key} text={e.title ?? ""} targetId={e.note_id}>
+          <CopyNameMenu
+            key={key}
+            text={e.title ?? ""}
+            targetId={e.note_id}
+            note={
+              e.note_id && !e.action?.startsWith("directory_")
+                ? { id: e.note_id, title: e.title ?? "" }
+                : undefined
+            }
+          >
             <IconTitleSubtitleRow
               title={e.title ?? ""}
               subtitle={e.at ? formatHistoryRowTimestamp(e.at) : undefined}
