@@ -10,7 +10,6 @@ import {
 import { useLayout } from "../../LayoutProvider";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { SearchBar } from "../search/SearchBar";
-import { LeftPanelToggle, RightPanelToggle } from "../Panels/LeftPanelToggle";
 import { ShelfMenu } from "./ShelfMenu";
 import { TopBarRightCluster } from "./TopBarRightCluster";
 import { TranslucentPaper } from "../TranslucentPaper";
@@ -21,7 +20,6 @@ import { TranslucentPaper } from "../TranslucentPaper";
  *   - WerSu wordmark (left)
  *   - Centred SearchBar
  *   - :class:`TopBarRightCluster` (slots + bell + avatar + popovers)
- *   - Left/right rail collapse toggles at the far edges
  *
  * Sits in a `Slide` whose visibility is driven by
  * `LayoutProvider.showTopPanel` (the AppShell flips that on scroll).
@@ -30,7 +28,7 @@ import { TranslucentPaper } from "../TranslucentPaper";
  * so that:
  *
  *   - slot registrations only re-render the cluster, never the
- *     wordmark, search bar or panel toggles here;
+ *     wordmark or search bar here;
  *   - the cluster's anchor state and service-reachability poll only
  *     re-render its subtree;
  *   - `React.memo` on the cluster keeps this top bar's
@@ -77,9 +75,6 @@ export const DesktopTopBar: React.FC = () => {
           backfaceVisibility: "hidden",
         }}
       >
-        {/* Far-left: collapse / expand the left rail */}
-        <LeftPanelToggle />
-
         {/* Left cluster: WerSu wordmark (clickable -> /) and
             the shelf selector that lives next to it. Both live
             in a horizontal Stack so a long shelf name can push
@@ -126,9 +121,6 @@ export const DesktopTopBar: React.FC = () => {
             anchors (popovers / user menu) only re-render its
             subtree. See :class:`TopBarRightCluster`. */}
         <TopBarRightCluster />
-
-        {/* Far-right: collapse / expand the right rail */}
-        <RightPanelToggle />
       </TranslucentPaper>
     </Slide>
   );
