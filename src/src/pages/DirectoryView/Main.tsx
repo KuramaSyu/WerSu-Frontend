@@ -27,6 +27,7 @@ import { useDirectoryTypeAheadStore } from "../../zustand/useDirectoryTypeAheadS
 import { useDirectoryTypeAhead } from "./useDirectoryTypeAhead";
 import TranslucentPaper from "../../components/TranslucentPaper";
 import { useThemeStore } from "../../zustand/useThemeStore";
+import { ACCENT_FONT_FAMILY } from "../../theme/customTheme";
 import {
   directoryKindOfNode,
   directoryTerms,
@@ -174,7 +175,14 @@ export const DirectoryView: React.FC = () => {
                 onNavigate={(id) => navigate(`/d/${id}`)}
               />
               <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-                <Typography variant="h4" sx={{ fontWeight: 600 }}>
+                <Typography
+                  variant="h4"
+                  sx={{
+                    fontFamily:
+                      theme.custom?.accentFontFamily ?? ACCENT_FONT_FAMILY,
+                    fontWeight: 300,
+                  }}
+                >
                   {title}
                 </Typography>
                 <DirectoryMenu
