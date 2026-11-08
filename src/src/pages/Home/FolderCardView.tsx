@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   Box,
   Card,
@@ -147,6 +148,26 @@ export const FolderCardView: React.FC<FolderCardViewProps> = ({
   const resolvedImageUrl = imageUrl
     ? toAttachmentImageUrl(prepareBackendLink(imageUrl), BOOK_COVER_IMAGE_WIDTH)
     : undefined;
+  // Preload the cover off-DOM so it is painted as a CSS background only
+  // once the browser has it cached. Until then the letter preview shows.
+  const [loadedImageUrl, setLoadedImageUrl] = useState<string>();
+  useEffect(() => {
+    if (!resolvedImageUrl) {
+      return;
+    }
+    let cancelled = false;
+    const image = new Image();
+    image.onload = () => {
+      if (!cancelled) setLoadedImageUrl(resolvedImageUrl);
+    };
+    image.src = resolvedImageUrl;
+    return () => {
+      cancelled = true;
+      image.onload = null;
+    };
+  }, [resolvedImageUrl]);
+  const isImageLoaded =
+    !!resolvedImageUrl && loadedImageUrl === resolvedImageUrl;
   // Avatar initials: first letter of each of the first two words,
   // else first two letters. Uppercased.
   const placeholderText = (() => {
@@ -288,7 +309,12 @@ export const FolderCardView: React.FC<FolderCardViewProps> = ({
             hover `aspectRatio` rule applies uniformly. */}
         <Box
           className="folder-card-image-cover"
+          // Cover is painted as a background image once preloaded; the
+          // letter preview sits on top until then and is hidden after.
+          role={isImageLoaded ? "img" : undefined}
+          aria-label={isImageLoaded ? `${displayName} cover` : undefined}
           sx={{
+            position: "relative",
             width: "100%",
             aspectRatio: "16 / 9",
             display: "flex",
@@ -301,35 +327,28 @@ export const FolderCardView: React.FC<FolderCardViewProps> = ({
               theme,
               1 / 2,
             ),
+            ...(isImageLoaded && resolvedImageUrl
+              ? {
+                  backgroundImage: `url("${resolvedImageUrl}")`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                  backgroundRepeat: "no-repeat",
+                }
+              : {}),
           }}
         >
-          {resolvedImageUrl ? (
-            <Box
-              component="img"
-              src={resolvedImageUrl}
-              alt={`${displayName} cover`}
-              sx={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                display: "block",
-              }}
-            />
-          ) : (
-            <Typography
-              variant="h4"
-              sx={{
-                fontWeight: 700,
-                color: blendWithContrast(
-                  theme.palette.primary.main,
-                  theme,
-                  1 / 4,
-                ),
-              }}
-            >
-              {placeholderText}
-            </Typography>
-          )}
+          {/* Letter preview; hidden (not faded) once the cover is painted. */}
+          <Typography
+            variant="h4"
+            aria-hidden={isImageLoaded}
+            sx={{
+              fontWeight: 700,
+              color: blendWithContrast(theme.palette.primary.main, theme, 1 / 4),
+              visibility: isImageLoaded ? "hidden" : "visible",
+            }}
+          >
+            {placeholderText}
+          </Typography>
         </Box>
         {/* Favourite star overlay; `stopPropagation` is caller's job.
             Backdrop lives on the image area's `::before`. */}
