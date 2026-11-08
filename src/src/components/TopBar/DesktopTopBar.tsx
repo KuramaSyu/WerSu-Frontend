@@ -9,7 +9,6 @@ import {
 } from "../../statics";
 import { useLayout } from "../../LayoutProvider";
 import { useThemeStore } from "../../zustand/useThemeStore";
-import { ACCENT_FONT_FAMILY } from "../../theme/customTheme";
 import { SearchBar } from "../search/SearchBar";
 import { LeftPanelToggle, RightPanelToggle } from "../Panels/LeftPanelToggle";
 import { ShelfMenu } from "./ShelfMenu";
@@ -97,8 +96,8 @@ export const DesktopTopBar: React.FC = () => {
             sx={{
               cursor: "pointer",
               userSelect: "none",
-              fontFamily: theme.custom?.accentFontFamily ?? ACCENT_FONT_FAMILY,
-              fontWeight: 300,
+              fontFamily: '"Fira Sans", sans-serif',
+              fontWeight: 400,
               fontSize: theme.typography.h5.fontSize,
               color: theme.palette.text.primary,
               whiteSpace: "nowrap",
