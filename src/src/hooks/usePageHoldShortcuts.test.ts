@@ -33,7 +33,7 @@ describe("usePageHoldShortcuts", () => {
       "New book",
       "New note",
     ]);
-    expect(result.current.map((action) => action.key)).toEqual(["d", "n"]);
+    expect(result.current.map((action) => action.key)).toEqual(["b", "n"]);
   });
 
   it("includes the directory-only edit action", () => {

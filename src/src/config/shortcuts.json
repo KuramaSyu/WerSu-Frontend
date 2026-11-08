@@ -123,8 +123,8 @@
       {
         "id": "home.newDirectory",
         "label": "New book",
-        "key": "d",
-        "keyLabel": "D",
+        "key": "b",
+        "keyLabel": "B",
         "hold": true
       },
       {
@@ -143,8 +143,8 @@
       {
         "id": "directory.newDirectory",
         "label": "New chapter",
-        "key": "d",
-        "keyLabel": "D",
+        "key": "c",
+        "keyLabel": "C",
         "hold": true
       },
       {
