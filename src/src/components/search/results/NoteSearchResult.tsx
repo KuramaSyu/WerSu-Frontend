@@ -1,6 +1,6 @@
 import React from "react";
 import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
-import { Chip, Tooltip } from "@mui/material";
+import { Chip, Tooltip, alpha } from "@mui/material";
 import { formatDistanceToNowStrict } from "date-fns";
 import type { Note } from "../../../api/models/search";
 import { colorFromString } from "../../../utils/blendWithContrast";
@@ -46,7 +46,7 @@ export class NoteSearchResult implements SearchResult {
   }
 
   get_accent_color(): string {
-    return colorFromString(this.note.get_dir() || "root", this.ctx.theme);
+    return this.ctx.theme.palette.primary.main;
   }
 
   get_meta(): React.ReactNode {
@@ -57,6 +57,7 @@ export class NoteSearchResult implements SearchResult {
         ? "root"
         : directoryLabel(dirId, directoriesById);
     const pathTip = directoryPathString(dirId, directoriesById);
+    const accent = colorFromString(dirId, this.ctx.theme);
     const timestamp = formatDistanceToNowStrict(new Date(this.note.updated_at), {
       addSuffix: true,
     });
@@ -64,7 +65,15 @@ export class NoteSearchResult implements SearchResult {
     return (
       <>
         <Tooltip title={pathTip} placement="top" arrow>
-          <Chip label={chipLabel} variant="outlined" size="small" />
+          <Chip
+            label={chipLabel}
+            variant="outlined"
+            size="small"
+            sx={{
+              color: accent,
+              borderColor: alpha(accent, 0.5),
+            }}
+          />
         </Tooltip>
         <Chip label={timestamp} variant="outlined" size="small" />
       </>

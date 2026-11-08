@@ -62,6 +62,15 @@ export const UpperPanel: React.FC<UpperPanelProps> = ({
         sx={{
           overflowY: "auto",
           overflowX: "hidden",
+          // Side rails should never show a chunky default scrollbar.
+          // Keep it invisible until the panel is hovered, matching the
+          // outer rail scroll container.
+          scrollbarWidth: "thin",
+          scrollbarColor: "transparent transparent",
+          "&:hover": {
+            scrollbarColor: (theme) =>
+              `${theme.palette.secondary.dark} transparent`,
+          },
           // Right-rail-only left gutter: gives a first section's
           // `leftEdgeHandle` room to straddle the section border without
           // being clipped by this scroll box. The matching outer padding

@@ -1,4 +1,4 @@
-import { Box, Paper, Stack } from "@mui/material";
+import { Box, Paper, Stack, alpha } from "@mui/material";
 import { useThemeStore } from "../zustand/useThemeStore";
 import type React from "react";
 import { topbarContrastText } from "../theme/topbarContrastText";
@@ -7,9 +7,10 @@ import { topbarContrastText } from "../theme/topbarContrastText";
 export function renderShortcut(
   shortcut: string,
   onlyText: boolean = false,
+  accentColor?: string,
 ): React.ReactNode {
   const { theme } = useThemeStore();
-  var components: React.ReactNode[] = [];
+  const components: React.ReactNode[] = [];
   for (const [index, key] of shortcut.split(/([+,])/).entries()) {
     // Process each key
     if (key === "+") {
@@ -17,7 +18,7 @@ export function renderShortcut(
         <Box
           key={index}
           component="span"
-          sx={{ mx: 0.5, color: topbarContrastText(theme) }}
+          sx={{ mx: 0.5, color: accentColor ?? topbarContrastText(theme) }}
         >
           {key}
         </Box>,
@@ -26,13 +27,13 @@ export function renderShortcut(
       // Do nothing for the comma separator
     } else if (key === "super" || key === "cmd" || key === "ctrl") {
       components.push(
-        <Key key={index} onlyText={onlyText}>
+        <Key key={index} onlyText={onlyText} accentColor={accentColor}>
           {superKey()}
         </Key>,
       );
     } else {
       components.push(
-        <Key key={index} onlyText={onlyText}>
+        <Key key={index} onlyText={onlyText} accentColor={accentColor}>
           {key}
         </Key>,
       );
@@ -53,9 +54,11 @@ function superKey(): React.ReactNode {
 function Key({
   children,
   onlyText,
+  accentColor,
 }: {
   children: React.ReactNode;
   onlyText?: boolean;
+  accentColor?: string;
 }): React.ReactNode {
   const { theme } = useThemeStore();
   return (
@@ -64,8 +67,11 @@ function Key({
       elevation={onlyText ? 0 : 4}
       sx={{
         fontSize: "inherit",
+        color: accentColor,
         // color: theme.palette.background.paper,
         border: onlyText ? undefined : `1px solid`,
+        borderColor:
+          accentColor !== undefined ? alpha(accentColor, 0.45) : undefined,
         px: 1,
         borderRadius: onlyText ? undefined : theme.shape.borderRadius,
         fontFamily: "monospace",
@@ -79,6 +85,8 @@ function Key({
 export const KeyboardShortcut: React.FC<{
   shortcut: string;
   onlyText?: boolean;
-}> = ({ shortcut, onlyText = false }) => {
-  return <>{renderShortcut(shortcut, onlyText)}</>;
+  /** Optional accent for the key chips and the "+" separator. */
+  accentColor?: string;
+}> = ({ shortcut, onlyText = false, accentColor }) => {
+  return <>{renderShortcut(shortcut, onlyText, accentColor)}</>;
 };

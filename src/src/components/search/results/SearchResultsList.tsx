@@ -16,7 +16,6 @@ import { useAllDirectoriesQuery } from "../../../api/queries/directoryQueries";
 import { RestNotesSearchType } from "../../../api/models/search";
 import { useSearchNotesStore } from "../../../zustand/useSearchNotesStore";
 import { useThemeStore } from "../../../zustand/useThemeStore";
-import { M3 } from "../../../statics";
 import { useSearchResults } from "./SearchResultsList.hook";
 import SearchResultRow from "./SearchResultRow";
 import SearchResultsEmptyState from "./SearchResultsEmptyState";
@@ -254,7 +253,7 @@ export const SearchResultsList: React.FC = () => {
       }}
     >
       <Box sx={{ width: "98%" }}>
-        <Stack spacing={M3}>
+        <Stack spacing={1.5}>
           {visibleResults.map((result, offset) => {
             const index = visibleStartIndex + offset;
             return (

@@ -67,7 +67,8 @@ export const FrequentlyUsedPanel: React.FC<FrequentlyUsedPanelProps> = ({
       loadingText="Loading frequently used notes..."
       errorText="Failed to load frequently used notes."
       emptyText="No frequently used notes yet."
-      renderRow={(entry) => {
+      spacing={0.25}
+      renderRow={(entry, index) => {
         const e = entry as HistoryRowEntry;
         return (
           <CopyNameMenu
@@ -84,6 +85,10 @@ export const FrequentlyUsedPanel: React.FC<FrequentlyUsedPanelProps> = ({
               subtitle={e.description ?? undefined}
               onClick={() => navigate(`/n/${e.note_id}`)}
               developerDebug={developerMode ? JSON.stringify(e) : undefined}
+              sx={{
+                backgroundColor:
+                  index % 2 === 1 ? "background.default" : "transparent",
+              }}
             />
           </CopyNameMenu>
         );
@@ -131,7 +136,8 @@ export const LastUsedPanel: React.FC<LastUsedPanelProps> = ({
       loadingText="Loading last used notes..."
       errorText="Failed to load last used notes."
       emptyText="No recently viewed notes yet."
-      renderRow={(entry) => {
+      spacing={0.25}
+      renderRow={(entry, index) => {
         const e = entry as HistoryRowEntry;
         const key = e.id ?? e.note_id;
         return (
@@ -150,6 +156,10 @@ export const LastUsedPanel: React.FC<LastUsedPanelProps> = ({
               subtitle={e.at ? formatHistoryRowTimestamp(e.at) : undefined}
               onClick={() => navigate(`/n/${e.note_id}`)}
               developerDebug={developerMode ? JSON.stringify(e) : undefined}
+              sx={{
+                backgroundColor:
+                  index % 2 === 1 ? "background.default" : "transparent",
+              }}
             />
           </CopyNameMenu>
         );

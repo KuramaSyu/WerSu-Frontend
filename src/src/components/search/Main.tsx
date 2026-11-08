@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import { Box, Fade, Grow, Portal, SwipeableDrawer, alpha } from "@mui/material";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useSearchFilterStore } from "../../zustand/useSearchFilterStore";
-import { M3, MOBILE_BOTTOM_BAR_CLEARANCE } from "../../statics";
+import { M3 } from "../../statics";
 import SearchOverlayHeader from "./header/SearchOverlayHeader";
 import SearchOverlayToolbar from "./filter/SearchOverlayToolbar";
 import SearchResultsList from "./results/SearchResultsList";
@@ -68,7 +68,7 @@ const SearchResultsOverlayInner: React.FC<SearchResultsOverlayProps> = ({
   useEffect(() => {
     setInternalOpen(open);
   }, [open]);
-  const handleClose = (_event: unknown) => {
+  const handleClose = () => {
     setInternalOpen(false);
     onClose();
   };
@@ -125,8 +125,8 @@ const SearchResultsOverlayInner: React.FC<SearchResultsOverlayProps> = ({
             sx={{
               display: "flex",
               flexDirection: "column",
-              gap: M3,
-              p: M3,
+              gap: 1.5,
+              p: 1.5,
               // Touch-action "pan-y" lets the inner list scroll
               // vertically while the drawer's own swipe-down
               // gesture still works.
@@ -153,7 +153,7 @@ const SearchResultsOverlayInner: React.FC<SearchResultsOverlayProps> = ({
                   duration: theme.transitions.duration.short,
                 }),
               }}
-              onClick={(e) => handleClose(e)}
+              onClick={() => handleClose()}
             />
             <SearchOverlayHeader onClose={onClose} />
             <SearchOverlayToolbar
@@ -216,8 +216,8 @@ const SearchResultsOverlayInner: React.FC<SearchResultsOverlayProps> = ({
                   border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
                   display: "flex",
                   flexDirection: "column",
-                  gap: M3,
-                  p: M3,
+                  gap: 1.5,
+                  p: 2,
                 }}
               >
                 <SearchOverlayHeader onClose={onClose} />

@@ -1,4 +1,6 @@
+import type { SxProps } from "@mui/material";
 import { Box, Stack, Tooltip, Typography, useTheme } from "@mui/material";
+import type { Theme } from "@mui/material/styles";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import React from "react";
 
@@ -20,6 +22,8 @@ export interface IconTitleSubtitleRowProps {
   developerDebug?: React.ReactNode;
   /** Override the clickable area. Defaults to true when onClick is set; pass false to render non-interactive. */
   interactive?: boolean;
+  /** Extra styles merged into the row surface. */
+  sx?: SxProps<Theme>;
 }
 
 /** Single row: optional icon (with tooltip) + title + subtitle.
@@ -33,6 +37,7 @@ export const IconTitleSubtitleRow: React.FC<IconTitleSubtitleRowProps> = ({
   iconTooltip,
   developerDebug,
   interactive,
+  sx,
 }) => {
   const { theme: storeTheme } = useThemeStore();
   // useTheme() picks up the nearest ThemeProvider (PanelSection sets a dimmed theme on not-hover).
@@ -43,20 +48,23 @@ export const IconTitleSubtitleRow: React.FC<IconTitleSubtitleRowProps> = ({
     <Stack
       direction="row"
       spacing={theme.spacing(1)}
-      sx={{
-        alignItems: "flex-start",
-        cursor: isInteractive ? "pointer" : "default",
-        borderRadius: 1,
-        px: 1,
-        py: 0.5,
-        transition: theme.transitions.create(
-          ["background-color", "transform"],
-          { duration: theme.transitions.duration.short },
-        ),
-        "&:hover": isInteractive
-          ? { backgroundColor: theme.palette.action.hover }
-          : undefined,
-      }}
+      sx={[
+        {
+          alignItems: "flex-start",
+          cursor: isInteractive ? "pointer" : "default",
+          borderRadius: 2,
+          px: 1,
+          py: 0.5,
+          transition: theme.transitions.create(
+            ["background-color", "transform"],
+            { duration: theme.transitions.duration.short },
+          ),
+          "&:hover": isInteractive
+            ? { backgroundColor: theme.palette.action.hover }
+            : undefined,
+        },
+        ...(Array.isArray(sx) ? sx : sx !== undefined ? [sx] : []),
+      ]}
       onClick={onClick}
     >
       {icon !== undefined && icon !== null && (

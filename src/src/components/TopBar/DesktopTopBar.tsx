@@ -1,7 +1,6 @@
-import { Box, Divider, Slide, Stack } from "@mui/material";
+import { Box, Divider, Slide, Stack, alpha } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import {
-  M1,
   M2,
   M3,
   TOP_BAR_ELEVATION,
@@ -13,6 +12,7 @@ import { SearchBar } from "../search/SearchBar";
 import { ShelfMenu } from "./ShelfMenu";
 import { TopBarRightCluster } from "./TopBarRightCluster";
 import { TranslucentPaper } from "../TranslucentPaper";
+import { Logo } from "../logo";
 
 /**
  * Desktop top bar chrome:
@@ -83,25 +83,69 @@ export const DesktopTopBar: React.FC = () => {
             `flexShrink: 0`. */}
         <Stack
           direction="row"
-          spacing={M1}
+          spacing={1.5}
           sx={{ alignItems: "center", flexShrink: 0 }}
         >
-          <Box
+          <Stack
+            direction="row"
+            spacing={1}
             onClick={() => navigate("/")}
             sx={{
+              alignItems: "center",
               cursor: "pointer",
               userSelect: "none",
-              fontFamily: '"Fira Sans", sans-serif',
-              fontWeight: 400,
-              fontSize: theme.typography.h5.fontSize,
-              color: theme.palette.text.primary,
-              whiteSpace: "nowrap",
-              px: M2,
+              borderRadius: 1.5,
+              px: 0.75,
+              py: 0.5,
+              transition: (t) =>
+                t.transitions.create("background-color", {
+                  duration: t.transitions.duration.shortest,
+                }),
+              "&:hover": {
+                backgroundColor: (t) =>
+                  alpha(
+                    t.palette.primary.main,
+                    t.palette.mode === "dark" ? 0.08 : 0.05,
+                  ),
+              },
             }}
           >
-            WerSu
-          </Box>
-          <Divider orientation="vertical" flexItem />
+            <Box
+              sx={{
+                display: "grid",
+                placeItems: "center",
+                width: 34,
+                height: 34,
+                flexShrink: 0,
+                borderRadius: 1.5,
+                backgroundColor: (t) =>
+                  alpha(
+                    t.palette.primary.main,
+                    t.palette.mode === "dark" ? 0.14 : 0.09,
+                  ),
+              }}
+            >
+              <Logo
+                size={24}
+                monochrome
+                title={null}
+                style={{ color: theme.palette.primary.main }}
+              />
+            </Box>
+            <Box
+              sx={{
+                fontFamily: '"Fira Sans", sans-serif',
+                fontWeight: 600,
+                fontSize: theme.typography.h5.fontSize,
+                letterSpacing: "0.01em",
+                color: theme.palette.text.primary,
+                whiteSpace: "nowrap",
+              }}
+            >
+              WerSu
+            </Box>
+          </Stack>
+          <Divider orientation="vertical" flexItem sx={{ my: 1, opacity: 0.6 }} />
           <ShelfMenu />
         </Stack>
 

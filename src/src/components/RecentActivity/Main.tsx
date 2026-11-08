@@ -21,8 +21,8 @@ import { CopyNameMenu } from "../RightClick/CopyNameMenu";
 export interface RecentActivityPanelProps {
   /** Target entity to fetch activity for. */
   target: HistoryTarget;
-  /** Optional title override. */
-  title?: string;
+  /** Optional title override. Pass null to suppress the inner heading. */
+  title?: string | null;
   /** Max number of items to fetch and render. */
   limit?: number;
   /** Time window (days parameter on /api/history). Mirrors the previous maxDepth knob at the panel level. */

@@ -19,6 +19,7 @@ import { HomePage } from "./pages/Home/Main";
 import { SwaggerDocs } from "./pages/docs/Main";
 import InfoDisplay from "./pages/MainPage/InfoDisplay";
 import { ShortcutPulse } from "./components/ShortcutPulse";
+import { ThemeFavicon } from "./components/ThemeFavicon";
 import { NotePage } from "./pages/NotePage/Main";
 import { DirectoryView } from "./pages/DirectoryView/Main";
 import { DirectoryEditPage } from "./pages/DirectoryEdit/Main";
@@ -99,6 +100,7 @@ function App() {
   return (
     <MotionConfig reducedMotion={reduceMotion ? "always" : "user"}>
       <ThemeProvider theme={theme}>
+        <ThemeFavicon />
         <Router>
           <Bootstrap />
           <NavigationRecorder />

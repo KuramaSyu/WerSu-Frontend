@@ -1,6 +1,6 @@
 import React from "react";
 import FolderOutlinedIcon from "@mui/icons-material/FolderOutlined";
-import { Box, Chip, Tooltip, Typography } from "@mui/material";
+import { Box, Chip, Tooltip, Typography, alpha } from "@mui/material";
 import type { DirectoryReply } from "../../../api/models/directory";
 import { colorFromString } from "../../../utils/blendWithContrast";
 import { fuzzyMatch } from "../../../utils/fuzzySearch";
@@ -161,7 +161,7 @@ export class DirectorySearchResult implements SearchResult {
   }
 
   get_accent_color(): string {
-    return colorFromString(this.directory.id, this.ctx.theme);
+    return this.ctx.theme.palette.secondary.main;
   }
 
   get_meta(): React.ReactNode {
@@ -169,9 +169,18 @@ export class DirectorySearchResult implements SearchResult {
       this.directory.id,
       this.ctx.directoriesById,
     );
+    const accent = colorFromString(this.directory.id, this.ctx.theme);
     return (
       <Tooltip title={path} placement="top" arrow>
-        <Chip label={path} variant="outlined" size="small" />
+        <Chip
+          label={path}
+          variant="outlined"
+          size="small"
+          sx={{
+            color: accent,
+            borderColor: alpha(accent, 0.5),
+          }}
+        />
       </Tooltip>
     );
   }

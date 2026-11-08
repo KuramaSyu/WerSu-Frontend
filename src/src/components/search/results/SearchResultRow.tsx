@@ -68,15 +68,24 @@ export const SearchResultRow: React.FC<Props> = memo(
     return (
       <Paper
         data-search-index={index}
-        elevation={isSelected ? 5 : 1}
+        elevation={isSelected ? 1 : 0}
         onMouseEnter={() => {
           if (hoverEnabled) onSelect(index);
         }}
         onClick={() => onActivate(result)}
         sx={{
-          borderLeft: `5px solid ${accent}`,
+          border: "1px solid",
+          borderColor: theme.palette.divider,
+          borderLeft: `3px solid ${alpha(
+            accent,
+            isSelected ? 0.75 : 0.4,
+          )}`,
+          backgroundColor: theme.palette.background.paper,
           cursor: "pointer",
-          transition: "all 0.2s ease",
+          transition: theme.transitions.create(
+            ["background-color", "border-color", "transform"],
+            { duration: theme.transitions.duration.short },
+          ),
           transform: isSelected ? "translateX(6px)" : "none",
           display: "flex",
           flexDirection: "row",
@@ -90,12 +99,12 @@ export const SearchResultRow: React.FC<Props> = memo(
             aria-label={result.get_type_label()}
             sx={{
               flexShrink: 0,
-              width: 44,
+              width: 40,
               alignSelf: "stretch",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              backgroundColor: alpha(accent, 0.12),
+              backgroundColor: alpha(accent, isSelected ? 0.08 : 0.04),
               color: theme.palette.text.secondary,
               boxShadow: `inset -1px 0 0 ${alpha(
                 theme.palette.divider,
@@ -121,9 +130,10 @@ export const SearchResultRow: React.FC<Props> = memo(
         >
           <Box className="note.header" sx={{ minWidth: 3 / 8 }}>
             <Typography
-              variant="h6"
+              variant="subtitle1"
               sx={{
-                fontWeight: "bold",
+                fontWeight: 600,
+                lineHeight: 1.35,
                 mb: M2,
                 color: theme.palette.text.primary,
               }}

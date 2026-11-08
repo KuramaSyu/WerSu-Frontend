@@ -78,6 +78,12 @@ const TopBarRightClusterImpl: React.FC = () => {
         <IconButton
           onClick={(e) => setUserMenuAnchor(e.currentTarget)}
           size="small"
+          sx={{
+            p: 0.25,
+            ml: sortedSlots.length > 0 ? 1 : 0,
+            borderRadius: "50%",
+            "&:hover": { backgroundColor: "action.hover" },
+          }}
         >
           {isAnonymousPublic ? (
             <PublicUserAvatar size={36} fontSize={14} />

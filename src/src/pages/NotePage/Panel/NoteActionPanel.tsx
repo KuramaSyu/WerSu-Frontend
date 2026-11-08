@@ -9,7 +9,7 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import { PanelSection } from "../../../components/Panels/PanelSection";
+import { RailSection } from "../../../components/Panels/RailSection";
 import { TitleValuePill } from "../../../components/TitleValuePill";
 import { useNoteStatsStore } from "../../../zustand/noteStatsStore";
 
@@ -56,9 +56,10 @@ export const NoteActionPanel: React.FC<NoteActionPanelProps> = ({
   const stats = useNoteStatsStore((s) => s.stats);
 
   return (
-    <PanelSection
+    <RailSection
       title="Metadata"
-      titleIcon={<InfoOutlinedIcon fontSize="small" />}
+      description="Timestamps, parent books or chapters and size."
+      icon={<InfoOutlinedIcon />}
       collapsible
       defaultExpanded
     >
@@ -143,6 +144,6 @@ export const NoteActionPanel: React.FC<NoteActionPanelProps> = ({
           </Stack>
         </Stack>
       )}
-    </PanelSection>
+    </RailSection>
   );
 };

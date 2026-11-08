@@ -183,11 +183,14 @@ export const SearchOverlayHeader: React.FC<Props> = () => {
             input: {
               startAdornment: (
                 <InputAdornment position="start">
-                  <SearchIcon sx={{ fontSize: "1rem" }} />
+                  <SearchIcon
+                    sx={{ fontSize: "1rem", color: "primary.main" }}
+                  />
                 </InputAdornment>
               ),
               sx: {
                 borderRadius: M4,
+                backgroundColor: "background.paper",
                 "& .MuiOutlinedInput-input": {
                   padding: "calc(1em / 1.6) 0.5rem",
                 },

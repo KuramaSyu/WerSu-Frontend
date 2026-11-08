@@ -11,7 +11,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
+import { alpha } from "@mui/material/styles";
 import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { M1, M2, M3 } from "../../statics";
@@ -27,7 +27,6 @@ import TranslucentPaper from "../../components/TranslucentPaper";
 import { useAllDirectoriesQuery } from "../../api/queries/directoryQueries";
 import type { DirectoryReply } from "../../api/models/directory";
 import type { MinimalNote, MinimalTag } from "../../api/models/search";
-import { themeAttachmentKey } from "../../utils/syncedThemeImages";
 import { noteRecencyStamp } from "../../api/queries/recentNoteActivity";
 
 /** Fixed card dimensions, matching the directory card grid. */

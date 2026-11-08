@@ -110,11 +110,16 @@ const ShelfMenuImpl: React.FC = () => {
         aria-haspopup="menu"
         sx={{
           textTransform: "none",
-          fontWeight: 400,
+          fontWeight: 500,
           fontSize: theme.typography.body1.fontSize,
           color: theme.palette.text.primary,
           px: M2,
           minWidth: 0,
+          borderRadius: 1.5,
+          backgroundColor: "transparent",
+          "&:hover": {
+            backgroundColor: theme.palette.action.hover,
+          },
           // Cap so a long name does not push the centred search bar off-axis.
           maxWidth: "16rem",
           "& .MuiButton-endIcon": {

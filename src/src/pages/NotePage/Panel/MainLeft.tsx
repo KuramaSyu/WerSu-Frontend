@@ -271,7 +271,7 @@ export const NoteLeftPanel: React.FC<NoteLeftPanelProps> = ({
 
   return (
     <>
-      <UpperPanel spacing={3}>
+      <UpperPanel spacing={2.5}>
         <NoteActionPanel
           isLoading={!note}
           lastEditedLabel={formatTimestamp(note?.updated_at)}

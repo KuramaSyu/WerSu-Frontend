@@ -26,7 +26,7 @@ import {
   useState,
   type MouseEvent,
 } from "react";
-import { PanelSection } from "../../../components/Panels/PanelSection";
+import { RailSection } from "../../../components/Panels/RailSection";
 import {
   useOutlineStore,
   useScrollElementStore,
@@ -671,23 +671,25 @@ export const TableOfContentsPanel: React.FC = () => {
 
   if (items.length === 0) {
     return (
-      <PanelSection
+      <RailSection
         title="Table of Contents"
-        titleIcon={<TocIcon fontSize="small" />}
+        description="Jump to a heading in this note."
+        icon={<TocIcon />}
         collapsible
         defaultExpanded
       >
         <Typography variant="body2" color="text.secondary">
           No headings yet.
         </Typography>
-      </PanelSection>
+      </RailSection>
     );
   }
 
   return (
-    <PanelSection
+    <RailSection
       title="Table of Contents"
-      titleIcon={<TocIcon fontSize="small" />}
+      description="Jump to a heading in this note."
+      icon={<TocIcon />}
       collapsible
       defaultExpanded
     >
@@ -723,6 +725,6 @@ export const TableOfContentsPanel: React.FC = () => {
           );
         })}
       </Timeline>
-    </PanelSection>
+    </RailSection>
   );
 };

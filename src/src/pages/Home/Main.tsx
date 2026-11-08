@@ -1,9 +1,6 @@
 import React, { useState } from "react";
 import { Box, Stack, Typography } from "@mui/material";
 import AutoStoriesIcon from "@mui/icons-material/AutoStories";
-import HistoryIcon from "@mui/icons-material/History";
-import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment";
-import ScheduleIcon from "@mui/icons-material/Schedule";
 import StarIcon from "@mui/icons-material/Star";
 import {
   usePanelSize,
@@ -11,13 +8,6 @@ import {
   useRightPanel,
 } from "../../LayoutProvider";
 import { M2, M3 } from "../../statics";
-import { UpperPanel } from "../../components/Panels/UpperPanel";
-import { PanelSection } from "../../components/Panels/PanelSection";
-import { RecentActivityPanel } from "../../components/RecentActivity/Main";
-import {
-  FrequentlyUsedPanel,
-  LastUsedPanel,
-} from "../../components/FrequentlyUsed/Main";
 import { CreateNote } from "../MainPage/CreateNote";
 import { CreateDirectoryModal } from "../MainPage/CreateDirectory";
 import {
@@ -26,6 +16,7 @@ import {
 } from "./FavouriteDirectories";
 import { AllDirectories } from "./AllDirectories";
 import { HomeGreeting } from "./HomeGreeting";
+import { HomeLeftPanel } from "./HomeLeftPanel";
 import { NotesTabs } from "./NotesTabs";
 import { useNotesByScope } from "../../api/queries/useNotesByScope";
 import {
@@ -77,28 +68,7 @@ export const HomePage: React.FC = () => {
 
   useRightPanel(null);
   usePanelSize({ left: "clamp(20rem, 25vw, 30rem)" });
-  useLeftPanel(
-    <UpperPanel>
-      <PanelSection
-        title="Last used"
-        titleIcon={<HistoryIcon fontSize="small" />}
-      >
-        <LastUsedPanel title={null} />
-      </PanelSection>
-      <PanelSection
-        title="Frequently used"
-        titleIcon={<LocalFireDepartmentIcon fontSize="small" />}
-      >
-        <FrequentlyUsedPanel title={null} />
-      </PanelSection>
-      <PanelSection
-        title="Recent activity"
-        titleIcon={<ScheduleIcon fontSize="small" />}
-      >
-        <RecentActivityPanel target={{ type: "root" }} />
-      </PanelSection>
-    </UpperPanel>,
-  );
+  useLeftPanel(<HomeLeftPanel />);
 
   return (
     <Box

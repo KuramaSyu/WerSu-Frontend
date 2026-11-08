@@ -3,7 +3,7 @@ import ScheduleIcon from "@mui/icons-material/Schedule";
 import NotesIcon from "@mui/icons-material/Notes";
 import { RecentActivityPanel } from "../../components/RecentActivity/Main";
 import type { HirarchyItem } from "../../models/HirarchyItem";
-import { PanelSection } from "../../components/Panels/PanelSection";
+import { RailSection } from "../../components/Panels/RailSection";
 import { UpperPanel } from "../../components/Panels/UpperPanel";
 import { useDirectory } from "../../api/queries/useDirectoryQuery";
 import { InlineEditableDescription } from "../../components/DirectoryView/InlineEditableDescription/InlineEditableDescription";
@@ -27,30 +27,32 @@ export const DirectoryLeftPanel: React.FC<DirectoryLeftPanelProps> = ({
     currentNode.getId() === "root" ? undefined : currentNode.getId(),
   );
   return (
-    <UpperPanel spacing={2}>
-      <PanelSection
+    <UpperPanel spacing={2.5}>
+      <RailSection
         title="Recent activity"
-        titleIcon={<ScheduleIcon fontSize="small" />}
+        description="Latest changes in this book or chapter."
+        icon={<ScheduleIcon />}
       >
         <RecentActivityPanel
-          title={""}
+          title={null}
           target={
             currentNode.getId() === "root"
               ? { type: "root" }
               : { type: "directory", id: currentNode.getId() }
           }
         />
-      </PanelSection>
+      </RailSection>
       {dir?.id && (
-        <PanelSection
+        <RailSection
           title="Description"
-          titleIcon={<NotesIcon fontSize="small" />}
+          description="What this book or chapter is about."
+          icon={<NotesIcon />}
         >
           <InlineEditableDescription
             directoryId={dir.id}
             initialDescription={dir.description ?? ""}
           />
-        </PanelSection>
+        </RailSection>
       )}
     </UpperPanel>
   );

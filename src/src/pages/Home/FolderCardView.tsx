@@ -10,6 +10,7 @@ import {
 import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
 import { formatDistanceToNow } from "date-fns";
+import { alpha } from "@mui/material/styles";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { blendWithContrast } from "../../utils/blendWithContrast";
 import { prepareBackendLink } from "../../utils/prepareBackendLink";
@@ -277,11 +278,7 @@ export const FolderCardView: React.FC<FolderCardViewProps> = ({
         className="folder-card-image"
         sx={{
           position: "relative",
-          backgroundColor: blendWithContrast(
-            theme.palette.primary.main,
-            theme,
-            3 / 4,
-          ),
+          backgroundColor: theme.palette.background.paper,
           // Soft black radial gradient anchored to the top-right
           // corner for the favourite star's backdrop. Hidden at
           // rest and fades in with the AppShell easing on hover,
@@ -322,10 +319,9 @@ export const FolderCardView: React.FC<FolderCardViewProps> = ({
             justifyContent: "center",
             overflow: "hidden",
             transition: `aspect-ratio ${transition}`,
-            backgroundColor: blendWithContrast(
-              theme.palette.primary.main,
-              theme,
-              1 / 2,
+            backgroundColor: alpha(
+              theme.palette.secondary.main,
+              theme.palette.mode === "dark" ? 0.2 : 0.08,
             ),
             ...(isImageLoaded && resolvedImageUrl
               ? {
@@ -343,7 +339,10 @@ export const FolderCardView: React.FC<FolderCardViewProps> = ({
             aria-hidden={isImageLoaded}
             sx={{
               fontWeight: 700,
-              color: blendWithContrast(theme.palette.primary.main, theme, 1 / 4),
+              color: alpha(
+                theme.palette.secondary.main,
+                theme.palette.mode === "dark" ? 0.7 : 0.62,
+              ),
               visibility: isImageLoaded ? "hidden" : "visible",
             }}
           >
