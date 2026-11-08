@@ -103,6 +103,18 @@ const TopBarRightClusterImpl: React.FC = () => {
         onClose={() => setUserMenuAnchor(null)}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "right" }}
+        slotProps={{
+          paper: {
+            sx: {
+              mt: 1,
+              minWidth: 300,
+              borderRadius: 2,
+              border: "1px solid",
+              borderColor: "divider",
+              overflow: "hidden",
+            },
+          },
+        }}
       >
         <UserMenu onRequestClose={() => setUserMenuAnchor(null)} />
       </Menu>

@@ -16,6 +16,7 @@ import {
   TextField,
   Tooltip,
   Typography,
+  alpha,
 } from "@mui/material";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
@@ -62,6 +63,20 @@ export interface UserMenuProps {
   /** Fired after the user picks a row; parent closes the surrounding Menu. */
   onRequestClose: () => void;
 }
+
+/** Shared row treatment for the avatar menu. */
+const menuItemSx = {
+  mx: 0.75,
+  my: 0.125,
+  px: 1.25,
+  minHeight: 44,
+  gap: 1,
+  borderRadius: 1.5,
+  "&:hover": { backgroundColor: "action.hover" },
+  "&.Mui-disabled": { opacity: 0.55 },
+  "& .MuiListItemIcon-root": { minWidth: 32, color: "text.secondary" },
+  "&:hover .MuiListItemIcon-root": { color: "primary.main" },
+};
 
 /**
  * Avatar Menu body: profile header, theme selector, Pages (Home,
@@ -285,176 +300,189 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
   return (
     // minWidth hints the Menu past the longest text so the profile
     // header doesn't squeeze.
-    <Stack sx={{ minWidth: 280 }}>
-      <Stack
-        spacing={M2}
-        direction="row"
+    <Stack sx={{ minWidth: 300, maxWidth: "100%" }}>
+      <Box
         sx={{
-          alignItems: "center",
-          justifyContent: "flex-start",
-          px: M2,
-          py: M1,
+          px: 2,
+          py: 1.5,
+          backgroundColor: (t) =>
+            alpha(
+              t.palette.primary.main,
+              t.palette.mode === "dark" ? 0.08 : 0.05,
+            ),
+          borderBottom: "1px solid",
+          borderColor: "divider",
         }}
       >
-        {isAnonymousPublic ? (
-          <PublicUserAvatar size={36} fontSize={14} />
-        ) : (
-          <Avatar
-            sx={{ width: 36, height: 36 }}
-            src={user?.getAvatarUrl()}
-            alt={user?.username ?? ""}
-          />
-        )}
-        {isAnonymousPublic && isEditingName ? (
-          <TextField
-            value={nameDraft}
-            onChange={(event) =>
-              setNameDraft(
-                event.target.value.slice(0, PUBLIC_USER_NAME_MAX_LENGTH),
-              )
-            }
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                commitName();
-              } else if (event.key === "Escape") {
-                event.preventDefault();
-                cancelEditingName();
+        <Stack
+          spacing={1.25}
+          direction="row"
+          sx={{
+            alignItems: "center",
+            justifyContent: "flex-start",
+          }}
+        >
+          {isAnonymousPublic ? (
+            <PublicUserAvatar size={40} fontSize={15} />
+          ) : (
+            <Avatar
+              sx={{ width: 40, height: 40 }}
+              src={user?.getAvatarUrl()}
+              alt={user?.username ?? ""}
+            />
+          )}
+          {isAnonymousPublic && isEditingName ? (
+            <TextField
+              value={nameDraft}
+              onChange={(event) =>
+                setNameDraft(
+                  event.target.value.slice(0, PUBLIC_USER_NAME_MAX_LENGTH),
+                )
               }
-            }}
-            size="small"
-            autoFocus
-            fullWidth
-            slotProps={{
-              htmlInput: { "aria-label": "Public display name" },
-            }}
-            sx={{ flex: 1, minWidth: 0 }}
-          />
-        ) : (
-          <Typography
-            variant="body1"
-            sx={{
-              flex: 1,
-              minWidth: 0,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {isAnonymousPublic ? publicUserName : (user?.username ?? "Guest")}
-          </Typography>
-        )}
-        {isAnonymousPublic && isEditingName && (
-          <>
-            <Tooltip title="Save name">
-              <IconButton
-                size="small"
-                aria-label="Save display name"
-                onClick={commitName}
-                sx={{ flexShrink: 0 }}
-              >
-                <CheckIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Cancel">
-              <IconButton
-                size="small"
-                aria-label="Cancel display name edit"
-                onClick={cancelEditingName}
-                sx={{ flexShrink: 0 }}
-              >
-                <CloseIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          </>
-        )}
-        {isAnonymousPublic && !isEditingName && (
-          <Tooltip title="Edit display name">
-            <IconButton
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  commitName();
+                } else if (event.key === "Escape") {
+                  event.preventDefault();
+                  cancelEditingName();
+                }
+              }}
               size="small"
-              aria-label="Edit display name"
-              onClick={startEditingName}
-              sx={{ flexShrink: 0 }}
-            >
-              <EditIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-        )}
-        {!isAnonymousPublic && (
-          <>
-            <Tooltip
-              title={
-                isUploading
-                  ? progress !== null
-                    ? `${progress.message} (${progress.completed}/${progress.total})`
-                    : "Uploading preferences…"
-                  : canUpload
-                    ? "Upload preferences to cloud"
-                    : "Preferences are up to date"
-              }
-            >
-              <span>
+              autoFocus
+              fullWidth
+              slotProps={{
+                htmlInput: { "aria-label": "Public display name" },
+              }}
+              sx={{ flex: 1, minWidth: 0 }}
+            />
+          ) : (
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography
+                variant="subtitle1"
+                noWrap
+                sx={{ fontWeight: 600, lineHeight: 1.3 }}
+              >
+                {isAnonymousPublic
+                  ? publicUserName
+                  : (user?.username ?? "Guest")}
+              </Typography>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: "block", lineHeight: 1.2 }}
+              >
+                {isAnonymousPublic ? "Public viewer" : "Signed in"}
+              </Typography>
+            </Box>
+          )}
+          {isAnonymousPublic && isEditingName && (
+            <>
+              <Tooltip title="Save name">
                 <IconButton
                   size="small"
-                  aria-label="Upload preferences to cloud"
-                  onClick={upload}
-                  disabled={!canUpload || isUploading}
+                  aria-label="Save display name"
+                  onClick={commitName}
                   sx={{ flexShrink: 0 }}
                 >
-                  {isUploading ? (
-                    <CircularProgress
-                      size={16}
-                      variant={
-                        progress !== null ? "determinate" : "indeterminate"
-                      }
-                      value={
-                        progress !== null && progress.total > 0
-                          ? (progress.completed / progress.total) * 100
-                          : undefined
-                      }
-                      aria-label={
-                        progress !== null
-                          ? `Syncing ${progress.completed} of ${progress.total}`
-                          : "Syncing preferences"
-                      }
-                    />
-                  ) : (
-                    <CloudUploadIcon fontSize="small" />
-                  )}
+                  <CheckIcon fontSize="small" />
                 </IconButton>
-              </span>
-            </Tooltip>
-            <Tooltip
-              title={
-                canDownload
-                  ? "Load preferences from cloud"
-                  : "No cloud preferences yet"
-              }
-            >
-              <span>
+              </Tooltip>
+              <Tooltip title="Cancel">
                 <IconButton
                   size="small"
-                  aria-label="Load preferences from cloud"
-                  onClick={download}
-                  disabled={!canDownload}
+                  aria-label="Cancel display name edit"
+                  onClick={cancelEditingName}
                   sx={{ flexShrink: 0 }}
                 >
-                  <CloudDownloadIcon fontSize="small" />
+                  <CloseIcon fontSize="small" />
                 </IconButton>
-              </span>
+              </Tooltip>
+            </>
+          )}
+          {isAnonymousPublic && !isEditingName && (
+            <Tooltip title="Edit display name">
+              <IconButton
+                size="small"
+                aria-label="Edit display name"
+                onClick={startEditingName}
+                sx={{ flexShrink: 0 }}
+              >
+                <EditIcon fontSize="small" />
+              </IconButton>
             </Tooltip>
-          </>
-        )}
-      </Stack>
-
-      <Divider />
+          )}
+          {!isAnonymousPublic && (
+            <>
+              <Tooltip
+                title={
+                  isUploading
+                    ? progress !== null
+                      ? `${progress.message} (${progress.completed}/${progress.total})`
+                      : "Uploading preferences…"
+                    : canUpload
+                      ? "Upload preferences to cloud"
+                      : "Preferences are up to date"
+                }
+              >
+                <span>
+                  <IconButton
+                    size="small"
+                    aria-label="Upload preferences to cloud"
+                    onClick={upload}
+                    disabled={!canUpload || isUploading}
+                    sx={{ flexShrink: 0 }}
+                  >
+                    {isUploading ? (
+                      <CircularProgress
+                        size={16}
+                        variant={
+                          progress !== null ? "determinate" : "indeterminate"
+                        }
+                        value={
+                          progress !== null && progress.total > 0
+                            ? (progress.completed / progress.total) * 100
+                            : undefined
+                        }
+                        aria-label={
+                          progress !== null
+                            ? `Syncing ${progress.completed} of ${progress.total}`
+                            : "Syncing preferences"
+                        }
+                      />
+                    ) : (
+                      <CloudUploadIcon fontSize="small" />
+                    )}
+                  </IconButton>
+                </span>
+              </Tooltip>
+              <Tooltip
+                title={
+                  canDownload
+                    ? "Load preferences from cloud"
+                    : "No cloud preferences yet"
+                }
+              >
+                <span>
+                  <IconButton
+                    size="small"
+                    aria-label="Load preferences from cloud"
+                    onClick={download}
+                    disabled={!canDownload}
+                    sx={{ flexShrink: 0 }}
+                  >
+                    <CloudDownloadIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            </>
+          )}
+        </Stack>
+      </Box>
 
       <MenuItem
         onClick={handleOpenNotifications}
-        sx={{
-          "&:hover": { backgroundColor: theme.palette.action.hover },
-          minHeight: 52,
-        }}
+        sx={menuItemSx}
       >
         <ListItemIcon>
           <Badge
@@ -603,10 +631,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
       <SectionLabel>Pages</SectionLabel>
       <MenuItem
         onClick={handleOpenHome}
-        sx={{
-          "&:hover": { backgroundColor: theme.palette.action.hover },
-          minHeight: 52,
-        }}
+        sx={menuItemSx}
       >
         <ListItemIcon>
           <HomeIcon fontSize="small" />
@@ -615,10 +640,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
       </MenuItem>
       <MenuItem
         onClick={handleOpenGraph}
-        sx={{
-          "&:hover": { backgroundColor: theme.palette.action.hover },
-          minHeight: 52,
-        }}
+        sx={menuItemSx}
       >
         <ListItemIcon>
           <AccountTreeIcon fontSize="small" />
@@ -628,10 +650,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
       <MenuItem
         onClick={handleOpenRules}
         disabled={rulesDisabled}
-        sx={{
-          "&:hover": { backgroundColor: theme.palette.action.hover },
-          minHeight: 52,
-        }}
+        sx={menuItemSx}
       >
         <ListItemIcon>
           <RuleFolderIcon fontSize="small" />
@@ -643,10 +662,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
       </MenuItem>
       <MenuItem
         onClick={handleOpenShares}
-        sx={{
-          "&:hover": { backgroundColor: theme.palette.action.hover },
-          minHeight: 52,
-        }}
+        sx={menuItemSx}
       >
         <ListItemIcon>
           <ShareIcon fontSize="small" />
@@ -655,10 +671,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
       </MenuItem>
       <MenuItem
         onClick={handleOpenRoles}
-        sx={{
-          "&:hover": { backgroundColor: theme.palette.action.hover },
-          minHeight: 52,
-        }}
+        sx={menuItemSx}
       >
         <ListItemIcon>
           <AdminPanelSettingsIcon fontSize="small" />
@@ -667,10 +680,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
       </MenuItem>
       <MenuItem
         onClick={handleOpenShortcuts}
-        sx={{
-          "&:hover": { backgroundColor: theme.palette.action.hover },
-          minHeight: 52,
-        }}
+        sx={menuItemSx}
       >
         <ListItemIcon>
           <KeyboardIcon fontSize="small" />
@@ -691,8 +701,9 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
       <MenuItem
         onClick={handleOpenSettings}
         sx={{
-          "&:hover": { backgroundColor: theme.palette.action.hover },
-          minHeight: 52,
+          ...menuItemSx,
+          "& .MuiListItemIcon-root": { color: "primary.main" },
+          "&:hover .MuiListItemIcon-root": { color: "primary.main" },
         }}
       >
         <ListItemIcon>
@@ -703,8 +714,13 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
       <MenuItem
         onClick={handleLogout}
         sx={{
-          "&:hover": { backgroundColor: theme.palette.action.hover },
-          minHeight: 52,
+          ...menuItemSx,
+          color: "error.main",
+          "&:hover": {
+            backgroundColor: (t) => alpha(t.palette.error.main, 0.08),
+          },
+          "& .MuiListItemIcon-root": { color: "error.main" },
+          "&:hover .MuiListItemIcon-root": { color: "error.main" },
         }}
       >
         <ListItemIcon>
@@ -838,7 +854,27 @@ const SectionLabel: React.FC<{ children: React.ReactNode }> = ({
 }) => (
   <Typography
     variant="overline"
-    sx={{ px: M2, pt: M1, display: "block", color: "text.secondary" }}
+    sx={{
+      px: 2,
+      pt: 1.5,
+      pb: 0.25,
+      display: "flex",
+      alignItems: "center",
+      gap: 1,
+      color: "text.secondary",
+      fontSize: "0.6875rem",
+      fontWeight: 700,
+      letterSpacing: "0.1em",
+      lineHeight: 1.4,
+      "&::before": {
+        content: '""',
+        width: 12,
+        height: 2,
+        borderRadius: 999,
+        backgroundColor: "primary.main",
+        opacity: 0.7,
+      },
+    }}
   >
     {children}
   </Typography>

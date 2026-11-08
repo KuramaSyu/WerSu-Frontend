@@ -19,7 +19,10 @@ const STORAGE_KEY = "selected-shelf-storage";
 
 beforeEach(() => {
   localStorage.clear();
-  useSelectedShelfStore.setState({ selectedShelfId: null });
+  useSelectedShelfStore.setState({
+    selectedShelfId: null,
+    hasChosenShelf: false,
+  });
 });
 
 describe("useSelectedShelfStore", () => {
@@ -33,11 +36,12 @@ describe("useSelectedShelfStore", () => {
     expect(useSelectedShelfStore.getState().selectedShelfId).toBe("shelf-1");
   });
 
-  it("setSelectedShelfId(null) clears the pick", () => {
+  it("setSelectedShelfId(null) clears the pick and records the choice", () => {
     const { setSelectedShelfId } = useSelectedShelfStore.getState();
     setSelectedShelfId("shelf-1");
     setSelectedShelfId(null);
     expect(useSelectedShelfStore.getState().selectedShelfId).toBeNull();
+    expect(useSelectedShelfStore.getState().hasChosenShelf).toBe(true);
   });
 
   it("setSelectedShelfId overwrites an existing pick", () => {
@@ -52,7 +56,10 @@ describe("useSelectedShelfStore", () => {
     const raw = localStorage.getItem(STORAGE_KEY);
     expect(raw).not.toBeNull();
     expect(JSON.parse(raw ?? "{}")).toMatchObject({
-      state: { selectedShelfId: "shelf-research" },
+      state: {
+        selectedShelfId: "shelf-research",
+        hasChosenShelf: true,
+      },
     });
   });
 

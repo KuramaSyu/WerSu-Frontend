@@ -492,6 +492,18 @@ export class CustomThemeImpl implements CustomTheme {
           ...this.colorTransition,
         },
       },
+      // Menus and their popovers should sit just above the page, not
+      // float as heavily as MUI's default elevation 8.
+      MuiMenu: {
+        defaultProps: {
+          elevation: 2,
+        },
+      },
+      MuiPopover: {
+        defaultProps: {
+          elevation: 2,
+        },
+      },
       MuiSlider: {
         styleOverrides: {
           ...this.colorTransition,

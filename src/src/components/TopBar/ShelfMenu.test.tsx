@@ -56,7 +56,9 @@ vi.mock("../../zustand/useThemeStore", () => ({
     theme: {
       palette: {
         text: { primary: "#000", secondary: "#666" },
-        action: { hover: "#eee" },
+        primary: { main: "#456" },
+        divider: "#ddd",
+        action: { hover: "#eee", selected: "#ddd" },
       },
       typography: { body1: { fontSize: "0.875rem" } },
     },
@@ -66,6 +68,7 @@ vi.mock("../../zustand/useThemeStore", () => ({
 // Minimal MUI stand-ins. Each only renders the props the component
 // actually uses in its render path.
 vi.mock("@mui/material", () => ({
+  alpha: (color: string) => color,
   Box: ({ children, ...rest }: { children?: ReactNode }) => (
     <div {...rest}>{children}</div>
   ),
@@ -204,7 +207,10 @@ function renderShelfMenu() {
 }
 
 beforeEach(() => {
-  useSelectedShelfStore.setState({ selectedShelfId: null });
+  useSelectedShelfStore.setState({
+    selectedShelfId: null,
+    hasChosenShelf: false,
+  });
   vi.mocked(useShelves).mockReturnValue({
     data: SHELVES,
     isLoading: false,
@@ -254,19 +260,19 @@ describe("ShelfMenu", () => {
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 
-  it("'All shelves' is overridden by the auto-select effect on re-render", () => {
-    // The component re-runs its auto-select effect whenever the
-    // store goes back to `null`, so clicking "All shelves" while
-    // shelves are loaded snaps right back to the first shelf.
-    // The pick IS observed transiently (the effect runs after
-    // the state write), which is enough for the visual menu to
-    // close; the steady state is the auto-selected shelf.
-    useSelectedShelfStore.setState({ selectedShelfId: "shelf-1" });
+  it("keeps 'All shelves' selected after clicking it", () => {
+    useSelectedShelfStore.setState({
+      selectedShelfId: "shelf-1",
+      hasChosenShelf: true,
+    });
     renderShelfMenu();
     fireEvent.click(screen.getByRole("button", { name: /select shelf/i }));
     fireEvent.click(screen.getByRole("menuitem", { name: /All shelves/ }));
 
-    expect(useSelectedShelfStore.getState().selectedShelfId).toBe("shelf-1");
+    const state = useSelectedShelfStore.getState();
+    expect(state.selectedShelfId).toBeNull();
+    expect(state.hasChosenShelf).toBe(true);
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 
   it("opens that shelf's rules page from the hovered edit action", () => {

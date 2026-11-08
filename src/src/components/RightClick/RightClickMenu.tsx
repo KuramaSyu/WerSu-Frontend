@@ -210,7 +210,7 @@ export const RightClickMenu: React.FC<RightClickMenuProps> = ({
     onClose={onClose}
     anchorReference="anchorPosition"
     anchorPosition={anchorPosition}
-    slotProps={{ paper: { elevation: 12, sx: SURFACE_SX } }}
+    slotProps={{ paper: { sx: SURFACE_SX } }}
   >
     <MenuList autoFocusItem>
       {rows.map((row) =>
