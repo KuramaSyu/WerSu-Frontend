@@ -264,7 +264,7 @@ export const RuleFormFields: React.FC<RuleFormFieldsProps> = ({
               </FormControl>
             </Stack>
 
-            {conditionType !== "always_true" && (
+            {conditionFields.length > 0 && (
               <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
                 <Typography variant="body2" color="text.secondary">
                   matches

@@ -9,7 +9,8 @@ export type AttachedEntityType = "directory" | "note" | "shelf";
 export type RuleConditionType =
   | "always_true"
   | "note_content_contains"
-  | "note_title_contains";
+  | "note_title_contains"
+  | "note_has_no_directory";
 
 export type RuleActionType = "add_to_directory" | "add_tag";
 

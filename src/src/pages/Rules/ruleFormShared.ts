@@ -8,6 +8,7 @@ export const CONDITION_TYPE_OPTIONS: ReadonlyArray<RuleConditionType> = [
   "always_true",
   "note_content_contains",
   "note_title_contains",
+  "note_has_no_directory",
 ];
 
 // Selectable values for the action_type dropdown.
@@ -21,6 +22,7 @@ export const CONDITION_TYPE_LABEL: Record<RuleConditionType, string> = {
   always_true: "Always true",
   note_content_contains: "Note content contains",
   note_title_contains: "Note title contains",
+  note_has_no_directory: "Note has no book or chapter",
 };
 
 // Human-readable label per action type.
@@ -56,20 +58,29 @@ export function whenLabelFor(eventType: string | undefined): string | null {
   return EVENT_TYPE_WHEN_LABEL[eventType] ?? eventType;
 }
 
+// Resolve an arbitrary stored condition type to one the UI knows.
+// Unknown values fall back to always_true so the form keeps working
+// with condition types added by newer backends.
+export function normalizeConditionType(raw: unknown): RuleConditionType {
+  return typeof raw === "string" &&
+    (CONDITION_TYPE_OPTIONS as ReadonlyArray<string>).includes(raw)
+    ? (raw as RuleConditionType)
+    : "always_true";
+}
+
 // Resolve the rule's condition into the "and <verb> <value>" half
 // of the When clause. Returns null for `always_true` so callers
 // can drop the line entirely.
 export function conditionAndLabelFor(
   condition: Record<string, unknown> | undefined,
 ): string | null {
-  const raw = condition?.["type"];
-  const t: RuleConditionType =
-    raw === "note_content_contains" || raw === "note_title_contains"
-      ? raw
-      : "always_true";
+  const t = normalizeConditionType(condition?.["type"]);
 
   if (t === "always_true") {
     return null;
+  }
+  if (t === "note_has_no_directory") {
+    return "note has no book or chapter";
   }
   const substring = readStringField(condition, "substring");
   const verb = t === "note_content_contains" ? "content has" : "title has";
@@ -84,6 +95,7 @@ export const CONDITION_FIELDS: Record<
   always_true: [],
   note_content_contains: ["substring"],
   note_title_contains: ["substring"],
+  note_has_no_directory: [],
 };
 
 // Companion field names per action type.
