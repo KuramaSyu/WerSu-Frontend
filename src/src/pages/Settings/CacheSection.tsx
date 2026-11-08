@@ -1,4 +1,4 @@
-import { Button, Divider, Stack, Typography } from "@mui/material";
+import { Button, Stack, Typography } from "@mui/material";
 import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
 import { queryClient } from "../../api/queryClient";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
@@ -8,6 +8,7 @@ import {
   queryCacheGroups,
   wipeQueryGroups,
 } from "./queryCacheKeys";
+import { SettingsGroup, SettingsRow } from "./SettingsRow";
 
 /**
  * Body of the Settings `Cache` category. Wipes run through the shared `ConfirmationModal`,
@@ -37,94 +38,72 @@ export const CacheSection: React.FC = () => {
   };
 
   return (
-    <Stack direction="column" spacing={2}>
-      <Typography variant="body1">
+    <Stack spacing={2}>
+      <Typography variant="body2" color="text.secondary">
         Wipe locally-cached TanStack Query entries. Active panels re-fetch
         automatically; nothing on the server is touched.
       </Typography>
 
-      {queryCacheGroups.map((group) => (
-        <Stack
-          key={group.id}
-          direction={{ xs: "column", sm: "row" }}
-          spacing={2}
-          sx={{
-            alignItems: { xs: "flex-start", sm: "center" },
-            justifyContent: "space-between",
-          }}
-        >
-          <Stack sx={{ flex: 1 }}>
-            <Typography variant="subtitle1">{group.label}</Typography>
-            <Typography variant="body2" color="text.secondary">
-              {group.description}
-            </Typography>
-          </Stack>
-          <Button
-            variant="outlined"
-            color="warning"
-            startIcon={<DeleteSweepIcon />}
-            onClick={() => performWipe([group.id])}
-          >
-            Wipe
-          </Button>
-        </Stack>
-      ))}
-
-      <Divider />
-
-      <Stack
-        direction={{ xs: "column", sm: "row" }}
-        spacing={2}
-        sx={{
-          alignItems: { xs: "flex-start", sm: "center" },
-          justifyContent: "space-between",
-        }}
+      <SettingsGroup
+        title="Cache groups"
+        description="Clear one cache at a time. The access-token query is never included."
       >
-        <Stack sx={{ flex: 1 }}>
-          <Typography variant="subtitle1">Wipe everything</Typography>
-          <Typography variant="body2" color="text.secondary">
-            Clear every cache group above. The access-token query is left intact
-            on purpose — wiping it would sign you out.
-          </Typography>
-        </Stack>
-        <Button
-          variant="contained"
-          color="error"
-          startIcon={<DeleteSweepIcon />}
-          onClick={() => performWipe([WIPE_ALL_SENTINEL])}
-        >
-          Wipe everything
-        </Button>
-      </Stack>
+        {queryCacheGroups.map((group) => (
+          <SettingsRow
+            key={group.id}
+            title={group.label}
+            description={group.description}
+            control={
+              <Button
+                size="small"
+                variant="outlined"
+                color="warning"
+                startIcon={<DeleteSweepIcon />}
+                onClick={() => performWipe([group.id])}
+              >
+                Wipe
+              </Button>
+            }
+          />
+        ))}
+      </SettingsGroup>
 
-      <Divider />
-
-      <Stack
-        direction={{ xs: "column", sm: "row" }}
-        spacing={2}
-        sx={{
-          alignItems: { xs: "flex-start", sm: "center" },
-          justifyContent: "space-between",
-        }}
+      <SettingsGroup
+        title="Bulk actions"
+        description="These clear several cache groups at once."
       >
-        <Stack sx={{ flex: 1 }}>
-          <Typography variant="subtitle1">
-            {"Wipe everything except user"}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Clears every cache group above except the current user, so other
-            tabs and panels can keep rendering without a re-login.
-          </Typography>
-        </Stack>
-        <Button
-          variant="contained"
-          color="warning"
-          startIcon={<DeleteSweepIcon />}
-          onClick={() => performWipe([WIPE_ALL_EXCEPT_USERS_SENTINEL])}
-        >
-          Wipe except user
-        </Button>
-      </Stack>
+        <SettingsRow
+          title="Wipe everything"
+          description="Clear every cache group above. The access-token query is left intact on purpose — wiping it would sign you out."
+          control={
+            <Button
+              size="small"
+              variant="contained"
+              color="error"
+              startIcon={<DeleteSweepIcon />}
+              onClick={() => performWipe([WIPE_ALL_SENTINEL])}
+            >
+              Wipe everything
+            </Button>
+          }
+        />
+
+        <SettingsRow
+          title="Wipe everything except user"
+          description="Clears every cache group above except the current user, so other tabs and panels can keep rendering without a re-login."
+          control={
+            <Button
+              size="small"
+              variant="contained"
+              color="warning"
+              startIcon={<DeleteSweepIcon />}
+              onClick={() => performWipe([WIPE_ALL_EXCEPT_USERS_SENTINEL])}
+            >
+              Wipe except user
+            </Button>
+          }
+        />
+      </SettingsGroup>
     </Stack>
   );
 };

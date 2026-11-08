@@ -37,6 +37,11 @@ import {
 
 type CardState = "idle" | "pending" | "error" | "success";
 
+const CARD_HEADER_SLOT_PROPS = {
+  title: { variant: "subtitle1" as const, sx: { fontWeight: 600 } },
+  subheader: { variant: "body2" as const },
+};
+
 interface ChangePasswordFormState {
   status: CardState;
   message?: string;
@@ -122,8 +127,9 @@ function ChangePasswordCard(): React.ReactElement {
     (hasPassword ? current.length > 0 : true);
 
   return (
-    <Card variant="outlined" sx={{ mb: 3 }}>
+    <Card variant="outlined">
       <CardHeader
+        slotProps={CARD_HEADER_SLOT_PROPS}
         avatar={<KeyIcon color="primary" />}
         title="Change password"
         subheader={
@@ -251,8 +257,9 @@ function ProfileFieldsCard(): React.ReactElement {
 
   if (!user) {
     return (
-      <Card variant="outlined" sx={{ mb: 3 }}>
+      <Card variant="outlined">
         <CardHeader
+        slotProps={CARD_HEADER_SLOT_PROPS}
           avatar={<PersonIcon color="primary" />}
           title="Profile"
           subheader="Loading your profile..."
@@ -262,8 +269,9 @@ function ProfileFieldsCard(): React.ReactElement {
   }
 
   return (
-    <Card variant="outlined" sx={{ mb: 3 }}>
+    <Card variant="outlined">
       <CardHeader
+        slotProps={CARD_HEADER_SLOT_PROPS}
         avatar={<PersonIcon color="primary" />}
         title="Profile"
         subheader="Update your username or email. Each field is saved independently."
@@ -415,6 +423,7 @@ function LinkedMethodsCard(): React.ReactElement {
     return (
       <Card variant="outlined">
         <CardHeader
+        slotProps={CARD_HEADER_SLOT_PROPS}
           avatar={<LockIcon color="primary" />}
           title="Linked sign-in methods"
           subheader="Loading..."
@@ -431,6 +440,7 @@ function LinkedMethodsCard(): React.ReactElement {
   return (
     <Card variant="outlined">
       <CardHeader
+        slotProps={CARD_HEADER_SLOT_PROPS}
         avatar={<LockIcon color="primary" />}
         title="Linked sign-in methods"
         subheader="Methods you can use to sign in to your account."
@@ -537,13 +547,13 @@ function LinkedMethodsCard(): React.ReactElement {
 
 export const SecuritySection: React.FC = () => {
   return (
-    <Box>
-      <Typography variant="body1" sx={{ mb: 2 }}>
+    <Stack spacing={2}>
+      <Typography variant="body2" color="text.secondary">
         Manage how you sign in and how your account is identified.
       </Typography>
       <ChangePasswordCard />
       <ProfileFieldsCard />
       <LinkedMethodsCard />
-    </Box>
+    </Stack>
   );
 };

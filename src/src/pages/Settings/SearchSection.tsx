@@ -4,7 +4,6 @@ import {
   MenuItem,
   Select,
   Stack,
-  Typography,
 } from "@mui/material";
 import { RestNotesSearchType } from "../../api/models/search";
 import {
@@ -12,6 +11,7 @@ import {
   useSearchSettings,
   type SearchTypeDefault,
 } from "../../zustand/useSearchSettings";
+import { SettingsGroup, SettingsRow } from "./SettingsRow";
 
 const PICKABLE = [
   RestNotesSearchType.KEYWORD,
@@ -32,34 +32,36 @@ export const SearchSection: React.FC = () => {
   const { defaultSearchType, setDefaultSearchType } = useSearchSettings();
 
   return (
-    <Stack direction="column" spacing={3}>
-      <Stack>
-        <Typography variant="subtitle1">Default search mode</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Which mode the global search overlay opens with. `Default` leaves the
-          choice un-set, so the overlay falls back to the app-wide default.
-          Switching modes inside the overlay still overrides this for the
-          current session; the choice here only takes effect on the next fresh
-          page load.
-        </Typography>
-      </Stack>
-
-      <FormControl size="small" sx={{ maxWidth: 320 }}>
-        <InputLabel id="default-search-type-label">Search mode</InputLabel>
-        <Select<SearchTypeDefault>
-          labelId="default-search-type-label"
-          label="Search mode"
-          value={defaultSearchType}
-          onChange={(e) => setDefaultSearchType(e.target.value)}
-        >
-          <MenuItem value={SEARCH_TYPE_NO_OVERRIDE}>Default</MenuItem>
-          {PICKABLE.map((t) => (
-            <MenuItem key={t} value={t}>
-              {TYPE_LABEL[t]}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+    <Stack spacing={2}>
+      <SettingsGroup
+        title="Default search mode"
+        description="Which mode the global search overlay opens with. Switching modes inside the overlay still overrides this for the current session."
+      >
+        <SettingsRow
+          title="Search mode"
+          description="“Default” leaves the choice un-set, so the overlay falls back to the app-wide default. The choice here takes effect on the next fresh page load."
+          control={
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <InputLabel id="default-search-type-label">
+                Search mode
+              </InputLabel>
+              <Select<SearchTypeDefault>
+                labelId="default-search-type-label"
+                label="Search mode"
+                value={defaultSearchType}
+                onChange={(e) => setDefaultSearchType(e.target.value)}
+              >
+                <MenuItem value={SEARCH_TYPE_NO_OVERRIDE}>Default</MenuItem>
+                {PICKABLE.map((t) => (
+                  <MenuItem key={t} value={t}>
+                    {TYPE_LABEL[t]}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          }
+        />
+      </SettingsGroup>
     </Stack>
   );
 };

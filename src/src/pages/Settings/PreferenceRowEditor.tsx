@@ -5,6 +5,7 @@ import {
   Button,
   CircularProgress,
   IconButton,
+  Paper,
   Stack,
   Tooltip,
   Typography,
@@ -129,13 +130,10 @@ export const PreferenceRowEditor: React.FC<PreferenceRowEditorProps> = ({
   const pending = replace.isPending || remove.isPending;
 
   return (
-    <Box
-      sx={{
-        border: 1,
-        borderColor: "divider",
-        borderRadius: 1,
-        p: 2,
-      }}
+    <Paper
+      variant="outlined"
+      elevation={0}
+      sx={{ borderRadius: 2, p: 2 }}
     >
       <Stack spacing={1.5}>
         <Stack
@@ -245,6 +243,6 @@ export const PreferenceRowEditor: React.FC<PreferenceRowEditorProps> = ({
           </Button>
         </Stack>
       </Stack>
-    </Box>
+    </Paper>
   );
 };

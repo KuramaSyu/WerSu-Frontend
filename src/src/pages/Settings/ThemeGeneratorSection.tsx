@@ -4,7 +4,6 @@ import {
   Card,
   Chip,
   CircularProgress,
-  Divider,
   IconButton,
   Stack,
   TextField,
@@ -533,15 +532,16 @@ export const ThemeGeneratorSection: React.FC = () => {
   };
 
   return (
-    <Stack direction="column" spacing={3}>
-      <Stack>
-        <Typography variant="subtitle1">Theme generator</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Upload an image and a color scheme is extracted from it. A matched
-          dark and light variant are saved together, so the top-bar mode toggle
-          switches straight to the sibling.
-        </Typography>
-      </Stack>
+    <Stack direction="column" spacing={2}>
+      <Typography
+        variant="body2"
+        color="text.secondary"
+        sx={{ maxWidth: "68ch" }}
+      >
+        Upload an image and a color scheme is extracted from it. A matched dark
+        and light variant are saved together, so the top-bar mode toggle
+        switches straight to the sibling.
+      </Typography>
 
       <Stack
         direction="row"
@@ -722,11 +722,15 @@ export const ThemeGeneratorSection: React.FC = () => {
         </Card>
       ) : null}
 
-      <Divider />
-
-      <Stack>
-        <Typography variant="subtitle1">Your themes</Typography>
-        <Typography variant="body2" color="text.secondary">
+      <Stack spacing={0.5}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+          Your themes
+        </Typography>
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ maxWidth: "68ch" }}
+        >
           Themes generated here and themes synced from your other devices show
           up in the theme picker. Each image contributes a dark and a light
           variant; removing either removes the pair.

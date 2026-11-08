@@ -53,9 +53,18 @@ export const AllPreferencesAccordion: React.FC = () => {
   }
 
   return (
-    <Accordion disableGutters>
+    <Accordion
+      disableGutters
+      variant="outlined"
+      sx={{
+        borderRadius: 2,
+        "&:before": { display: "none" },
+      }}
+    >
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-        <Typography variant="subtitle1">All preferences</Typography>
+        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+          All preferences
+        </Typography>
       </AccordionSummary>
       <AccordionDetails>
         <Stack spacing={2}>

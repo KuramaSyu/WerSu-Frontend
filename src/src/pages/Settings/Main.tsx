@@ -2,14 +2,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,
   IconButton,
-  List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  Paper,
   Stack,
   Typography,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { useSearchParams } from "react-router-dom";
 import {
   useLeftPanel,
@@ -142,51 +143,90 @@ const SettingsPage: React.FC = () => {
   }, [isMobile, setActiveCategoryId, catParam, searchParams, setSearchParams]);
 
   const desktopBody = (
-    // The AppShell wrapper provides the paper + elevation-1 surface;
-    // settings sits on top of it without nesting a second card.
+    // The AppShell wrapper provides the page surface; each settings
+    // category then gets its own outlined card on top of it.
     <Box
       ref={bodyRef}
       sx={{
         height: "100%",
         overflowY: "auto",
         px: { xs: 2, md: 4 },
-        pt: 4,
-        pb: "30vh",
+        py: { xs: 2, md: 3 },
         backgroundColor: "transparent",
       }}
     >
-      {settingsCategories.map((category) => (
-        <SettingsSection
-          key={category.id}
-          id={category.id}
-          label={category.label}
-          resetLogic={category.resetLogic}
-        >
-          {category.settingsContent}
-        </SettingsSection>
-      ))}
+      <Stack
+        spacing={2}
+        sx={{
+          width: "100%",
+          maxWidth: "68rem",
+          mx: "auto",
+          pb: { xs: 6, md: 10 },
+        }}
+      >
+        {settingsCategories.map((category) => (
+          <SettingsSection
+            key={category.id}
+            id={category.id}
+            label={category.label}
+            icon={category.icon}
+            description={category.description}
+            resetLogic={category.resetLogic}
+          >
+            {category.settingsContent}
+          </SettingsSection>
+        ))}
+      </Stack>
     </Box>
   );
 
   const mobileList = useMemo(
     () => (
       <Box sx={{ px: 2, py: 2 }}>
-        <Typography variant="h6" sx={{ pb: 1 }}>
+        <Typography
+          variant="h5"
+          sx={{ mb: 2, fontSize: "1.35rem", fontWeight: 600 }}
+        >
           Settings
         </Typography>
-        <List>
+        <Stack spacing={1}>
           {settingsCategories.map((category) => (
-            <ListItemButton
+            <Paper
               key={category.id}
-              onClick={() => setMobileOpenId(category.id)}
+              variant="outlined"
+              elevation={0}
+              sx={{ borderRadius: 2, overflow: "hidden" }}
             >
-              {category.icon !== undefined && (
-                <ListItemIcon>{category.icon}</ListItemIcon>
-              )}
-              <ListItemText primary={category.label} />
-            </ListItemButton>
+              <ListItemButton
+                onClick={() => setMobileOpenId(category.id)}
+                sx={{ px: 2, py: 1.5, alignItems: "flex-start" }}
+              >
+                {category.icon !== undefined && (
+                  <ListItemIcon
+                    sx={{ minWidth: 40, mt: 0.25, color: "primary.main" }}
+                  >
+                    {category.icon}
+                  </ListItemIcon>
+                )}
+                <ListItemText
+                  primary={category.label}
+                  secondary={category.description}
+                  slotProps={{
+                    primary: {
+                      variant: "subtitle1",
+                      sx: { fontWeight: 600 },
+                    },
+                    secondary: { variant: "body2" },
+                  }}
+                />
+                <ChevronRightIcon
+                  fontSize="small"
+                  sx={{ ml: 1, mt: 0.5, color: "text.secondary" }}
+                />
+              </ListItemButton>
+            </Paper>
           ))}
-        </List>
+        </Stack>
       </Box>
     ),
     [],
@@ -203,21 +243,33 @@ const SettingsPage: React.FC = () => {
         <Box sx={{ px: 2, py: 2 }}>
           <Stack
             direction="row"
-            spacing={1}
-            sx={{ alignItems: "center", pb: 1 }}
+            spacing={1.5}
+            sx={{ alignItems: "center", mb: 2 }}
           >
             <IconButton
               aria-label="Back to settings categories"
               onClick={() => setMobileOpenId(null)}
+              sx={{
+                border: "1px solid",
+                borderColor: "divider",
+                borderRadius: 2,
+              }}
             >
               <ArrowBackIcon />
             </IconButton>
-            <Typography variant="h6">{category.label}</Typography>
+            <Typography
+              variant="h5"
+              sx={{ fontSize: "1.25rem", fontWeight: 600, lineHeight: 1.3 }}
+            >
+              Settings
+            </Typography>
           </Stack>
           <SettingsSection
             key={`${category.id}-mobile`}
             id={`${category.id}-mobile`}
             label={category.label}
+            icon={category.icon}
+            description={category.description}
             resetLogic={category.resetLogic}
           >
             {category.settingsContent}

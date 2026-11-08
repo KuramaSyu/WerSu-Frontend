@@ -30,12 +30,14 @@ export const settingsCategories: SettingsCategory[] = [
   {
     id: "administration",
     label: "Administration",
+    description: "Backend reachability and service health.",
     icon: <AdminPanelSettingsIcon />,
     settingsContent: <AdministrationSection />,
   },
   {
     id: "theme-generator",
     label: "Theme generator",
+    description: "Generate light and dark themes from an image.",
     icon: <AutoAwesomeIcon />,
     settingsContent: <ThemeGeneratorSection />,
     resetLogic: () => {
@@ -47,18 +49,21 @@ export const settingsCategories: SettingsCategory[] = [
   {
     id: "bookstack-import",
     label: "BookStack Import",
+    description: "Import BookStack book exports as directory trees.",
     icon: <CloudUploadIcon />,
     settingsContent: <BookstackImportSection />,
   },
   {
     id: "cache",
     label: "Cache",
+    description: "Clear locally cached query data.",
     icon: <DeleteSweepIcon />,
     settingsContent: <CacheSection />,
   },
   {
     id: "appearance",
     label: "Appearance",
+    description: "Control the look of the app and the note editor.",
     icon: <PaletteIcon />,
     settingsContent: <AppearanceSection />,
     resetLogic: () => {
@@ -73,6 +78,7 @@ export const settingsCategories: SettingsCategory[] = [
   {
     id: "network",
     label: "Network",
+    description: "Connection hints and performance mode.",
     icon: <WifiIcon />,
     settingsContent: <NetworkSection />,
     resetLogic: () => {
@@ -82,12 +88,14 @@ export const settingsCategories: SettingsCategory[] = [
   {
     id: "developer",
     label: "Developer",
+    description: "Debug tools and raw preference access.",
     icon: <CodeIcon />,
     settingsContent: <DeveloperSection />,
   },
   {
     id: "search",
     label: "Search",
+    description: "Choose the search mode used by default.",
     icon: <SearchIcon />,
     settingsContent: <SearchSection />,
     resetLogic: () => {
@@ -99,6 +107,7 @@ export const settingsCategories: SettingsCategory[] = [
   {
     id: "security",
     label: "Security",
+    description: "Manage sign-in methods and account details.",
     icon: <LockIcon />,
     settingsContent: <SecuritySection />,
   },

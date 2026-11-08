@@ -2,13 +2,12 @@ import {
   Alert,
   AlertTitle,
   Button,
-  Chip,
   Stack,
   Switch,
-  Typography,
 } from "@mui/material";
 import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
 import { useDevicePerformanceHint } from "../../hooks/useDevicePerformanceHint";
+import { SettingsGroup, SettingsRow } from "./SettingsRow";
 
 /**
  * Performance mode master switch + sub-flags.
@@ -56,31 +55,17 @@ export const PerformanceModeSection: React.FC = () => {
       : isConstrainedDevice
         ? "This device looks constrained — Performance mode is recommended."
         : null;
-  const statusLabel = isBelow4G
-    ? `${networkQualityLabel} network detected`
-    : isSlowConnection
-      ? "Slow connection detected"
-      : isConstrainedDevice
-        ? "Performance issue detected"
-        : "No performance issue detected";
-  const statusColor =
-    isBelow4G || isSlowConnection
-      ? "warning"
-      : isConstrainedDevice
-        ? "info"
-        : "success";
+  const detectionSummary =
+    isBelow4G
+      ? `${networkQualityLabel} network`
+      : isSlowConnection
+        ? "Slow connection"
+        : isConstrainedDevice
+          ? "Constrained device"
+          : null;
 
   return (
-    <Stack
-      direction="column"
-      spacing={2}
-      sx={{
-        py: 1.5,
-        borderTop: 1,
-        borderBottom: 1,
-        borderColor: "divider",
-      }}
-    >
+    <Stack spacing={2}>
       {showPerformanceRecommendation && (
         <Alert
           severity="info"
@@ -95,8 +80,8 @@ export const PerformanceModeSection: React.FC = () => {
           }
         >
           <AlertTitle>Performance mode recommended</AlertTitle>
-          This device or connection looks constrained. Enable Performance mode
-          to reduce animation and blur work.
+          This device or connection looks constrained ({detectionSummary ?? hint}
+          ). Enable Performance mode to reduce animation and blur work.
           <Stack direction="row" spacing={1} sx={{ pt: 1 }}>
             <Button
               size="small"
@@ -108,115 +93,79 @@ export const PerformanceModeSection: React.FC = () => {
           </Stack>
         </Alert>
       )}
-      <Stack
-        direction="row"
-        spacing={2}
-        sx={{ alignItems: "center", justifyContent: "space-between" }}
+
+      <SettingsGroup
+        title="Performance mode"
+        description="Reduce visual effects for low-end devices and slow connections. Turning Performance mode on also enables all three sub-options below; you can switch any of them off individually afterwards."
       >
-        <Stack direction="column" spacing={1}>
-          <Typography variant="subtitle1">Performance mode</Typography>
-          <Typography variant="body2" color="text.secondary">
-            Reduce visual effects for low-end devices and slow connections.
-            Performance mode is enabled automatically below 4G; turning it on
-            also enables all three sub-options below. You can switch any of them
-            off individually afterwards.
-          </Typography>
-          {detectionHint !== null && (
-            <Typography variant="caption" color="text.secondary">
-              {detectionHint}
-            </Typography>
-          )}
-        </Stack>
-        <Switch
-          checked={performanceMode}
-          onChange={(_, checked) => setPerformanceMode(checked)}
-          slotProps={{
-            input: { "aria-label": "Performance mode toggle" },
-          }}
+        <SettingsRow
+          title="Enable performance mode"
+          description={
+            detectionHint ??
+            "Automatically suggested when the network drops below 4G or the device looks constrained."
+          }
+          control={
+            <Switch
+              checked={performanceMode}
+              onChange={(_, checked) => setPerformanceMode(checked)}
+              slotProps={{
+                input: { "aria-label": "Performance mode toggle" },
+              }}
+            />
+          }
         />
-      </Stack>
 
-      <Stack spacing={2} sx={{ pl: { xs: 0, sm: 2 } }}>
-        <Stack
-          direction="row"
-          spacing={2}
-          sx={{ alignItems: "center", justifyContent: "space-between" }}
-        >
-          <Stack direction="column" spacing={0.5}>
-            <Typography variant="subtitle2">Reduce motion</Typography>
-            <Typography variant="body2" color="text.secondary">
-              Suppress non-essential animations and transitions across the app.
-            </Typography>
-          </Stack>
-          <Switch
-            checked={reduceMotion}
-            disabled={!performanceMode}
-            onChange={(_, checked) =>
-              setFlag(FeatureFlagName.ReduceMotion, checked)
-            }
-            slotProps={{
-              input: { "aria-label": "Reduce motion toggle" },
-            }}
-          />
-        </Stack>
-
-        <Stack
-          direction="row"
-          spacing={2}
-          sx={{ alignItems: "center", justifyContent: "space-between" }}
-        >
-          <Stack direction="column" spacing={0.5}>
-            <Typography variant="subtitle2">Disable blur</Typography>
-            <Typography variant="body2" color="text.secondary">
-              Skip the theme-background and note-editor blur passes. The sharp
-              background is shown instead.
-            </Typography>
-          </Stack>
-          <Switch
-            checked={disableBlur}
-            disabled={!performanceMode}
-            onChange={(_, checked) =>
-              setFlag(FeatureFlagName.DisableBlur, checked)
-            }
-            slotProps={{
-              input: { "aria-label": "Disable blur toggle" },
-            }}
-          />
-        </Stack>
-
-        <Stack
-          direction="row"
-          spacing={2}
-          sx={{ alignItems: "center", justifyContent: "space-between" }}
-        >
-          <Stack direction="column" spacing={0.5}>
-            <Typography variant="subtitle2">Ignore background image</Typography>
-            <Typography variant="body2" color="text.secondary">
-              Keep the colours calculated from a theme image, but do not paint
-              the image itself.
-            </Typography>
-          </Stack>
-          <Switch
-            checked={ignoreBackgroundImage}
-            disabled={!performanceMode}
-            onChange={(_, checked) =>
-              setFlag(FeatureFlagName.IgnoreBackgroundImage, checked)
-            }
-            slotProps={{
-              input: { "aria-label": "Ignore background image toggle" },
-            }}
-          />
-        </Stack>
-      </Stack>
-      <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
-        <Chip size="small" color={statusColor} label={statusLabel} />
-        <Chip
-          size="small"
-          variant="outlined"
-          label={`Network: ${networkQualityLabel}`}
+        <SettingsRow
+          title="Reduce motion"
+          description="Suppress non-essential animations and transitions across the app."
+          control={
+            <Switch
+              checked={reduceMotion}
+              disabled={!performanceMode}
+              onChange={(_, checked) =>
+                setFlag(FeatureFlagName.ReduceMotion, checked)
+              }
+              slotProps={{
+                input: { "aria-label": "Reduce motion toggle" },
+              }}
+            />
+          }
         />
-        <Chip size="small" variant="outlined" label={`Device: ${hint}`} />
-      </Stack>
+
+        <SettingsRow
+          title="Disable blur"
+          description="Skip the theme-background and note-editor blur passes. The sharp background is shown instead."
+          control={
+            <Switch
+              checked={disableBlur}
+              disabled={!performanceMode}
+              onChange={(_, checked) =>
+                setFlag(FeatureFlagName.DisableBlur, checked)
+              }
+              slotProps={{
+                input: { "aria-label": "Disable blur toggle" },
+              }}
+            />
+          }
+        />
+
+        <SettingsRow
+          title="Ignore background image"
+          description="Keep the colours calculated from a theme image, but do not paint the image itself."
+          control={
+            <Switch
+              checked={ignoreBackgroundImage}
+              disabled={!performanceMode}
+              onChange={(_, checked) =>
+                setFlag(FeatureFlagName.IgnoreBackgroundImage, checked)
+              }
+              slotProps={{
+                input: { "aria-label": "Ignore background image toggle" },
+              }}
+            />
+          }
+        />
+      </SettingsGroup>
     </Stack>
   );
 };

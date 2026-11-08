@@ -1,9 +1,10 @@
 import {
-  Divider,
+  Box,
   List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  Paper,
   Typography,
 } from "@mui/material";
 import { useSettingsNavStore } from "./SettingsStore";
@@ -36,27 +37,67 @@ export const SettingsLeftPanel: React.FC = () => {
 
   return (
     <UpperPanel>
-      <Typography variant="h5" sx={{ mb: 1 }}>
-        Settings
-      </Typography>
-      <Divider />
-      <List disablePadding>
-        {settingsCategories.map((category) => {
-          const isActive = activeCategoryId === category.id;
-          return (
-            <ListItemButton
-              key={category.id}
-              selected={isActive}
-              onClick={() => handleClick(category.id)}
-            >
-              {category.icon !== undefined && (
-                <ListItemIcon>{category.icon}</ListItemIcon>
-              )}
-              <ListItemText primary={category.label} />
-            </ListItemButton>
-          );
-        })}
-      </List>
+      <Paper
+        elevation={0}
+        sx={{
+          borderRadius: 2,
+          overflow: "hidden",
+          backgroundColor: "background.default",
+        }}
+      >
+        <Box
+          sx={{
+            px: 2.5,
+            py: 2,
+            borderBottom: "1px solid",
+            borderColor: "divider",
+          }}
+        >
+          <Typography
+            variant="h5"
+            sx={{ fontSize: "1.25rem", fontWeight: 600, lineHeight: 1.3 }}
+          >
+            Settings
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            App preferences &amp; tools
+          </Typography>
+        </Box>
+        <List disablePadding sx={{ p: 1 }}>
+          {settingsCategories.map((category) => {
+            const isActive = activeCategoryId === category.id;
+            return (
+              <ListItemButton
+                key={category.id}
+                selected={isActive}
+                onClick={() => handleClick(category.id)}
+                sx={{
+                  borderRadius: 1.5,
+                  mb: 0.5,
+                  "&:last-of-type": { mb: 0 },
+                }}
+              >
+                {category.icon !== undefined && (
+                  <ListItemIcon
+                    sx={{ minWidth: 40, color: isActive ? "primary.main" : "inherit" }}
+                  >
+                    {category.icon}
+                  </ListItemIcon>
+                )}
+                <ListItemText
+                  primary={category.label}
+                  slotProps={{
+                    primary: {
+                      variant: "body2",
+                      sx: { fontWeight: isActive ? 600 : 500 },
+                    },
+                  }}
+                />
+              </ListItemButton>
+            );
+          })}
+        </List>
+      </Paper>
     </UpperPanel>
   );
 };

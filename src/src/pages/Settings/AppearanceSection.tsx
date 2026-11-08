@@ -15,6 +15,7 @@ import {
   type CodeBlockTheme,
 } from "../../zustand/useAppearanceSettings";
 import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
+import { SettingsGroup, SettingsRow } from "./SettingsRow";
 
 /**
  * Pretty labels for the four bundled hljs themes.
@@ -62,196 +63,153 @@ export const AppearanceSection: React.FC = () => {
     (state) => state.flags[FeatureFlagName.DeveloperMode],
   );
   const setFlag = useFeatureStore((state) => state.setFlag);
+
   return (
-    <Stack direction="column" spacing={3}>
-      <Stack
-        direction="row"
-        spacing={2}
-        sx={{
-          pb: 1.5,
-          borderBottom: 1,
-          borderColor: "divider",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <Stack direction="column" spacing={1}>
-          <Typography variant="subtitle1">Flat layout</Typography>
-          <Typography variant="body2" color="text.secondary">
-            Paint the main content and right panel with the base background
-            color instead of the paper tone, so the shell reads as one flat
-            surface.
-          </Typography>
-        </Stack>
-        <Switch
-          checked={flatLayout}
-          onChange={(_, checked) =>
-            setFlag(FeatureFlagName.FlatLayout, checked)
+    <Stack spacing={2}>
+      <SettingsGroup title="Layout">
+        <SettingsRow
+          title="Flat layout"
+          description="Paint the main content and right panel with the base background color instead of the paper tone, so the shell reads as one flat surface."
+          control={
+            <Switch
+              checked={flatLayout}
+              onChange={(_, checked) =>
+                setFlag(FeatureFlagName.FlatLayout, checked)
+              }
+              slotProps={{ input: { "aria-label": "Flat layout toggle" } }}
+            />
           }
-          slotProps={{ input: { "aria-label": "Flat layout toggle" } }}
         />
-      </Stack>
+      </SettingsGroup>
 
-      <Stack
-        direction="column"
-        spacing={2}
-        sx={{
-          py: 1.5,
-          borderTop: 1,
-          borderBottom: 1,
-          borderColor: "divider",
-        }}
-      >
-        <Stack
-          direction="row"
-          spacing={2}
-          sx={{ alignItems: "center", justifyContent: "space-between" }}
+      <SettingsGroup title="Note editor effects">
+        <SettingsRow
+          title="Background blur"
+          description="Blur the theme background image behind the note editor. Only active when the current theme has a background image. Turn it off for better performance on slower devices."
+          control={
+            <Switch
+              checked={noteEditorBackgroundBlur}
+              onChange={(_, checked) =>
+                setFlag(FeatureFlagName.NoteEditorBackgroundBlur, checked)
+              }
+              slotProps={{
+                input: { "aria-label": "Note editor background blur toggle" },
+              }}
+            />
+          }
         >
-          <Stack direction="column" spacing={1}>
-            <Typography variant="subtitle1">
-              Note editor background blur
+          <Stack
+            direction="row"
+            spacing={2}
+            sx={{ alignItems: "center", pt: 0.25 }}
+          >
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ minWidth: 44, fontVariantNumeric: "tabular-nums" }}
+            >
+              {Math.round(noteEditorBackgroundBlurAmount)} px
             </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Blur the theme background image behind the note editor. This is
-              only active when the current theme has a background image. Turn it
-              off for better performance on slower devices.
-            </Typography>
+            <Slider
+              value={noteEditorBackgroundBlurAmount}
+              min={0}
+              max={MAX_NOTE_EDITOR_BLUR_AMOUNT}
+              step={1}
+              disabled={!noteEditorBackgroundBlur}
+              onChange={(_, value) =>
+                setNoteEditorBackgroundBlurAmount(value as number)
+              }
+              aria-label="Note editor background blur amount"
+              sx={{ maxWidth: 360 }}
+            />
           </Stack>
-          <Switch
-            checked={noteEditorBackgroundBlur}
-            onChange={(_, checked) =>
-              setFlag(FeatureFlagName.NoteEditorBackgroundBlur, checked)
-            }
-            slotProps={{
-              input: { "aria-label": "Note editor background blur toggle" },
-            }}
-          />
-        </Stack>
-        <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
-          <Typography variant="body2" sx={{ minWidth: 72 }}>
-            {Math.round(noteEditorBackgroundBlurAmount)} px
-          </Typography>
-          <Slider
-            value={noteEditorBackgroundBlurAmount}
-            min={0}
-            max={MAX_NOTE_EDITOR_BLUR_AMOUNT}
-            step={1}
-            disabled={!noteEditorBackgroundBlur}
-            onChange={(_, value) =>
-              setNoteEditorBackgroundBlurAmount(value as number)
-            }
-            aria-label="Note editor background blur amount"
-            sx={{ maxWidth: 320 }}
-          />
-        </Stack>
-      </Stack>
+        </SettingsRow>
 
-      <Stack
-        direction="row"
-        spacing={2}
-        sx={{
-          py: 1.5,
-          borderTop: 1,
-          borderBottom: 1,
-          borderColor: "divider",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <Stack direction="column" spacing={1}>
-          <Typography variant="subtitle1">
-            Pre-render blurred theme backgrounds
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Store a second, pre-blurred copy of the theme image in IndexedDB
-            (two cached copies) so the background renders instantly. Turn this
-            off to instead fetch the image at screen resolution (1080p / 720p)
-            and apply the blur on the fly — only the sharp source is cached.
-          </Typography>
-        </Stack>
-        <Switch
-          checked={preRenderThemeBlur}
-          onChange={(_, checked) =>
-            setFlag(FeatureFlagName.PreRenderThemeBlur, checked)
+        <SettingsRow
+          title="Pre-render blurred backgrounds"
+          description="Store a second, pre-blurred copy of the theme image in IndexedDB (two cached copies) so the background renders instantly. Turn this off to instead fetch the image at screen resolution (1080p / 720p) and apply the blur on the fly — only the sharp source is cached."
+          control={
+            <Switch
+              checked={preRenderThemeBlur}
+              onChange={(_, checked) =>
+                setFlag(FeatureFlagName.PreRenderThemeBlur, checked)
+              }
+              slotProps={{
+                input: {
+                  "aria-label": "Pre-render blurred theme backgrounds toggle",
+                },
+              }}
+            />
           }
-          slotProps={{
-            input: {
-              "aria-label": "Pre-render blurred theme backgrounds toggle",
-            },
-          }}
         />
-      </Stack>
+      </SettingsGroup>
 
-      <Stack>
-        <Typography variant="subtitle1">Code blocks</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Pick the syntax-theme used by code blocks in the note editor. Light +
-          dark are independent so each UI mode can have its own.
-        </Typography>
-      </Stack>
-
-      <FormControl size="small" sx={{ maxWidth: 320 }}>
-        <InputLabel id="cb-theme-light-label">Light theme</InputLabel>
-        <Select
-          labelId="cb-theme-light-label"
-          label="Light theme"
-          value={codeBlockThemeLight}
-          onChange={(e) =>
-            setCodeBlockThemeLight(e.target.value as CodeBlockTheme)
-          }
-        >
-          {CODE_BLOCK_THEMES.map((theme) => (
-            <MenuItem key={theme} value={theme}>
-              {THEME_LABEL[theme]}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
-
-      <FormControl size="small" sx={{ maxWidth: 320 }}>
-        <InputLabel id="cb-theme-dark-label">Dark theme</InputLabel>
-        <Select
-          labelId="cb-theme-dark-label"
-          label="Dark theme"
-          value={codeBlockThemeDark}
-          onChange={(e) =>
-            setCodeBlockThemeDark(e.target.value as CodeBlockTheme)
-          }
-        >
-          {CODE_BLOCK_THEMES.map((theme) => (
-            <MenuItem key={theme} value={theme}>
-              {THEME_LABEL[theme]}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
-
-      <Stack
-        direction="row"
-        spacing={2}
-        sx={{
-          py: 1.5,
-          borderTop: 1,
-          borderColor: "divider",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
+      <SettingsGroup
+        title="Code blocks"
+        description="Pick the syntax theme used by code blocks in the note editor. Light and dark are independent so each UI mode can have its own."
       >
-        <Stack direction="column" spacing={1}>
-          <Typography variant="subtitle1">Developer mode</Typography>
-          <Typography variant="body2" color="text.secondary">
-            Show extra debug information in tooltips and other surfaces that are
-            normally hidden.
-          </Typography>
-        </Stack>
-        <Switch
-          checked={developerMode}
-          onChange={(_, checked) =>
-            setFlag(FeatureFlagName.DeveloperMode, checked)
+        <SettingsRow
+          title="Light theme"
+          control={
+            <FormControl size="small" sx={{ minWidth: 240 }}>
+              <InputLabel id="cb-theme-light-label">Light theme</InputLabel>
+              <Select
+                labelId="cb-theme-light-label"
+                label="Light theme"
+                value={codeBlockThemeLight}
+                onChange={(e) =>
+                  setCodeBlockThemeLight(e.target.value as CodeBlockTheme)
+                }
+              >
+                {CODE_BLOCK_THEMES.map((theme) => (
+                  <MenuItem key={theme} value={theme}>
+                    {THEME_LABEL[theme]}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           }
-          slotProps={{ input: { "aria-label": "Developer mode toggle" } }}
         />
-      </Stack>
+
+        <SettingsRow
+          title="Dark theme"
+          control={
+            <FormControl size="small" sx={{ minWidth: 240 }}>
+              <InputLabel id="cb-theme-dark-label">Dark theme</InputLabel>
+              <Select
+                labelId="cb-theme-dark-label"
+                label="Dark theme"
+                value={codeBlockThemeDark}
+                onChange={(e) =>
+                  setCodeBlockThemeDark(e.target.value as CodeBlockTheme)
+                }
+              >
+                {CODE_BLOCK_THEMES.map((theme) => (
+                  <MenuItem key={theme} value={theme}>
+                    {THEME_LABEL[theme]}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          }
+        />
+      </SettingsGroup>
+
+      <SettingsGroup title="Developer">
+        <SettingsRow
+          title="Developer mode"
+          description="Show extra debug information in tooltips and other surfaces that are normally hidden."
+          control={
+            <Switch
+              checked={developerMode}
+              onChange={(_, checked) =>
+                setFlag(FeatureFlagName.DeveloperMode, checked)
+              }
+              slotProps={{ input: { "aria-label": "Developer mode toggle" } }}
+            />
+          }
+        />
+      </SettingsGroup>
     </Stack>
   );
 };

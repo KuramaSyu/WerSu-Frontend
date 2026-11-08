@@ -14,6 +14,11 @@ export interface SettingsCategory {
   /** Optional icon rendered next to the label. */
   icon?: ReactNode;
   /**
+   * Optional one-line summary shown under the section title (and as the
+   * secondary line in the mobile category list).
+   */
+  description?: string;
+  /**
    * Optional callback that resets this category's settings back to
    * their defaults. Wired to the per-section reset button.
    */

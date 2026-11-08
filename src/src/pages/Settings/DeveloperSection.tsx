@@ -1,7 +1,8 @@
-import { Alert, Stack, Switch, Typography } from "@mui/material";
+import { Alert, Stack, Switch } from "@mui/material";
 import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
 import { ThemeManager } from "../../theme/themeManager";
 import { AllPreferencesAccordion } from "./AllPreferencesAccordion";
+import { SettingsGroup, SettingsRow } from "./SettingsRow";
 
 /**
  * Developer-only settings.
@@ -41,115 +42,117 @@ export const DeveloperSection: React.FC = () => {
   }
 
   return (
-    <Stack spacing={3}>
-      <Stack>
-        <Typography variant="subtitle1">Theme generation debug</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Dump a step-by-step trace of every theme generation to the browser
-          console (URL routing, fetch status, blob/image timing, vibrant
-          swatches, resolved palette). Also flips the in-process
-          ThemeManager.debug static for the current session.
-        </Typography>
-      </Stack>
-
-      <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
-        <Switch
-          checked={themeDebug}
-          onChange={(e) => {
-            setFlag(FeatureFlagName.ThemeDebug, e.target.checked);
-            // Mirror onto the static so the toggle is visible in
-            // ThemeManager itself, not just the feature store.
-            ThemeManager.debug = e.target.checked;
-          }}
-          slotProps={{ input: { "aria-label": "Theme generation debug" } }}
-        />
-        <Typography>
-          {themeDebug ? "Theme debug is on" : "Theme debug is off"}
-        </Typography>
-      </Stack>
-
-      <Stack>
-        <Typography variant="subtitle1">Blurred background debug</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Log a one-line summary to the browser console each time a blurred
-          background variant is generated (theme save/edit). Per-frame cost is
-          zero. Filter the DevTools console by <code>[blur]</code> to see only
-          these lines.
-        </Typography>
-      </Stack>
-
-      <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
-        <Switch
-          checked={blurredBackgroundDebug}
-          onChange={(e) =>
-            setFlag(FeatureFlagName.BlurredBackgroundDebug, e.target.checked)
+    <Stack spacing={2}>
+      <SettingsGroup
+        title="Debug logging"
+        description="Extra console tracing for theme and background pipelines. All logs are opt-in and have zero per-frame cost."
+      >
+        <SettingsRow
+          title="Theme generation"
+          description={
+            <>
+              Dump a step-by-step trace of every theme generation to the browser
+              console (URL routing, fetch status, blob/image timing, vibrant
+              swatches, resolved palette). Also flips the in-process
+              <code> ThemeManager.debug </code>
+              static for the current session.
+            </>
           }
-          slotProps={{
-            input: { "aria-label": "Blurred background debug" },
-          }}
-        />
-        <Typography>
-          {blurredBackgroundDebug
-            ? "Blurred background debug is on"
-            : "Blurred background debug is off"}
-        </Typography>
-      </Stack>
-
-      <Stack>
-        <Typography variant="subtitle1">Image upload debug</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Trace the theme image upload + IndexedDB blob cache pipeline (file
-          pick, downscale timing, cache hits, IDB open/put timings, stuck
-          writes) to the browser console. Per-frame cost is zero. Filter the
-          DevTools console by <code>[bg-debug]</code> to see only these lines.
-        </Typography>
-      </Stack>
-
-      <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
-        <Switch
-          checked={backgroundImageDebug}
-          onChange={(e) =>
-            setFlag(FeatureFlagName.BackgroundImageDebug, e.target.checked)
+          control={
+            <Switch
+              checked={themeDebug}
+              onChange={(e) => {
+                setFlag(FeatureFlagName.ThemeDebug, e.target.checked);
+                // Mirror onto the static so the toggle is visible in
+                // ThemeManager itself, not just the feature store.
+                ThemeManager.debug = e.target.checked;
+              }}
+              slotProps={{ input: { "aria-label": "Theme generation debug" } }}
+            />
           }
-          slotProps={{
-            input: { "aria-label": "Image upload debug" },
-          }}
         />
-        <Typography>
-          {backgroundImageDebug
-            ? "Image upload debug is on"
-            : "Image upload debug is off"}
-        </Typography>
-      </Stack>
 
-      <Stack>
-        <Typography variant="subtitle1">Fake API (MSW)</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Route every <code>/api/*</code> request through an in-browser MSW
-          worker. Useful when the backend is unreachable or you want a known
-          dataset. Only available in dev builds.
-        </Typography>
-      </Stack>
-
-      <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
-        <Switch
-          checked={useFakeApi}
-          onChange={(e) =>
-            setFlag(FeatureFlagName.UseFakeApi, e.target.checked)
+        <SettingsRow
+          title="Blurred background"
+          description={
+            <>
+              Log a one-line summary each time a blurred background variant is
+              generated (theme save/edit). Filter the DevTools console by
+              <code> [blur] </code>
+              to see only these lines.
+            </>
           }
-          slotProps={{ input: { "aria-label": "Use fake API (MSW)" } }}
+          control={
+            <Switch
+              checked={blurredBackgroundDebug}
+              onChange={(e) =>
+                setFlag(
+                  FeatureFlagName.BlurredBackgroundDebug,
+                  e.target.checked,
+                )
+              }
+              slotProps={{
+                input: { "aria-label": "Blurred background debug" },
+              }}
+            />
+          }
         />
-        <Typography>
-          {useFakeApi ? "Fake API is on" : "Fake API is off"}
-        </Typography>
-      </Stack>
 
-      {useFakeApi && (
-        <Alert severity="warning">
-          The backend is being bypassed. Mutations affect an in-memory fixture
-          that resets on full page reload.
-        </Alert>
-      )}
+        <SettingsRow
+          title="Image upload"
+          description={
+            <>
+              Trace the theme image upload and IndexedDB blob cache pipeline
+              (file pick, downscale timing, cache hits, IDB open/put timings,
+              stuck writes). Filter the DevTools console by
+              <code> [bg-debug] </code>
+              to see only these lines.
+            </>
+          }
+          control={
+            <Switch
+              checked={backgroundImageDebug}
+              onChange={(e) =>
+                setFlag(FeatureFlagName.BackgroundImageDebug, e.target.checked)
+              }
+              slotProps={{
+                input: { "aria-label": "Image upload debug" },
+              }}
+            />
+          }
+        />
+      </SettingsGroup>
+
+      <SettingsGroup
+        title="Backend"
+        description="Route API traffic through an in-browser mock server."
+      >
+        <SettingsRow
+          title="Fake API (MSW)"
+          description={
+            <>
+              Route every <code>/api/*</code> request through an in-browser MSW
+              worker. Useful when the backend is unreachable or you want a known
+              dataset. Only available in dev builds.
+            </>
+          }
+          control={
+            <Switch
+              checked={useFakeApi}
+              onChange={(e) =>
+                setFlag(FeatureFlagName.UseFakeApi, e.target.checked)
+              }
+              slotProps={{ input: { "aria-label": "Use fake API (MSW)" } }}
+            />
+          }
+        />
+        {useFakeApi && (
+          <Alert severity="warning" sx={{ my: 2 }}>
+            The backend is being bypassed. Mutations affect an in-memory fixture
+            that resets on full page reload.
+          </Alert>
+        )}
+      </SettingsGroup>
 
       <AllPreferencesAccordion />
     </Stack>

@@ -13,6 +13,7 @@ import {
   CircularProgress,
   Collapse,
   IconButton,
+  Paper,
   Stack,
   Typography,
   styled,
@@ -528,7 +529,11 @@ export const BookstackImportSection: React.FC = () => {
 
   return (
     <Stack direction="column" spacing={2}>
-      <Typography variant="body1">
+      <Typography
+        variant="body2"
+        color="text.secondary"
+        sx={{ maxWidth: "68ch" }}
+      >
         Drop one or more BookStack book zips here to import them as separate
         directory trees. Files are uploaded in parallel and streamed to the
         backend in 1 MiB chunks; large books may take a moment.
@@ -550,7 +555,9 @@ export const BookstackImportSection: React.FC = () => {
         </Alert>
       )}
 
-      <Box
+      <Paper
+        variant="outlined"
+        elevation={0}
         onClick={() => !uploading && fileInputRef.current?.click()}
         onDragOver={(e) => {
           e.preventDefault();
@@ -578,7 +585,7 @@ export const BookstackImportSection: React.FC = () => {
           cursor: uploading ? "default" : "pointer",
           backgroundColor: dragging ? "action.hover" : "transparent",
           opacity: uploading ? 0.5 : 1,
-          transition: "all .2s",
+          transition: "border-color .2s, background-color .2s, opacity .2s",
         }}
       >
         <Stack
@@ -590,10 +597,10 @@ export const BookstackImportSection: React.FC = () => {
             fontSize="large"
             color={dragging ? "primary" : "inherit"}
           />
-          <Typography variant="h6">
+          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
             {files.length > 0 ? "Replace files" : "Drag zip(s) here"}
           </Typography>
-          <Typography variant="body2" color="textSecondary">
+          <Typography variant="body2" color="text.secondary">
             or click to browse
           </Typography>
         </Stack>
@@ -606,7 +613,7 @@ export const BookstackImportSection: React.FC = () => {
           onChange={handleFileChange}
           disabled={uploading}
         />
-      </Box>
+      </Paper>
 
       {files.length > 0 && (
         // Flex-wrap grid: chips share each row equally (basis 15rem

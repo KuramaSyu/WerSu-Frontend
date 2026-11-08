@@ -3,8 +3,8 @@ import {
   Alert,
   Box,
   Button,
-  Divider,
   LinearProgress,
+  Paper,
   Stack,
   TextField,
   Typography,
@@ -27,8 +27,6 @@ import {
 import { WersuServiceInterface } from "../../api/WersuServiceInterface";
 import { BACKEND_BASE } from "../../statics";
 import { servicesFromStatus } from "../../components/TopBar/serviceReachabilityModel";
-import { useThemeStore } from "../../zustand/useThemeStore";
-import { blendAgainstContrast } from "../../utils/blendWithContrast";
 
 type LoadState =
   | { kind: "loading" }
@@ -59,73 +57,64 @@ const EnvVarBuilder: React.FC<{ error: StatusApiConfigError }> = ({
   ]);
 
   return (
-    <Stack
-      spacing={1.5}
-      sx={{
-        p: 2,
-        border: "1px solid",
-        borderColor: "divider",
-        borderRadius: 2,
-        backgroundColor: (t) =>
-          t.palette.mode === "dark"
-            ? "rgba(255,255,255,0.02)"
-            : "rgba(0,0,0,0.02)",
-      }}
-    >
-      <Typography variant="subtitle2">
-        Build your {error.file}
-      </Typography>
-
-      {REQUIRED_ENV_VARS.map((spec) => (
-        <EnvVarField
-          key={spec.key}
-          spec={spec}
-          value={values[spec.key]}
-          onChange={(v) => setValues((prev) => ({ ...prev, [spec.key]: v }))}
-        />
-      ))}
-
-      {requiredMissing.length > 0 && (
-        <Typography variant="caption" color="text.secondary">
-          Fill in {requiredMissing.map((s) => s.key).join(", ")} to generate the
-          snippet.
+    <Paper variant="outlined" elevation={0} sx={{ p: 2, borderRadius: 2 }}>
+      <Stack spacing={1.5}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+          Build your {error.file}
         </Typography>
-      )}
 
-      {canEmit && (
-        <Box
-          component="pre"
-          sx={{
-            m: 0,
-            p: 1.5,
-            borderRadius: 1,
-            backgroundColor: (t) =>
-              t.palette.mode === "dark"
-                ? "rgba(0,0,0,0.4)"
-                : "rgba(0,0,0,0.06)",
-            fontFamily:
-              "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-            fontSize: "0.85rem",
-            overflowX: "auto",
-            whiteSpace: "pre",
-          }}
-        >
-          {emitted}
-        </Box>
-      )}
+        {REQUIRED_ENV_VARS.map((spec) => (
+          <EnvVarField
+            key={spec.key}
+            spec={spec}
+            value={values[spec.key]}
+            onChange={(v) => setValues((prev) => ({ ...prev, [spec.key]: v }))}
+          />
+        ))}
 
-      <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-        <CopyButton
-          text={emitted || error.example}
-          aria-label="copy env snippet"
-          size="small"
-          disabled={!canEmit && !error.example}
-        />
-        <Typography variant="caption" color="text.secondary">
-          Paste into <code>{error.file}</code>, then restart <code>npm run dev</code>.
-        </Typography>
+        {requiredMissing.length > 0 && (
+          <Typography variant="caption" color="text.secondary">
+            Fill in {requiredMissing.map((s) => s.key).join(", ")} to generate
+            the snippet.
+          </Typography>
+        )}
+
+        {canEmit && (
+          <Box
+            component="pre"
+            sx={{
+              m: 0,
+              p: 1.5,
+              borderRadius: 1,
+              backgroundColor: (t) =>
+                t.palette.mode === "dark"
+                  ? "rgba(0,0,0,0.4)"
+                  : "rgba(0,0,0,0.06)",
+              fontFamily:
+                "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+              fontSize: "0.85rem",
+              overflowX: "auto",
+              whiteSpace: "pre",
+            }}
+          >
+            {emitted}
+          </Box>
+        )}
+
+        <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+          <CopyButton
+            text={emitted || error.example}
+            aria-label="copy env snippet"
+            size="small"
+            disabled={!canEmit && !error.example}
+          />
+          <Typography variant="caption" color="text.secondary">
+            Paste into <code>{error.file}</code>, then restart{" "}
+            <code>npm run dev</code>.
+          </Typography>
+        </Stack>
       </Stack>
-    </Stack>
+    </Paper>
   );
 };
 
@@ -183,47 +172,43 @@ const ServiceStatusCard: React.FC<{ service: WersuServiceInterface }> = ({
       : "warning";
 
   return (
-    <Stack
-      spacing={1.5}
-      sx={{
-        p: 2,
-        border: "1px solid",
-        borderColor: "divider",
-        borderRadius: 2,
-      }}
-    >
-      <Stack
-        direction="row"
-        spacing={1}
-        sx={{
-          alignItems: "center",
-          justifyContent: "space-between",
-          flexWrap: "wrap",
-        }}
-      >
-        <Typography variant="subtitle1">{service.display_host()}</Typography>
-        <ColorChip label={label} colorProp={colorProp} size="small" />
-      </Stack>
-
-      <Stack spacing={1}>
-        <Typography variant="body2" color="text.secondary">
-          DNS: {dns.reachable ? "reachable" : dns.error || "unreachable"}
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Service: {svc.reachable ? "reachable" : svc.error || "unreachable"}
-        </Typography>
-        {details.detail && (
-          <Typography variant="body2" color="text.secondary">
-            Detail: {details.detail}
+    <Paper variant="outlined" elevation={0} sx={{ p: 2, borderRadius: 2 }}>
+      <Stack spacing={1.5}>
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+          }}
+        >
+          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+            {service.display_host()}
           </Typography>
-        )}
-        {details.error && !details.reachable && (
-          <Alert severity="error" variant="outlined">
-            {details.error}
-          </Alert>
-        )}
+          <ColorChip label={label} colorProp={colorProp} size="small" />
+        </Stack>
+
+        <Stack spacing={1}>
+          <Typography variant="body2" color="text.secondary">
+            DNS: {dns.reachable ? "reachable" : dns.error || "unreachable"}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Service: {svc.reachable ? "reachable" : svc.error || "unreachable"}
+          </Typography>
+          {details.detail && (
+            <Typography variant="body2" color="text.secondary">
+              Detail: {details.detail}
+            </Typography>
+          )}
+          {details.error && !details.reachable && (
+            <Alert severity="error" variant="outlined">
+              {details.error}
+            </Alert>
+          )}
+        </Stack>
       </Stack>
-    </Stack>
+    </Paper>
   );
 };
 
@@ -261,15 +246,20 @@ export const AdministrationSection: React.FC = () => {
   };
 
   useEffect(() => {
-    void loadStatus();
-    void loadRestApi();
-
-    const interval = window.setInterval(() => {
+    const runChecks = () => {
       void loadStatus();
       void loadRestApi();
-    }, 30000);
+    };
 
-    return () => window.clearInterval(interval);
+    // Defer the first pass so the effect does not synchronously set state
+    // during commit, then keep the panel fresh in the background.
+    const initial = window.setTimeout(runChecks, 0);
+    const interval = window.setInterval(runChecks, 30000);
+
+    return () => {
+      window.clearTimeout(initial);
+      window.clearInterval(interval);
+    };
   }, []);
 
   const checkedAt = useMemo(
@@ -289,10 +279,11 @@ export const AdministrationSection: React.FC = () => {
         }}
       >
         <Stack spacing={0.5}>
-          <Typography variant="body1">
-            Check backend reachability without going through TanStack Query.
+          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+            Service health
           </Typography>
           <Typography variant="body2" color="text.secondary">
+            Check backend reachability without going through TanStack Query.
             The panel refreshes automatically every 30 seconds.
           </Typography>
         </Stack>
@@ -355,8 +346,6 @@ export const AdministrationSection: React.FC = () => {
           ))}
         </Stack>
       )}
-
-      <Divider />
 
       <Typography variant="caption" color="text.secondary">
         DNS and service probes are reported separately so you can tell routing
