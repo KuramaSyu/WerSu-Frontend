@@ -47,6 +47,9 @@ export interface UseKeyHoldOptions {
   capture?: boolean;
 }
 
+/** Modifier keys whose press turns a keystroke into a combo gesture. */
+const MODIFIER_KEYS = new Set(["Control", "Meta", "Alt", "AltGraph", "OS"]);
+
 export interface UseKeyHoldResult {
   /** The action currently being held, or `null` when idle. */
   holding: HoldKeyAction | null;
@@ -68,6 +71,12 @@ export interface UseKeyHoldResult {
  * `capture` the document listener still observes the key before handlers
  * that swallow it (notably MUI's `Dialog` close-on-Escape). Releasing
  * early cancels the hold, as does the window losing focus.
+ *
+ * Ctrl/Alt/Meta turn a keystroke into a combo gesture (e.g. `Cmd+Esc`)
+ * and therefore never arm — nor keep alive — a plain hold. That also
+ * covers a macOS quirk: pressing Cmd while a key is down suppresses the
+ * keyup of that key, which would otherwise leave the hold armed until
+ * the bar's fallback timer fired it after a short tap.
  */
 export function useKeyHold({
   enabled = true,
@@ -130,6 +139,17 @@ export function useKeyHold({
       ) ?? null;
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      // A modifier pressed mid-hold starts a combo gesture (e.g. the user
+      // taps Esc, then reaches for Cmd). Cancel the hold: macOS swallows
+      // the keyup of the originally held key once Cmd is down, so keeping
+      // the hold alive would let the bar fill up and fire on its own.
+      if (MODIFIER_KEYS.has(event.key)) {
+        if (holdingRef.current) cancel();
+        return;
+      }
+      // A modified keystroke (`Cmd+Esc`, `Alt+<`, …) is a combo, never a
+      // plain hold action.
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
       if (event.repeat || holdingRef.current) return;
       const action = findAction(event.key);
       if (!action) return;
@@ -144,7 +164,10 @@ export function useKeyHold({
     const handleKeyUp = (event: KeyboardEvent) => {
       const action = holdingRef.current;
       if (!action) return;
-      if (findAction(event.key)?.key !== action.key) return;
+      // Compare against the held action directly instead of looking it up
+      // again: the action list can change mid-hold (a `when` condition
+      // flipping), and a vanished entry must not swallow the release.
+      if (event.key.toLowerCase() !== action.key.toLowerCase()) return;
       cancel();
     };
 

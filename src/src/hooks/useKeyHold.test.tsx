@@ -57,6 +57,75 @@ describe("useKeyHold", () => {
     expect(result.current.holding).toBeNull();
   });
 
+  it("does not arm for a modified keystroke (Cmd+Esc)", () => {
+    const onTrigger = vi.fn();
+    const { result } = renderHook(() =>
+      useKeyHold({ enabled: true, actions: [escapeAction(onTrigger)] }),
+    );
+
+    act(() => {
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", metaKey: true }),
+      );
+    });
+
+    expect(result.current.holding).toBeNull();
+  });
+
+  it("cancels the hold when a modifier is pressed mid-hold", () => {
+    // macOS suppresses the keyup of the held key once Cmd goes down, so
+    // the hold must not survive a modifier press. Otherwise a short
+    // Cmd+Esc tap would let the bar fill up and trigger on its own.
+    const onTrigger = vi.fn();
+    const { result } = renderHook(() =>
+      useKeyHold({ enabled: true, actions: [escapeAction(onTrigger)] }),
+    );
+
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    });
+    expect(result.current.holding?.key).toBe("Escape");
+
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Meta" }));
+    });
+
+    expect(result.current.holding).toBeNull();
+    act(() => {
+      result.current.complete();
+    });
+    expect(onTrigger).not.toHaveBeenCalled();
+  });
+
+  it("still cancels on release after the action disappears mid-hold", () => {
+    const onTrigger = vi.fn();
+    const { result, rerender } = renderHook(
+      ({ actions }: { actions: HoldKeyAction[] }) =>
+        useKeyHold({ enabled: true, actions }),
+      { initialProps: { actions: [escapeAction(onTrigger)] } },
+    );
+
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    });
+    expect(result.current.holding?.key).toBe("Escape");
+
+    // A `when` condition flipped: the action is no longer advertised.
+    act(() => {
+      rerender({ actions: [] });
+    });
+
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent("keyup", { key: "Escape" }));
+    });
+
+    expect(result.current.holding).toBeNull();
+    act(() => {
+      result.current.complete();
+    });
+    expect(onTrigger).not.toHaveBeenCalled();
+  });
+
   it("ignores auto-repeat and unrelated keys", () => {
     const onTrigger = vi.fn();
     const { result } = renderHook(() =>
