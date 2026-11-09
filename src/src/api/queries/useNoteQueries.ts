@@ -222,6 +222,13 @@ export function useUpdateNote() {
       queryClient.invalidateQueries({
         queryKey: directoryNotesQueryKeys.all,
       });
+
+      // Saving creates a new note version server-side. Refresh the
+      // note's version list (Versions panel / drawer) so the new entry
+      // shows up without a manual query reset.
+      queryClient.invalidateQueries({
+        queryKey: ["activity", "note", updatedNote.id],
+      });
     },
   });
 }

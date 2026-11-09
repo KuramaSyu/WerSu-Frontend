@@ -11,7 +11,7 @@ import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
-import { useNote } from "./useNoteQueries";
+import { useNote, useUpdateNote } from "./useNoteQueries";
 import { useAuthStore } from "../../zustand/useAuthStore";
 import { apiRegistry } from "../apiRegistry";
 
@@ -96,6 +96,42 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals();
   apiRegistry.installShareTokenProvider(null);
+});
+
+describe("useUpdateNote - version list refresh", () => {
+  it("invalidates the note's activity/versions query after a save", async () => {
+    stubFetch(() =>
+      Promise.resolve(
+        makeOkResponse({
+          id: "note-x",
+          title: "saved",
+          content: "saved body",
+          stripped_content: "saved body",
+          author_id: "u-1",
+          updated_at: "2026-01-01T00:00:00Z",
+          directory_ids: [],
+          tag_ids: [],
+        }),
+      ),
+    );
+
+    const qc = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const invalidate = vi.spyOn(qc, "invalidateQueries");
+    const wrapper = buildWrapper("/n/note-x", qc);
+    const { result } = renderHook(() => useUpdateNote(), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({ noteId: "note-x", content: "saved body" });
+    });
+
+    // Saving creates a new version; the Versions panel reads this
+    // query, so it must be refreshed or the new entry never appears.
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: ["activity", "note", "note-x"],
+    });
+  });
 });
 
 describe("useNote - JWT-ready gate (regression: anonymous-public-share 401s)", () => {
