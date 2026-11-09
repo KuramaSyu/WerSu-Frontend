@@ -38,11 +38,16 @@ const recorder = vi.hoisted(() => ({
       off: Mock;
       emit: Mock;
       status: string;
+      connect: Mock;
+      cancelWebsocketRetry: Mock;
+      shouldConnect: boolean;
     };
     connect: Mock;
     disconnect: Mock;
     on: Mock;
     off: Mock;
+    /** The websocket's original (pre-guard) connect, for spy assertions. */
+    wsConnect: Mock;
   }>,
   persistence: [] as Array<{ name: string; doc: unknown; destroy: Mock }>,
 }));
@@ -53,17 +58,24 @@ vi.mock("@hocuspocus/provider", () => {
       this: unknown,
       config: unknown,
     ) {
+      const wsConnect = vi.fn(() => Promise.resolve());
       const ws = {
         on: vi.fn(),
         off: vi.fn(),
         emit: vi.fn(),
         status: "disconnected",
+        connect: wsConnect,
+        cancelWebsocketRetry: vi.fn(),
+        shouldConnect: false,
       };
       const instance = {
         config,
         configuration: { websocketProvider: ws },
         websocketProvider: ws,
-        connect: vi.fn(),
+        // Mirror the real provider: connect() delegates to the socket,
+        // so the reconnect guard installed on `ws.connect` is exercised.
+        connect: vi.fn(() => ws.connect()),
+        wsConnect,
         disconnect: vi.fn(),
         on: vi.fn(),
         off: vi.fn(),
@@ -239,6 +251,49 @@ describe("useNoteCollaboration - lazy IndexedDB", () => {
     expect(getCollabEntry("n-offline-4")?.preOfflineCloudMarkdown).not.toBe(
       "second-call",
     );
+  });
+});
+
+describe("useNoteCollaboration - capped connection attempts", () => {
+  it("creates the provider with autoConnect off and a single attempt", () => {
+    renderHook(() => useNoteCollaboration("n-ws-config-1"));
+    const config = mockedProvider.mock.calls[0][0] as {
+      autoConnect?: boolean;
+      maxAttempts?: number;
+    };
+    expect(config.autoConnect).toBe(false);
+    expect(config.maxAttempts).toBe(1);
+    // We drive the connection ourselves after installing the guard.
+    expect(recorder.providers[0].wsConnect).toHaveBeenCalledTimes(1);
+  });
+
+  it("blocks websocket reconnects after the user goes offline", async () => {
+    renderHook(() => useNoteCollaboration("n-ws-cancel-1"));
+    const provider = recorder.providers[0];
+    provider.wsConnect.mockClear();
+    await act(async () => {
+      await goOffline("n-ws-cancel-1", "manual");
+    });
+    // A Hocuspocus-scheduled retry calls the socket's connect()
+    // directly; the guard must make it a no-op.
+    await provider.websocketProvider.connect();
+    expect(provider.wsConnect).not.toHaveBeenCalled();
+    // The provider-level connect() is gated too.
+    await provider.connect();
+    expect(provider.wsConnect).not.toHaveBeenCalled();
+  });
+
+  it("reconnects again once the user leaves offline mode", async () => {
+    renderHook(() => useNoteCollaboration("n-ws-cancel-2"));
+    const provider = recorder.providers[0];
+    await act(async () => {
+      await goOffline("n-ws-cancel-2", "manual");
+    });
+    provider.wsConnect.mockClear();
+    act(() => {
+      goOnline("n-ws-cancel-2");
+    });
+    expect(provider.wsConnect).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -1,14 +1,17 @@
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useUser } from "../api/queries/useUser";
+import { isAuthError, useUser } from "../api/queries/useUser";
 import { useUserStore } from "../zustand/userStore";
 
 // Redirect to /login when identity is missing. Two signals, same gate:
-// the explicit-logout latch flips on logout, and the query 401s on cold
-// start. /public/* and /settings are exempt: share links use a JWT, and
-// settings must stay reachable when logged out.
+// the explicit-logout latch flips on logout, and the query resolves an
+// actual auth rejection (401/403/404) on cold start. A transient
+// network error must NOT redirect: the connection may simply be down,
+// and `useUser` retries those. /public/* and /settings are exempt:
+// share links use a JWT, and settings must stay reachable when logged
+// out.
 export function useRequireAuth(): boolean {
-  const { isLoading: userLoading, isError: userError } = useUser();
+  const { isLoading: userLoading, isError: userError, error } = useUser();
   const loggedOut = useUserStore((s) => s.loggedOut);
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -17,8 +20,10 @@ export function useRequireAuth(): boolean {
 
   // Explicit logout latch, independent of react query. The `useUser`
   // query is disabled while latched, so it never reports an error.
-  // Query 401s on cold start with no session cookie.
-  const queryIsLoggedOut = !userLoading && userError;
+  // Otherwise, only a real auth rejection counts as logged out — a
+  // dropped connection (`TypeError: Failed to fetch`) keeps the app on
+  // the current route.
+  const queryIsLoggedOut = !userLoading && userError && isAuthError(error);
   const isLoggedOut = loggedOut || queryIsLoggedOut;
 
   const shouldRedirectToLogin = !onPublicRoute && !onSettingsRoute && isLoggedOut;

@@ -9,7 +9,10 @@
 // ---------------------------------------------------------------------------
 
 import * as Y from "yjs";
-import type { HocuspocusProvider } from "@hocuspocus/provider";
+import type {
+  HocuspocusProvider,
+  HocuspocusProviderWebsocket,
+} from "@hocuspocus/provider";
 import { IndexeddbPersistence } from "y-indexeddb";
 import { collabStatusStore } from "../zustand/useCollabStatusStore";
 
@@ -135,6 +138,70 @@ export function clearLocalEdits(entry: CollabCacheEntry): void {
  */
 const editListenersAttached = new WeakSet<Y.Doc>();
 
+/** Websockets whose `connect` we have already wrapped (one per provider). */
+const guardedSockets = new WeakSet<object>();
+
+/**
+ * Wrap the inner Hocuspocus websocket's `connect` so that:
+ *
+ *   - while the entry is offline (manual or auto), every connect
+ *     attempt is a no-op. This is what makes "click offline" cancel
+ *     the retries the websocket schedules for itself: Hocuspocus
+ *     re-requests `connect()` from its own `setTimeout` after a
+ *     disconnect, bypassing `entry.provider.disconnect()`.
+ *   - when a connect attempt gives up (the provider is configured
+ *     with `maxAttempts: 1`, so the first failure exhausts it), we
+ *     fall back to offline mode instead of leaving an unhandled
+ *     rejection or retrying forever.
+ */
+export function guardWebsocketReconnects(
+  noteId: string,
+  entry: CollabCacheEntry,
+  onAutoOffline: (noteId: string) => void,
+): void {
+  const ws = entry.provider.configuration?.websocketProvider as
+    | HocuspocusProviderWebsocket
+    | undefined;
+  if (!ws || typeof ws !== "object" || guardedSockets.has(ws)) return;
+  if (typeof ws.connect !== "function") return;
+  const originalConnect = ws.connect.bind(ws) as (
+    ...args: unknown[]
+  ) => unknown;
+  ws.connect = (...args: unknown[]): Promise<unknown> => {
+    if (entry.offlineOrigin) return Promise.resolve();
+    const result = originalConnect(...args);
+    if (result instanceof Promise) {
+      return result.catch(() => {
+        if (!entry.offlineOrigin) onAutoOffline(noteId);
+      });
+    }
+    return Promise.resolve(result);
+  };
+  guardedSockets.add(ws);
+}
+
+/**
+ * Hard-cancel every in-flight / scheduled connection attempt for an
+ * entry. Used when the user chooses offline so no queued Hocuspocus
+ * retry resurrects the socket after `disconnect()`.
+ */
+export function cancelWebsocketRetries(entry: CollabCacheEntry): void {
+  const ws = entry.provider.configuration?.websocketProvider as
+    | HocuspocusProviderWebsocket
+    | undefined;
+  try {
+    ws?.cancelWebsocketRetry?.();
+  } catch {
+    // ignore — best-effort cancellation
+  }
+  try {
+    entry.provider.disconnect();
+  } catch {
+    // ignore — disconnect is best-effort during the auto-fallback path
+  }
+  if (ws) ws.shouldConnect = false;
+}
+
 /**
  * Helper used by both flows: transition a cache entry into offline
  * mode. Attaches IndexedDB if it isn't already, sets the status, and
@@ -157,21 +224,20 @@ export async function enterOfflineMode(
     collabStatusStore.getState().setEditingOffline(noteId, entry.offlineOrigin);
     return entry;
   }
-  // Disconnect the WS so the provider stops retrying and competing
-  // with local edits for the ydoc.
-  try {
-    entry.provider.disconnect();
-  } catch {
-    // ignore — disconnect is best-effort during the auto-fallback path
-  }
+  // Flip the offline flag first: the reconnect guard consults it, so a
+  // retry already queued by Hocuspocus cannot sneak through between the
+  // disconnect and the flag write.
+  entry.offlineOrigin = origin;
+  entry.preOfflineCloudMarkdown = preOfflineCloudMarkdown;
+  // Disconnect and cancel any in-flight / scheduled retries so the
+  // provider stops competing with local edits for the ydoc.
+  cancelWebsocketRetries(entry);
   // Reuse the warm persistence from a previous offline session instead
   // of attaching a second IndexeddbPersistence to the same Y.Doc.
   if (!entry.persistence) {
     const { persistence } = attachPersistence(entry.ydoc, roomName);
     entry.persistence = persistence;
   }
-  entry.offlineOrigin = origin;
-  entry.preOfflineCloudMarkdown = preOfflineCloudMarkdown;
   // Edits from this point on are local-only until we reconnect. Attach
   // the marker once per Y.Doc; the handler no-ops while online.
   if (!editListenersAttached.has(entry.ydoc)) {

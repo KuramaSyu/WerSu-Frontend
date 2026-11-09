@@ -15,6 +15,7 @@ import {
   createCollabCache,
   enterOfflineMode,
   exitOfflineMode,
+  guardWebsocketReconnects,
   type CollabCacheEntry,
 } from "./collabCache";
 import {
@@ -24,6 +25,8 @@ import {
 } from "./collabContentLog";
 
 type PublicCollabCacheEntry = CollabCacheEntry;
+// Mirror of the private hook: one connection attempt, then offline.
+const WS_MAX_ATTEMPTS = 1;
 const WS_OFFLINE_GRACE_MS = 5_000;
 const publicCollabCache = createCollabCache<PublicCollabCacheEntry>();
 
@@ -44,7 +47,11 @@ export function usePublicNoteCollaboration(
   useEffect(() => {
     return useAuthStore.subscribe((s, prev) => {
       if (s.shareAccessToken !== prev.shareAccessToken) {
-        publicCollabCache.forEach((entry) => entry.provider.connect());
+        publicCollabCache.forEach((entry) => {
+          // Offline entries must stay offline; reconnecting them here
+          // would race the user's explicit choice.
+          if (!entry.offlineOrigin) entry.provider.connect();
+        });
       }
     });
   }, []);
@@ -71,20 +78,31 @@ export function usePublicNoteCollaboration(
         offlineOrigin: cached.offlineOrigin,
       });
       if (cached.offlineOrigin) return;
-      cached.provider.connect();
+      // Install the guard before connecting so the first failure is
+      // caught and routed into the offline fallback.
       attachPublicWsFailureWatchers(noteId, cached);
+      cached.provider.connect();
       return;
     }
 
     const ydoc = new Y.Doc();
-    const provider = new HocuspocusProvider({
+    // `autoConnect` / `maxAttempts` are forwarded to the internal
+    // HocuspocusProviderWebsocket. The upstream config type omits them
+    // when `url` is passed, so assign to a variable first.
+    const providerConfig = {
       url: HOCUSPOCUS_WS_URL,
       document: ydoc,
       name: `note-${noteId}`,
+      // We drive the connection ourselves (after installing the
+      // reconnect guard) and cap retries so a blocked socket fails
+      // fast into offline mode instead of looping forever.
+      autoConnect: false,
+      maxAttempts: WS_MAX_ATTEMPTS,
       // Read fresh on every handshake so the share JWT rotation lands
       // without us having to recreate the provider.
       token: () => useAuthStore.getState().shareAccessToken ?? "",
-    });
+    };
+    const provider = new HocuspocusProvider(providerConfig);
     const entry: PublicCollabCacheEntry = {
       ydoc,
       provider,
@@ -101,6 +119,7 @@ export function usePublicNoteCollaboration(
     });
     instrumentCollabSession(noteId, ydoc, provider);
     attachPublicWsFailureWatchers(noteId, entry);
+    entry.provider.connect();
   }, [noteId, shareAccessToken]);
 
   return entry;
@@ -153,6 +172,11 @@ function attachPublicWsFailureWatchers(
   ws.on("disconnect", onDisconnect);
   ws.on("open", onOpen);
   ws.on("connect", onConnect);
+  // Catch exhausted `connect()` promises and make every future
+  // reconnect a no-op while offline.
+  guardWebsocketReconnects(noteId, entry, (id) => {
+    void goPublicOffline(id, "auto");
+  });
 }
 
 export async function goPublicOffline(
@@ -219,12 +243,15 @@ export async function rehydratePublicCollabSession(
     }
   }
   const ydoc = new Y.Doc();
-  const provider = new HocuspocusProvider({
+  const providerConfig = {
     url: HOCUSPOCUS_WS_URL,
     document: ydoc,
     name: `note-${noteId}`,
+    autoConnect: false,
+    maxAttempts: WS_MAX_ATTEMPTS,
     token: () => useAuthStore.getState().shareAccessToken ?? "",
-  });
+  };
+  const provider = new HocuspocusProvider(providerConfig);
   publicCollabCache.set(noteId, {
     ydoc,
     provider,
@@ -236,4 +263,5 @@ export async function rehydratePublicCollabSession(
   });
   instrumentCollabSession(noteId, ydoc, provider);
   attachPublicWsFailureWatchers(noteId, publicCollabCache.get(noteId)!);
+  provider.connect();
 }

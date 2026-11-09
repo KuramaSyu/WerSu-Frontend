@@ -9,7 +9,7 @@ import { getUserApi } from "./api/UserApi";
 import { useShareAccessToken } from "./api/queries/useShareAccessToken";
 import { apiRegistry } from "./api/apiRegistry";
 import { queryClient } from "./api/queryClient";
-import { useUser } from "./api/queries/useUser";
+import { isAuthError, useUser } from "./api/queries/useUser";
 import { WersuUserImpl } from "./components/DiscordLogin";
 import { useGlobalModifier } from "./hooks/useGlobalModifier";
 import { useFocusGuardOnModifier } from "./hooks/useFocusGuardOnModifier";
@@ -193,6 +193,7 @@ function useHydrateUserStoreFromQuery(
   user: WersuUserImpl | undefined,
   isSuccess: boolean,
   isError: boolean,
+  error: unknown,
 ): void {
   const lastSeenIdRef = useRef<string | null | undefined>(undefined);
 
@@ -214,6 +215,10 @@ function useHydrateUserStoreFromQuery(
       return;
     }
     if (isError) {
+      // Only an actual auth rejection means "logged out". A network
+      // error must not clear the cached identity -- the session is
+      // probably still valid, the connection just dropped.
+      if (!isAuthError(error)) return;
       // /api/auth/user failed -- treat as logged out. Logout itself
       // already calls `setUser(null)`, so this only fires on a
       // cookie-missing cold start, which is exactly the path we want.
@@ -224,7 +229,7 @@ function useHydrateUserStoreFromQuery(
         }
       }
     }
-  }, [user, isSuccess, isError]);
+  }, [user, isSuccess, isError, error]);
 }
 
 /**
@@ -245,8 +250,9 @@ export const Bootstrap: React.FC = () => {
     data: user,
     isSuccess: isUserSuccess,
     isError: isUserError,
+    error: userError,
   } = useUser();
-  useHydrateUserStoreFromQuery(user, isUserSuccess, isUserError);
+  useHydrateUserStoreFromQuery(user, isUserSuccess, isUserError, userError);
 
   // const searchNotesApi = getSearchNotesApi();
   const userApi = getUserApi();

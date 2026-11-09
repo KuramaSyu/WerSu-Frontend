@@ -8,14 +8,17 @@ import { WersuUserImpl, type WersuUser } from "../../components/DiscordLogin";
 // Resolve through the api registry so the share-token provider installed on Bootstrap reaches this instance.
 const userApi = getUserApi();
 
-const USER_FETCH_RETRY_LIMIT = 0;
+const USER_FETCH_RETRY_LIMIT = 3;
 
-// react-query retry predicate.
+// React-query retry predicate. Only "real" auth failures are final;
+// a transient network error (fetch throws a `TypeError`, not a
+// `UserError`) gets a few retries so a momentarily dropped connection
+// does not immediately look like a logout.
 const shouldRetryFetchUser = (
   failureCount: number,
   error: unknown,
 ): boolean => {
-  if (error instanceof UserError && error.status === 404) {
+  if (error instanceof UserError && error.status >= 400 && error.status < 500) {
     return false;
   }
   return failureCount < USER_FETCH_RETRY_LIMIT;
@@ -61,6 +64,18 @@ export function useUser(): UseQueryResult<WersuUserImpl, Error> {
 // Use this to gate auth-required queries on the cold-start frame.
 export function useIsAuthenticated(): boolean {
   return useUser().isSuccess;
+}
+
+/**
+ * True when an error from `useUser` proves the viewer has no session
+ * (401/403/404), as opposed to a transient network failure. Redirects
+ * to the login page should key off this, never off `isError` alone.
+ */
+export function isAuthError(error: unknown): boolean {
+  return (
+    error instanceof UserError &&
+    (error.status === 401 || error.status === 403 || error.status === 404)
+  );
 }
 
 // Cache usersById by raw query-data identity so cache hits return the same Record ref.
