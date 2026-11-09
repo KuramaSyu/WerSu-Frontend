@@ -287,6 +287,27 @@ const typeText = (editor: Editor, text: string): boolean => {
   return handled;
 };
 
+/**
+ * Simulates a keydown the way ProseMirror does for the
+ * SlashMenuStateExtension plugin: invoke its `handleKeyDown` prop
+ * directly (locating it by plugin key rather than `view.someProp`,
+ * which would surface whichever keymap registered first).
+ */
+const dispatchSlashKeyDown = (editor: Editor, key: string): void => {
+  const plugin = editor.state.plugins.find(
+    (p) => p.spec.key === slashMenuStateKey,
+  );
+  const handler = plugin?.props.handleKeyDown;
+  if (typeof handler !== "function") {
+    throw new Error("SlashMenuStateExtension handleKeyDown not found");
+  }
+  const plainHandler = handler as (
+    view: typeof editor.view,
+    event: KeyboardEvent,
+  ) => boolean | void;
+  plainHandler(editor.view, new KeyboardEvent("keydown", { key }));
+};
+
 describe("SlashCommandMenu — slash state tracking", () => {
   it("marks the slash position when the user types `/`", () => {
     const editor = makeEditor();
@@ -475,47 +496,48 @@ describe("SlashCommandMenu — slash state tracking", () => {
       // we want to invoke — `view.someProp("handleKeyDown", ...)`
       // would return whichever plugin registered first (typically
       // starter-kit's keymap), not ours. Find it by its key.
-      const plugin = editor.state.plugins.find(
-        (p) => p.spec.key === slashMenuStateKey,
-      );
-      if (!plugin) {
-        throw new Error("SlashMenuStateExtension plugin not registered");
-      }
-      const handler = plugin.props.handleKeyDown;
-      if (typeof handler !== "function") {
-        throw new Error("SlashMenuStateExtension plugin has no handleKeyDown");
-      }
-      // Cast to a no-`this` function type so we don't have to
-      // provide a `this` binding.
-      const plainHandler = handler as (
-        view: typeof editor.view,
-        event: KeyboardEvent,
-      ) => boolean | void;
-      // Capture the dismissal transaction so we can assert it also asks
-      // the floating menu to hide. The floating-menu plugin only
-      // re-evaluates `shouldShow` on doc/selection changes, so a
-      // meta-only dismissal would otherwise leave it visible.
-      const hideMetas: unknown[] = [];
-      const onTransaction = ({ transaction }: { transaction: import("@tiptap/pm/state").Transaction }) => {
-        hideMetas.push(transaction.getMeta(slashMenuFloatingKey));
-      };
-      editor.on("transaction", onTransaction);
-      try {
-        plainHandler(
-          editor.view,
-          new KeyboardEvent("keydown", { key: "Escape" }),
-        );
-      } finally {
-        editor.off("transaction", onTransaction);
-      }
+      dispatchSlashKeyDown(editor, "Escape");
 
-      expect(hideMetas).toContain("hide");
       expect(slashMenuStateKey.getState(editor.state)?.dismissed).toBe(true);
       expect(isSlashCommandContext(editor)).toBe(false);
 
       // The "/" character itself stays in the doc — ESC only closes
       // the menu, it doesn't undo the slash.
       expect(editor.state.doc.textContent).toBe("hello/");
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  // Regression: `@tiptap/react`'s FloatingMenu only re-evaluates
+  // `shouldShow` on transactions that change the document or selection,
+  // so the meta-only dismissal used to leave the menu on screen. The
+  // dismissal transaction must also carry the FloatingMenu's "hide"
+  // meta. This test fails (and the menu stays visible) if that meta is
+  // dropped.
+  it("asks the floating menu to hide on ESC", () => {
+    const editor = makeEditor();
+    try {
+      editor.commands.setContent("<p>hello/</p>");
+      editor.commands.focus("end");
+      setSlashMenuState(editor, 6);
+
+      const hideMetas: unknown[] = [];
+      const onTransaction = ({
+        transaction,
+      }: {
+        transaction: import("@tiptap/pm/state").Transaction;
+      }) => {
+        hideMetas.push(transaction.getMeta(slashMenuFloatingKey));
+      };
+      editor.on("transaction", onTransaction);
+      try {
+        dispatchSlashKeyDown(editor, "Escape");
+      } finally {
+        editor.off("transaction", onTransaction);
+      }
+
+      expect(hideMetas).toContain("hide");
     } finally {
       editor.destroy();
     }
