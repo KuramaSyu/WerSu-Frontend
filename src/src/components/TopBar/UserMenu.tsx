@@ -39,6 +39,7 @@ import KeyboardIcon from "@mui/icons-material/Keyboard";
 import { useNavigate } from "react-router-dom";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
+import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { useDevicePerformanceHint } from "../../hooks/useDevicePerformanceHint";
 import { useUser } from "../../api/queries/useUser";
 import { usePublicRouteReady } from "../../hooks/usePublicRouteReady";
@@ -48,7 +49,7 @@ import {
 } from "../../zustand/usePublicUserStore";
 import { PublicUserAvatar } from "./PublicUserAvatar";
 import { ShelfCreateDialog } from "./ShelfCreateDialog";
-import { ShelfMenuList } from "./ShelfMenuList";
+import { ShelfSubmenu } from "./ShelfSubmenu";
 import { M1, M2, M4 } from "../../statics";
 import { ThemeColorCircles } from "../ThemeColorCircles";
 import { ThemeEditModal } from "../ThemeEditModal";
@@ -104,6 +105,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
   const { canUpload, canDownload, isUploading, upload, progress, download } =
     useCloudPreferences();
   const navigate = useNavigate();
+  const { isMobile } = useBreakpoint();
   const selectedShelfId = useSelectedShelfStore((s) => s.selectedShelfId);
   const notifications = useInfoStore((s) => s.logs);
   const setIsNotificationsOpen = useNotificationsStore(
@@ -305,7 +307,14 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
   return (
     // minWidth hints the Menu past the longest text so the profile
     // header doesn't squeeze.
-    <Stack sx={{ minWidth: 300, maxWidth: "100%" }}>
+    <Stack
+      sx={{
+        minWidth: 300,
+        maxWidth: "100%",
+        maxHeight: "70vh",
+        overflowY: "auto",
+      }}
+    >
       <Box
         sx={{
           px: 2,
@@ -631,16 +640,19 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
         </Tooltip>
       </Box>
 
-      <Divider />
-
-      <SectionLabel>Shelf</SectionLabel>
-      <ShelfMenuList
-        onPick={onRequestClose}
-        onNavigate={onRequestClose}
-        onAddShelf={() => setIsShelfDialogOpen(true)}
-        canAdd={!isAnonymousPublic}
-        revealEditActionsOnHover={false}
-      />
+      {/* The desktop top bar already has its own shelf switcher, so the
+          avatar menu only offers shelf selection on mobile. */}
+      {isMobile && (
+        <>
+          <Divider />
+          <SectionLabel>Shelf</SectionLabel>
+          <ShelfSubmenu
+            onRequestClose={onRequestClose}
+            onAddShelf={() => setIsShelfDialogOpen(true)}
+            canAdd={!isAnonymousPublic}
+          />
+        </>
+      )}
 
       <Divider />
 
