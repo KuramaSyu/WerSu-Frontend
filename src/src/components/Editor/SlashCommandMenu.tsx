@@ -3,6 +3,7 @@ import { Extension } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
 import { FloatingMenu } from "@tiptap/react/menus";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
+import type { EditorView } from "@tiptap/pm/view";
 import { useEffect, useRef, useState } from "react";
 import {
   List,
@@ -34,14 +35,36 @@ export interface SlashCommand {
 
 // Tracks the position of the last "/" the user typed so the slash menu
 // can open mid-paragraph, not only on an empty line. Stored as plugin
-// state on the editor; cleared by ESC or when a command runs.
-type SlashMenuState = { pos: number } | null;
+// state on the editor. `dismissed` is set when the user explicitly
+// closes the menu (ESC) or types a character that ends the command
+// context (space / a bare "-"); the state is kept (instead of cleared)
+// so the text-based fallback in `isSlashCommandContext` cannot re-open
+// the menu behind the user's back. Cleared when a command runs.
+type SlashMenuState = { pos: number; dismissed: boolean } | null;
 
-type SlashMenuMeta = { type: "set"; pos: number } | { type: "clear" };
+type SlashMenuMeta =
+  | { type: "set"; pos: number }
+  | { type: "dismiss" }
+  | { type: "clear" };
 
 export const slashMenuStateKey = new PluginKey<SlashMenuState>(
   "slashMenuState",
 );
+
+// `@tiptap/react`'s FloatingMenu only re-runs `shouldShow` on transactions
+// that change the document or selection, so a meta-only dismissal (ESC)
+// would not hide it. The floating-menu plugin listens on every transaction
+// for this key with the string value "hide", so we pass the same key to
+// `<FloatingMenu pluginKey={...}>` below and reuse it to force a hide.
+export const slashMenuFloatingKey = new PluginKey("slashMenuFloating");
+
+/** Dismisses the slash menu and forces the floating menu to hide. */
+const dismissSlashMenu = (view: EditorView) => {
+  const tr = view.state.tr
+    .setMeta(slashMenuStateKey, { type: "dismiss" })
+    .setMeta(slashMenuFloatingKey, "hide");
+  view.dispatch(tr);
+};
 
 // Tiptap extension: register alongside the other editor extensions so the
 // slash menu state lives on the editor regardless of which React component
@@ -64,7 +87,10 @@ export const SlashMenuStateExtension = Extension.create({
               | undefined;
             if (meta) {
               if (meta.type === "set") {
-                return { pos: meta.pos };
+                return { pos: meta.pos, dismissed: false };
+              }
+              if (meta.type === "dismiss") {
+                return value ? { ...value, dismissed: true } : null;
               }
               if (meta.type === "clear") {
                 return null;
@@ -79,15 +105,34 @@ export const SlashMenuStateExtension = Extension.create({
           // after it.
           handleTextInput(view, from, to, text) {
             const slashIdx = text.indexOf("/");
-            if (slashIdx === -1) {
+            if (slashIdx !== -1) {
+              const slashPos = from + slashIdx;
+              const tr = view.state.tr.setMeta(slashMenuStateKey, {
+                type: "set",
+                pos: slashPos,
+              });
+              view.dispatch(tr);
               return false;
             }
-            const slashPos = from + slashIdx;
-            const tr = view.state.tr.setMeta(slashMenuStateKey, {
-              type: "set",
-              pos: slashPos,
-            });
-            view.dispatch(tr);
+
+            // Closing the menu without deleting the typed "/".
+            //   - whitespace ends the command word (e.g. "/bold "),
+            //   - a bare "-" directly after the slash is not a command
+            //     trigger, so it must not open / keep the menu.
+            const existing = slashMenuStateKey.getState(view.state);
+            if (existing && !existing.dismissed && from >= existing.pos + 1) {
+              const isSpace = /\s/.test(text);
+              const query = view.state.doc.textBetween(
+                existing.pos + 1,
+                from,
+                "\n",
+                "\n",
+              );
+              const isBareHyphen = query.length === 0 && text.includes("-");
+              if (isSpace || isBareHyphen) {
+                dismissSlashMenu(view);
+              }
+            }
             return false;
           },
           // ESC closes the slash menu without removing the typed "/".
@@ -95,10 +140,10 @@ export const SlashMenuStateExtension = Extension.create({
           // to the keypress.
           handleKeyDown(view, event) {
             if (event.key === "Escape") {
-              const tr = view.state.tr.setMeta(slashMenuStateKey, {
-                type: "clear",
-              });
-              view.dispatch(tr);
+              const existing = slashMenuStateKey.getState(view.state);
+              if (existing && !existing.dismissed) {
+                dismissSlashMenu(view);
+              }
             }
             return false;
           },
@@ -363,6 +408,11 @@ const getSlashQuery = (editor: Editor) => {
   // and gives a stable anchor that survives further typing.
   const slashState = slashMenuStateKey.getState(editor.state);
   if (slashState) {
+    // A dismissed menu (ESC, space, bare "-") must not expose a query,
+    // even when the block still starts with the typed "/".
+    if (slashState.dismissed) {
+      return "";
+    }
     try {
       const $slash = doc.resolve(slashState.pos);
       const $cursor = selection.$from;
@@ -494,6 +544,12 @@ export function isSlashCommandContext(editor: Editor): boolean {
   const slashState = slashMenuStateKey.getState(editor.state);
 
   if (slashState) {
+    // Explicitly dismissed (ESC / space / bare "-"): stay hidden until
+    // the next "/" re-arms the menu, even though the block still starts
+    // with a "/" that the fallback below would otherwise match.
+    if (slashState.dismissed) {
+      return false;
+    }
     try {
       const $slash = doc.resolve(slashState.pos);
       const $cursor = selection.$from;
@@ -668,6 +724,7 @@ export const SlashCommandMenu = ({
   return (
     <FloatingMenu
       editor={editor}
+      pluginKey={slashMenuFloatingKey}
       options={{ placement: "bottom-start", offset: 8, flip: true }}
       shouldShow={() =>
         enabled && editor.isEditable && isSlashCommandContext(editor)

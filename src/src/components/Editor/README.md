@@ -59,6 +59,8 @@ The components here are intentionally split by responsibility: editor shell, for
 	- Floating menu shown when a reachable text block contains a `/` query.
 	- Filters and ranks commands by query score.
 	- `Enter` executes the top-ranked command.
+	- `Escape`, a space, or a bare `-` typed right after the slash
+	  hides the menu without deleting the typed text.
 	- Current command set:
 		- `/table`
 		- `/bullet-point`

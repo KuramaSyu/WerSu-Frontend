@@ -70,6 +70,7 @@ import {
   isSlashCommandContext,
   setSlashMenuState,
   shouldHandleSlashMenuArrowKey,
+  slashMenuFloatingKey,
   slashMenuStateKey,
   type SlashCommand,
 } from "./SlashCommandMenu";
@@ -255,6 +256,37 @@ describe("SlashCommandMenu — inline formatting commands", () => {
   });
 });
 
+/**
+ * Simulates a single character of text input the way ProseMirror does:
+ * invoke the SlashMenuStateExtension plugin's `handleTextInput`, then
+ * insert the character into the document. Returning the plugin handler's
+ * value lets callers assert on who claimed the input.
+ */
+const typeText = (editor: Editor, text: string): boolean => {
+  const { from, to } = editor.state.selection;
+  const plugin = editor.state.plugins.find(
+    (p) => p.spec.key === slashMenuStateKey,
+  );
+  const handler = plugin?.props.handleTextInput;
+  if (typeof handler !== "function") {
+    throw new Error("SlashMenuStateExtension handleTextInput not found");
+  }
+  const plainHandler = handler as (
+    view: typeof editor.view,
+    from: number,
+    to: number,
+    text: string,
+    deflt: () => unknown,
+  ) => boolean | void;
+  const handled = Boolean(
+    plainHandler(editor.view, from, to, text, () =>
+      editor.state.tr.insertText(text, from, to),
+    ),
+  );
+  editor.commands.insertContent(text);
+  return handled;
+};
+
 describe("SlashCommandMenu — slash state tracking", () => {
   it("marks the slash position when the user types `/`", () => {
     const editor = makeEditor();
@@ -295,7 +327,7 @@ describe("SlashCommandMenu — slash state tracking", () => {
       editor.commands.insertContent("/");
 
       const state = slashMenuStateKey.getState(editor.state);
-      expect(state).toEqual({ pos: 6 });
+      expect(state).toEqual({ pos: 6, dismissed: false });
     } finally {
       editor.destroy();
     }
@@ -459,17 +491,109 @@ describe("SlashCommandMenu — slash state tracking", () => {
         view: typeof editor.view,
         event: KeyboardEvent,
       ) => boolean | void;
-      plainHandler(
-        editor.view,
-        new KeyboardEvent("keydown", { key: "Escape" }),
-      );
+      // Capture the dismissal transaction so we can assert it also asks
+      // the floating menu to hide. The floating-menu plugin only
+      // re-evaluates `shouldShow` on doc/selection changes, so a
+      // meta-only dismissal would otherwise leave it visible.
+      const hideMetas: unknown[] = [];
+      const onTransaction = ({ transaction }: { transaction: import("@tiptap/pm/state").Transaction }) => {
+        hideMetas.push(transaction.getMeta(slashMenuFloatingKey));
+      };
+      editor.on("transaction", onTransaction);
+      try {
+        plainHandler(
+          editor.view,
+          new KeyboardEvent("keydown", { key: "Escape" }),
+        );
+      } finally {
+        editor.off("transaction", onTransaction);
+      }
 
-      expect(slashMenuStateKey.getState(editor.state)).toBeNull();
+      expect(hideMetas).toContain("hide");
+      expect(slashMenuStateKey.getState(editor.state)?.dismissed).toBe(true);
       expect(isSlashCommandContext(editor)).toBe(false);
 
       // The "/" character itself stays in the doc — ESC only closes
       // the menu, it doesn't undo the slash.
       expect(editor.state.doc.textContent).toBe("hello/");
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("hides the menu after typing a space (but keeps the slash text)", () => {
+    const editor = makeEditor();
+    try {
+      editor.commands.setContent("<p></p>");
+      editor.commands.focus("end");
+      typeText(editor, "/");
+      typeText(editor, "b");
+      expect(isSlashCommandContext(editor)).toBe(true);
+
+      typeText(editor, " ");
+
+      expect(slashMenuStateKey.getState(editor.state)?.dismissed).toBe(true);
+      expect(isSlashCommandContext(editor)).toBe(false);
+      // The typed text is preserved, only the menu is hidden.
+      expect(editor.state.doc.textContent).toBe("/b ");
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("does not trigger on a bare `-` after the slash", () => {
+    const editor = makeEditor();
+    try {
+      editor.commands.setContent("<p></p>");
+      editor.commands.focus("end");
+      typeText(editor, "/");
+      expect(isSlashCommandContext(editor)).toBe(true);
+
+      typeText(editor, "-");
+
+      expect(slashMenuStateKey.getState(editor.state)?.dismissed).toBe(true);
+      expect(isSlashCommandContext(editor)).toBe(false);
+      expect(editor.state.doc.textContent).toBe("/-");
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("still allows a hyphen inside a longer query (e.g. `/heading-1`)", () => {
+    const editor = makeEditor();
+    try {
+      editor.commands.setContent("<p></p>");
+      editor.commands.focus("end");
+      typeText(editor, "/");
+      for (const char of "heading") typeText(editor, char);
+      typeText(editor, "-");
+
+      expect(isSlashCommandContext(editor)).toBe(true);
+      expect(
+        getMatchingSlashCommands(editor).some(
+          (command) => command.id === "heading-1",
+        ),
+      ).toBe(true);
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("re-arms the menu when a new `/` is typed after dismissal", () => {
+    const editor = makeEditor();
+    try {
+      editor.commands.setContent("<p></p>");
+      editor.commands.focus("end");
+      typeText(editor, "/");
+      typeText(editor, "-");
+      expect(isSlashCommandContext(editor)).toBe(false);
+
+      // A fresh slash anywhere (e.g. on the next line) re-opens the menu.
+      editor.commands.splitBlock();
+      typeText(editor, "/");
+
+      expect(slashMenuStateKey.getState(editor.state)?.dismissed).toBe(false);
+      expect(isSlashCommandContext(editor)).toBe(true);
     } finally {
       editor.destroy();
     }
