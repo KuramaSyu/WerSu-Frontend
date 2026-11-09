@@ -8,8 +8,6 @@ import type { NoteVersionSummaryReply } from "../../api/models/activity";
 import type { Note } from "../../api/models/search";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { useActiveNoteStore } from "../../zustand/editorStore";
-import { useEditorSettings } from "../../zustand/useEditorSettings";
-import { usePublicRouteReady } from "../../hooks/usePublicRouteReady";
 import { getNoteApi } from "../../api/NoteApi";
 
 // Hook: selection + content for a historical note version.
@@ -82,60 +80,55 @@ export function useVersionSelection(noteId: string | undefined): {
   };
 }
 
-// Loads a historical version into the editor. In view mode this only
-// mirrors the version into the editor store so the user can preview it.
+// Loads a historical version into the editor for display only.
 //
-// In edit mode for a logged-in note we ask the backend to restore the
-// version (`POST /notes/:id/versions/:index/restore`). That makes the
-// restore durable and records it in the version history, which is the
-// part the old local-only flow got wrong: writing the historical
-// content into the live Y.Doc updated the current tab but never reached
-// the note's persisted state. The server replies with the restored
-// note, and we then push that content into the live Y.Doc so every
-// collaborator sees it immediately.
+// This never saves and never creates a version: the version content is
+// fetched with `GET /notes/:id/versions/:index`, mirrored into the
+// editor/title store, and that is it. No `PATCH`, no restore endpoint,
+// no query invalidation that could pull the live note back in.
 //
-// Public/share sessions have no user session for the restore endpoint,
-// so they keep applying the already-fetched version locally.
+// Both read and edit mode use the same path. Read mode has no bound
+// Y.Doc, so `replaceContent` replaces the ProseMirror document. Edit
+// mode (live or offline) has the shared Y.Doc bound, so the whole
+// fragment is cleared and rewritten in one transaction. The provider
+// syncs that like any other collaborative edit, but the button itself
+// never persists anything on its own.
 //
-// We deliberately do NOT rebuild the collab session: a fresh Y.Doc
-// seeded before the provider's first sync merges with the server's
-// live document as concurrent CRDT inserts, duplicating the whole doc.
+// The previous flow diffed the historical content into the live
+// fragment through `setContent`, whose fresh mapping often matched by
+// node type and left parts of the old document in place. It also
+// called the server-side restore endpoint, which recorded a new
+// version. Both are gone.
 export function useVersionRestore(noteId: string | undefined): {
   isRestoringVersion: boolean;
-  restoreVersion: (
-    version: NoteVersionSummaryReply,
-    note: Note | undefined,
-  ) => Promise<void>;
+  restoreVersion: (version: NoteVersionSummaryReply) => Promise<void>;
 } {
   const [isRestoringVersion, setIsRestoringVersion] = useState(false);
   const { setMessage } = useInfoStore();
-  const { setTitle, setContent } = useActiveNoteStore();
-  const { editMode } = useEditorSettings();
-  const { isPublic } = usePublicRouteReady({ timeoutMs: 0 });
+  const { setTitle, replaceContent } = useActiveNoteStore();
   const queryClient = useQueryClient();
 
   const restoreVersion = useCallback(
-    async (
-      version: NoteVersionSummaryReply,
-      note: Note | undefined,
-    ): Promise<void> => {
+    async (version: NoteVersionSummaryReply): Promise<void> => {
       if (!noteId) {
-        console.error("Note ID is required to restore version");
+        console.error("Note ID is required to load version");
         return;
       }
       setIsRestoringVersion(true);
       try {
-        // Durably restore server-side when we have a logged-in session.
-        // Public/share viewers fall back to the fetched version content.
-        const restored =
-          editMode && !isPublic
-            ? await getNoteApi().restoreVersion(
-                noteId,
-                version.version_index,
-              )
-            : note;
+        // Fetch the version itself. The caller only has the summary,
+        // and the drawer used to pass its currently previewed note,
+        // which could be a different version than the row clicked.
+        // The shared query key matches `useNoteVersion` so prefetched
+        // previews are reused.
+        const note = await queryClient.fetchQuery({
+          queryKey: ["notes", noteId, "version", version.version_index],
+          queryFn: () =>
+            getNoteApi().getVersion(noteId, version.version_index),
+        });
 
-        if (!restored?.title || !restored.content) {
+        const content = note?.content || note?.stripped_content || "";
+        if (!note || !content) {
           console.error("Versioned note data is incomplete");
           setMessage(
             new SnackbarUpdateImpl(
@@ -146,43 +139,24 @@ export function useVersionRestore(noteId: string | undefined): {
           return;
         }
 
-        // Keep the REST detail/list caches in step with the restore so
-        // the editor seeds from the restored note on the next mount.
-        queryClient.setQueryData(["notes", noteId], restored);
-        queryClient.invalidateQueries({ queryKey: ["notes"] });
-        queryClient.invalidateQueries({
-          queryKey: ["activity", "note", noteId],
-        });
-
-        // Mirror the restored title/content into the live editor. In
-        // edit mode this reconciles the shared Y.Doc in place; in view
-        // mode it previews via the editor command path.
-        setTitle(restored.title);
-        setContent(restored.content);
+        setTitle(note.title);
+        replaceContent(content);
         setMessage(
           new SnackbarUpdateImpl(
-            `Restored v${version.version_index}`,
+            `Showing v${version.version_index}`,
             "success",
           ),
         );
       } catch (error) {
-        console.error("Restore failed", error);
+        console.error("Loading version failed", error);
         setMessage(
-          new SnackbarUpdateImpl("Failed to restore version", "error"),
+          new SnackbarUpdateImpl("Failed to load version", "error"),
         );
       } finally {
         setIsRestoringVersion(false);
       }
     },
-    [
-      noteId,
-      editMode,
-      isPublic,
-      queryClient,
-      setMessage,
-      setTitle,
-      setContent,
-    ],
+    [noteId, queryClient, setMessage, setTitle, replaceContent],
   );
 
   return { isRestoringVersion, restoreVersion };

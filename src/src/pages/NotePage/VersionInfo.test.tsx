@@ -1,11 +1,12 @@
-// Tier 1 tests for `useVersionRestore`. Plus a Tier 2 smoke
-// test confirming `VersionInfo` wires the drawer's `onRestoreVersion`
-// to the hook.
+// Tier 1 tests for `useVersionRestore`, plus a Tier 2 smoke test
+// confirming `VersionInfo` wires the drawer's `onRestoreVersion` to the
+// hook.
 //
-// Restore flow (both modes): mirror the historical title/content
-// into the editor store. In edit mode `setContent` reconciles the
-// live, synced Y.Doc; in view mode it previews through the editor.
-// Neither path rebuilds the collab session.
+// The restore/load flow is display-only: it fetches the requested
+// version and mirrors it into the editor store with
+// `setTitle` + `replaceContent`. It must never call a restore endpoint,
+// a save mutation or invalidate the note queries, so no new version is
+// created in either read or edit mode.
 
 // @vitest-environment jsdom
 
@@ -26,18 +27,19 @@ import { useEditorSettings } from "../../zustand/useEditorSettings";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 
 const drawerCapture = vi.hoisted(() => ({
-  onRestoreVersion: null as null | ((v: unknown, n: unknown) => Promise<void>),
+  onRestoreVersion: null as null | ((v: unknown) => Promise<void>),
 }));
 
-// The restore hook asks the API to restore server-side in edit mode.
-// Swap the registered singleton for a controllable fake.
+// The load hook fetches the selected version through the registered
+// API singleton. Swap it for a controllable fake.
 const apiCapture = vi.hoisted(() => ({
-  restoreVersion: vi.fn(),
+  getVersion: vi.fn(),
+  get: vi.fn(),
 }));
 vi.mock("../../api/NoteApi", () => ({
-  getNoteApi: () => ({ restoreVersion: apiCapture.restoreVersion }),
+  getNoteApi: () => apiCapture,
   NoteApi: class {
-    getVersion = vi.fn();
+    getVersion = apiCapture.getVersion;
   },
 }));
 
@@ -133,7 +135,7 @@ vi.mock("../../api/queries/useNoteQueries", () => ({
 }));
 vi.mock("../../components/NoteVersionsDrawer", () => ({
   NoteVersionsDrawer: (props: {
-    onRestoreVersion: (v: unknown, n: unknown) => Promise<void>;
+    onRestoreVersion: (v: unknown) => Promise<void>;
   }) => {
     drawerCapture.onRestoreVersion = props.onRestoreVersion ?? null;
     return null;
@@ -194,7 +196,8 @@ function renderRestore(noteId: string | undefined, pathname: string) {
 
 beforeEach(() => {
   drawerCapture.onRestoreVersion = null;
-  apiCapture.restoreVersion.mockReset();
+  apiCapture.getVersion.mockReset();
+  apiCapture.get.mockReset();
   useEditorSettings.setState({ editMode: false, viewMode: "rich" });
   useActiveNoteStore.setState({
     noteId: undefined,
@@ -204,17 +207,17 @@ beforeEach(() => {
     sourceMarkdown: "",
     isSaving: false,
     onNoteUpdated: null,
-    updateNote: (() => {
-      throw new Error("updateNote not set");
-    }) as never,
+    updateNote: vi.fn() as never,
     registerNote: vi.fn(),
     setEditor: vi.fn(),
     setYDoc: vi.fn(),
     setTitle: vi.fn(),
     setSourceMarkdown: vi.fn(),
+    seedSourceMarkdown: vi.fn(),
     setUpdateNoteFn: vi.fn(),
     getContent: () => "",
     setContent: vi.fn(),
+    replaceContent: vi.fn(),
     save: vi.fn(),
   });
   useInfoStore.setState({ Message: new SnackbarUpdateImpl("") });
@@ -224,44 +227,71 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("useVersionRestore - view mode", () => {
-  it("mirrors the historical title and content into the editor store", async () => {
+describe("useVersionRestore - read mode", () => {
+  it("fetches the version and displays it without saving", async () => {
+    apiCapture.getVersion.mockResolvedValue(
+      makeNote({ title: "V3 title", content: "V3 body" }),
+    );
     const { result } = renderRestore("note-1", "/n/note-1");
-    const note = makeNote({ title: "V3 title", content: "V3 body" });
 
     await act(async () => {
-      await result.current.restoreVersion(
-        makeVersion({ version_index: 3 }),
-        note,
-      );
+      await result.current.restoreVersion(makeVersion({ version_index: 3 }));
     });
 
-    const setTitle = useActiveNoteStore.getState().setTitle;
-    const setContent = useActiveNoteStore.getState().setContent;
-    expect(setTitle).toHaveBeenCalledWith("V3 title");
-    expect(setContent).toHaveBeenCalledWith("V3 body");
+    expect(apiCapture.getVersion).toHaveBeenCalledWith("note-1", 3);
+    const state = useActiveNoteStore.getState();
+    expect(state.setTitle).toHaveBeenCalledWith("V3 title");
+    expect(state.replaceContent).toHaveBeenCalledWith("V3 body");
+    // Display-only: no save, no update mutation.
+    expect(state.save).not.toHaveBeenCalled();
+    expect(state.updateNote).not.toHaveBeenCalled();
+  });
+
+  it("does not write the note query cache or invalidate the version list", async () => {
+    useEditorSettings.setState({ editMode: false });
+    apiCapture.getVersion.mockResolvedValue(
+      makeNote({ title: "V3 title", content: "V3 body" }),
+    );
+    const queryClient = makeQueryClient();
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+    const setQueryData = vi.spyOn(queryClient, "setQueryData");
+
+    const { result } = renderHook(() => useVersionRestore("note-1"), {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter initialEntries={["/n/note-1"]}>{children}</MemoryRouter>
+        </QueryClientProvider>
+      ),
+    });
+
+    await act(async () => {
+      await result.current.restoreVersion(makeVersion({ version_index: 3 }));
+    });
+
+    expect(invalidate).not.toHaveBeenCalled();
+    expect(setQueryData).not.toHaveBeenCalled();
+    // Only the version fetch itself may be cached.
+    expect(queryClient.getQueryData(["notes", "note-1"])).toBeUndefined();
   });
 });
 
 describe("useVersionRestore - edit mode", () => {
-  it("restores server-side and mirrors the historical content", async () => {
+  it("uses the same display-only path in edit mode (live and offline)", async () => {
     useEditorSettings.setState({ editMode: true });
-    const restored = makeNote({ title: "V3 title", content: "V3 body" });
-    apiCapture.restoreVersion.mockResolvedValue(restored);
+    apiCapture.getVersion.mockResolvedValue(
+      makeNote({ title: "V3 title", content: "V3 body" }),
+    );
     const { result } = renderRestore("note-1", "/n/note-1");
 
     await act(async () => {
-      await result.current.restoreVersion(
-        makeVersion({ version_index: 3 }),
-        makeNote(),
-      );
+      await result.current.restoreVersion(makeVersion({ version_index: 3 }));
     });
 
-    expect(apiCapture.restoreVersion).toHaveBeenCalledWith("note-1", 3);
-    const setTitle = useActiveNoteStore.getState().setTitle;
-    const setContent = useActiveNoteStore.getState().setContent;
-    expect(setTitle).toHaveBeenCalledWith("V3 title");
-    expect(setContent).toHaveBeenCalledWith("V3 body");
+    expect(apiCapture.getVersion).toHaveBeenCalledWith("note-1", 3);
+    const state = useActiveNoteStore.getState();
+    expect(state.setTitle).toHaveBeenCalledWith("V3 title");
+    expect(state.replaceContent).toHaveBeenCalledWith("V3 body");
+    expect(state.save).not.toHaveBeenCalled();
   });
 });
 
@@ -270,22 +300,26 @@ describe("useVersionRestore - guards", () => {
     const { result } = renderRestore(undefined, "/n/note-1");
 
     await act(async () => {
-      await result.current.restoreVersion(makeVersion(), makeNote());
+      await result.current.restoreVersion(makeVersion());
     });
 
-    expect(useActiveNoteStore.getState().setContent).not.toHaveBeenCalled();
+    expect(apiCapture.getVersion).not.toHaveBeenCalled();
+    expect(useActiveNoteStore.getState().replaceContent).not.toHaveBeenCalled();
   });
 
-  it("refuses when versioned note data is incomplete", async () => {
+  it("refuses when the fetched version has no content", async () => {
+    apiCapture.getVersion.mockResolvedValue(
+      makeNote({ content: "", stripped_content: "" }),
+    );
     const { result } = renderRestore("note-1", "/n/note-1");
-    const note = makeNote({ content: "" });
 
     await act(async () => {
-      await result.current.restoreVersion(makeVersion(), note);
+      await result.current.restoreVersion(makeVersion());
     });
 
-    const setContent = useActiveNoteStore.getState().setContent;
-    expect(setContent).not.toHaveBeenCalled();
+    const state = useActiveNoteStore.getState();
+    expect(state.replaceContent).not.toHaveBeenCalled();
+    expect(state.setTitle).not.toHaveBeenCalled();
   });
 });
 

@@ -16,6 +16,8 @@ import "../../../test/setup";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Editor } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
+import Collaboration from "@tiptap/extension-collaboration";
+import * as Y from "yjs";
 import { Image } from "@tiptap/extension-image";
 import {
   Table,
@@ -53,13 +55,14 @@ const md = [
   "",
 ].join("\n");
 
-function makeEditor(): Editor {
+function makeEditor(ydoc?: Y.Doc): Editor {
   return new Editor({
     extensions: [
       StarterKit.configure({
         codeBlock: false,
         undoRedo: false,
       }),
+      ...(ydoc ? [Collaboration.configure({ document: ydoc })] : []),
       Image,
       Table.configure({ resizable: false }),
       TableRow,
@@ -182,6 +185,57 @@ describe("useActiveNoteStore.setContent (source -> rich)", () => {
 
     expect(editor.getMarkdown()).toContain("rich original");
     expect(editor.getMarkdown()).not.toContain("edited in source");
+  });
+});
+
+describe("useActiveNoteStore.replaceContent", () => {
+  // Regression: the version preview used `setContent`, whose Y.Doc
+  // fast path diffed against the existing fragment with a fresh
+  // mapping. Similar node types were treated as "already there", so
+  // restoring a version left parts of the previous document behind.
+  // `replaceContent` clears the fragment first and must always land the
+  // whole version.
+  it("replaces the complete document instead of partially diffing it", async () => {
+    const ydoc = new Y.Doc();
+    const editor = makeEditor(ydoc);
+    useActiveNoteStore.getState().setEditor(editor);
+    useActiveNoteStore.getState().setYDoc(ydoc);
+
+    const before = [
+      "# Current",
+      "",
+      "current paragraph one",
+      "",
+      "current paragraph two",
+      "",
+      "- current list item",
+    ].join("\n");
+    const version = [
+      "# Historical",
+      "",
+      "historical paragraph one",
+      "",
+      "historical paragraph two",
+      "",
+      "- historical list item",
+    ].join("\n");
+
+    useActiveNoteStore.getState().replaceContent(before);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(editor.getMarkdown()).toContain("current paragraph two");
+
+    useActiveNoteStore.getState().replaceContent(version);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const markdown = editor.getMarkdown();
+    expect(markdown).toContain("Historical");
+    expect(markdown).toContain("historical paragraph one");
+    expect(markdown).toContain("historical paragraph two");
+    expect(markdown).toContain("historical list item");
+    expect(markdown).not.toContain("current paragraph two");
+    expect(markdown).not.toContain("current list item");
   });
 });
 

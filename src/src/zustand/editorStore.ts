@@ -62,8 +62,25 @@ interface ActiveNoteState {
    * source buffer already claims that markdown.
    */
   setContent: (markdown: string, force?: boolean) => void;
+  /**
+   * Replaces the editor content with `markdown` without saving it.
+   *
+   * Unlike `setContent`, this always rewrites the *whole* document.
+   * The version preview needs that: `setContent`'s Y.Doc fast path
+   * uses `prosemirrorJSONToYXmlFragment` with a fresh mapping, which
+   * diffs against the existing fragment and can leave parts of the
+   * previous note in place. Clearing the fragment first makes the
+   * write a plain insert, so the restored version always lands in
+   * full. No save/PATCH and no version is created here.
+   */
+  replaceContent: (markdown: string) => void;
   save: (titleOverrdide?: string, contentOverride?: string) => Promise<void>;
 }
+
+// Transaction origin for a version preview write. Anything other than
+// ySyncPluginKey is treated as a remote change by y-prosemirror, which
+// renders the whole fragment back into the editor.
+const VERSION_PREVIEW_ORIGIN = "version-preview";
 
 // Watchdog: trip after N calls in WINDOW_MS, block writes for COOLDOWN_MS.
 // 5 s cooldown is short enough to recover quickly yet breaks the feedback loop.
@@ -262,6 +279,43 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => {
       queueMicrotask(() => {
         editor.commands.setContent(normalizedDoc);
       });
+    },
+
+    replaceContent: (markdown) => {
+      lastWrittenMarkdown = markdown;
+      set({ sourceMarkdown: markdown });
+
+      const { editor, ydoc, noteId } = get();
+      if (!editor) {
+        logCollabContent("replace-content-skipped(no-editor)", noteId, {
+          markdownLen: markdown.length,
+        });
+        return;
+      }
+
+      const normalizedDoc = markdownToProsemirror(editor, markdown);
+
+      if (ydoc) {
+        const fragment = ydoc.getXmlFragment("default");
+        // Clear and rewrite inside a single transaction. The origin is
+        // deliberately *not* ySyncPluginKey: y-prosemirror treats any
+        // other origin as a remote change and re-renders the editor
+        // from the full fragment. In collab mode the provider then
+        // syncs the swap like a normal collaborative edit; nothing is
+        // explicitly saved and no version is created.
+        ydoc.transact(() => {
+          if (fragment.length > 0) {
+            fragment.delete(0, fragment.length);
+          }
+          prosemirrorJSONToYXmlFragment(editor.schema, normalizedDoc, fragment);
+        }, VERSION_PREVIEW_ORIGIN);
+        logContentSet(noteId, markdown, ydoc, "ydoc-fragment");
+        return;
+      }
+
+      // Read mode / no bound Y.Doc: replace the ProseMirror document.
+      logContentSet(noteId, markdown, ydoc, "editor-cmd");
+      editor.commands.setContent(normalizedDoc);
     },
 
     save: async (titleOverride, contentOverride) => {

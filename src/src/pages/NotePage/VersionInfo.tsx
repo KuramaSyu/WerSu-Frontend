@@ -20,7 +20,6 @@ import { IconChevronDown, IconChevronUp } from "@tabler/icons-react";
 import { useUser, useUsers } from "../../api/queries/useUser";
 import { useLiveUsers } from "../../zustand/useLiveUsersStore";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { NoteApi } from "../../api/NoteApi";
 import { NoteVersionsDrawer } from "../../components/NoteVersionsDrawer";
 import { formatDistanceToNow } from "date-fns";
 import { queryClient } from "../../api/queryClient";
@@ -410,15 +409,7 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({
                 <Button
                   onClick={async () => {
                     selectVersion(version);
-                    const note = await queryClient.fetchQuery({
-                      queryKey: ["versions", noteId, version.version_index],
-                      queryFn: async () =>
-                        await new NoteApi().getVersion(
-                          noteId!,
-                          version.version_index,
-                        ),
-                    });
-                    await restoreVersion(version, note);
+                    await restoreVersion(version);
                   }}
                   sx={{
                     backgroundColor: bg,
@@ -434,6 +425,8 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({
                 </Button>
                 <Chip size="small" variant="outlined" label={relativeDate} />
                 {isSelected && user && (
+                  // The selected version shows the user who is currently
+                  // looking at it -- the viewer, not the version author.
                   <UserHoverCard
                     user={{
                       id: user.id,

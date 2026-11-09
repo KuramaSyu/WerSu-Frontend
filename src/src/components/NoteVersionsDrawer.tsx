@@ -30,10 +30,8 @@ export interface NoteVersionsDrawerProps {
   noteId?: string;
   onClose: () => void;
   onSelectVersion: (version: NoteVersionSummaryReply) => void;
-  onRestoreVersion: (
-    version: NoteVersionSummaryReply,
-    note: Note | undefined,
-  ) => void;
+  /** Loads the clicked version into the editor. Never saves. */
+  onRestoreVersion: (version: NoteVersionSummaryReply) => void;
   selectedVersion?: NoteVersionSummaryReply | null;
   isFetchingVersion?: boolean;
   isRestoring?: boolean;
@@ -243,7 +241,7 @@ export const NoteVersionsDrawer: React.FC<NoteVersionsDrawerProps> = ({
                   disabled={isRestoring || isFetchingVersion}
                   onClick={(event) => {
                     event.stopPropagation();
-                    onRestoreVersion(entry, selectedNote);
+                    onRestoreVersion(entry);
                   }}
                 >
                   Restore
