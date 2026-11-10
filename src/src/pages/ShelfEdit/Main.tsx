@@ -1,118 +1,31 @@
-import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useCallback } from "react";
 import {
-  Alert,
-  Box,
-  Button,
-  CircularProgress,
-  Divider,
-  Paper,
-  Stack,
-  TextField,
-  Typography,
-} from "@mui/material";
-import { useShelf, useUpdateShelf } from "../../api/queries/shelfQueries";
-import type { ShelfReply } from "../../api/models/shelf";
+  Navigate,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
+import { Alert, Box, Button, CircularProgress, Stack } from "@mui/material";
+import { useShelf } from "../../api/queries/shelfQueries";
 import { useLeftPanel, usePanelSize, useRightPanel } from "../../LayoutProvider";
-import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { ShelfEditPanel } from "./ShelfEditPanel";
-import { ShelfThemeSection } from "./ShelfThemeSection";
+import { ShelfTabs } from "./ShelfTabs";
+import { isShelfTab, type ShelfTab } from "./shelfTabsModel";
 
 /**
- * Form body. Mounted only once the shelf has loaded (and keyed on its
- * id), so initial state can be seeded from props without an effect.
- */
-const ShelfEditForm: React.FC<{ shelf: ShelfReply }> = ({ shelf }) => {
-  const setMessage = useInfoStore((s) => s.setMessage);
-  const updateShelf = useUpdateShelf();
-
-  const [slug, setSlug] = useState(shelf.slug ?? "");
-  const [displayName, setDisplayName] = useState(shelf.display_name ?? "");
-  const [description, setDescription] = useState(shelf.description ?? "");
-
-  const handleSave = async () => {
-    try {
-      await updateShelf.mutateAsync({
-        id: shelf.id,
-        slug: slug.trim(),
-        display_name: displayName.trim(),
-        description,
-      });
-      setMessage(new SnackbarUpdateImpl("Shelf updated", "success"));
-    } catch (err) {
-      setMessage(
-        new SnackbarUpdateImpl(
-          err instanceof Error ? err.message : "Could not update shelf",
-          "error",
-        ),
-      );
-    }
-  };
-
-  return (
-    <Stack
-      component={Paper}
-      spacing={3}
-      sx={{ p: 3, maxWidth: 720, width: "100%" }}
-    >
-      <Stack spacing={0.5}>
-        <Typography variant="h4" sx={{ fontWeight: 600 }}>
-          Edit shelf
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Rename the shelf, update its description, and choose a theme to share
-          with its members.
-        </Typography>
-      </Stack>
-
-      <Stack spacing={2}>
-        <TextField
-          label="Display name"
-          size="small"
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-        />
-        <TextField
-          label="Slug"
-          size="small"
-          value={slug}
-          onChange={(e) => setSlug(e.target.value)}
-        />
-        <TextField
-          label="Description"
-          size="small"
-          multiline
-          minRows={3}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-        <Stack direction="row">
-          <Button
-            variant="contained"
-            onClick={() => void handleSave()}
-            disabled={updateShelf.isPending}
-          >
-            {updateShelf.isPending ? "Saving..." : "Save changes"}
-          </Button>
-        </Stack>
-      </Stack>
-
-      <Divider />
-
-      <ShelfThemeSection shelfId={shelf.id} />
-    </Stack>
-  );
-};
-
-/**
- * Route entry for `/shelves/:shelfId/edit`. Mounts the left rail anchor
- * and keys the form on the shelf id so navigating between shelves
- * remounts the form state.
+ * Route entry for `/shelves/:shelfId`. Mounts the left rail anchor and
+ * the main-object tabs (Settings / Rules / Permissions). The active tab
+ * is kept in the `tab` search param so it survives refresh and can be
+ * deep-linked.
  */
 export const ShelfEditPage: React.FC = () => {
   const params = useParams<{ shelfId: string }>();
   const shelfId = params.shelfId ?? "";
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const activeTab: ShelfTab = isShelfTab(tabParam) ? tabParam : "settings";
+
   const shelfQuery = useShelf({ id: shelfId, include_books: false });
 
   usePanelSize({ left: "clamp(18rem, 22vw, 26rem)" });
@@ -122,9 +35,17 @@ export const ShelfEditPage: React.FC = () => {
       shelf={shelfQuery.data ?? null}
       isLoading={shelfQuery.isLoading}
       onBack={() => navigate("/")}
-      onOpenRules={() => navigate(`/shelves/${shelfId}/rules`)}
     />,
     [shelfId, shelfQuery.data, shelfQuery.isLoading],
+  );
+
+  const handleTabChange = useCallback(
+    (tab: ShelfTab) => {
+      const next = new URLSearchParams(searchParams);
+      next.set("tab", tab);
+      setSearchParams(next);
+    },
+    [searchParams, setSearchParams],
   );
 
   if (!shelfId) {
@@ -171,10 +92,38 @@ export const ShelfEditPage: React.FC = () => {
           )}
         </Box>
       ) : (
-        <ShelfEditForm key={shelfQuery.data.id} shelf={shelfQuery.data} />
+        <Box
+          sx={{
+            px: { xs: 2, md: 4 },
+            py: 4,
+            width: "100%",
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <ShelfTabs
+            shelf={shelfQuery.data}
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+          />
+        </Box>
       )}
     </Box>
   );
+};
+
+export interface ShelfTabRedirectProps {
+  /** Tab to select on the canonical `/shelves/:shelfId` route. */
+  tab: ShelfTab;
+}
+
+/**
+ * Redirects the legacy `/shelves/:shelfId/edit` and
+ * `/shelves/:shelfId/rules` routes to the canonical tabbed page.
+ */
+export const ShelfTabRedirect: React.FC<ShelfTabRedirectProps> = ({ tab }) => {
+  const { shelfId } = useParams<{ shelfId: string }>();
+  return <Navigate to={`/shelves/${shelfId}?tab=${tab}`} replace />;
 };
 
 export default ShelfEditPage;

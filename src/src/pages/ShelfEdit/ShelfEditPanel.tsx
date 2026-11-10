@@ -1,6 +1,5 @@
 import { Box, Button, CircularProgress, Divider, Stack, Typography } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import RuleFolderIcon from "@mui/icons-material/RuleFolder";
 import type { ShelfReply } from "../../api/models/shelf";
 import { UpperPanel } from "../../components/Panels/UpperPanel";
 
@@ -8,15 +7,17 @@ export interface ShelfEditPanelProps {
   shelf: ShelfReply | null;
   isLoading: boolean;
   onBack: () => void;
-  onOpenRules: () => void;
 }
 
-/** Left-rail anchor for the shelf edit page: name, slug, and links. */
+/**
+ * Left-rail anchor for the shelf page: name, slug, description and a
+ * back-home action. Settings, rules and permissions are reached from
+ * the tabs in the main object, not from here.
+ */
 export const ShelfEditPanel: React.FC<ShelfEditPanelProps> = ({
   shelf,
   isLoading,
   onBack,
-  onOpenRules,
 }) => {
   return (
     <UpperPanel>
@@ -50,13 +51,6 @@ export const ShelfEditPanel: React.FC<ShelfEditPanelProps> = ({
             onClick={onBack}
           >
             Back home
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<RuleFolderIcon fontSize="small" />}
-            onClick={onOpenRules}
-          >
-            Rules
           </Button>
         </Stack>
 

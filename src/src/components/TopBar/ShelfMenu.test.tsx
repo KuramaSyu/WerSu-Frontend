@@ -28,7 +28,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useSelectedShelfStore } from "../../zustand/useSelectedShelfStore";
 import { ShelfMenu } from "./ShelfMenu";
 
-// The menu navigates to `/shelves/:id/rules`. Capture `useNavigate`
+// The menu navigates to `/shelves/:id?tab=rules`. Capture `useNavigate`
 // so we can assert the destination without wiring a full router.
 const routerMocks = vi.hoisted(() => ({ navigate: vi.fn() }));
 vi.mock("react-router-dom", async () => {
@@ -282,7 +282,9 @@ describe("ShelfMenu", () => {
       screen.getByRole("button", { name: /Edit rules for Beta/i }),
     );
 
-    expect(routerMocks.navigate).toHaveBeenCalledWith("/shelves/shelf-2/rules");
+    expect(routerMocks.navigate).toHaveBeenCalledWith(
+      "/shelves/shelf-2?tab=rules",
+    );
     // The edit action must not double as a shelf pick.
     expect(useSelectedShelfStore.getState().selectedShelfId).toBe("shelf-1");
   });

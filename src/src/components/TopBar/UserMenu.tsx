@@ -228,11 +228,11 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onRequestClose }) => {
     onRequestClose();
   };
 
-  // Rules live at /shelves/:id/rules, so we need a shelf id.
+  // Rules are a tab on /shelves/:id, so we need a shelf id.
   // Falls back to home when none is selected.
   const handleOpenRules = () => {
     if (selectedShelfId !== null) {
-      navigate(`/shelves/${selectedShelfId}/rules`);
+      navigate(`/shelves/${selectedShelfId}?tab=rules`);
     } else {
       navigate(Pages.HOME);
     }

@@ -1,19 +1,15 @@
 import { useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
 import {
   Alert,
   Box,
   Button,
   CircularProgress,
-  IconButton,
   LinearProgress,
   Paper,
   Stack,
-  Tooltip,
   Typography,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import RuleFolderIcon from "@mui/icons-material/RuleFolder";
 import type { RuleReply } from "../../api/models/rule";
 import {
@@ -21,31 +17,28 @@ import {
   useDeleteRule,
   useUpdateRule,
 } from "../../api/queries/rulesQueries";
-import { useShelf } from "../../api/queries/shelfQueries";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { RuleCard } from "./RuleCard";
 import { RuleFormModal } from "./RuleFormModal";
 import { ConfirmationModal } from "../Settings/ConfirmationModal";
-import {
-  useLeftPanel,
-  usePanelSize,
-  useRightPanel,
-} from "../../LayoutProvider";
-import { RulesShelfPanel } from "./RulesShelfPanel";
 
-// Rules page scoped to a single shelf.
-// Loads GET /api/rules with the shelf filter, renders one card per rule,
-// and wires create, edit, delete, and toggle-enable actions.
-export const RulesPage: React.FC = () => {
-  const params = useParams<{ shelfId: string }>();
-  const shelfId = params.shelfId ?? "";
-  const navigate = useNavigate();
+export interface ShelfRulesManagerProps {
+  /** Shelf whose rules are listed and edited. */
+  shelfId: string;
+}
+
+/**
+ * Rules manager scoped to a single shelf.
+ *
+ * Loads `GET /api/rules` with the shelf filter, renders one card per
+ * rule, and wires create, edit, delete, and toggle-enable actions.
+ * Renderable both as a standalone page body and inside the shelf
+ * settings tabs; it owns no routing or side-panel state.
+ */
+export const ShelfRulesManager: React.FC<ShelfRulesManagerProps> = ({
+  shelfId,
+}) => {
   const setMessage = useInfoStore((s) => s.setMessage);
-
-  const shelfQuery = useShelf({
-    id: shelfId,
-    include_books: false,
-  });
 
   const listRequest = useMemo(
     () =>
@@ -70,24 +63,6 @@ export const RulesPage: React.FC = () => {
   );
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  usePanelSize({ left: "clamp(18rem, 22vw, 26rem)" });
-
-  // Rules has no right rail; clear any panel left over from another
-  // page (e.g. the note editor).
-  useRightPanel(null);
-  useLeftPanel(
-    <RulesShelfPanel
-      shelf={shelfQuery.data ?? null}
-      isLoading={shelfQuery.isLoading}
-      onBack={() => navigate("/")}
-    />,
-    // The panel is mounted once; without these deps it keeps the
-    // pre-fetch snapshot (shelf=null) and appears to load forever
-    // on the first visit, until a cached second visit mounts it
-    // with data already available.
-    [shelfId, shelfQuery.data, shelfQuery.isLoading],
-  );
 
   const onCreate = () => {
     setEditingRule(undefined);
@@ -149,107 +124,66 @@ export const RulesPage: React.FC = () => {
     }
   };
 
-  if (!shelfId) {
-    return (
-      <Stack
-        sx={{ height: "100%", alignItems: "center", justifyContent: "center" }}
-        spacing={2}
-      >
-        <Alert severity="warning">No shelf selected.</Alert>
-        <Button variant="outlined" onClick={() => navigate("/")}>
-          Go home
-        </Button>
-      </Stack>
-    );
-  }
-
   const rules = rulesQuery.data ?? [];
 
   return (
     <Paper
+      component="section"
+      variant="outlined"
       elevation={0}
-      sx={{
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-      }}
+      sx={{ p: 3, borderRadius: 2, borderColor: "divider" }}
     >
-      <Stack
-        direction="row"
-        spacing={1}
-        sx={{
-          alignItems: "center",
-          justifyContent: "space-between",
-          px: 3,
-          py: 2,
-          borderBottom: "1px solid",
-          borderColor: "divider",
-        }}
-      >
+      <Stack spacing={2}>
         <Stack
           direction="row"
-          spacing={1}
-          sx={{ alignItems: "center", minWidth: 0 }}
+          spacing={2}
+          sx={{
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+          }}
         >
-          <Tooltip title="Go home">
-            <IconButton
-              size="small"
-              onClick={() => navigate("/")}
-              aria-label="go home"
-            >
-              <ArrowBackIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <RuleFolderIcon fontSize="small" color="primary" />
-          <Typography variant="h5" sx={{ fontWeight: 600 }} noWrap>
-            Rules
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            scoped to {shelfQuery.data?.display_name ?? shelfId}
-          </Typography>
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{ alignItems: "center", minWidth: 0 }}
+          >
+            <RuleFolderIcon fontSize="small" color="primary" />
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="h6">Automation rules</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Rules fire on note events scoped to this shelf.
+              </Typography>
+            </Box>
+          </Stack>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={onCreate}
+            disabled={rulesQuery.isLoading}
+          >
+            New rule
+          </Button>
         </Stack>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={onCreate}
-          disabled={rulesQuery.isLoading}
-        >
-          New rule
-        </Button>
-      </Stack>
 
-      {rulesQuery.isLoading ? (
-        <Box sx={{ p: 3 }}>
-          <LinearProgress />
-        </Box>
-      ) : null}
+        {rulesQuery.isLoading ? <LinearProgress /> : null}
 
-      {rulesQuery.isError ? (
-        <Alert severity="error" sx={{ m: 2 }}>
-          {rulesQuery.error instanceof Error
-            ? rulesQuery.error.message
-            : "Failed to load rules"}
-        </Alert>
-      ) : null}
+        {rulesQuery.isError ? (
+          <Alert severity="error">
+            {rulesQuery.error instanceof Error
+              ? rulesQuery.error.message
+              : "Failed to load rules"}
+          </Alert>
+        ) : null}
 
-      <Box
-        sx={{
-          flex: 1,
-          overflow: "auto",
-          px: 3,
-          py: 2,
-        }}
-      >
         {!rulesQuery.isLoading && rules.length === 0 ? (
           <Stack
             spacing={2}
             sx={{
               alignItems: "center",
               justifyContent: "center",
-              height: "100%",
               textAlign: "center",
-              py: 8,
+              py: 6,
             }}
           >
             <RuleFolderIcon
@@ -277,14 +211,12 @@ export const RulesPage: React.FC = () => {
               onEdit={onEdit}
               onDelete={onDelete}
               onToggleEnabled={onToggleEnabled}
-              isToggling={
-                togglingId === rule.id || updateRule.isPending
-              }
+              isToggling={togglingId === rule.id || updateRule.isPending}
               isDeleting={deletingId === rule.id || deleteRule.isPending}
             />
           ))}
         </Stack>
-      </Box>
+      </Stack>
 
       <RuleFormModal
         open={formModalOpen}
@@ -342,3 +274,5 @@ export const RulesPage: React.FC = () => {
     </Paper>
   );
 };
+
+export default ShelfRulesManager;

@@ -42,8 +42,10 @@ import { DirectoryDialogHost } from "./components/RightClick/DirectoryDialogHost
 import { PublicNotePage } from "./pages/PublicNotePage/Main";
 import SettingsPage from "./pages/Settings/Main";
 import { LoginPage } from "./pages/LoginPage/Main";
-import { RulesPage } from "./pages/Rules/RulesPage";
-import { ShelfEditPage } from "./pages/ShelfEdit/Main";
+import {
+  ShelfEditPage,
+  ShelfTabRedirect,
+} from "./pages/ShelfEdit/Main";
 import { SharesPage } from "./pages/Shares/Main";
 import { RolesPage } from "./pages/Roles/RolesPage";
 import { RoleDetailPage } from "./pages/Roles/RoleDetailPage";
@@ -129,12 +131,16 @@ function App() {
                   <Route path="/shortcuts" element={<ShortcutsPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route
-                    path="/shelves/:shelfId/rules"
-                    element={<RulesPage />}
+                    path="/shelves/:shelfId"
+                    element={<ShelfEditPage />}
                   />
                   <Route
                     path="/shelves/:shelfId/edit"
-                    element={<ShelfEditPage />}
+                    element={<ShelfTabRedirect tab="settings" />}
+                  />
+                  <Route
+                    path="/shelves/:shelfId/rules"
+                    element={<ShelfTabRedirect tab="rules" />}
                   />
                 </Route>
               </Route>

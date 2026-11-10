@@ -97,12 +97,12 @@ export const ShelfMenuList: React.FC<ShelfMenuListProps> = ({
 
   const openRulesForShelf = (shelfId: string) => {
     onNavigate?.();
-    navigate(`/shelves/${shelfId}/rules`);
+    navigate(`/shelves/${shelfId}?tab=rules`);
   };
 
   const openEditForShelf = (shelfId: string) => {
     onNavigate?.();
-    navigate(`/shelves/${shelfId}/edit`);
+    navigate(`/shelves/${shelfId}?tab=settings`);
   };
 
   // The row's own select handler must not fire when an action icon is

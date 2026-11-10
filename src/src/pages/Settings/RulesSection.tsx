@@ -69,14 +69,14 @@ export const RulesSection: React.FC = () => {
                 <IconButton
                   edge="end"
                   aria-label={`manage rules for ${shelf.display_name ?? shelf.id}`}
-                  onClick={() => navigate(`/shelves/${shelf.id}/rules`)}
+                  onClick={() => navigate(`/shelves/${shelf.id}?tab=rules`)}
                 >
                   <OpenInNewIcon />
                 </IconButton>
                 <Button
                   variant="outlined"
                   size="small"
-                  onClick={() => navigate(`/shelves/${shelf.id}/rules`)}
+                  onClick={() => navigate(`/shelves/${shelf.id}?tab=rules`)}
                   sx={{ ml: 1 }}
                 >
                   Manage rules
