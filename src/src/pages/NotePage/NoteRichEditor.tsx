@@ -22,6 +22,7 @@ import {
   type EditorContextMenuOpener,
 } from "../../components/RightClick/EditorRightClickMenu";
 import { logRerender } from "./editorRenderLog";
+import { useDoubleTapToEditMode } from "./useDoubleTapToEditMode";
 
 export interface NoteRichEditorProps {
   editor: Editor;
@@ -42,6 +43,9 @@ const NoteRichEditorImpl: React.FC<NoteRichEditorProps> = ({
     editMode,
     extraCommandsLen: extraCommands.length,
   });
+  // Double-click / double-tap on the canvas swaps into write mode
+  // (no-op while editing or on read-only shares).
+  const handleDoubleClick = useDoubleTapToEditMode();
   return (
     <Box
       sx={{
@@ -65,7 +69,12 @@ const NoteRichEditorImpl: React.FC<NoteRichEditorProps> = ({
         enabled={editMode}
         extraCommands={extraCommands}
       />
-      <Box className="editor-drag-region">
+      <Box
+        className="editor-drag-region"
+        onDoubleClick={handleDoubleClick}
+        // Let a double tap reach us instead of zooming the page.
+        sx={{ touchAction: "manipulation" }}
+      >
         <DragHandle
           editor={editor}
           className={`note-block-drag-handle ${editMode ? "" : "note-block-drag-handle--hidden"} `}

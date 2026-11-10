@@ -25,6 +25,7 @@ import { logRerender } from "./editorRenderLog";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useNoteFindStore } from "../../zustand/useNoteFindStore";
+import { useDoubleTapToEditMode } from "./useDoubleTapToEditMode";
 
 export interface NoteSourceEditorProps {
   sourceMarkdown: string;
@@ -77,6 +78,8 @@ const NoteSourceEditorImpl = forwardRef<
   const matches = useNoteFindStore((s) => s.matches);
   const activeIndex = useNoteFindStore((s) => s.activeIndex);
   const activeMarkRef = useRef<HTMLElement | null>(null);
+  // Double-click / double-tap on the source surface swaps into write mode.
+  const handleDoubleClick = useDoubleTapToEditMode();
 
   const hasHighlight = matches.length > 0;
 
@@ -142,6 +145,22 @@ const NoteSourceEditorImpl = forwardRef<
           }),
       }}
     >
+      {!editMode && (
+        // The disabled TextField swallows pointer events, so a
+        // transparent layer carries the double-tap-to-edit gesture
+        // while the textarea itself stays non-interactive.
+        <Box
+          aria-hidden
+          onDoubleClick={handleDoubleClick}
+          sx={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 2,
+            // Let a double tap reach us instead of zooming the page.
+            touchAction: "manipulation",
+          }}
+        />
+      )}
       {hasHighlight && (
         <Box
           aria-hidden

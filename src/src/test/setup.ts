@@ -107,6 +107,10 @@ const storeSpecs: Record<string, StoreSpec> = {
     pick: (mod) =>
       (mod as { useEditorSettings?: StoreHandle }).useEditorSettings,
   },
+  viewConfig: {
+    module: () => import("../zustand/useViewConfig"),
+    pick: (mod) => (mod as { useViewConfig?: StoreHandle }).useViewConfig,
+  },
   featureFlags: {
     module: () => import("../zustand/FeatureStore"),
     pick: (mod) => (mod as { useFeatureStore?: StoreHandle }).useFeatureStore,
@@ -187,6 +191,7 @@ beforeEach(async () => {
         "collabStatus",
         "auth",
         "editorSettings",
+        "viewConfig",
         "featureFlags",
         "shortcutModifier",
         "topBar",
