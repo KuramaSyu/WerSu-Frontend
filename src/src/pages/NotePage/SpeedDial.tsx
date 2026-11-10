@@ -7,14 +7,7 @@
 // as compact icon buttons (see `CreateActions` for the same pattern).
 
 import { memo, useCallback, useEffect, useId, useRef } from "react";
-import {
-  Box,
-  ButtonBase,
-  Fab,
-  Stack,
-  Tooltip,
-  Typography,
-} from "@mui/material";
+import { Box, Stack, Tooltip, Typography } from "@mui/material";
 import CodeIcon from "@mui/icons-material/Code";
 import EditIcon from "@mui/icons-material/Edit";
 import VisibilityIcon from "@mui/icons-material/Visibility";
@@ -31,6 +24,7 @@ import { useActiveNoteStore } from "../../zustand/editorStore";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { logRerender } from "./editorRenderLog";
 import ArticleIcon from "@mui/icons-material/Article";
+import { StateFab, type StateFabState } from "../../components/StateFab";
 
 export interface InsertSpeedDialProps {
   editor: Editor | null;
@@ -38,51 +32,18 @@ export interface InsertSpeedDialProps {
   setSourceMarkdown: (markdown: string) => void;
 }
 
-// Round 56x56 secondary FAB: paper bg, divider border, hover tint.
-const SecondaryFab: React.FC<{
-  label: string;
-  onClick: () => void;
-  children: React.ReactNode;
-}> = ({ label, onClick, children }) => {
-  const { theme } = useThemeStore();
-  return (
-    <Tooltip title={label}>
-      <ButtonBase
-        aria-label={label}
-        onClick={onClick}
-        sx={{
-          width: 56,
-          height: 56,
-          borderRadius: "50%",
-          border: `1px solid ${theme.palette.divider}`,
-          backgroundColor: theme.palette.background.paper,
-          color: theme.palette.text.primary,
-          transition: theme.transitions.create([
-            "background-color",
-            "transform",
-            "box-shadow",
-          ]),
-          "&:hover": {
-            backgroundColor: theme.palette.action.hover,
-            borderRadius: "50%",
-          },
-        }}
-      >
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: "100%",
-            height: "100%",
-          }}
-        >
-          {children}
-        </Box>
-      </ButtonBase>
-    </Tooltip>
-  );
-};
+// States for the read/write toggle. The FAB shows the *current* mode so
+// the eye/pencil is never ambiguous, and spells it out on change.
+const READ_WRITE_STATES: StateFabState[] = [
+  { key: "read", icon: <VisibilityIcon />, text: "Viewing" },
+  { key: "edit", icon: <EditIcon />, text: "Editing" },
+];
+
+// States for the rich/source toggle.
+const SOURCE_STATES: StateFabState[] = [
+  { key: "rich", icon: <ArticleIcon />, text: "Rich" },
+  { key: "source", icon: <CodeIcon />, text: "Source" },
+];
 
 const InsertSpeedDialImpl: React.FC<InsertSpeedDialProps> = ({
   editor,
@@ -121,12 +82,10 @@ const InsertSpeedDialImpl: React.FC<InsertSpeedDialProps> = ({
     setContent,
   ]);
 
-  // Read/write FAB icon shows the mode the tap switches INTO,
-  // not the current mode.
+  // Tooltip/aria for the tap action; the FAB itself shows the current state.
   const readWriteLabel = editMode
     ? "Switch to read mode"
     : "Switch to write mode";
-  const ReadWriteIcon = editMode ? VisibilityIcon : EditIcon;
 
   // Read-only badge: replaces the toggle when the share does not
   // grant write. Desktop gets an extended FAB with the "View only"
@@ -242,26 +201,35 @@ const InsertSpeedDialImpl: React.FC<InsertSpeedDialProps> = ({
             )}
           </Box>
         ) : (
-          <Fab
-            size="large"
+          <StateFab
+            states={READ_WRITE_STATES}
+            activeKey={editMode ? "edit" : "read"}
             color="primary"
             aria-label={readWriteLabel}
+            expandOnHover
             onClick={() => setWrite(!editMode)}
-          >
-            <ReadWriteIcon sx={{ color: primaryFg }} />
-          </Fab>
+          />
         )}
       </Tooltip>
-      <SecondaryFab
-        label={isRich ? "Swap to Source view" : "Swap to Rich editor"}
-        onClick={handleSourceToggle}
+      <Tooltip
+        title={isRich ? "Swap to Source view" : "Swap to Rich editor"}
       >
-        {isRich ? (
-          <CodeIcon sx={{ color: paperFg }} />
-        ) : (
-          <ArticleIcon sx={{ color: paperFg }} />
-        )}
-      </SecondaryFab>
+        <StateFab
+          states={SOURCE_STATES}
+          activeKey={isRich ? "rich" : "source"}
+          aria-label={isRich ? "Swap to Source view" : "Swap to Rich editor"}
+          expandOnHover
+          onClick={handleSourceToggle}
+          color="inherit"
+          sx={{
+            backgroundColor: theme.palette.background.paper,
+            color: paperFg,
+            border: `1px solid ${theme.palette.divider}`,
+            boxShadow: "none",
+            "&:hover": { backgroundColor: theme.palette.action.hover },
+          }}
+        />
+      </Tooltip>
     </Stack>
   );
 };
