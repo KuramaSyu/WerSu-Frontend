@@ -183,9 +183,91 @@
 }
 
 .tiptap ul[data-type="taskList"] li > label {
-  margin-top: 0.25em;
   user-select: none;
   flex: none;
+  position: relative;
+  /* `1lh` matches the height of the first text line exactly, and the box
+     is centred inside it, so the tickbox always lines up with the copy
+     regardless of font size or line-height. */
+  display: inline-flex;
+  align-items: center;
+  height: 1lh;
+  cursor: pointer;
+  /* The box is the visible control; the stock <input> sits on top of it
+     (transparent) so it still receives focus/clicks for a11y. */
+}
+
+/* Native control stays in the DOM (keyboard + accessibility) but is
+   invisible; the <span> sibling below is the painted tickbox. */
+.tiptap ul[data-type="taskList"] li > label > input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* The animated tickbox. `--task-check-mark` (and `--purple` for the
+   accent fill) are set on the editor wrapper from the active MUI theme;
+   they fall back to currentColor so read-only/foreign documents still
+   render something sensible. */
+.tiptap ul[data-type="taskList"] li > label > span {
+  position: relative;
+  box-sizing: border-box;
+  display: block;
+  width: 1.15em;
+  height: 1.15em;
+  border: 1.5px solid color-mix(in srgb, currentColor 38%, transparent);
+  border-radius: 0.3em;
+  background-color: transparent;
+  transition:
+    background-color 170ms ease,
+    border-color 170ms ease,
+    box-shadow 170ms ease;
+}
+
+/* The check mark, painted as a mask so the glyph stays perfectly centred
+   and crisp at any size. It scales in with a springy easing when the box
+   becomes checked. `background-color` supplies the tick colour. */
+.tiptap ul[data-type="taskList"] li > label > span::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: var(--task-check-mark, #fff);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z'/%3E%3C/svg%3E")
+    center / 72% no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z'/%3E%3C/svg%3E")
+    center / 72% no-repeat;
+  opacity: 0;
+  transform: scale(0.15);
+  transition:
+    transform 320ms cubic-bezier(0.22, 2.1, 0.5, 1.15),
+    opacity 90ms ease-out;
+}
+
+/* Hover on an unchecked box: nudge toward the accent colour so the
+   control reads as interactive before the click. */
+.tiptap ul[data-type="taskList"] li:not([data-checked="true"]) > label:hover > span {
+  border-color: color-mix(in srgb, var(--purple, currentColor) 65%, transparent);
+  background-color: color-mix(in srgb, var(--purple, currentColor) 10%, transparent);
+}
+
+/* Checked: fill with the accent and draw the mark. */
+.tiptap ul[data-type="taskList"] li[data-checked="true"] > label > span {
+  background-color: var(--purple, currentColor);
+  border-color: var(--purple, currentColor);
+}
+
+.tiptap ul[data-type="taskList"] li[data-checked="true"] > label > span::after {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Keyboard focus ring on the hidden input flows to the painted box. */
+.tiptap ul[data-type="taskList"] li > label > input:focus-visible + span {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--purple, currentColor) 45%, transparent);
 }
 
 .tiptap ul[data-type="taskList"] li > div {

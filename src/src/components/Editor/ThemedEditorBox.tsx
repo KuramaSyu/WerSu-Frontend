@@ -62,6 +62,8 @@ export const ThemedEditorBox = ({
           "--gray-3": theme.palette.divider,
 
           "--purple": theme.palette.primary.main,
+          // Colour of the check mark drawn on a completed task-list box.
+          "--task-check-mark": theme.palette.primary.contrastText,
 
           // give the outer table border the same thickness
           "& div[data-node-view-content-react]": {
