@@ -311,6 +311,16 @@ export const AppShell: React.FC = () => {
               // drawer portals out to the body precisely so this
               // context can stay intact.
               zIndex: 0,
+              // Themes without a background image would otherwise leave
+              // the surface as one flat slab. The procedurally lit dot
+              // grid gives it a little texture without competing with
+              // the content. It is painted on this wrapper (rather than
+              // the scrolling outlet) so it also sits behind the right
+              // rail, which stays transparent over the wrapper. It stays
+              // off whenever an image is painted underneath or the user
+              // disabled it in Appearance.
+              backgroundImage: dotGrid?.image,
+              backgroundSize: dotGrid?.size,
             }}
           >
             <Box
@@ -349,13 +359,6 @@ export const AppShell: React.FC = () => {
                     ? `calc(env(safe-area-inset-bottom, 0px) + ${MOBILE_BOTTOM_BAR_CLEARANCE})`
                     : undefined,
                 transition: `padding-top ${theme.transitions.duration.standard}ms ${theme.transitions.easing.easeInOut}`,
-                // Themes without a background image would otherwise leave
-                // the outlet as one flat slab. The procedurally lit dot grid
-                // gives it a little texture without competing with the
-                // content. It stays off whenever an image is painted
-                // underneath or the user disabled it in Appearance.
-                backgroundImage: dotGrid?.image,
-                backgroundSize: dotGrid?.size,
                 minWidth: 0,
                 minHeight: 0,
               }}
