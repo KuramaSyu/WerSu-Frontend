@@ -10,6 +10,7 @@ import {
   Stack,
   ToggleButton,
   ToggleButtonGroup,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import WifiIcon from "@mui/icons-material/Wifi";
@@ -53,6 +54,7 @@ type EditingMode = "live" | "offline";
  */
 function liveStatusVisual(status: CollabStatus): {
   color: string;
+  severity: "success" | "info" | "warning" | "error";
   label: string;
   spinner: boolean;
   connected: boolean;
@@ -61,6 +63,7 @@ function liveStatusVisual(status: CollabStatus): {
     case "connected":
       return {
         color: "success.main",
+        severity: "success",
         label: "Connected to the collaboration server",
         spinner: false,
         connected: true,
@@ -68,6 +71,7 @@ function liveStatusVisual(status: CollabStatus): {
     case "connecting":
       return {
         color: "warning.main",
+        severity: "warning",
         label: "Connecting to the collaboration server…",
         spinner: true,
         connected: false,
@@ -75,6 +79,7 @@ function liveStatusVisual(status: CollabStatus): {
     case "awaitingToken":
       return {
         color: "info.main",
+        severity: "info",
         label: "Awaiting login before connecting…",
         spinner: true,
         connected: false,
@@ -82,6 +87,7 @@ function liveStatusVisual(status: CollabStatus): {
     case "tokenFetchError":
       return {
         color: "error.main",
+        severity: "error",
         label: "Couldn't fetch an access token",
         spinner: false,
         connected: false,
@@ -89,6 +95,7 @@ function liveStatusVisual(status: CollabStatus): {
     case "authFailed":
       return {
         color: "error.main",
+        severity: "error",
         label: "Authentication failed",
         spinner: false,
         connected: false,
@@ -96,6 +103,7 @@ function liveStatusVisual(status: CollabStatus): {
     case "editingOffline":
       return {
         color: "warning.main",
+        severity: "warning",
         label: "Editing offline. Changes save to this browser only",
         spinner: false,
         connected: false,
@@ -103,6 +111,7 @@ function liveStatusVisual(status: CollabStatus): {
     case "conflict":
       return {
         color: "error.main",
+        severity: "error",
         label: "Sync conflict. Resolve it to keep syncing",
         spinner: false,
         connected: false,
@@ -110,6 +119,7 @@ function liveStatusVisual(status: CollabStatus): {
     case "disconnected":
       return {
         color: "error.main",
+        severity: "error",
         label: "Disconnected from the collaboration server",
         spinner: false,
         connected: false,
@@ -118,6 +128,7 @@ function liveStatusVisual(status: CollabStatus): {
     default:
       return {
         color: "text.disabled",
+        severity: "info",
         label: "Collaboration is off",
         spinner: false,
         connected: false,
@@ -182,16 +193,7 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({
   const liveVisual = liveStatusVisual(status);
   const isOffline = status === "editingOffline" || status === "disconnected";
   const editingMode: EditingMode = isOffline ? "offline" : "live";
-  // Only the selected segment tints its icon; the other stays neutral.
   const isLiveSelected = editingMode === "live";
-  const isOfflineSelected = !isLiveSelected;
-  // Live is secondary only when it is both selected and connected; a
-  // connecting/error state keeps its status colour.
-  const liveIconColor = !isLiveSelected
-    ? "inherit"
-    : liveVisual.connected
-      ? "secondary.main"
-      : liveVisual.color;
 
   const { versions, selectedVersion, selectVersion, clearSelection } =
     useVersionSelection(noteId);
@@ -309,13 +311,11 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({
       >
         {editMode && (
           <Box>
-            <Typography
-              variant="caption"
-              sx={{ color: "text.secondary", display: "block", mb: 0.5 }}
+            <Stack
+              direction="row"
+              spacing={0.75}
+              sx={{ alignItems: "center", flexWrap: "wrap", rowGap: 0.5 }}
             >
-              Currently editing
-            </Typography>
-            <Stack spacing={0.5} sx={{ alignItems: "flex-start" }}>
               <ToggleButtonGroup
                 size="small"
                 exclusive
@@ -333,18 +333,20 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({
                     py: 0.25,
                     border: 0,
                     borderRadius: 1,
+                    color: "text.secondary",
                     "&.Mui-selected": {
-                      backgroundColor: "background.paper",
-                      "&:hover": { backgroundColor: "background.paper" },
+                      backgroundColor: "secondary.main",
+                      color: "secondary.contrastText",
+                      "&:hover": { backgroundColor: "secondary.dark" },
                     },
                   },
                 }}
               >
                 <ToggleButton value="live" aria-label="Live" sx={{ gap: 1 }}>
                   {liveVisual.spinner ? (
-                    <CircularProgress size={14} sx={{ color: liveIconColor }} />
+                    <CircularProgress size={14} color="inherit" />
                   ) : (
-                    <WifiIcon fontSize="small" sx={{ color: liveIconColor }} />
+                    <WifiIcon fontSize="small" />
                   )}
                   Live
                 </ToggleButton>
@@ -353,21 +355,47 @@ export const VersionInfo: React.FC<VersionInfoProps> = ({
                   aria-label="Offline"
                   sx={{ gap: 1 }}
                 >
-                  <WifiOffIcon
-                    fontSize="small"
-                    sx={{
-                      color: isOfflineSelected ? "secondary.main" : "inherit",
-                    }}
-                  />
+                  <WifiOffIcon fontSize="small" />
                   offline
                 </ToggleButton>
               </ToggleButtonGroup>
-              {/* The message describes the Live connection, so it only
-                  applies while Live is the selected segment. */}
-              {isLiveSelected && !liveVisual.connected && status !== "idle" && (
-                <Typography variant="caption" sx={{ color: liveVisual.color }}>
-                  {liveVisual.label}
-                </Typography>
+              {/* The connection status describes the Live session, so
+                  it only applies while Live is the selected segment.
+                  Only the state icon is shown; hovering it reveals the
+                  full status message in an animated tooltip. */}
+              {isLiveSelected && status !== "idle" && (
+                <Tooltip
+                  title={liveVisual.label}
+                  arrow
+                  enterDelay={150}
+                  slotProps={{ transition: { timeout: 200 } }}
+                >
+                  <Box
+                    aria-label={liveVisual.label}
+                    sx={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: liveVisual.color,
+                      backgroundColor: theme.alpha(
+                        theme.palette[liveVisual.severity].main,
+                        0.14,
+                      ),
+                      borderRadius: 1,
+                      px: 0.75,
+                      py: 0.4,
+                      cursor: "default",
+                    }}
+                  >
+                    {liveVisual.spinner ? (
+                      <CircularProgress size={14} color="inherit" />
+                    ) : liveVisual.connected ? (
+                      <WifiIcon fontSize="small" />
+                    ) : (
+                      <WifiOffIcon fontSize="small" />
+                    )}
+                  </Box>
+                </Tooltip>
               )}
             </Stack>
           </Box>
