@@ -1,7 +1,13 @@
 import type { Editor } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
-import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from "react";
 import {
   Divider,
   Grow,
@@ -21,7 +27,7 @@ import { CopyButton } from "../CopyButton";
 import { copyEditorSelection } from "../RightClick/editorClipboard";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useEditorMenuStore } from "../../zustand/editorMenuStore";
-import { NodeSelection } from "@tiptap/pm/state";
+import { NodeSelection, PluginKey } from "@tiptap/pm/state";
 import { CellSelection } from "@tiptap/pm/tables";
 import { analyseSelection, pickStrategy } from "./bubbleMenuStrategies";
 import { iconForName } from "./editorIcons";
@@ -39,6 +45,20 @@ const ENTER_EASING = "cubic-bezier(0.34, 1.56, 0.64, 1)";
 const EXIT_DURATION_MS = 160;
 // Slide the menu between selection rects instead of jumping.
 const MOVE_DURATION_MS = 180;
+
+// Floating-ui options. The default main-axis offset (8) leaves the menu
+// sitting too close to the typed text, so push it a bit further above.
+//
+// `flip` is disabled on purpose: tiptap's default lets the menu jump to the
+// opposite side (below / beside the selection) as soon as the selected line
+// is near the top of the viewport, which is what happens when you double
+// click a word near the top. The `shift` middleware (still on by default)
+// keeps it on screen instead, so it stays above the selection.
+const BUBBLE_MENU_OPTIONS = {
+  placement: "top",
+  offset: 16,
+  flip: false,
+} as const;
 
 interface TextSelectionBubbleMenuProps {
   editor: Editor;
@@ -101,6 +121,14 @@ export const TextSelectionBubbleMenu = ({
     [strategy, analysis, editor],
   );
 
+  // Stable plugin key so we can ask the plugin to re-run floating-ui
+  // positioning after the menu content has laid out. See the
+  // ResizeObserver effect below for the full rationale.
+  const pluginKey = useMemo(
+    () => new PluginKey("textSelectionBubbleMenu"),
+    [],
+  );
+
   // Keep the wrapper mounted so opacity and transform can animate both ways.
   const shouldShow = useCallback(
     ({ editor: viewEditor }: { editor: Editor }) =>
@@ -122,6 +150,12 @@ export const TextSelectionBubbleMenu = ({
       `left ${MOVE_DURATION_MS}ms ease-out`,
       `top ${MOVE_DURATION_MS}ms ease-out`,
     ].join(", ");
+
+    // While the menu is closed (including mid-drag) the plugin wrapper
+    // must not swallow pointer events. Otherwise the invisible wrapper can
+    // sit over the text and abort the browser's native drag-selection
+    // after the first character.
+    el.style.pointerEvents = isOpen ? "" : "none";
 
     if (!isOpen) {
       hasSnappedRef.current = false;
@@ -153,6 +187,29 @@ export const TextSelectionBubbleMenu = ({
     };
   }, [isOpen]);
 
+  // The plugin positions the wrapper synchronously on the selection
+  // transaction, before React has committed the menu content for the
+  // new selection. For a double-click the ops change from "none" (the
+  // preceding collapsed caret) to a full row, but floating-ui measures
+  // the old, shorter wrapper, so the menu is anchored as if it were
+  // only a few pixels tall and then grows down over the selected word.
+  //
+  // Watch the wrapper's box and re-run floating-ui whenever it changes
+  // size, so the menu settles above the selection once the buttons are
+  // laid out. Repositioning only changes left/top, so this cannot loop.
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      if (editor.isDestroyed) return;
+      editor.view?.dispatch(
+        editor.state.tr.setMeta(pluginKey, "updatePosition"),
+      );
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [editor, pluginKey]);
+
   const opacityTransition = useMemo(
     () =>
       theme.transitions.create("opacity", {
@@ -177,7 +234,15 @@ export const TextSelectionBubbleMenu = ({
   );
 
   return (
-    <BubbleMenu editor={editor} shouldShow={shouldShow} ref={wrapperRef} updateDelay={0} resizeDelay={0}>
+    <BubbleMenu
+      editor={editor}
+      shouldShow={shouldShow}
+      ref={wrapperRef}
+      pluginKey={pluginKey}
+      options={BUBBLE_MENU_OPTIONS}
+      updateDelay={0}
+      resizeDelay={0}
+    >
       <Paper
         elevation={2}
         sx={{
