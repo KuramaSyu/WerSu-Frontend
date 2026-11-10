@@ -22,6 +22,7 @@ import { useThemeStore } from "../../zustand/useThemeStore";
 import { useScrollToSectionOnLoad } from "../../hooks/useScrollToSectionOnLoad";
 import { queryClient } from "../../api/queryClient";
 import { historyQueryKeys } from "../../api/queries/historyQueries";
+import { useEditorSettings } from "../../zustand/useEditorSettings";
 
 export const NotePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -42,6 +43,14 @@ export const NotePage: React.FC = () => {
   // activity) as soon as the user opens a note
   useEffect(() => {
     queryClient.invalidateQueries({ queryKey: historyQueryKeys.all });
+  }, [id]);
+
+  // Always open a note in view (read) mode. `editMode` lives in a
+  // global store, so without this an edit session on a previous note
+  // would leak into the next one. Reset whenever the note id changes
+  // (and on mount).
+  useEffect(() => {
+    useEditorSettings.getState().setWrite(false);
   }, [id]);
 
   const sameStringArray = (left: string[], right: string[]) =>
