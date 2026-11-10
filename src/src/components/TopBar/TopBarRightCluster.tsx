@@ -56,8 +56,13 @@ const TopBarRightClusterImpl: React.FC = () => {
   // own toolbar mount has been removed (the rail only hosts the
   // content panels now), so there is no double-up risk. The
   // registry itself lives in `useTopBarStore`.
+  //
+  // Some routes use the top bar for page controls even though they
+  // own no right rail (e.g. the shelf settings width toggle). Those
+  // still register a slot, so show slots whenever either the rail is
+  // mounted or a contributor registered one.
   const slotEntries = useTopBarStore((s) => s.slots);
-  const showSlots = rightPanel !== null;
+  const showSlots = rightPanel !== null || Object.keys(slotEntries).length > 0;
   const sortedSlots = showSlots ? selectSortedTopBarSlots(slotEntries) : [];
 
   return (

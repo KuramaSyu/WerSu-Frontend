@@ -9,13 +9,26 @@
  */
 
 /**
- * Editor body width preset, cycled by the top-bar width toggle.
+ * Body width preset, cycled by a top-bar width toggle.
+ *
+ *   - `normal` — the default reading column.
+ *   - `wide`   — wider than normal, capped below the full canvas.
+ *   - `full`   — the entire available width.
+ *
+ * Shared by the note editor and the shelf settings page; each surface
+ * owns its own state and width table.
+ */
+export type WidthMode = "normal" | "wide" | "full";
+
+/**
+ * Alias kept for the note editor's existing imports. New code should
+ * prefer {@link WidthMode}.
  *
  *   - `normal` — A4-paper width, the default reading column.
  *   - `wide`   — wider than paper, capped below the full canvas.
  *   - `full`   — the entire available width.
  */
-export type NoteWidthMode = "normal" | "wide" | "full";
+export type NoteWidthMode = WidthMode;
 
 export interface ViewConfig {
   /**

@@ -111,6 +111,11 @@ const storeSpecs: Record<string, StoreSpec> = {
     module: () => import("../zustand/useViewConfig"),
     pick: (mod) => (mod as { useViewConfig?: StoreHandle }).useViewConfig,
   },
+  shelfWidth: {
+    module: () => import("../pages/ShelfEdit/useShelfWidthMode"),
+    pick: (mod) =>
+      (mod as { useShelfWidthMode?: StoreHandle }).useShelfWidthMode,
+  },
   featureFlags: {
     module: () => import("../zustand/FeatureStore"),
     pick: (mod) => (mod as { useFeatureStore?: StoreHandle }).useFeatureStore,
@@ -192,6 +197,7 @@ beforeEach(async () => {
         "auth",
         "editorSettings",
         "viewConfig",
+        "shelfWidth",
         "featureFlags",
         "shortcutModifier",
         "topBar",

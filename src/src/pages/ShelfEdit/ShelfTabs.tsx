@@ -4,6 +4,8 @@ import { ShelfSettingsTab } from "./ShelfSettingsTab";
 import { ShelfPermissionsTab } from "./ShelfPermissionsTab";
 import { ShelfRulesManager } from "../Rules/ShelfRulesManager";
 import { SHELF_TABS, type ShelfTab } from "./shelfTabsModel";
+import { SHELF_WIDTH_STATES } from "./shelfWidthMode";
+import { useShelfWidthMode } from "./useShelfWidthMode";
 
 export interface ShelfTabsProps {
   shelf: ShelfReply;
@@ -22,13 +24,31 @@ export const ShelfTabs: React.FC<ShelfTabsProps> = ({
   activeTab,
   onTabChange,
 }) => {
+  // User-chosen width, cycled from the top bar. One fluid width is
+  // shared by all three tab bodies (Settings / Rules / Permissions) so
+  // they always line up; `clamp` keeps forms readable on small screens
+  // and stops them stretching on large ones under `normal`/`wide`.
+  const widthMode = useShelfWidthMode((s) => s.widthMode);
+  const widthState =
+    SHELF_WIDTH_STATES[widthMode] ?? SHELF_WIDTH_STATES.normal;
+
   return (
-    // Single fluid width shared by all three tab bodies (Settings / Rules
-    // / Permissions) so they line up. `clamp` keeps it readable on small
-    // screens and stops forms from stretching on large ones.
     <Stack
       spacing={3}
-      sx={{ width: "100%", maxWidth: "clamp(20rem, 100%, 48rem)" }}
+      sx={{
+        width: "100%",
+        maxWidth: widthState.contentWidth,
+        // Ease between presets instead of snapping. `max-width` is a
+        // length in every preset, so the browser can interpolate it.
+        transition: (t) =>
+          t.transitions.create("max-width", {
+            duration: t.transitions.duration.standard,
+            easing: t.transitions.easing.easeInOut,
+          }),
+        "@media (prefers-reduced-motion: reduce)": {
+          transition: "none",
+        },
+      }}
     >
       <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
         <Tabs
