@@ -165,7 +165,13 @@ export const useNoteEditor = (params: UseNoteEditorParams): Editor | null => {
         // instead of building a `?key=null` URL and polling it 50 times.
         throw new Error("Attachment upload failed");
       }
-      const link = new AttachmentLinkBuilder(api).setWidth(720).getLink(key);
+      // Match the generated link to the file's MIME type: images get the
+      // image endpoint (and the 720px width), everything else gets the
+      // plain attachment download link.
+      const link = new AttachmentLinkBuilder(api)
+        .setContentType(file.type)
+        .setWidth(720)
+        .getLink(key);
       return link;
     },
     [noteId],

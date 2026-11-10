@@ -58,8 +58,8 @@ export default function UploadFileDialog({
       setUploading(true);
 
       // if editor is given, wrap the insertAtCurrentPosition
-      // with the image insert function used for pasing (where you will first see <-- uploading image...-->
-      // and then the image will be inserted after upload)
+      // with the insert function used for pasting (where you will first see
+      // <-- uploading attachment... --> and then the file will be inserted after upload)
       if (editor) {
         editor.chain().focus().uploadAttachment(file).run();
       } else {

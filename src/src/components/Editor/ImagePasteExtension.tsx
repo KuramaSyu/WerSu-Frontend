@@ -7,6 +7,7 @@ import { progress } from "framer-motion";
 import { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { Node } from "@tiptap/core";
 import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
+import type { NodeViewProps } from "@tiptap/react";
 import type { AssignmentReturnSharp } from "@mui/icons-material";
 import type { EditorView } from "@tiptap/pm/view";
 
@@ -100,14 +101,26 @@ export function getPasteUploadExtension(
                 `dropped a file - try to upload it: ${files.map((f) => f.name).join(", ")}`,
               );
 
-              // use foreach to process them async
-              files.forEach(async (file) => {
+              // Insert the placeholder where the pointer actually released,
+              // not at the current selection (which can be somewhere else
+              // entirely, e.g. after a click elsewhere or a stale caret).
+              const dropPos =
+                view.posAtCoords({
+                  left: event.clientX,
+                  top: event.clientY,
+                })?.pos ?? null;
+
+              // use foreach to process them async. Placeholders are
+              // inserted synchronously before the upload awaits, so the
+              // index offset keeps a multi-file drop in the original order.
+              files.forEach(async (file, index) => {
                 try {
                   const sucess = await uploadAttachmentWithPlaceholder(
                     view,
                     file,
                     onUploadHook,
                     skipPermissionWait,
+                    dropPos != null ? dropPos + index : null,
                   );
                 } catch (error) {
                   if (error instanceof Error) {
@@ -169,6 +182,10 @@ export async function uploadAttachmentWithPlaceholder(
   file: File,
   onUploadHook: (file: File) => Promise<string>,
   skipPermissionWait = false,
+  // For drops: the document position the file was released at. When
+  // omitted (paste, slash menu, upload dialog) the placeholder lands at
+  // the current selection.
+  dropPos: number | null = null,
 ): Promise<boolean> {
   const uploadID = crypto.randomUUID(); // generate UUID to later find the placeholder node to replace it
 
@@ -177,13 +194,21 @@ export async function uploadAttachmentWithPlaceholder(
     id: uploadID,
     fileName: file.name,
   });
-  view.dispatch(view.state.tr.replaceSelectionWith(placeHolder));
+  view.dispatch(
+    dropPos != null
+      ? view.state.tr.insert(dropPos, placeHolder)
+      : view.state.tr.replaceSelectionWith(placeHolder),
+  );
 
   const url = await onUploadHook(file);
 
-  // make request to url and wait until no 403 is returned. if any other
-  // error code than 403 is returned, raise this error. this is just for waiting permission insert
-  if (!skipPermissionWait) {
+  // Only images are served through the image endpoint, whose SpiceDB
+  // permission tuple is written asynchronously after the link is created.
+  // Poll until it becomes readable. Non-image attachments are served as
+  // plain downloads that are available immediately; polling them never
+  // yields a 200 from the image endpoint and only produced a spurious
+  // "upload failed" error even though the attachment link was already valid.
+  if (!skipPermissionWait && file.type.startsWith("image/")) {
     await waitForImagePermission(url).catch((error) => {
       console.error("Error while waiting for image permission:", error);
       throw new Error("Failed to upload image.");
@@ -273,10 +298,12 @@ async function waitForImagePermission(url: string): Promise<Response | null> {
   return null;
 }
 
-function UploadAttachmentView() {
-  console.log("render upload placeholder");
+function UploadAttachmentView({ node }: NodeViewProps) {
+  const fileName = (node.attrs.fileName as string | undefined) ?? "";
   return (
-    <NodeViewWrapper as="div">{"<!-- uploading image... -->"}</NodeViewWrapper>
+    <NodeViewWrapper as="div">
+      {`<!-- uploading attachment${fileName ? `: ${fileName}` : ""}... -->`}
+    </NodeViewWrapper>
   );
 }
 
