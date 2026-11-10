@@ -13,9 +13,14 @@ import SaveIcon from "@mui/icons-material/Save";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useActiveNoteStore } from "../../../zustand/editorStore";
+import useInfoStore, {
+  SnackbarUpdateImpl,
+  copyToClipboard,
+} from "../../../zustand/InfoStore";
 import { useViewConfig } from "../../../zustand/useViewConfig";
 import { useDeleteNote } from "../../../api/queries/useNoteQueries";
 import { useEditorSettings } from "../../../zustand/useEditorSettings";
@@ -103,6 +108,7 @@ export const NoteActionsToolbarInner: React.FC = () => {
   const navigate = useNavigate();
   const deleteNote = useDeleteNote();
   const { theme } = useThemeStore();
+  const setMessage = useInfoStore((s) => s.setMessage);
 
   // Overflow menu wiring -- mirrors the anchor + Menu pattern used
   // in `ShareDialog.tsx`. Close on selection so the menu doesn't
@@ -117,6 +123,23 @@ export const NoteActionsToolbarInner: React.FC = () => {
   const handleMenuDelete = () => {
     closeMenu();
     setConfirmDeleteOpen(true);
+  };
+
+  // Copy the note's current body as Markdown. Reads through the
+  // store's `getContent` so source mode copies the raw buffer and
+  // rich mode serialises the live editor -- whichever the user is
+  // looking at. Available to every viewer, including read-only and
+  // public ones, since it only reads.
+  const handleMenuCopyMarkdown = async () => {
+    closeMenu();
+    const markdown = useActiveNoteStore.getState().getContent();
+    const copied = await copyToClipboard(markdown);
+    setMessage(
+      new SnackbarUpdateImpl(
+        copied ? "Copied as Markdown" : "Couldn't copy Markdown",
+        copied ? "success" : "error",
+      ),
+    );
   };
 
   const runDelete = async () => {
@@ -179,50 +202,57 @@ export const NoteActionsToolbarInner: React.FC = () => {
             one-tap affordance instead of a menu item. */}
         <NoteWidthToggle />
 
-        {/* Overflow menu -- Delete only. Hidden entirely when there
-            is nothing to put in it (public viewers), so we don't
-            render an empty menu button. */}
-        {showDelete && (
-          <>
-            <Tooltip title="More actions">
-              <IconButton
-                aria-label="more actions"
-                aria-haspopup="menu"
-                aria-expanded={menuAnchor !== null}
-                onClick={openMenu}
-                disabled={deleteNote.isPending}
-              >
-                <MoreVertIcon />
-              </IconButton>
-            </Tooltip>
-            <Menu
-              anchorEl={menuAnchor}
-              open={Boolean(menuAnchor)}
-              onClose={closeMenu}
-              slotProps={{ list: { dense: true } }}
+        {/* Overflow menu. It always has the read-only "Copy as
+            Markdown" item, so the button is always rendered; the
+            owner-only Permissions / Delete items are appended when
+            the viewer is allowed to mutate the note. */}
+        <Tooltip title="More actions">
+          <IconButton
+            aria-label="more actions"
+            aria-haspopup="menu"
+            aria-expanded={menuAnchor !== null}
+            onClick={openMenu}
+            disabled={deleteNote.isPending}
+          >
+            <MoreVertIcon />
+          </IconButton>
+        </Tooltip>
+        <Menu
+          anchorEl={menuAnchor}
+          open={Boolean(menuAnchor)}
+          onClose={closeMenu}
+          slotProps={{ list: { dense: true } }}
+        >
+          <MenuItem onClick={() => void handleMenuCopyMarkdown()}>
+            <ListItemIcon>
+              <ContentCopyIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Copy as Markdown</ListItemText>
+          </MenuItem>
+          {showDelete && (
+            <MenuItem
+              onClick={() => {
+                closeMenu();
+                setPermissionsOpen(true);
+              }}
             >
-              <MenuItem
-                onClick={() => {
-                  closeMenu();
-                  setPermissionsOpen(true);
-                }}
-              >
-                <ListItemIcon>
-                  <AdminPanelSettingsIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText>Permissions</ListItemText>
-              </MenuItem>
-              <MenuItem onClick={handleMenuDelete}>
-                <ListItemIcon sx={{ color: "error.main" }}>
-                  <DeleteIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText sx={{ color: "error.main" }}>
-                  Delete note
-                </ListItemText>
-              </MenuItem>
-            </Menu>
-          </>
-        )}
+              <ListItemIcon>
+                <AdminPanelSettingsIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Permissions</ListItemText>
+            </MenuItem>
+          )}
+          {showDelete && (
+            <MenuItem onClick={handleMenuDelete}>
+              <ListItemIcon sx={{ color: "error.main" }}>
+                <DeleteIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText sx={{ color: "error.main" }}>
+                Delete note
+              </ListItemText>
+            </MenuItem>
+          )}
+        </Menu>
       </Stack>
       <ShareDialog
         noteId={noteId ?? ""}
