@@ -81,7 +81,14 @@ function useEditorRect(
   const [rect, setRect] = useState<DOMRect | null>(null);
 
   useEffect(() => {
-    if (!active) return;
+    if (!active) {
+      // Drop the stale rect while hidden. Otherwise the next open exposes
+      // the previous selection's rect for one render, so
+      // `BubbleMenuSurface` snaps there and then slides to the new
+      // selection instead of appearing at it directly.
+      setRect(null);
+      return;
+    }
 
     const update = () => {
       if (editor.isDestroyed) return;
