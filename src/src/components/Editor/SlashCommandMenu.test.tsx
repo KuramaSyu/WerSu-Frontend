@@ -621,6 +621,59 @@ describe("SlashCommandMenu — slash state tracking", () => {
     }
   });
 
+  // Regression: a code block whose content happens to *start* with a
+  // slash (a `//` comment, a path, or any later JSX closing tag like
+  // `</Modal>`) used to open the slash menu from any caret position,
+  // because the fallback only checked the first character of the block.
+  it("does NOT open the menu for code that only starts with a slash", () => {
+    const editor = makeEditor();
+    try {
+      editor.commands.setContent(
+        "<pre><code>// ❌ Config props\n" +
+          '<Modal type="confirmation" />\n' +
+          "// ✅ Compose from parts\n" +
+          "<Modal>\n" +
+          "  <Modal.Header />\n" +
+          "  <Modal.Body>Are you sure?</Modal.Body>\n" +
+          "  <Modal.Footer>\n" +
+          "    <Button>Cancel</Button>\n" +
+          "  </Modal.Footer>\n" +
+          "</Modal></code></pre>",
+      );
+      // Caret at the very end, right after the final `</Modal>`.
+      editor.commands.focus("end");
+
+      expect(isSlashCommandContext(editor)).toBe(false);
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("does NOT open the menu for an inline slash surrounded by text", () => {
+    const editor = makeEditor();
+    try {
+      editor.commands.setContent("<p>const a = b / c</p>");
+      editor.commands.focus("end");
+
+      expect(isSlashCommandContext(editor)).toBe(false);
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("still opens the menu for pasted content that is a slash command", () => {
+    const editor = makeEditor();
+    try {
+      editor.commands.setContent("<p>/bold</p>");
+      editor.commands.focus("end");
+
+      expect(isSlashCommandContext(editor)).toBe(true);
+      expect(getMatchingSlashCommands(editor)[0]?.id).toBe("bold");
+    } finally {
+      editor.destroy();
+    }
+  });
+
   it("clearSlashLine clears the slash menu state as well", () => {
     const editor = makeEditor();
     try {

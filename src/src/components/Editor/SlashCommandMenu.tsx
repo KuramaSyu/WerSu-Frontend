@@ -174,6 +174,40 @@ const getCurrentParagraphRange = (editor: Editor) => {
   return { from, to };
 };
 
+/**
+ * Fallback for content that already contains a slash command but has no
+ * recorded slash state (pasted content, unit-test fixtures).
+ *
+ * Only a slash that is the first non-whitespace character of its text
+ * block counts as a command, and the query may not contain whitespace.
+ * Without these guards a code block whose content merely *starts* with a
+ * slash (`// comment`, a path, or a JSX closing tag like `</Modal>`) would
+ * open the menu from any caret position, because the old check only looked
+ * at the beginning of the block.
+ */
+const getFallbackSlashRange = (
+  editor: Editor,
+): { from: number; to: number } | null => {
+  const { selection, doc } = editor.state;
+  const { from: paragraphFrom } = getCurrentParagraphRange(editor);
+  const textBeforeCaret = doc.textBetween(paragraphFrom, selection.from);
+  const commandStart = textBeforeCaret.lastIndexOf("/");
+  if (commandStart === -1) {
+    return null;
+  }
+  // The slash must be the block's first non-whitespace character: only
+  // whitespace may precede it. Everything else (`//`, `a / b`, `</Modal>`)
+  // is ordinary content, not a command.
+  if (textBeforeCaret.slice(0, commandStart).trim().length > 0) {
+    return null;
+  }
+  // A command query is a single word; whitespace ends the context.
+  if (/\s/.test(textBeforeCaret.slice(commandStart + 1))) {
+    return null;
+  }
+  return { from: paragraphFrom + commandStart, to: selection.from };
+};
+
 const getSlashCommandRange = (
   editor: Editor,
 ): { from: number; to: number } | null => {
@@ -198,12 +232,7 @@ const getSlashCommandRange = (
 
   // Fallback for content that already starts with a slash command and has
   // no recorded slash state, such as pasted content or unit-test fixtures.
-  const { from: paragraphFrom } = getCurrentParagraphRange(editor);
-  const textBeforeCaret = doc.textBetween(paragraphFrom, selection.from);
-  const commandStart = textBeforeCaret.lastIndexOf("/");
-  return commandStart === -1 || !textBeforeCaret.trimStart().startsWith("/")
-    ? null
-    : { from: paragraphFrom + commandStart, to: selection.from };
+  return getFallbackSlashRange(editor);
 };
 
 /**
@@ -438,20 +467,16 @@ const getSlashQuery = (editor: Editor) => {
 
   // Fallback for content that already starts with a slash command and has
   // no recorded slash state, such as pasted content or unit-test fixtures.
-  const { from: paragraphFrom } = getCurrentParagraphRange(editor);
-  const textBeforeCaret = doc.textBetween(paragraphFrom, selection.from);
-  const commandStart = textBeforeCaret.lastIndexOf("/");
-  if (
-    commandStart === -1 ||
-    !textBeforeCaret.trimStart().startsWith("/") ||
-    selection.from < paragraphFrom + commandStart + 1
-  ) {
+  const fallbackRange = getFallbackSlashRange(editor);
+  if (!fallbackRange) {
     return "";
   }
   console.warn(
     "[slash-query] no slash state found, falling back to text search (this is expected for pasted content and unit tests)",
   );
-  return textBeforeCaret.slice(commandStart + 1).toLowerCase();
+  return doc
+    .textBetween(fallbackRange.from + 1, selection.from)
+    .toLowerCase();
 };
 
 /**
@@ -568,9 +593,7 @@ export function isSlashCommandContext(editor: Editor): boolean {
 
   // Fallback for content that already starts with a slash command and has
   // no recorded slash state, such as pasted content or unit-test fixtures.
-  const { from: paragraphFrom } = getCurrentParagraphRange(editor);
-  const textBeforeCaret = doc.textBetween(paragraphFrom, selection.from);
-  return textBeforeCaret.trimStart().startsWith("/");
+  return getFallbackSlashRange(editor) !== null;
 }
 
 /**
