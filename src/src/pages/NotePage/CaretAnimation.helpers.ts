@@ -153,6 +153,39 @@ export function planSelectionRects(
   return rects;
 }
 
+/**
+ * Run `measure` with every collaboration cursor widget temporarily
+ * hidden, restoring the previous `display` afterwards.
+ *
+ * Remote caret widgets (`.collaboration-carets__caret`) live inside the
+ * ProseMirror DOM and carry an absolutely-positioned name label at
+ * `top: -1.4em`. A DOM `Range` that includes one returns the label's
+ * box as well, which sits outside the text line. During a cross-block
+ * selection that box sorts as the topmost (or bottommost) rect and
+ * makes the block-shape helper paint a whole line instead of the
+ * partial first/last line. Hiding the widgets for the synchronous
+ * measurement keeps the rects anchored to the real text; nothing
+ * repaints in between, so there is no flicker.
+ */
+export function withCollaborationCaretsHidden<T>(
+  root: Element,
+  measure: () => T,
+): T {
+  const carets = Array.from(
+    root.querySelectorAll<HTMLElement>(".collaboration-carets__caret"),
+  );
+  if (carets.length === 0) return measure();
+  const previous = carets.map((el) => el.style.display);
+  for (const el of carets) el.style.display = "none";
+  try {
+    return measure();
+  } finally {
+    carets.forEach((el, i) => {
+      el.style.display = previous[i];
+    });
+  }
+}
+
 /** Vertical overlap between two rects, or 0 when they don't touch. */
 function verticalOverlap(a: SelectionRect, b: SelectionRect): number {
   return Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));

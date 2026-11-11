@@ -208,10 +208,23 @@ export const useNoteEditor = (params: UseNoteEditorParams): Editor | null => {
         // editor. The extension reads `useEditorSettings.editMode`
         // itself on every decoration rebuild, so flipping the
         // read/edit toggle at runtime takes effect immediately.
-        CaretAnimation,
+        // The animated overlay owns both the local caret/selection
+        // and every remote collaborator's selection; hand it the same
+        // awareness the caret extension broadcasts cursor positions on.
+        // Read it from the plain prop, not the ref-derived
+        // `stableProvider`, so we don't touch a ref during render.
+        CaretAnimation.configure({ awareness: provider?.awareness ?? null }),
         Collaboration.configure({ document: stableYdoc }),
+        // `stableProvider` is the ref-backed read-mode stand-in; it is
+        // stable for the editor's lifetime and deliberately passed here.
+        // eslint-disable-next-line react-hooks/refs
         CollaborationCaret.configure({
           provider: stableProvider,
+          // Remote selections are painted by CaretAnimation's animated
+          // overlay from these same awareness cursors. Suppress
+          // y-prosemirror's static inline highlight so the two never
+          // stack into a double tint.
+          selectionRender: () => ({}),
           user: {
             name: user?.username ?? publicUserName,
             id: user?.id ?? publicUserName,

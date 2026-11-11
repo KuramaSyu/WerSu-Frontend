@@ -27,6 +27,7 @@ import {
   computeCellSelectionRect,
   planSelectionRects,
   selectionSpansBlocks,
+  withCollaborationCaretsHidden,
   type NodeDomLookup,
   type SelectionRect,
 } from "./CaretAnimation.helpers";
@@ -357,6 +358,61 @@ describe("assignRectsToSlots", () => {
     const previous = [line(0, 20), line(20, 40)];
     // Only one next rect, no overlap with either slot -> first free slot.
     expect(assignRectsToSlots(previous, [line(500, 520)])).toEqual([0]);
+  });
+});
+
+describe("withCollaborationCaretsHidden", () => {
+  const makeCaret = (display = "") => {
+    const el = document.createElement("span");
+    el.className = "collaboration-carets__caret";
+    el.style.display = display;
+    return el;
+  };
+
+  it("hides the caret widgets for the measurement and restores them", () => {
+    const root = document.createElement("div");
+    const a = makeCaret();
+    const b = makeCaret("inline");
+    root.append(a, b);
+
+    let seenDuringMeasure: string[] = [];
+    withCollaborationCaretsHidden(root, () => {
+      seenDuringMeasure = [a.style.display, b.style.display];
+    });
+
+    expect(seenDuringMeasure).toEqual(["none", "none"]);
+    expect(a.style.display).toBe("");
+    expect(b.style.display).toBe("inline");
+  });
+
+  it("restores the widgets even when the measurement throws", () => {
+    const root = document.createElement("div");
+    const caret = makeCaret("block");
+    root.appendChild(caret);
+
+    expect(() =>
+      withCollaborationCaretsHidden(root, () => {
+        throw new Error("boom");
+      }),
+    ).toThrow("boom");
+    expect(caret.style.display).toBe("block");
+  });
+
+  it("returns the measurement result unchanged", () => {
+    const root = document.createElement("div");
+    root.appendChild(makeCaret());
+    expect(withCollaborationCaretsHidden(root, () => 42)).toBe(42);
+  });
+
+  it("leaves non-caret elements alone", () => {
+    const root = document.createElement("div");
+    const other = document.createElement("span");
+    const caret = makeCaret();
+    root.append(other, caret);
+
+    withCollaborationCaretsHidden(root, () => {});
+
+    expect(other.style.display).toBe("");
   });
 });
 
