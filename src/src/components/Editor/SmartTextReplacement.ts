@@ -6,9 +6,19 @@
 // right arrow. Each rule is keyed on the last few characters of the text
 // that would appear immediately before the caret if the default text
 // insertion went through.
+//
+// Two guard rails keep the substitution out of the user's way:
+//   1. It is disabled inside code contexts (`codeBlock` nodes and the
+//      inline `code` mark), where the literal ASCII sequence is almost
+//      always what the author actually wants.
+//   2. Pressing Backspace immediately after a substitution undoes it,
+//      restoring the original ASCII sequence so it can be typed
+//      literally. Typing the sequence again re-triggers the
+//      substitution, so the rewrite is never a one-way trap.
 
 import { Extension } from "@tiptap/core";
-import { Plugin, PluginKey } from "@tiptap/pm/state";
+import type { EditorState } from "@tiptap/pm/state";
+import { Plugin, PluginKey, type Transaction } from "@tiptap/pm/state";
 
 interface SmartReplacementRule {
   /** ASCII sequence that triggers the substitution. */
@@ -36,6 +46,33 @@ const smartTextReplacementPluginKey = new PluginKey("smartTextReplacement");
 // `PluginKey`, so identity is the only reliable way to look it up.
 export { smartTextReplacementPluginKey };
 
+/** Records the most recent auto-substitution so Backspace can undo it.
+ *
+ *  `from` is the document position where the inserted glyph starts;
+ *  `replacement` is the glyph that was inserted; `pattern` is the ASCII
+ *  sequence it replaced. */
+interface PendingSubstitution {
+  from: number;
+  replacement: string;
+  pattern: string;
+}
+
+/**
+ * Where the last substitution is remembered. It lives on the plugin's
+ * `state` (not in a closure) so that *any* transaction that isn't our
+ * substitution invalidates it — moving the caret, typing another
+ * character, pasting, undo/redo, collaborative updates, etc. Without
+ * this, a stale entry could undo a substitution long after the user
+ * has moved on.
+ */
+interface SmartTextReplacementState {
+  pending: PendingSubstitution | null;
+}
+
+const META_KEY = "smartTextReplacement:substitution";
+
+const initialReplacementState: SmartTextReplacementState = { pending: null };
+
 /**
  * @returns how many characters immediately before the insertion point we
  * need to read so that, after appending the inserted text, every rule's
@@ -47,13 +84,73 @@ const maxRuleLength = (): number =>
     0,
   );
 
+/**
+ * True when text inserted at `pos` would land inside a code context —
+ * a `codeBlock` node or text carrying the inline `code` mark. The
+ * substitution rules are ASCII-to-typography conveniences, so they must
+ * never fire there.
+ *
+ * The checks go through `state.schema` rather than `editor.isActive(...)`
+ * because `isActive` throws when the editor was built without the named
+ * node/mark (e.g. tests that disable `codeBlock`), while a schema lookup
+ * simply returns `undefined`.
+ */
+const isCodeContext = (state: EditorState, pos: number): boolean => {
+  const { doc, schema } = state;
+  const $pos = doc.resolve(Math.max(0, Math.min(pos, doc.content.size)));
+
+  if (schema.nodes.codeBlock) {
+    for (let depth = $pos.depth; depth > 0; depth -= 1) {
+      if ($pos.node(depth).type === schema.nodes.codeBlock) {
+        return true;
+      }
+    }
+  }
+
+  if (schema.marks.code) {
+    const carriesCodeMark = [...$pos.marks(), ...($pos.nodeAfter?.marks ?? [])];
+    if (carriesCodeMark.some((mark) => mark.type === schema.marks.code)) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+/** Reads the pending substitution recorded by the reducer. */
+const getPendingSubstitution = (
+  state: EditorState,
+): PendingSubstitution | null =>
+  (
+    smartTextReplacementPluginKey.getState(state) as
+      SmartTextReplacementState | undefined
+  )?.pending ?? null;
+
 export const SmartTextReplacement = Extension.create({
   name: "smartTextReplacement",
 
   addProseMirrorPlugins() {
     return [
-      new Plugin({
+      new Plugin<SmartTextReplacementState>({
         key: smartTextReplacementPluginKey,
+
+        state: {
+          init: () => initialReplacementState,
+          apply(tr: Transaction, value: SmartTextReplacementState) {
+            // Our own substitution sets the next value via metadata; any
+            // other document/selection change clears the pending undo.
+            const meta = tr.getMeta(META_KEY) as
+              PendingSubstitution | null | undefined;
+            if (meta !== undefined) {
+              return { pending: meta };
+            }
+            if (value.pending && (tr.docChanged || tr.selectionSet)) {
+              return { pending: null };
+            }
+            return value;
+          },
+        },
+
         props: {
           /**
            * Called by ProseMirror's input rules machinery *before* the
@@ -67,6 +164,12 @@ export const SmartTextReplacement = Extension.create({
            * the rule's glyph in a single transaction.
            */
           handleTextInput(view, from, to, text) {
+            // Code is literal by default: keep `--`, `->`, and `=>`
+            // exactly as typed inside code blocks and inline code.
+            if (isCodeContext(view.state, from)) {
+              return false;
+            }
+
             const windowSize = maxRuleLength();
             const textBefore = view.state.doc.textBetween(
               Math.max(0, from - windowSize),
@@ -93,16 +196,67 @@ export const SmartTextReplacement = Extension.create({
               // the caret at the end of the inserted text, which is
               // where the user expects to be after the auto-replace.
               const keptText = text.slice(0, text.length - charsInText);
+              const glyphFrom = from - charsInDoc + keptText.length;
               const tr = view.state.tr.insertText(
                 keptText + rule.replacement,
                 from - charsInDoc,
                 to,
               );
+              tr.setMeta(META_KEY, {
+                from: glyphFrom,
+                replacement: rule.replacement,
+                pattern: rule.pattern,
+              } satisfies PendingSubstitution);
               view.dispatch(tr);
               return true;
             }
 
             return false;
+          },
+
+          /**
+           * Backspace immediately after an auto-substitution restores the
+           * original ASCII sequence instead of deleting the glyph. The
+           * pending state is cleared, so the user can either keep the
+           * literal characters or delete/retype a character to trigger
+           * the substitution again.
+           */
+          handleKeyDown(view, event) {
+            if (event.key !== "Backspace") {
+              return false;
+            }
+
+            const pending = getPendingSubstitution(view.state);
+            if (!pending) {
+              return false;
+            }
+
+            const { selection } = view.state;
+            const glyphEnd = pending.from + pending.replacement.length;
+            if (!selection.empty || selection.from !== glyphEnd) {
+              return false;
+            }
+
+            // Guard against the glyph having been altered in a way the
+            // reducer didn't observe (e.g. a collaborative splice).
+            const currentGlyph = view.state.doc.textBetween(
+              pending.from,
+              glyphEnd,
+              "\n",
+              "\n",
+            );
+            if (currentGlyph !== pending.replacement) {
+              return false;
+            }
+
+            const tr = view.state.tr.insertText(
+              pending.pattern,
+              pending.from,
+              glyphEnd,
+            );
+            tr.setMeta(META_KEY, null);
+            view.dispatch(tr);
+            return true;
           },
         },
       }),

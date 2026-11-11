@@ -21,10 +21,7 @@ import {
 
 function makeEditor(): Editor {
   return new Editor({
-    extensions: [
-      StarterKit.configure({ codeBlock: false }),
-      SmartTextReplacement,
-    ],
+    extensions: [StarterKit, SmartTextReplacement],
   });
 }
 
@@ -41,6 +38,16 @@ afterEach(() => {
     editors.pop()?.destroy();
   }
 });
+
+function findPlugin(editor: Editor) {
+  const plugin = editor.state.plugins.find(
+    (p) => p.spec.key === smartTextReplacementPluginKey,
+  );
+  if (!plugin) {
+    throw new Error("SmartTextReplacement plugin not found");
+  }
+  return plugin;
+}
 
 /**
  * Dispatches a synthetic text input event the same way ProseMirror does
@@ -59,13 +66,7 @@ const dispatchTextInput = (
   to: number,
   text: string,
 ): boolean => {
-  // `state.plugins` is a flat list of every ProseMirror plugin
-  // registered on the editor. Our extension contributes exactly one;
-  // find it by reference-equality on its exported plugin key.
-  const plugin = editor.state.plugins.find(
-    (p) => p.spec.key === smartTextReplacementPluginKey,
-  );
-  const handler = plugin?.props.handleTextInput;
+  const handler = findPlugin(editor).props.handleTextInput;
   if (typeof handler !== "function") {
     throw new Error("SmartTextReplacement handleTextInput not found");
   }
@@ -85,6 +86,24 @@ const dispatchTextInput = (
       editor.state.tr.insertText(text, from, to),
     ),
   );
+};
+
+/**
+ * Invokes the plugin's `handleKeyDown` prop with a minimal synthetic
+ * event carrying only the `key` the handler reads.
+ *
+ * @returns whether `handleKeyDown` claimed the event.
+ */
+const dispatchKeyDown = (editor: Editor, key: string): boolean => {
+  const handler = findPlugin(editor).props.handleKeyDown;
+  if (typeof handler !== "function") {
+    throw new Error("SmartTextReplacement handleKeyDown not found");
+  }
+  const plainHandler = handler as (
+    view: typeof editor.view,
+    event: { key: string },
+  ) => boolean | void;
+  return Boolean(plainHandler(editor.view, { key }));
 };
 
 describe("SmartTextReplacement", () => {
@@ -172,13 +191,66 @@ describe("SmartTextReplacement", () => {
 
   it("does not replace inside a code block", () => {
     const editor = freshEditor();
-    editor.commands.setContent("<p><code>x</code></p>");
-    // Move selection into the code mark.
+    editor.commands.setContent("<pre><code>-</code></pre>");
+    // Caret at the end of the code block's only text character.
     editor.commands.setTextSelection(2);
-    // We can't reliably call handleTextInput with a from inside a code
-    // mark; this test mostly guards against the extension being wired
-    // into a code-block input handler by mistake. Just verify the
-    // extension is loaded and inert.
-    expect(editor.state.doc.textContent).toBe("x");
+
+    const handled = dispatchTextInput(editor, 2, 2, "-");
+    expect(handled).toBe(false);
+  });
+
+  it("does not replace inside inline code", () => {
+    const editor = freshEditor();
+    editor.commands.setContent("<p><code>-</code></p>");
+    // Caret at the end of the inline-code text.
+    editor.commands.setTextSelection(2);
+
+    const handled = dispatchTextInput(editor, 2, 2, "-");
+    expect(handled).toBe(false);
+  });
+
+  it("restores the ASCII sequence when Backspace follows a substitution", () => {
+    const editor = freshEditor();
+    editor.commands.setContent("<p>hello</p>");
+    editor.commands.focus("end");
+    expect(dispatchTextInput(editor, 6, 6, "--")).toBe(true);
+    expect(editor.state.doc.textContent).toBe("hello–");
+
+    const handled = dispatchKeyDown(editor, "Backspace");
+    expect(handled).toBe(true);
+    expect(editor.state.doc.textContent).toBe("hello--");
+    // Caret sits after the restored two dashes.
+    expect(editor.state.selection.from).toBe(8);
+  });
+
+  it("allows the substitution to be redone after the undo", () => {
+    const editor = freshEditor();
+    editor.commands.setContent("<p>hello</p>");
+    editor.commands.focus("end");
+    expect(dispatchTextInput(editor, 6, 6, "--")).toBe(true);
+    expect(dispatchKeyDown(editor, "Backspace")).toBe(true);
+    expect(editor.state.doc.textContent).toBe("hello--");
+
+    // Delete the trailing dash and type it again: the rule fires anew.
+    editor.commands.deleteRange({ from: 7, to: 8 });
+    expect(editor.state.doc.textContent).toBe("hello-");
+    expect(dispatchTextInput(editor, 7, 7, "-")).toBe(true);
+    expect(editor.state.doc.textContent).toBe("hello–");
+  });
+
+  it("does not undo a substitution once the caret has moved away", () => {
+    const editor = freshEditor();
+    editor.commands.setContent("<p>hello</p>");
+    editor.commands.focus("end");
+    expect(dispatchTextInput(editor, 6, 6, "--")).toBe(true);
+
+    // Type another character (which invalidates the pending undo via the
+    // plugin's state reducer), then place the caret back after the glyph.
+    editor.commands.insertContentAt(7, "x");
+    expect(editor.state.doc.textContent).toBe("hello–x");
+    editor.commands.setTextSelection(7);
+
+    expect(dispatchKeyDown(editor, "Backspace")).toBe(false);
+    expect(editor.state.doc.textContent).toBe("hello–x");
   });
 });
