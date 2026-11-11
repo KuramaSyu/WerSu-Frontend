@@ -51,8 +51,12 @@ const SearchResultsOverlayInner: React.FC<SearchResultsOverlayProps> = ({
     });
   }, [open, location.pathname, applyAutoFilter]);
 
-  // ESC closes the overlay and clears search state
+  // ESC closes the overlay and clears search state. Gated on `open`: the
+  // mobile drawer stays mounted (hidden) after its first open, and an
+  // ungated handler would close / wipe search state on every Escape the
+  // user presses elsewhere in the app, including the note editor.
   useEffect(() => {
+    if (!open) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         onClose();
@@ -61,7 +65,7 @@ const SearchResultsOverlayInner: React.FC<SearchResultsOverlayProps> = ({
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose, resetAll]);
+  }, [open, onClose, resetAll]);
 
   // Local open mirror so the swipe-down-to-close animation can
   // play before the parent flips `open` off and the drawer

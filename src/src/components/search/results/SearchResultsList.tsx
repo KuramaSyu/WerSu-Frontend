@@ -42,6 +42,7 @@ export const SearchResultsList: React.FC = () => {
   const theme = useThemeStore((s) => s.theme);
   const { byId: directoriesById } = useAllDirectoriesQuery();
   const setIsDialogOpen = useSearchNotesStore((s) => s.setIsDialogOpen);
+  const isDialogOpen = useSearchNotesStore((s) => s.isDialogOpen);
 
   const {
     notes,
@@ -195,8 +196,13 @@ export const SearchResultsList: React.FC = () => {
     el?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [selectedIndex, selectedWith]);
 
-  // arrow keys move selection, Enter activates the result + clears the query
+  // Arrow keys move selection, Enter activates the result + clears the
+  // query. Document-scoped, so it must only listen while the overlay is
+  // actually open: on mobile the search drawer stays mounted after its
+  // first open, and an ungated handler would hijack Enter typed in the
+  // note editor and navigate to the previously selected result.
   useEffect(() => {
+    if (!isDialogOpen) return;
     /** set selection to keybaord and disable hover if user used keyboard */
     const upOrDown = () => {
       setSelectedWith("keyboard");
@@ -218,7 +224,7 @@ export const SearchResultsList: React.FC = () => {
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [results, selectedIndex, setSearch, handleActivate]);
+  }, [isDialogOpen, results, selectedIndex, setSearch, handleActivate]);
 
   // re-enable hover once the user actually moves the mouse
   useEffect(() => {
