@@ -7,7 +7,7 @@ import { getNoteApi } from "../../api/NoteApi";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import {
   README_NOTE_TITLE,
-  README_SENTINEL,
+  migrateReadme,
   serializeReadme,
 } from "../../utils/readme";
 import { useUserKey } from "../../api/queries/useUser";
@@ -255,34 +255,25 @@ export function useCreateSubdirectoryForm(
               finalImageUrl = rawImageUrl;
 
               // 2e. Refresh the README header so the image also shows
-              //     up when the README note is opened. Preserve the
-              //     user-authored body below the sentinel when one was
-              //     returned by the backend.
-              let readmeBody = "";
+              //     up when the README note is opened. This also upgrades
+              //     older README structures while preserving the
+              //     user-authored body below the sentinel.
+              let existingReadmeContent: string | undefined;
               try {
                 const existingReadme = await noteApi.get(readmeId);
-                const sentinelIndex =
-                  existingReadme?.content.indexOf(README_SENTINEL) ?? -1;
-                if (sentinelIndex >= 0) {
-                  readmeBody = existingReadme!.content
-                    .slice(sentinelIndex + README_SENTINEL.length)
-                    .trim();
-                }
+                existingReadmeContent = existingReadme?.content;
               } catch {
-                // Non-fatal: fall back to an empty body.
+                // Non-fatal: fall back to regenerating the header only.
               }
 
               await noteApi.patch(
                 readmeId,
                 README_NOTE_TITLE,
-                serializeReadme(
-                  {
-                    name: trimmedName,
-                    description: shell.description,
-                    imageUrl: rawImageUrl,
-                  },
-                  readmeBody,
-                ),
+                migrateReadme(existingReadmeContent, {
+                  name: trimmedName,
+                  description: shell.description,
+                  imageUrl: rawImageUrl,
+                }),
               );
             }
           }
