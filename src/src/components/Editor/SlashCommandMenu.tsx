@@ -666,7 +666,7 @@ export const SlashCommandMenu = ({
   // Keep the highlighted item visible while navigating with the arrow
   // keys. The list has a fixed max height, so without this the selection
   // can move off-screen inside the scroll container.
-  const selectedItemRef = useRef<HTMLElement | null>(null);
+  const selectedItemRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     selectedItemRef.current?.scrollIntoView({ block: "nearest" });
   }, [selectedIndex]);
