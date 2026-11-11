@@ -16,12 +16,19 @@ export interface NoteTitleBarProps {
   setTitle: (title: string) => void;
   /** When true, drop the right padding so the title hugs the screen edge. */
   forceFullWidth: boolean;
+  /**
+   * When true the title is static text. This covers read-only shares
+   * and the whole view mode -- writers can only rename a note while
+   * the editor is in edit mode.
+   */
+  readOnly?: boolean;
 }
 
 const NoteTitleBarImpl: React.FC<NoteTitleBarProps> = ({
   title,
   setTitle,
   forceFullWidth,
+  readOnly = false,
 }) => {
   const { theme } = useThemeStore();
   logRerender("NoteTitleBar", { titleLen: title.length });
@@ -45,6 +52,7 @@ const NoteTitleBarImpl: React.FC<NoteTitleBarProps> = ({
         <Input
           fullWidth
           multiline
+          disabled={readOnly}
           value={title}
           onChange={(event) => setTitle(event.target.value)}
           placeholder="Note title"
@@ -61,6 +69,13 @@ const NoteTitleBarImpl: React.FC<NoteTitleBarProps> = ({
               wordBreak: "break-word",
               overflow: "hidden",
               resize: "none",
+            },
+            // The field is rendered `disabled` to make it inert, but
+            // the title should still look like normal text instead of
+            // MUI's greyed-out disabled colour.
+            "& .MuiInputBase-input.Mui-disabled": {
+              color: theme.palette.text.primary,
+              WebkitTextFillColor: theme.palette.text.primary,
             },
           }}
         />

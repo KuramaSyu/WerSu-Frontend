@@ -399,10 +399,13 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
             editor?.commands.focus("end");
           }}
         >
+          {/* The title is only editable while the editor is in edit
+              mode. Read-only shares stay non-editable even there. */}
           <NoteTitleBar
             title={title}
             setTitle={setTitleFromUser}
             forceFullWidth={forceFullWidth}
+            readOnly={readOnly || !editMode}
           />
 
           {editor && viewMode === "rich" && (
