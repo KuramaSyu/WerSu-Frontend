@@ -663,6 +663,14 @@ export const SlashCommandMenu = ({
   // Index of the currently highlighted command for keyboard navigation.
   const [selectedIndex, setSelectedIndex] = useState(0);
 
+  // Keep the highlighted item visible while navigating with the arrow
+  // keys. The list has a fixed max height, so without this the selection
+  // can move off-screen inside the scroll container.
+  const selectedItemRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    selectedItemRef.current?.scrollIntoView({ block: "nearest" });
+  }, [selectedIndex]);
+
   // keyboard navigation: arrow up/down to change selectedIndex
   useEffect(() => {
     if (!editor?.view || editor.isDestroyed) {
@@ -790,6 +798,7 @@ export const SlashCommandMenu = ({
           {displayedCommands.map(({ command, commandName }, i) => (
             <ListItemButton
               key={command.id}
+              ref={i === selectedIndex ? selectedItemRef : undefined}
               onMouseDown={(event) => {
                 event.preventDefault();
                 command.run(editor);
