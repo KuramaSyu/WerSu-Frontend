@@ -4,9 +4,7 @@
 // lock state from `useImageResizeStore`.
 
 import type { Editor } from "@tiptap/core";
-import { BubbleMenu } from "@tiptap/react/menus";
 import { useEditorState } from "@tiptap/react";
-import { useCallback } from "react";
 import {
   Divider,
   IconButton,
@@ -18,13 +16,13 @@ import {
 } from "@mui/material";
 import LockIcon from "@mui/icons-material/Lock";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
-import { useThemeStore } from "../../zustand/useThemeStore";
-import { useImageResizeStore } from "../../zustand/useImageResizeStore";
-import { defaultImageResizeStrategy } from "./imageResizeStrategy";
-import {
-  applyImageWidth,
-  getSelectedImage,
-} from "./imageSelection";
+import { useThemeStore } from "../../../zustand/useThemeStore";
+import { useImageResizeStore } from "../../../zustand/useImageResizeStore";
+import { defaultImageResizeStrategy } from "../imageResizeStrategy";
+import { applyImageWidth, getSelectedImage } from "../imageSelection";
+import { BubbleMenuSurface } from "./BubbleMenuSurface";
+import { useNodeSelectionAnchor } from "./useBubbleMenuAnchor";
+import { useEditorEditable } from "./useEditorEditable";
 
 export interface ImageBubbleMenuProps {
   editor: Editor;
@@ -38,6 +36,7 @@ export const ImageBubbleMenu = ({
   const { theme } = useThemeStore();
   const locked = useImageResizeStore((state) => state.locked);
   const toggleLocked = useImageResizeStore((state) => state.toggleLocked);
+  const editorEditable = useEditorEditable(editor);
 
   // Re-render the quick-size highlight as the selection changes.
   const { hasImage, style } = useEditorState({
@@ -51,11 +50,8 @@ export const ImageBubbleMenu = ({
     },
   });
 
-  const shouldShow = useCallback(
-    ({ editor: viewEditor }: { editor: Editor }) =>
-      enabled && viewEditor.isEditable && Boolean(getSelectedImage(viewEditor)),
-    [enabled],
-  );
+  const isOpen = enabled && editorEditable && hasImage;
+  const anchor = useNodeSelectionAnchor(editor, isOpen);
 
   const currentWidth = defaultImageResizeStrategy.parse(style).width;
   const activeQuick =
@@ -66,12 +62,12 @@ export const ImageBubbleMenu = ({
     )?.label ?? null;
 
   return (
-    <BubbleMenu
-      editor={editor}
-      updateDelay={0}
-      resizeDelay={0}
-      options={{ placement: "top", offset: 10, flip: true }}
-      shouldShow={shouldShow}
+    <BubbleMenuSurface
+      open={isOpen}
+      anchor={anchor}
+      placement="top"
+      offset={10}
+      flip
     >
       <Paper
         elevation={2}
@@ -80,8 +76,8 @@ export const ImageBubbleMenu = ({
           borderRadius: 50,
           px: 0.5,
           py: 0.25,
-          opacity: hasImage ? 1 : 0,
-          pointerEvents: hasImage ? "auto" : "none",
+          opacity: isOpen ? 1 : 0,
+          pointerEvents: isOpen ? "auto" : "none",
         }}
       >
         <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
@@ -139,6 +135,6 @@ export const ImageBubbleMenu = ({
           </ToggleButtonGroup>
         </Stack>
       </Paper>
-    </BubbleMenu>
+    </BubbleMenuSurface>
   );
 };

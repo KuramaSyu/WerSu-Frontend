@@ -1,13 +1,9 @@
-import { Button, Stack, ToggleButton, ToggleButtonGroup } from "@mui/material";
-import type { Editor } from "@tiptap/core";
-import { BubbleMenu } from "@tiptap/react/menus";
-import { useEffect, useState } from "react";
+import { Stack, ToggleButton, ToggleButtonGroup } from "@mui/material";
 import FormatBoldIcon from "@mui/icons-material/FormatBold";
 import FormatItalicIcon from "@mui/icons-material/FormatItalic";
-import FormatUnderlinedIcon from "@mui/icons-material/FormatUnderlined";
 import StrikeThroughIcon from "@mui/icons-material/FormatStrikethrough";
 import { useEditorState } from "@tiptap/react";
-import { useThemeStore } from "../../zustand/useThemeStore";
+import { useThemeStore } from "../../../zustand/useThemeStore";
 import type { EditorBubbleMenuProps as EditorProps } from "./EditorBubbleMenu";
 
 export const BoldItalicMenu = ({ editor }: EditorProps) => {
@@ -19,29 +15,15 @@ export const BoldItalicMenu = ({ editor }: EditorProps) => {
       isStrikethrough: ctx.editor.isActive("strike"),
     }),
   });
-  const [formats, setFormats] = useState(() => {
-    const initialFormats = [];
-    if (isBold) initialFormats.push("bold");
-    if (isItalic) initialFormats.push("italic");
-    if (isStrikethrough) initialFormats.push("strike");
-    return initialFormats;
-  });
   const { theme } = useThemeStore();
 
-  useEffect(() => {
-    const newFormats = [];
-    if (isBold) newFormats.push("bold");
-    if (isItalic) newFormats.push("italic");
-    if (isStrikethrough) newFormats.push("strike");
-    setFormats(newFormats);
-  }, [isBold, isItalic, isStrikethrough, editor]);
-
-  const handleFormat = (
-    event: React.MouseEvent<HTMLElement>,
-    newFormats: string[],
-  ) => {
-    setFormats(newFormats);
-  };
+  // Derive the highlighted buttons straight from editor state. The
+  // ToggleButtons toggle the mark themselves; the group is display-only.
+  const formats = [
+    ...(isBold ? ["bold"] : []),
+    ...(isItalic ? ["italic"] : []),
+    ...(isStrikethrough ? ["strike"] : []),
+  ];
 
   return (
     <Stack
@@ -50,7 +32,6 @@ export const BoldItalicMenu = ({ editor }: EditorProps) => {
     >
       <ToggleButtonGroup
         value={formats}
-        onChange={handleFormat}
         aria-label="text formatting"
         color={"secondary"}
       >

@@ -6,7 +6,7 @@
 // document is editable, and stay hidden for a read-only (view mode)
 // selection.
 
-import "../../test/setup";
+import "../../../test/setup";
 
 import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -52,9 +52,11 @@ describe("TextSelectionBubbleMenu visibility", () => {
   beforeEach(stubRects);
 
   afterEach(() => {
+    // React Testing Library's automatic cleanup unmounts the portal; do
+    // not wipe `document.body` here or React tries to remove a node that
+    // is already gone.
     editor?.destroy();
     editor = null;
-    document.body.innerHTML = "";
   });
 
   it("shows formatting controls for an editable selection", () => {
@@ -69,6 +71,27 @@ describe("TextSelectionBubbleMenu visibility", () => {
     expect(
       screen.getAllByRole("button", { name: "Copy with formatting" })
         .length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("appears when the editor becomes editable with an existing selection", () => {
+    // Regression: entering edit mode (or toggling `enabled`) changes
+    // neither the selection nor the doc, so the BubbleMenu plugin never
+    // re-runs its `shouldShow` hook. The wrapper used to stay detached
+    // until the next save/keystroke, leaving the menu inactive.
+    editor = makeEditor(false);
+    const { rerender } = render(
+      <TextSelectionBubbleMenu editor={editor} enabled={false} />,
+    );
+    act(() => {
+      editor!.commands.setTextSelection({ from: 1, to: 6 });
+    });
+    act(() => {
+      editor!.setEditable(true);
+      rerender(<TextSelectionBubbleMenu editor={editor!} enabled />);
+    });
+    expect(
+      screen.getAllByRole("button", { name: "Bold" }).length,
     ).toBeGreaterThan(0);
   });
 

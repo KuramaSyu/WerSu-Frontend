@@ -1,13 +1,6 @@
 import type { Editor } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
-import { BubbleMenu } from "@tiptap/react/menus";
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-} from "react";
+import { useCallback, useMemo } from "react";
 import {
   Divider,
   Grow,
@@ -23,14 +16,21 @@ import CodeIcon from "@mui/icons-material/Code";
 import BorderColorIcon from "@mui/icons-material/BorderColor";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import TextSnippetIcon from "@mui/icons-material/TextSnippet";
-import { CopyButton } from "../CopyButton";
-import { copyEditorSelection } from "../RightClick/editorClipboard";
-import { useThemeStore } from "../../zustand/useThemeStore";
-import { useEditorMenuStore } from "../../zustand/editorMenuStore";
-import { NodeSelection, PluginKey } from "@tiptap/pm/state";
+import { CopyButton } from "../../CopyButton";
+import { copyEditorSelection } from "../../RightClick/editorClipboard";
+import { useThemeStore } from "../../../zustand/useThemeStore";
+import { useEditorMenuStore } from "../../../zustand/editorMenuStore";
+import { NodeSelection } from "@tiptap/pm/state";
 import { CellSelection } from "@tiptap/pm/tables";
-import { analyseSelection, pickStrategy } from "./bubbleMenuStrategies";
-import { iconForName } from "./editorIcons";
+import {
+  analyseSelection,
+  pickStrategy,
+  type BubbleMenuOp,
+} from "./bubbleMenuStrategies";
+import { iconForName } from "../editorIcons";
+import { BubbleMenuSurface } from "./BubbleMenuSurface";
+import { useTextSelectionAnchor } from "./useBubbleMenuAnchor";
+import { useEditorEditable } from "./useEditorEditable";
 
 // Shared tooltip defaults: arrow on, anchored above.
 const BubbleTooltip = (
@@ -43,22 +43,6 @@ const ICON_DELAY_MS = 12;
 const ENTER_DURATION_MS = 240;
 const ENTER_EASING = "cubic-bezier(0.34, 1.56, 0.64, 1)";
 const EXIT_DURATION_MS = 160;
-// Slide the menu between selection rects instead of jumping.
-const MOVE_DURATION_MS = 180;
-
-// Floating-ui options. The default main-axis offset (8) leaves the menu
-// sitting too close to the typed text, so push it a bit further above.
-//
-// `flip` is disabled on purpose: tiptap's default lets the menu jump to the
-// opposite side (below / beside the selection) as soon as the selected line
-// is near the top of the viewport, which is what happens when you double
-// click a word near the top. The `shift` middleware (still on by default)
-// keeps it on screen instead, so it stays above the selection.
-const BUBBLE_MENU_OPTIONS = {
-  placement: "top",
-  offset: 16,
-  flip: false,
-} as const;
 
 interface TextSelectionBubbleMenuProps {
   editor: Editor;
@@ -70,6 +54,10 @@ export const TextSelectionBubbleMenu = ({
   enabled = true,
 }: TextSelectionBubbleMenuProps) => {
   const { theme } = useThemeStore();
+
+  // `isEditable` lives outside editor state, so read it through the
+  // updater-aware hook rather than off `editor` directly.
+  const editorEditable = useEditorEditable(editor);
 
   // Subscribe so the menu reactively collapses while the pointer is down.
   const isPointerDown = useEditorMenuStore((s) => s.isPointerDown);
@@ -121,94 +109,14 @@ export const TextSelectionBubbleMenu = ({
     [strategy, analysis, editor],
   );
 
-  // Stable plugin key so we can ask the plugin to re-run floating-ui
-  // positioning after the menu content has laid out. See the
-  // ResizeObserver effect below for the full rationale.
-  const pluginKey = useMemo(
-    () => new PluginKey("textSelectionBubbleMenu"),
-    [],
-  );
-
-  // Keep the wrapper mounted so opacity and transform can animate both ways.
-  const shouldShow = useCallback(
-    ({ editor: viewEditor }: { editor: Editor }) =>
-      enabled && viewEditor.isEditable,
-    [enabled],
-  );
-
-  // Menu only opens after the user releases the pointer over a real selection.
+  // Menu only opens after the user releases the pointer over a real
+  // selection, while the note is editable.
   const isOpen =
-    enabled && editor.isEditable && hasSelection && !isPointerDown;
+    enabled && editorEditable && hasSelection && !isPointerDown;
 
-  // Forward the plugin wrapper so we can drive its position transition.
-  const wrapperRef = useRef<HTMLDivElement | null>(null);
-  const hasSnappedRef = useRef(false);
-  useLayoutEffect(() => {
-    const el = wrapperRef.current;
-    if (!el) return;
-    const positionTransition = [
-      `left ${MOVE_DURATION_MS}ms ease-out`,
-      `top ${MOVE_DURATION_MS}ms ease-out`,
-    ].join(", ");
-
-    // While the menu is closed (including mid-drag) the plugin wrapper
-    // must not swallow pointer events. Otherwise the invisible wrapper can
-    // sit over the text and abort the browser's native drag-selection
-    // after the first character.
-    el.style.pointerEvents = isOpen ? "" : "none";
-
-    if (!isOpen) {
-      hasSnappedRef.current = false;
-      el.style.transition = "";
-      return;
-    }
-
-    // First appearance: let floating-ui place the menu without animating
-    // from its previous position (the old cursor). Only animate once the
-    // menu is already on screen and the selection moves.
-    if (!hasSnappedRef.current) {
-      hasSnappedRef.current = true;
-      el.style.transition = "none";
-      let secondFrame = 0;
-      const firstFrame = window.requestAnimationFrame(() => {
-        secondFrame = window.requestAnimationFrame(() => {
-          el.style.transition = positionTransition;
-        });
-      });
-      return () => {
-        window.cancelAnimationFrame(firstFrame);
-        window.cancelAnimationFrame(secondFrame);
-      };
-    }
-
-    el.style.transition = positionTransition;
-    return () => {
-      el.style.transition = "";
-    };
-  }, [isOpen]);
-
-  // The plugin positions the wrapper synchronously on the selection
-  // transaction, before React has committed the menu content for the
-  // new selection. For a double-click the ops change from "none" (the
-  // preceding collapsed caret) to a full row, but floating-ui measures
-  // the old, shorter wrapper, so the menu is anchored as if it were
-  // only a few pixels tall and then grows down over the selected word.
-  //
-  // Watch the wrapper's box and re-run floating-ui whenever it changes
-  // size, so the menu settles above the selection once the buttons are
-  // laid out. Repositioning only changes left/top, so this cannot loop.
-  useEffect(() => {
-    const el = wrapperRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(() => {
-      if (editor.isDestroyed) return;
-      editor.view?.dispatch(
-        editor.state.tr.setMeta(pluginKey, "updatePosition"),
-      );
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [editor, pluginKey]);
+  // Virtual anchor for the current selection. Recomputed while open, so
+  // keyboard selection, scrolling and layout changes all follow.
+  const anchor = useTextSelectionAnchor(editor, isOpen);
 
   const opacityTransition = useMemo(
     () =>
@@ -234,14 +142,16 @@ export const TextSelectionBubbleMenu = ({
   );
 
   return (
-    <BubbleMenu
-      editor={editor}
-      shouldShow={shouldShow}
-      ref={wrapperRef}
-      pluginKey={pluginKey}
-      options={BUBBLE_MENU_OPTIONS}
-      updateDelay={0}
-      resizeDelay={0}
+    <BubbleMenuSurface
+      open={isOpen}
+      anchor={anchor}
+      placement="top"
+      // The default main-axis offset (8) sits too close to the typed
+      // text, so push it a bit further above. `flip` stays off: the menu
+      // must not jump below the selection when it nears the top of the
+      // viewport; `shift` keeps it on screen instead.
+      offset={16}
+      flip={false}
     >
       <Paper
         elevation={2}
@@ -274,7 +184,7 @@ export const TextSelectionBubbleMenu = ({
           })}
         </Stack>
       </Paper>
-    </BubbleMenu>
+    </BubbleMenuSurface>
   );
 };
 
@@ -288,7 +198,7 @@ function sectionOf(op: { kind: string; group?: string }): Section {
 
 // Render ops as a flat stack: one button per item, dividers only at section changes.
 function renderOps(
-  ops: readonly import("./bubbleMenuStrategies").BubbleMenuOp[],
+  ops: readonly BubbleMenuOp[],
   ctx: {
     editor: Editor;
     activeMarks: Record<string, boolean>;
@@ -494,4 +404,3 @@ function iconForMark(mark: string): React.ReactNode {
       return null;
   }
 }
-

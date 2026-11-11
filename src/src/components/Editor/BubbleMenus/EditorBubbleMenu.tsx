@@ -1,84 +1,58 @@
 import type { Editor } from "@tiptap/core";
-import { BubbleMenu } from "@tiptap/react/menus";
-import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
+import { useEditorState } from "@tiptap/react";
+import { useMemo } from "react";
 import { Paper } from "@mui/material";
-import { useThemeStore } from "../../zustand/useThemeStore";
+import { useThemeStore } from "../../../zustand/useThemeStore";
+import { NodeSelection } from "@tiptap/pm/state";
 import { BoldItalicMenu } from "./BoldItalicMenu";
+import { BubbleMenuSurface } from "./BubbleMenuSurface";
+import { useTextSelectionAnchor } from "./useBubbleMenuAnchor";
+import { useEditorEditable } from "./useEditorEditable";
 
 // Symmetric enter/exit values used by the sx-prop transition.
 const ENTER_DURATION_MS = 240;
 const ENTER_EASING = "cubic-bezier(0.34, 1.56, 0.64, 1)";
 const EXIT_DURATION_MS = 160;
 
-// Slide the wrapper between floating-ui position writes. See
-// TextSelectionBubbleMenu for the full rationale.
-const MOVE_DURATION_MS = 180;
-
 export interface EditorBubbleMenuProps {
   editor: Editor;
   enabled?: boolean;
 }
+
+/**
+ * Legacy minimal formatting bubble menu (bold / italic / strike) used by
+ * the note edit modal. The full note editor uses
+ * `TextSelectionBubbleMenu`. Kept on the shared surface so it gets the
+ * same reliable show/hide behaviour.
+ */
 export const EditorBubbleMenu = ({
   editor,
   enabled = true,
 }: EditorBubbleMenuProps) => {
   const { theme } = useThemeStore();
+  const editorEditable = useEditorEditable(editor);
 
-  // Always-mounted: keep the wrapper in the DOM whenever the menu
-  // conditions are met so opacity / transform can animate both ways.
-  const shouldShow = useCallback(
-    ({ editor: viewEditor }: { editor: Editor }) =>
-      enabled && viewEditor.isEditable && !viewEditor.isActive("table"),
-    [enabled],
-  );
-
-  const isOpen = enabled && editor.isEditable && !editor.isActive("table");
-
-  const wrapperRef = useRef<HTMLDivElement | null>(null);
-  const hasSnappedRef = useRef(false);
-  useLayoutEffect(() => {
-    const el = wrapperRef.current;
-    if (!el) return;
-    const positionTransition = [
-      `left ${MOVE_DURATION_MS}ms ease-out`,
-      `top ${MOVE_DURATION_MS}ms ease-out`,
-    ].join(", ");
-
-    if (!isOpen) {
-      hasSnappedRef.current = false;
-      el.style.transition = "";
-      return;
-    }
-
-    // Snap into place on first appearance; animate only afterwards.
-    if (!hasSnappedRef.current) {
-      hasSnappedRef.current = true;
-      el.style.transition = "none";
-      let secondFrame = 0;
-      const firstFrame = window.requestAnimationFrame(() => {
-        secondFrame = window.requestAnimationFrame(() => {
-          el.style.transition = positionTransition;
-        });
-      });
-      return () => {
-        window.cancelAnimationFrame(firstFrame);
-        window.cancelAnimationFrame(secondFrame);
+  const { hasSelection, inTable } = useEditorState({
+    editor,
+    selector: (ctx) => {
+      const { selection } = ctx.editor.state;
+      return {
+        hasSelection:
+          selection.from !== selection.to &&
+          !(selection instanceof NodeSelection),
+        inTable: ctx.editor.isActive("table"),
       };
-    }
+    },
+  });
 
-    el.style.transition = positionTransition;
-    return () => {
-      el.style.transition = "";
-    };
-  }, [isOpen]);
+  const isOpen = enabled && editorEditable && hasSelection && !inTable;
+  const anchor = useTextSelectionAnchor(editor, isOpen);
 
   const opacityTransition = useMemo(
     () =>
       theme.transitions.create("opacity", {
         duration: isOpen ? ENTER_DURATION_MS : EXIT_DURATION_MS,
-        easing: isOpen
-          ? ENTER_EASING
-          : theme.transitions.easing.easeOut,
+        easing: isOpen ? ENTER_EASING : theme.transitions.easing.easeOut,
       }),
     [theme, isOpen],
   );
@@ -86,21 +60,18 @@ export const EditorBubbleMenu = ({
     () =>
       theme.transitions.create("transform", {
         duration: isOpen ? ENTER_DURATION_MS : EXIT_DURATION_MS,
-        easing: isOpen
-          ? ENTER_EASING
-          : theme.transitions.easing.easeOut,
+        easing: isOpen ? ENTER_EASING : theme.transitions.easing.easeOut,
       }),
     [theme, isOpen],
   );
 
   return (
-    <BubbleMenu
-      options={{ placement: "bottom", offset: 8, flip: true }}
-      editor={editor}
-      shouldShow={shouldShow}
-      updateDelay={0}
-      resizeDelay={0}
-      ref={wrapperRef}
+    <BubbleMenuSurface
+      open={isOpen}
+      anchor={anchor}
+      placement="bottom"
+      offset={8}
+      flip
     >
       <Paper
         elevation={2}
@@ -117,7 +88,6 @@ export const EditorBubbleMenu = ({
       >
         <BoldItalicMenu editor={editor} />
       </Paper>
-    </BubbleMenu>
+    </BubbleMenuSurface>
   );
 };
-

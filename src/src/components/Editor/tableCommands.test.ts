@@ -1,7 +1,7 @@
 // Table command catalogue: applicability and selection-aware labels.
 
 import { describe, expect, it } from "vitest";
-import type { SelectionAnalysisFull } from "./bubbleMenuStrategies";
+import type { SelectionAnalysisFull } from "./BubbleMenus/bubbleMenuStrategies";
 import { TABLE_COMMANDS, tableCommandsFor } from "./tableCommands";
 
 function analysis(

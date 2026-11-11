@@ -22,7 +22,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import {
   analyseSelection,
   analyseTableAtPos,
-} from "../Editor/bubbleMenuStrategies";
+} from "../Editor/BubbleMenus/bubbleMenuStrategies";
 import { iconForName } from "../Editor/editorIcons";
 import {
   tableCommandsFor,
@@ -33,7 +33,7 @@ import type { EditorContextTarget } from "../Editor/editorContextTarget";
 import { useEditorMenuStore } from "../../zustand/editorMenuStore";
 import { copyToClipboard } from "../../zustand/InfoStore";
 import { copyEditorNode } from "./editorClipboard";
-import type { SelectionAnalysisFull } from "../Editor/bubbleMenuStrategies";
+import type { SelectionAnalysisFull } from "../Editor/BubbleMenus/bubbleMenuStrategies";
 import type {
   MenuPosition,
   RightClickButtonId,

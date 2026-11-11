@@ -1,7 +1,7 @@
 import { Button, Stack } from "@mui/material";
 import type { Editor } from "@tiptap/core";
 import { useEffect, useState } from "react";
-import { BoldItalicMenu } from "./BoldItalicMenu";
+import { BoldItalicMenu } from "./BubbleMenus/BoldItalicMenu";
 import { TableButtonGroup } from "./TableButtonGroup";
 
 export interface EditorBubbleMenuProps {

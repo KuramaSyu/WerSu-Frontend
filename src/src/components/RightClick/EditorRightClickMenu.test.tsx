@@ -26,7 +26,7 @@ const mocks = vi.hoisted(() => ({
   resolveEditorContextTarget: vi.fn(() => null),
 }));
 
-vi.mock("../Editor/bubbleMenuStrategies", () => ({
+vi.mock("../Editor/BubbleMenus/bubbleMenuStrategies", () => ({
   analyseSelection: mocks.analyseSelection,
 }));
 

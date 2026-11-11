@@ -12,7 +12,7 @@ import { useEditorMenuStore } from "../../zustand/editorMenuStore";
 import { useEditorTableSelectionStore } from "../../zustand/editorTableSelectionStore";
 import { NodeSelection } from "@tiptap/pm/state";
 import { CellSelection } from "@tiptap/pm/tables";
-import { analyseSelection } from "./bubbleMenuStrategies";
+import { analyseSelection } from "./BubbleMenus/bubbleMenuStrategies";
 import { logRerender } from "../../pages/NotePage/editorRenderLog";
 
 export interface MenuVisibilityBridgeProps {

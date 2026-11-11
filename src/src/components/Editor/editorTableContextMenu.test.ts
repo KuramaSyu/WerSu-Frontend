@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@tiptap/extension-table";
-import { analyseTableAtPos } from "./bubbleMenuStrategies";
+import { analyseTableAtPos } from "./BubbleMenus/bubbleMenuStrategies";
 import { buildEditorMenuRequest } from "../RightClick/rightClickMenuPresets";
 import {
   applyEditorContextTarget,

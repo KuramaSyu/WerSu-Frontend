@@ -8,11 +8,11 @@ import type { ResolvedPos } from "@tiptap/pm/model";
 import {
   tableCommandsFor,
   type TableCommandId,
-} from "./tableCommands";
+} from "../tableCommands";
 
 // Re-exported so existing importers keep one import site for the
 // shared table operations. The implementation lives in tableOperations.
-export { clearCells } from "./tableOperations";
+export { clearCells } from "../tableOperations";
 
 export type SelectionKind =
   | "empty"

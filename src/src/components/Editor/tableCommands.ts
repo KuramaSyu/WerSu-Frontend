@@ -8,7 +8,7 @@
 // in one place and appears on both surfaces.
 
 import type { Editor } from "@tiptap/core";
-import type { SelectionAnalysisFull } from "./bubbleMenuStrategies";
+import type { SelectionAnalysisFull } from "./BubbleMenus/bubbleMenuStrategies";
 import {
   clearCells,
   moveColumnsByDelta,

@@ -44,7 +44,7 @@ import {
 import StarterKit from "@tiptap/starter-kit";
 import React, { useState } from "react";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
-import { EditorBubbleMenu } from "./EditorBubbleMenu";
+import { EditorBubbleMenu } from "./BubbleMenus/EditorBubbleMenu";
 import { EditorStaticMenu } from "./EditorStaticMenu";
 import { HoldKeyActionBar } from "../HoldKeyActionBar";
 import { ThemedEditorBox } from "./ThemedEditorBox";

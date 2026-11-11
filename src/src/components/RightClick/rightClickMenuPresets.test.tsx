@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
   clearCells: vi.fn(),
 }));
 
-vi.mock("../Editor/bubbleMenuStrategies", () => ({
+vi.mock("../Editor/BubbleMenus/bubbleMenuStrategies", () => ({
   analyseSelection: mocks.analyseSelection,
   clearCells: mocks.clearCells,
 }));
@@ -27,7 +27,7 @@ import { useEditorMenuStore } from "../../zustand/editorMenuStore";
 import type {
   CellContext,
   SelectionAnalysisFull,
-} from "../Editor/bubbleMenuStrategies";
+} from "../Editor/BubbleMenus/bubbleMenuStrategies";
 
 /** Chain mock: every command returns the chain, run() returns true. */
 function makeChain() {

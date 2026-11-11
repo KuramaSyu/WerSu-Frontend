@@ -33,7 +33,7 @@ import {
   deleteSelectedImage,
   getSelectedImage,
 } from "./imageSelection";
-import { analyseSelection, analyseTableAtPos } from "./bubbleMenuStrategies";
+import { analyseSelection, analyseTableAtPos } from "./BubbleMenus/bubbleMenuStrategies";
 import { tableCommandsFor } from "./tableCommands";
 import { iconForName } from "./editorIcons";
 import {
