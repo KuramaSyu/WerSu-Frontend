@@ -20,6 +20,10 @@ import { createPortal } from "react-dom";
 const Z_INDEX = 1500;
 // Slide the menu between selection rects instead of jumping.
 const MOVE_DURATION_MS = 180;
+const MOVE_TRANSITION = `left ${MOVE_DURATION_MS}ms ease-out, top ${MOVE_DURATION_MS}ms ease-out`;
+// How long after the last scroll event the menu returns to sliding. While
+// the viewport is moving, position updates must track the content 1:1.
+const SCROLL_SETTLE_MS = 120;
 
 export interface BubbleMenuSurfaceProps {
   open: boolean;
@@ -61,6 +65,11 @@ export const BubbleMenuSurface: React.FC<BubbleMenuSurfaceProps> = ({
 }) => {
   const floatingRef = useRef<HTMLDivElement | null>(null);
   const snappedRef = useRef(false);
+  // True between the first scroll event and SCROLL_SETTLE_MS after the
+  // last one. Position changes then bypass the slide transition so the
+  // menu moves with the editor instead of trailing it.
+  const isScrollingRef = useRef(false);
+  const scrollSettleTimerRef = useRef<number | null>(null);
   // Mount on first open, then keep mounted so the menu can animate out.
   // Adjusting state during render (not in an effect) is the documented
   // "latch on a prop change" pattern and avoids an extra commit.
@@ -78,10 +87,10 @@ export const BubbleMenuSurface: React.FC<BubbleMenuSurfaceProps> = ({
       snappedRef.current = true;
       floating.style.transition = "none";
       window.requestAnimationFrame(() => {
-        floating.style.transition = `left ${MOVE_DURATION_MS}ms ease-out, top ${MOVE_DURATION_MS}ms ease-out`;
+        if (!isScrollingRef.current) floating.style.transition = MOVE_TRANSITION;
       });
-    } else {
-      floating.style.transition = `left ${MOVE_DURATION_MS}ms ease-out, top ${MOVE_DURATION_MS}ms ease-out`;
+    } else if (!isScrollingRef.current) {
+      floating.style.transition = MOVE_TRANSITION;
     }
 
     const update = () => {
@@ -102,6 +111,40 @@ export const BubbleMenuSurface: React.FC<BubbleMenuSurfaceProps> = ({
     return autoUpdate(anchor, floating, update);
   }, [open, anchor, placement, offset, flip]);
 
+  // While any scroll container (window or a nested editor pane) moves, drop
+  // the slide transition so the menu is pinned to the content. The capture
+  // listener catches scroll events that do not bubble.
+  useLayoutEffect(() => {
+    if (!open) return;
+    const floating = floatingRef.current;
+    if (!floating) return;
+
+    const onScroll = () => {
+      isScrollingRef.current = true;
+      floating.style.transition = "none";
+      if (scrollSettleTimerRef.current !== null) {
+        window.clearTimeout(scrollSettleTimerRef.current);
+      }
+      scrollSettleTimerRef.current = window.setTimeout(() => {
+        scrollSettleTimerRef.current = null;
+        isScrollingRef.current = false;
+        if (floatingRef.current) {
+          floatingRef.current.style.transition = MOVE_TRANSITION;
+        }
+      }, SCROLL_SETTLE_MS);
+    };
+
+    window.addEventListener("scroll", onScroll, true);
+    return () => {
+      window.removeEventListener("scroll", onScroll, true);
+      if (scrollSettleTimerRef.current !== null) {
+        window.clearTimeout(scrollSettleTimerRef.current);
+        scrollSettleTimerRef.current = null;
+      }
+      isScrollingRef.current = false;
+    };
+  }, [open]);
+
   // Reset the snap so the next open does not animate from the old spot.
   useEffect(() => {
     if (open) return;
@@ -110,6 +153,15 @@ export const BubbleMenuSurface: React.FC<BubbleMenuSurfaceProps> = ({
       floatingRef.current.style.transition = "none";
     }
   }, [open]);
+
+  useEffect(
+    () => () => {
+      if (scrollSettleTimerRef.current !== null) {
+        window.clearTimeout(scrollSettleTimerRef.current);
+      }
+    },
+    [],
+  );
 
   if (!mounted) return null;
 
