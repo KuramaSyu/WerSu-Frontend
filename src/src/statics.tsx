@@ -85,6 +85,21 @@ export const MOBILE_DRAWER_WIDTH = "calc(100vw * 8 / 13)";
 export const MAIN_PANEL_ELEVATION = 1;
 
 /**
+ * Backdrop blur shared by every modal-like surface (`Modal`,
+ * the search overlay). Keeping the amount in one place makes a
+ * dismissable overlay read as the same visual layer as the app's
+ * modals instead of drifting apart.
+ */
+export const MODAL_BACKDROP_BLUR = "blur(10px)";
+
+/**
+ * Backdrop tint shared by every modal-like surface (`Modal`, the
+ * search overlay). Must be paired with `MODAL_BACKDROP_BLUR` so the
+ * two backdrops read as the exact same layer.
+ */
+export const MODAL_BACKDROP_COLOR = "rgba(0, 0, 0, 0.35)";
+
+/**
  * Storage keys for the persisted zustand stores; v
  * alues must match each store's persist name so the cross-tab listener in Bootstrap can match them.
  */

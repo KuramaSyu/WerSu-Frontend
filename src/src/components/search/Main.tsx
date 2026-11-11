@@ -3,7 +3,11 @@ import { useLocation } from "react-router-dom";
 import { Box, Fade, Grow, Portal, SwipeableDrawer, alpha } from "@mui/material";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useSearchFilterStore } from "../../zustand/useSearchFilterStore";
-import { M3 } from "../../statics";
+import {
+  M3,
+  MODAL_BACKDROP_BLUR,
+  MODAL_BACKDROP_COLOR,
+} from "../../statics";
 import SearchOverlayHeader from "./header/SearchOverlayHeader";
 import SearchOverlayToolbar from "./filter/SearchOverlayToolbar";
 import SearchResultsList from "./results/SearchResultsList";
@@ -68,8 +72,12 @@ const SearchResultsOverlayInner: React.FC<SearchResultsOverlayProps> = ({
   useEffect(() => {
     setInternalOpen(open);
   }, [open]);
+  // Dismiss + clean: closing the overlay always wipes the query and
+  // filters so reopening starts fresh. Used by the drawer gesture, the
+  // drag handle and the desktop backdrop tap.
   const handleClose = () => {
     setInternalOpen(false);
+    resetAll();
     onClose();
   };
   const handleOpen = () => {
@@ -109,14 +117,8 @@ const SearchResultsOverlayInner: React.FC<SearchResultsOverlayProps> = ({
             },
             backdrop: {
               sx: {
-                backgroundColor: alpha(
-                  theme.blendAgainstContrast(
-                    theme.palette.background.default,
-                    0.5,
-                    undefined,
-                  ),
-                  0.8,
-                ),
+                backgroundColor: MODAL_BACKDROP_COLOR,
+                backdropFilter: MODAL_BACKDROP_BLUR,
               },
             },
           }}
@@ -164,36 +166,39 @@ const SearchResultsOverlayInner: React.FC<SearchResultsOverlayProps> = ({
           </Box>
         </SwipeableDrawer>
       ) : (
-        // Desktop: keep the original fade backdrop + portal /
-        // grow panel. Anchoring a SwipeableDrawer to one edge on
-        // desktop would change the long-standing centered-modal
-        // UX for no real benefit on large screens.
+        // Desktop: fade backdrop + portal / grow panel. The backdrop
+        // is portaled to `body` on purpose: `SearchBar` renders inside
+        // the top bar, whose `willChange: transform` makes it the
+        // containing block for fixed descendants. In-tree the backdrop
+        // would only cover the bar itself, so taps outside never hit
+        // it. Portaling restores true viewport coverage, and the blur
+        // (shared with `Modal`) makes it read as a real modal
+        // backdrop. `zIndex.modal - 1` keeps it above the app chrome
+        // (top bar / rails) but below the panel.
         <>
-          <Fade
-            in={open}
-            timeout={theme.transitions.duration.complex}
-            mountOnEnter
-          >
-            <Box
-              onClick={onClose}
-              sx={{
-                position: "fixed",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: alpha(
-                  theme.blendAgainstContrast(
-                    theme.palette.background.default,
-                    0.5,
-                    undefined,
-                  ),
-                  0.8,
-                ),
-                zIndex: 900,
-              }}
-            />
-          </Fade>
+          <Portal>
+            <Fade
+              in={open}
+              timeout={theme.transitions.duration.complex}
+              mountOnEnter
+              unmountOnExit
+            >
+              <Box
+                onClick={handleClose}
+                aria-hidden
+                sx={{
+                  position: "fixed",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: MODAL_BACKDROP_COLOR,
+                  backdropFilter: MODAL_BACKDROP_BLUR,
+                  zIndex: (t) => t.zIndex.modal - 1,
+                }}
+              />
+            </Fade>
+          </Portal>
 
           <Portal>
             <Grow
@@ -212,7 +217,7 @@ const SearchResultsOverlayInner: React.FC<SearchResultsOverlayProps> = ({
                   backgroundColor: theme.palette.background.default,
                   borderRadius: M3,
                   boxShadow: theme.shadows[8],
-                  zIndex: 1300,
+                  zIndex: (t) => t.zIndex.modal,
                   border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
                   display: "flex",
                   flexDirection: "column",
