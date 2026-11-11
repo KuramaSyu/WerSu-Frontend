@@ -374,7 +374,11 @@ export function useDirectoryEditForm(
           description: shell.description || undefined,
           image_url: shell.imageUrl || undefined,
           parent_ids: nextParentIds ?? undefined,
-          shelf_ids: shell.shelfIds.length > 0 ? shell.shelfIds : undefined,
+          // Always send the full shelf set, including an empty array.
+          // Omitting the field means "leave unchanged" on the backend,
+          // so a missing key here would silently keep the old shelves
+          // when the user removes the last one.
+          shelf_ids: shell.shelfIds,
         });
         if (!updated) {
           setMessage(
