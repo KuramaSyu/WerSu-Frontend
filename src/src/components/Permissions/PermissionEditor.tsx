@@ -1,7 +1,7 @@
 import { Box, Button, Stack, Typography } from "@mui/material";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import CloseIcon from "@mui/icons-material/Close";
-import ModalShell from "../ModalShell";
+import Modal from "../Modal";
 import type { PermissionResourceType } from "../../api/models/search";
 import { PermissionMatrix } from "./PermissionMatrix";
 
@@ -29,48 +29,47 @@ export const PermissionEditor: React.FC<PermissionEditorProps> = ({
   title,
 }) => {
   return (
-    <ModalShell
-      open={open}
-      onClose={onClose}
-      icon={<AdminPanelSettingsIcon />}
-      title="Permissions"
-      subtitle={`${title ? `${title} · ` : ""}${TYPE_LABEL[objectType]}`}
-      maxWidth="md"
-      minHeight="42vh"
-      actions={
+    <Modal open={open} onClose={onClose} maxWidth="md">
+      <Modal.Header
+        icon={<AdminPanelSettingsIcon />}
+        title="Permissions"
+        subtitle={`${title ? `${title} · ` : ""}${TYPE_LABEL[objectType]}`}
+      />
+      <Modal.Body minHeight="42vh">
+        <Stack spacing={2}>
+          <Box
+            sx={{
+              p: 1.5,
+              borderRadius: 2,
+              border: 1,
+              borderColor: "divider",
+              backgroundColor: (theme) =>
+                theme.palette.mode === "dark"
+                  ? "rgba(255,255,255,0.03)"
+                  : "rgba(0,0,0,0.02)",
+            }}
+          >
+            <Typography variant="body2" color="text.secondary">
+              Share this {TYPE_LABEL[objectType]} with users or roles. Basic
+              permissions are shown first; grant and delegate relations live
+              under Advanced permissions.
+            </Typography>
+          </Box>
+          {open && objectId ? (
+            <PermissionMatrix
+              objectType={objectType}
+              objectId={objectId}
+              embedded
+            />
+          ) : null}
+        </Stack>
+      </Modal.Body>
+      <Modal.Footer>
         <Button onClick={onClose} variant="contained" startIcon={<CloseIcon />}>
           Close
         </Button>
-      }
-    >
-      <Stack spacing={2}>
-        <Box
-          sx={{
-            p: 1.5,
-            borderRadius: 2,
-            border: 1,
-            borderColor: "divider",
-            backgroundColor: (theme) =>
-              theme.palette.mode === "dark"
-                ? "rgba(255,255,255,0.03)"
-                : "rgba(0,0,0,0.02)",
-          }}
-        >
-          <Typography variant="body2" color="text.secondary">
-            Share this {TYPE_LABEL[objectType]} with users or roles. Basic
-            permissions are shown first; grant and delegate relations live under
-            Advanced permissions.
-          </Typography>
-        </Box>
-        {open && objectId ? (
-          <PermissionMatrix
-            objectType={objectType}
-            objectId={objectId}
-            embedded
-          />
-        ) : null}
-      </Stack>
-    </ModalShell>
+      </Modal.Footer>
+    </Modal>
   );
 };
 

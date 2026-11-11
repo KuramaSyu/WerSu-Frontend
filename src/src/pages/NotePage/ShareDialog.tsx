@@ -39,7 +39,7 @@ import { ShareCard } from "./ShareCard";
 import { buildShareUrl } from "./shareUrl";
 import { useActiveNoteStore } from "../../zustand/editorStore";
 import { useCreatePermission } from "../../api/queries/permissionQueries";
-import ModalShell from "../../components/ModalShell";
+import Modal from "../../components/Modal";
 
 export interface ShareDialogProps {
   noteId: string;
@@ -442,13 +442,13 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
   };
 
   return (
-    <ModalShell
-      open={open}
-      onClose={onClose}
-      icon={<ShareIcon />}
-      title="Sharing"
-      subtitle="Create and manage shares of the current note"
-      children={
+    <Modal open={open} onClose={onClose}>
+      <Modal.Header
+        icon={<ShareIcon />}
+        title="Sharing"
+        subtitle="Create and manage shares of the current note"
+      />
+      <Modal.Body>
         <>
           {/* group with share icon and content */}
           <Stack direction={"row"} spacing={M4} sx={{}}>
@@ -515,9 +515,9 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
             </Stack>
           </Stack>
         </>
-      }
-      actions={
-        isEditMode ? (
+      </Modal.Body>
+      <Modal.Footer>
+        {isEditMode ? (
           <>
             <Tooltip title="Discard changes and go back to creating a new share">
               <span>
@@ -601,9 +601,9 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
               </span>
             </Tooltip>
           </>
-        )
-      }
-    ></ModalShell>
+        )}
+      </Modal.Footer>
+    </Modal>
   );
 };
 

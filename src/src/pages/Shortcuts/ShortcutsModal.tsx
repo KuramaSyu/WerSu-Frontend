@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Box, Button } from "@mui/material";
 import KeyboardIcon from "@mui/icons-material/Keyboard";
 import { useLocation } from "react-router-dom";
-import { ModalShell } from "../../components/ModalShell";
+import { Modal } from "../../components/Modal";
 import { getRelevantShortcutPageIds } from "../../config/shortcuts";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { useViewConfig } from "../../zustand/useViewConfig";
@@ -48,28 +48,27 @@ export const ShortcutsModal: React.FC<ShortcutsModalProps> = ({
   );
 
   return (
-    <ModalShell
-      open={open}
-      onClose={onClose}
-      icon={<KeyboardIcon />}
-      title="Keyboard shortcuts"
-      subtitle="Hold long actions; tap the rest"
-      maxWidth="sm"
-      minHeight="auto"
-      actions={
+    <Modal open={open} onClose={onClose} maxWidth="sm">
+      <Modal.Header
+        icon={<KeyboardIcon />}
+        title="Keyboard shortcuts"
+        subtitle="Hold long actions; tap the rest"
+      />
+      <Modal.Body minHeight="auto">
+        <Box sx={{ maxHeight: "60vh", overflowY: "auto", pr: 0.5 }}>
+          <ShortcutsList
+            pageIds={showAll ? undefined : relevantPageIds}
+            state={showAll ? undefined : editorState}
+            hiddenIds={showAll ? undefined : hiddenShortcutIds}
+          />
+        </Box>
+      </Modal.Body>
+      <Modal.Footer>
         <Button size="small" onClick={() => setShowAll((value) => !value)}>
           {showAll ? "Show relevant only" : "Show all"}
         </Button>
-      }
-    >
-      <Box sx={{ maxHeight: "60vh", overflowY: "auto", pr: 0.5 }}>
-        <ShortcutsList
-          pageIds={showAll ? undefined : relevantPageIds}
-          state={showAll ? undefined : editorState}
-          hiddenIds={showAll ? undefined : hiddenShortcutIds}
-        />
-      </Box>
-    </ModalShell>
+      </Modal.Footer>
+    </Modal>
   );
 };
 

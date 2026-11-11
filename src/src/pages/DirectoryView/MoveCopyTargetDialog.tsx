@@ -11,7 +11,7 @@ import {
 } from "@mui/material";
 import FolderIcon from "@mui/icons-material/Folder";
 import HomeIcon from "@mui/icons-material/Home";
-import { ModalShell } from "../../components/ModalShell";
+import { Modal } from "../../components/Modal";
 import { useAllDirectoriesQuery } from "../../api/queries/directoryQueries";
 import { useDirectorySelectionStore } from "../../zustand/useDirectorySelectionStore";
 import type { DirectoryReply } from "../../api/models/directory";
@@ -146,31 +146,13 @@ export const MoveCopyTargetDialog: React.FC<{
   };
 
   return (
-    <ModalShell
-      open={open}
-      onClose={onClose}
-      icon={<FolderIcon fontSize="small" />}
-      title={title}
-      subtitle="Pick a destination. Use Top level to clear the parent."
-      maxWidth="sm"
-      actions={
-        <>
-          <Button variant="outlined" onClick={onClose} disabled={busy}>
-            Cancel
-          </Button>
-          <Button
-            variant="contained"
-            onClick={() => void confirm()}
-            disabled={busy}
-            startIcon={
-              busy ? <CircularProgress size={16} color="inherit" /> : null
-            }
-          >
-            {actionLabel}
-          </Button>
-        </>
-      }
-    >
+    <Modal open={open} onClose={onClose} maxWidth="sm">
+      <Modal.Header
+        icon={<FolderIcon fontSize="small" />}
+        title={title}
+        subtitle="Pick a destination. Use Top level to clear the parent."
+      />
+      <Modal.Body>
       {isLoading ? (
         <Box
           sx={{
@@ -202,6 +184,22 @@ export const MoveCopyTargetDialog: React.FC<{
           )}
         </List>
       )}
-    </ModalShell>
+      </Modal.Body>
+      <Modal.Footer>
+        <Button variant="outlined" onClick={onClose} disabled={busy}>
+          Cancel
+        </Button>
+        <Button
+          variant="contained"
+          onClick={() => void confirm()}
+          disabled={busy}
+          startIcon={
+            busy ? <CircularProgress size={16} color="inherit" /> : null
+          }
+        >
+          {actionLabel}
+        </Button>
+      </Modal.Footer>
+    </Modal>
   );
 };

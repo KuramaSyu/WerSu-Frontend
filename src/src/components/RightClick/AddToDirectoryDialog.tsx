@@ -13,7 +13,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import FolderOpenIcon from "@mui/icons-material/FolderOpen";
 import DriveFileMoveIcon from "@mui/icons-material/DriveFileMove";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { ModalShell } from "../ModalShell";
+import { Modal } from "../Modal";
 import { FolderCardView } from "../../pages/Home/FolderCardView";
 import { useAllDirectoriesQuery } from "../../api/queries/directoryQueries";
 import { useNote, useUpdateNote } from "../../api/queries/useNoteQueries";
@@ -91,7 +91,7 @@ export const AddToDirectoryDialog: React.FC<AddToDirectoryDialogProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   // Reset on close so a previous drill-down or selection does not leak
-  // into the next open. ModalShell routes X / backdrop / Escape here.
+  // into the next open. Modal routes X / backdrop / Escape here.
   const handleClose = () => {
     setSelectedId(null);
     setViewId(null);
@@ -250,52 +250,18 @@ export const AddToDirectoryDialog: React.FC<AddToDirectoryDialogProps> = ({
   );
 
   return (
-    <ModalShell
+    <Modal
       open={open}
       onClose={handleClose}
       disableContextMenu
-      icon={destinationIcon}
-      title={titleNode}
-      subtitle={`Pick a ${destinationLower}, then add or move the note there.`}
       maxWidth="md"
-      actions={
-        <>
-          <Button variant="outlined" onClick={handleClose} disabled={busy}>
-            Cancel
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<FolderOpenIcon fontSize="small" />}
-            onClick={openSelected}
-            disabled={!selectedId || busy}
-          >
-            Open
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<DriveFileMoveIcon fontSize="small" />}
-            onClick={() => void runAction("move")}
-            disabled={!selectedId || !note || busy || noteLoading}
-          >
-            {`Move to ${destinationLower}`}
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={
-              busy ? (
-                <CircularProgress size={16} color="inherit" />
-              ) : (
-                destinationIcon
-              )
-            }
-            onClick={() => void runAction("add")}
-            disabled={!selectedId || !note || busy || noteLoading}
-          >
-            {`Add to ${destinationLower}`}
-          </Button>
-        </>
-      }
     >
+      <Modal.Header
+        icon={destinationIcon}
+        title={titleNode}
+        subtitle={`Pick a ${destinationLower}, then add or move the note there.`}
+      />
+      <Modal.Body>
       <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
         <TextField
           size="small"
@@ -423,7 +389,43 @@ export const AddToDirectoryDialog: React.FC<AddToDirectoryDialogProps> = ({
           </Box>
         )}
       </Box>
-    </ModalShell>
+      </Modal.Body>
+      <Modal.Footer>
+        <Button variant="outlined" onClick={handleClose} disabled={busy}>
+          Cancel
+        </Button>
+        <Button
+          variant="outlined"
+          startIcon={<FolderOpenIcon fontSize="small" />}
+          onClick={openSelected}
+          disabled={!selectedId || busy}
+        >
+          Open
+        </Button>
+        <Button
+          variant="contained"
+          startIcon={<DriveFileMoveIcon fontSize="small" />}
+          onClick={() => void runAction("move")}
+          disabled={!selectedId || !note || busy || noteLoading}
+        >
+          {`Move to ${destinationLower}`}
+        </Button>
+        <Button
+          variant="contained"
+          startIcon={
+            busy ? (
+              <CircularProgress size={16} color="inherit" />
+            ) : (
+              destinationIcon
+            )
+          }
+          onClick={() => void runAction("add")}
+          disabled={!selectedId || !note || busy || noteLoading}
+        >
+          {`Add to ${destinationLower}`}
+        </Button>
+      </Modal.Footer>
+    </Modal>
   );
 };
 

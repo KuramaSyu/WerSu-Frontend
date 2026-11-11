@@ -15,7 +15,7 @@ import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import { DirectoryFormFields } from "../DirectoryEdit/DirectoryFormFields";
 import { useCreateSubdirectoryForm } from "../DirectoryCreate/Main.hook";
 import { useDirectoryEditForm } from "../DirectoryEdit/Main.hook";
-import { ModalShell } from "../../components/ModalShell";
+import { Modal } from "../../components/Modal";
 import { useAllDirectoriesQuery } from "../../api/queries/directoryQueries";
 import {
   directoryKindOf,
@@ -39,7 +39,7 @@ export interface CreateDirectoryModalProps {
 /**
  * Single modal surface for both creating and editing a directory.
  *
- * Cancel / X / overlay click discards the form. ModalShell owns the
+ * Cancel / X / overlay click discards the form. Modal owns the
  * icon / X / blur / round look.
  *
  * Mounting points:
@@ -143,50 +143,19 @@ export const CreateDirectoryModal: React.FC<CreateDirectoryModalProps> = ({
 
   return (
     <>
-      <ModalShell
-        open={open}
-        onClose={cancel}
-        icon={
-          directoryKind === "book" ? (
-            <AutoStoriesIcon fontSize="small" />
-          ) : (
-            <CreateNewFolderIcon fontSize="small" />
-          )
-        }
-        title={title}
-        subtitle={subtitle}
-        actions={
-          <>
-            {mode === "edit" && handleDelete && (
-              <Tooltip title={`Delete this ${dirTerms.singularLower}`}>
-                <span>
-                  <Button
-                    color="error"
-                    variant="outlined"
-                    startIcon={<DeleteIcon fontSize="small" />}
-                    onClick={handleDelete}
-                    disabled={isBusy}
-                  >
-                    Delete
-                  </Button>
-                </span>
-              </Tooltip>
-            )}
-            <Button variant="outlined" onClick={cancel} disabled={isBusy}>
-              Cancel
-            </Button>
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<OpenInFullIcon fontSize="small" />}
-              onClick={() => void saveAndView()}
-              disabled={isBusy || isNameEmpty}
-            >
-              Save
-            </Button>
-          </>
-        }
-      >
+      <Modal open={open} onClose={cancel}>
+        <Modal.Header
+          icon={
+            directoryKind === "book" ? (
+              <AutoStoriesIcon fontSize="small" />
+            ) : (
+              <CreateNewFolderIcon fontSize="small" />
+            )
+          }
+          title={title}
+          subtitle={subtitle}
+        />
+        <Modal.Body>
         {mode === "create" ? (
           <DirectoryFormFields
             name={name}
@@ -244,7 +213,37 @@ export const CreateDirectoryModal: React.FC<CreateDirectoryModalProps> = ({
             </Typography>
           </Stack>
         )}
-      </ModalShell>
+        </Modal.Body>
+        <Modal.Footer>
+          {mode === "edit" && handleDelete && (
+            <Tooltip title={`Delete this ${dirTerms.singularLower}`}>
+              <span>
+                <Button
+                  color="error"
+                  variant="outlined"
+                  startIcon={<DeleteIcon fontSize="small" />}
+                  onClick={handleDelete}
+                  disabled={isBusy}
+                >
+                  Delete
+                </Button>
+              </span>
+            </Tooltip>
+          )}
+          <Button variant="outlined" onClick={cancel} disabled={isBusy}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<OpenInFullIcon fontSize="small" />}
+            onClick={() => void saveAndView()}
+            disabled={isBusy || isNameEmpty}
+          >
+            Save
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       <Snackbar
         open={snackbarState.open}

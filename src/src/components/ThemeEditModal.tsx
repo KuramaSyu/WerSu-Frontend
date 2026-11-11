@@ -10,7 +10,7 @@ import {
 import EditIcon from "@mui/icons-material/Edit";
 import ImageIcon from "@mui/icons-material/Image";
 import { useEffect, useState, type ChangeEvent } from "react";
-import { ModalShell } from "./ModalShell";
+import { Modal } from "./Modal";
 import { useThemeStore } from "../zustand/useThemeStore";
 import { useImageBlobCacheStore } from "../zustand/useImageBlobCache";
 import { FeatureFlagName, useFeatureStore } from "../zustand/FeatureStore";
@@ -278,35 +278,13 @@ export const ThemeEditModal: React.FC<ThemeEditModalProps> = ({
   };
 
   return (
-    <ModalShell
-      open={open}
-      onClose={onClose}
-      icon={<EditIcon />}
-      title="Edit theme"
-      subtitle={record?.longName}
-      maxWidth="sm"
-      actions={
-        <>
-          <Button onClick={onClose} disabled={saving}>
-            Cancel
-          </Button>
-          <Button
-            variant="contained"
-            disabled={
-              saving ||
-              loadingOriginal ||
-              (usingFallbackOnly && blur !== record?.blur) ||
-              name.trim().length === 0 ||
-              palette === null
-            }
-            startIcon={saving ? <CircularProgress size={16} /> : undefined}
-            onClick={() => void handleSave()}
-          >
-            {saving ? "Saving..." : "Save changes"}
-          </Button>
-        </>
-      }
-    >
+    <Modal open={open} onClose={onClose} maxWidth="sm">
+      <Modal.Header
+        icon={<EditIcon />}
+        title="Edit theme"
+        subtitle={record?.longName}
+      />
+      <Modal.Body>
       <Stack spacing={3}>
         <TextField
           label="Theme name"
@@ -424,7 +402,27 @@ export const ThemeEditModal: React.FC<ThemeEditModalProps> = ({
           </Box>
         ) : null}
       </Stack>
-    </ModalShell>
+      </Modal.Body>
+      <Modal.Footer>
+        <Button onClick={onClose} disabled={saving}>
+          Cancel
+        </Button>
+        <Button
+          variant="contained"
+          disabled={
+            saving ||
+            loadingOriginal ||
+            (usingFallbackOnly && blur !== record?.blur) ||
+            name.trim().length === 0 ||
+            palette === null
+          }
+          startIcon={saving ? <CircularProgress size={16} /> : undefined}
+          onClick={() => void handleSave()}
+        >
+          {saving ? "Saving..." : "Save changes"}
+        </Button>
+      </Modal.Footer>
+    </Modal>
   );
 };
 

@@ -31,7 +31,7 @@ import {
   Tabs,
   Typography,
 } from "@mui/material";
-import { ModalShell } from "./ModalShell";
+import { Modal } from "./Modal";
 import { M2, M3 } from "../statics";
 import { useThemeStore } from "../zustand/useThemeStore";
 import { buildLineDiff, type DiffLine } from "../hooks/collabReconcile";
@@ -177,46 +177,24 @@ export const CollabConflictModal: React.FC<CollabConflictModalProps> = ({
   const cloudBody = currentCloud;
 
   return (
-    <ModalShell
+    <Modal
       open={open}
       onClose={resolving ? () => undefined : onCancel}
-      icon={
-        <CircularProgress
-          size={20}
-          color="warning"
-          variant="determinate"
-          value={100}
-        />
-      }
-      title="Sync conflict"
-      subtitle="You edited locally and the server changed while you were offline. Choose which version to keep."
       maxWidth="md"
-      minHeight="48vh"
-      actions={
-        <Stack direction="row" spacing={1} sx={{ width: "100%" }}>
-          <Button onClick={onCancel} disabled={resolving}>
-            Stay offline
-          </Button>
-          <Box sx={{ flex: 1 }} />
-          <Button
-            onClick={onUseCloud}
-            disabled={resolving}
-            color="error"
-            variant="outlined"
-          >
-            Use cloud version
-          </Button>
-          <Button
-            onClick={onUseLocal}
-            disabled={resolving}
-            color="primary"
-            variant="contained"
-          >
-            Use local version
-          </Button>
-        </Stack>
-      }
     >
+      <Modal.Header
+        icon={
+          <CircularProgress
+            size={20}
+            color="warning"
+            variant="determinate"
+            value={100}
+          />
+        }
+        title="Sync conflict"
+        subtitle="You edited locally and the server changed while you were offline. Choose which version to keep."
+      />
+      <Modal.Body minHeight="48vh">
       <Stack spacing={M3} sx={{ minHeight: 0 }}>
         <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
           <Chip
@@ -329,6 +307,31 @@ export const CollabConflictModal: React.FC<CollabConflictModalProps> = ({
           that arrived while you were offline.
         </Typography>
       </Stack>
-    </ModalShell>
+      </Modal.Body>
+      <Modal.Footer>
+        <Stack direction="row" spacing={1} sx={{ width: "100%" }}>
+          <Button onClick={onCancel} disabled={resolving}>
+            Stay offline
+          </Button>
+          <Box sx={{ flex: 1 }} />
+          <Button
+            onClick={onUseCloud}
+            disabled={resolving}
+            color="error"
+            variant="outlined"
+          >
+            Use cloud version
+          </Button>
+          <Button
+            onClick={onUseLocal}
+            disabled={resolving}
+            color="primary"
+            variant="contained"
+          >
+            Use local version
+          </Button>
+        </Stack>
+      </Modal.Footer>
+    </Modal>
   );
 };

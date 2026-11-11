@@ -18,7 +18,7 @@ import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useUpdateNote } from "../../api/queries/useNoteQueries";
 import { useSelectedShelfStore } from "../../zustand/useSelectedShelfStore";
-import { ModalShell } from "../../components/ModalShell";
+import { Modal } from "../../components/Modal";
 
 export interface CreateNoteProps {
   open: boolean;
@@ -138,38 +138,16 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
 
   return (
     <>
-      <ModalShell
+      <Modal
         open={open}
         onClose={() => void closeDialog()}
-        icon={<CreateIcon fontSize="small" />}
-        title="New note"
-        subtitle="Save now or open fullscreen"
-        minHeight="42vh"
-        actions={
-          <>
-            <Button
-              variant="outlined"
-              onClick={() => void closeDialog()}
-              disabled={isSaving}
-            >
-              Cancel
-            </Button>
-            <Tooltip title="Save and open fullscreen">
-              <span>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  startIcon={<OpenInFullIcon fontSize="small" />}
-                  onClick={() => void saveAndOpen()}
-                  disabled={isSaving}
-                >
-                  Save &amp; open
-                </Button>
-              </span>
-            </Tooltip>
-          </>
-        }
       >
+        <Modal.Header
+          icon={<CreateIcon fontSize="small" />}
+          title="New note"
+          subtitle="Save now or open fullscreen"
+        />
+        <Modal.Body minHeight="42vh">
         <Stack spacing={2.25} sx={{ py: 0.5 }}>
           <TextField
             placeholder="Title"
@@ -237,7 +215,30 @@ export const CreateNote: React.FC<CreateNoteProps> = ({
             }}
           />
         </Stack>
-      </ModalShell>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="outlined"
+            onClick={() => void closeDialog()}
+            disabled={isSaving}
+          >
+            Cancel
+          </Button>
+          <Tooltip title="Save and open fullscreen">
+            <span>
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<OpenInFullIcon fontSize="small" />}
+                onClick={() => void saveAndOpen()}
+                disabled={isSaving}
+              >
+                Save &amp; open
+              </Button>
+            </span>
+          </Tooltip>
+        </Modal.Footer>
+      </Modal>
 
       <Snackbar
         open={snackbarState.open}

@@ -20,7 +20,7 @@ import GroupsIcon from "@mui/icons-material/Groups";
 import { M1, M2, M3 } from "../../statics";
 import { usePanelSize, useRightPanel } from "../../LayoutProvider";
 import TranslucentPaper from "../../components/TranslucentPaper";
-import ModalShell from "../../components/ModalShell";
+import Modal from "../../components/Modal";
 import { useCreateRole, useRoles } from "../../api/queries/roleQueries";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { useThemeStore } from "../../zustand/useThemeStore";
@@ -214,56 +214,54 @@ export const RolesPage: React.FC = () => {
         </Stack>
       </TranslucentPaper>
 
-      <ModalShell
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        icon={<GroupsIcon />}
-        title="New role"
-        subtitle="Create a named group that can be granted permissions"
-        maxWidth="sm"
-        actions={
-          <>
-            <Button
-              variant="outlined"
-              onClick={() => setCreateOpen(false)}
-              disabled={createRole.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="contained"
-              onClick={() => void submitCreate()}
-              disabled={createRole.isPending || !name.trim()}
-            >
-              {createRole.isPending ? "Creating…" : "Create role"}
-            </Button>
-          </>
-        }
-      >
-        <Stack spacing={M2}>
-          <TextField
-            label="Name"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            autoFocus
-            fullWidth
-            size="small"
-            required
-          />
-          <TextField
-            label="Description"
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            fullWidth
-            size="small"
-            multiline
-            minRows={2}
-          />
-          <Typography variant="caption" color="text.secondary">
-            Creating roles requires super-admin rights on the backend.
-          </Typography>
-        </Stack>
-      </ModalShell>
+      <Modal open={createOpen} onClose={() => setCreateOpen(false)} maxWidth="sm">
+        <Modal.Header
+          icon={<GroupsIcon />}
+          title="New role"
+          subtitle="Create a named group that can be granted permissions"
+        />
+        <Modal.Body>
+          <Stack spacing={M2}>
+            <TextField
+              label="Name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              autoFocus
+              fullWidth
+              size="small"
+              required
+            />
+            <TextField
+              label="Description"
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              fullWidth
+              size="small"
+              multiline
+              minRows={2}
+            />
+            <Typography variant="caption" color="text.secondary">
+              Creating roles requires super-admin rights on the backend.
+            </Typography>
+          </Stack>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="outlined"
+            onClick={() => setCreateOpen(false)}
+            disabled={createRole.isPending}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => void submitCreate()}
+            disabled={createRole.isPending || !name.trim()}
+          >
+            {createRole.isPending ? "Creating…" : "Create role"}
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </Box>
   );
 };

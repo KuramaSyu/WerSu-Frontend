@@ -7,7 +7,7 @@ import {
   TextField,
 } from "@mui/material";
 import ShelvesIcon from "@mui/icons-material/Shelves";
-import { ModalShell } from "../ModalShell";
+import { Modal } from "../Modal";
 import { useCreateShelf } from "../../api/queries/shelfQueries";
 import type { ShelfReply } from "../../api/models/shelf";
 import { useSelectedShelfStore } from "../../zustand/useSelectedShelfStore";
@@ -98,70 +98,68 @@ export const ShelfCreateDialog: React.FC<ShelfCreateDialogProps> = ({
   };
 
   return (
-    <ModalShell
-      open={open}
-      onClose={handleClose}
-      icon={<ShelvesIcon />}
-      title="Create shelf"
-      subtitle="Shelves group books, chapters, and their rules."
-      maxWidth="sm"
-      actions={
-        <>
-          <Button onClick={handleClose} disabled={createShelf.isPending}>
-            Cancel
-          </Button>
-          <Button
-            variant="contained"
-            onClick={() => void handleCreate()}
-            disabled={createShelf.isPending}
-            startIcon={
-              createShelf.isPending ? (
-                <CircularProgress size={16} color="inherit" />
-              ) : undefined
-            }
-          >
-            {createShelf.isPending ? "Creating..." : "Create shelf"}
-          </Button>
-        </>
-      }
-    >
-      <Stack spacing={2}>
-        {error !== null && <Alert severity="error">{error}</Alert>}
+    <Modal open={open} onClose={handleClose} maxWidth="sm">
+      <Modal.Header
+        icon={<ShelvesIcon />}
+        title="Create shelf"
+        subtitle="Shelves group books, chapters, and their rules."
+      />
+      <Modal.Body>
+        <Stack spacing={2}>
+          {error !== null && <Alert severity="error">{error}</Alert>}
 
-        <TextField
-          label="Display name"
-          size="small"
-          autoFocus
-          value={displayName}
-          onChange={(event) => setDisplayName(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              void handleCreate();
-            }
-          }}
-          helperText="Shown in the top bar and menus."
-        />
+          <TextField
+            label="Display name"
+            size="small"
+            autoFocus
+            value={displayName}
+            onChange={(event) => setDisplayName(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                void handleCreate();
+              }
+            }}
+            helperText="Shown in the top bar and menus."
+          />
 
-        <TextField
-          label="Slug"
-          size="small"
-          value={slug}
-          onChange={(event) => setSlug(event.target.value)}
-          placeholder="auto-generated from the name"
-          helperText="Used in URLs. Leave empty to generate one from the name."
-        />
+          <TextField
+            label="Slug"
+            size="small"
+            value={slug}
+            onChange={(event) => setSlug(event.target.value)}
+            placeholder="auto-generated from the name"
+            helperText="Used in URLs. Leave empty to generate one from the name."
+          />
 
-        <TextField
-          label="Description"
-          size="small"
-          multiline
-          minRows={3}
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-          helperText="Optional. Appears on the shelf's edit page."
-        />
-      </Stack>
-    </ModalShell>
+          <TextField
+            label="Description"
+            size="small"
+            multiline
+            minRows={3}
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            helperText="Optional. Appears on the shelf's edit page."
+          />
+        </Stack>
+      </Modal.Body>
+      <Modal.Footer>
+        <Button onClick={handleClose} disabled={createShelf.isPending}>
+          Cancel
+        </Button>
+        <Button
+          variant="contained"
+          onClick={() => void handleCreate()}
+          disabled={createShelf.isPending}
+          startIcon={
+            createShelf.isPending ? (
+              <CircularProgress size={16} color="inherit" />
+            ) : undefined
+          }
+        >
+          {createShelf.isPending ? "Creating..." : "Create shelf"}
+        </Button>
+      </Modal.Footer>
+    </Modal>
   );
 };

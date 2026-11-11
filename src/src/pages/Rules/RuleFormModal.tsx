@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button, Tooltip } from "@mui/material";
 import RuleFolderIcon from "@mui/icons-material/RuleFolder";
-import { ModalShell } from "../../components/ModalShell";
+import { Modal } from "../../components/Modal";
 import type {
   AttachedEntityType,
   CreateRuleBody,
@@ -149,48 +149,49 @@ export const RuleFormModal: React.FC<RuleFormModalProps> = ({
   };
 
   return (
-    <ModalShell
+    <Modal
       open={open}
       onClose={() => onOpenChange(false)}
-      icon={<RuleFolderIcon fontSize="small" />}
-      title={mode === "create" ? "New rule" : "Edit rule"}
-      subtitle={
-        mode === "create"
-          ? "Add a new automation attached to this shelf"
-          : "Update the rule. Only the fields you change are forwarded."
-      }
       maxWidth="md"
-      minHeight="40vh"
-      actions={
-        <>
-          <Button
-            variant="outlined"
-            color="primary"
-            onClick={() => onOpenChange(false)}
-            disabled={isBusy}
-          >
-            Cancel
-          </Button>
-          <Tooltip
-            title={validation.ok ? "" : (validation.error ?? "Invalid")}
-            disableHoverListener={validation.ok}
-          >
-            <span>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={() => void handleSubmit()}
-                disabled={isBusy || !validation.ok}
-              >
-                {mode === "create" ? "Create" : "Save"}
-              </Button>
-            </span>
-          </Tooltip>
-        </>
-      }
     >
-      <RuleFormFields initial={form} showRawJsonToggle onChange={setForm} />
-    </ModalShell>
+      <Modal.Header
+        icon={<RuleFolderIcon fontSize="small" />}
+        title={mode === "create" ? "New rule" : "Edit rule"}
+        subtitle={
+          mode === "create"
+            ? "Add a new automation attached to this shelf"
+            : "Update the rule. Only the fields you change are forwarded."
+        }
+      />
+      <Modal.Body minHeight="40vh">
+        <RuleFormFields initial={form} showRawJsonToggle onChange={setForm} />
+      </Modal.Body>
+      <Modal.Footer>
+        <Button
+          variant="outlined"
+          color="primary"
+          onClick={() => onOpenChange(false)}
+          disabled={isBusy}
+        >
+          Cancel
+        </Button>
+        <Tooltip
+          title={validation.ok ? "" : (validation.error ?? "Invalid")}
+          disableHoverListener={validation.ok}
+        >
+          <span>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => void handleSubmit()}
+              disabled={isBusy || !validation.ok}
+            >
+              {mode === "create" ? "Create" : "Save"}
+            </Button>
+          </span>
+        </Tooltip>
+      </Modal.Footer>
+    </Modal>
   );
 };
 
