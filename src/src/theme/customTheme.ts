@@ -68,6 +68,15 @@ export type CustomTheme = Theme;
 // Augment MUI's Theme/Palette so useTheme() returns our extended type.
 // CustomTheme is now an alias of Theme; these declarations drive runtime typing.
 declare module "@mui/material/styles" {
+  /**
+   * Every theme the app injects through `ThemeProvider` is a
+   * `CustomThemeImpl`, so expose the concrete class from MUI's
+   * `useTheme()` as well. Without this overload the hook would only
+   * return the base `Theme` type and hide helpers such as
+   * `setSaturation` from consumers.
+   */
+  export function useTheme(): CustomThemeImpl;
+
   interface Palette {
     poppyColors: string[];
   }
