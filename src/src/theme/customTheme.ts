@@ -603,6 +603,22 @@ export class CustomThemeImpl implements CustomTheme {
       // Forcing `color: text.primary` on the SVG itself breaks that
       // inheritance chain and silently overrides local overrides.
     };
+
+    // MUI's nested ThemeProvider merges themes with a shallow spread
+    // (`{...outerTheme, ...localTheme}`), which only copies own
+    // properties and would drop every prototype method. Bind the helpers
+    // as own functions so `useTheme()` keeps returning the full
+    // CustomThemeImpl API inside nested providers.
+    this.blendWithContrast = this.blendWithContrast.bind(this);
+    this.blendAgainstContrast = this.blendAgainstContrast.bind(this);
+    this.changeSaturation = this.changeSaturation.bind(this);
+    this.setSaturation = this.setSaturation.bind(this);
+    this.elevate = this.elevate.bind(this);
+    this.setComplexDuration = this.setComplexDuration.bind(this);
+    this.setDurationMultiplier = this.setDurationMultiplier.bind(this);
+    this.setTransitionDurations = this.setTransitionDurations.bind(this);
+    this.refreshColorTransition = this.refreshColorTransition.bind(this);
+    this.resolveColor = this.resolveColor.bind(this);
   }
 
   blendWithContrast(

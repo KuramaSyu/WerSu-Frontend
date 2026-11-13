@@ -1,6 +1,6 @@
 import { createTheme } from "@mui/material";
 import { Vibrant } from "node-vibrant/browser";
-import type { CustomTheme } from "./customTheme";
+import { CustomThemeImpl, type CustomTheme } from "./customTheme";
 
 // Derive the palette/swatch types from Vibrant's public API rather than
 // importing `@vibrant/color` directly, which is an undeclared transitive
@@ -332,51 +332,53 @@ export function buildThemeFromImageRecord(
         ? record.blurredBackgroundImage
         : ""
       : record.backgroundImage;
-  return createTheme({
-    palette: {
-      mode: record.mode,
-      primary: {
-        main: palette.primary,
-        light: palette.primaryLight,
-        dark: palette.primaryDark,
+  return new CustomThemeImpl(
+    createTheme({
+      palette: {
+        mode: record.mode,
+        primary: {
+          main: palette.primary,
+          light: palette.primaryLight,
+          dark: palette.primaryDark,
+        },
+        secondary: {
+          main: palette.secondary,
+          light: palette.secondaryLight,
+          dark: palette.secondaryDark,
+        },
+        vibrant: {
+          main: palette.vibrant,
+          light: palette.primaryLight,
+          dark: palette.primaryDark,
+        },
+        muted: {
+          main: palette.muted,
+          light: palette.mutedLight,
+          dark: palette.mutedDark,
+        },
+        background: {
+          default: palette.backgroundDefault,
+          paper: palette.backgroundPaper,
+        },
+        text: {
+          primary: palette.textPrimary,
+          secondary: palette.textSecondary,
+        },
+        surfaces: {
+          panel: palette.panel,
+        },
       },
-      secondary: {
-        main: palette.secondary,
-        light: palette.secondaryLight,
-        dark: palette.secondaryDark,
+      custom: {
+        backgroundImages: [
+          record.backgroundImage,
+          record.blurredBackgroundImage,
+        ].filter((src) => src.length > 0),
+        chosenBackgroundImage:
+          displayBackground.length > 0 ? displayBackground : null,
+        themeName: record.name,
+        longName: record.longName,
+        blur: record.blur,
       },
-      vibrant: {
-        main: palette.vibrant,
-        light: palette.primaryLight,
-        dark: palette.primaryDark,
-      },
-      muted: {
-        main: palette.muted,
-        light: palette.mutedLight,
-        dark: palette.mutedDark,
-      },
-      background: {
-        default: palette.backgroundDefault,
-        paper: palette.backgroundPaper,
-      },
-      text: {
-        primary: palette.textPrimary,
-        secondary: palette.textSecondary,
-      },
-      surfaces: {
-        panel: palette.panel,
-      },
-    },
-    custom: {
-      backgroundImages: [
-        record.backgroundImage,
-        record.blurredBackgroundImage,
-      ].filter((src) => src.length > 0),
-      chosenBackgroundImage:
-        displayBackground.length > 0 ? displayBackground : null,
-      themeName: record.name,
-      longName: record.longName,
-      blur: record.blur,
-    },
-  }) as unknown as CustomTheme;
+    }),
+  );
 }
