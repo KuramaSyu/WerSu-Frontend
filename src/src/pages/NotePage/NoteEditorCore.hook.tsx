@@ -68,7 +68,6 @@ import {
   fragmentText,
   logCollabContent,
 } from "../../hooks/collabContentLog";
-
 import "katex/dist/katex.min.css";
 import "../../styles/tiptap.css";
 
@@ -450,6 +449,8 @@ export const useNoteEditor = (params: UseNoteEditorParams): Editor | null => {
       noteContentHead: (note.content ?? "").slice(0, 120),
     });
     if (ydoc) return;
+    // `setContent` keeps the header in the source buffer but strips it
+    // before writing to the rich editor.
     useActiveNoteStore.getState().setContent(note.content);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor, note?.id, ydoc]);

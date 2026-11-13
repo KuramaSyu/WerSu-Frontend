@@ -1,5 +1,6 @@
 import { Extension, mergeAttributes } from "@tiptap/core";
 import { AttachmentApi } from "../../api/AttachmentApi";
+import { waitForImagePermission } from "../../utils/waitForImagePermission";
 import UploadFileBuilder from "../../pages/NotePage/UploadFileBuilder";
 import { Plugin } from "@tiptap/pm/state";
 import { file, string } from "zod";
@@ -260,42 +261,6 @@ export function getNodeByFileType(
     ]);
   }
   return attachmentNode;
-}
-
-/**
- * Poll url as long as it returns 403 or 401 until it's accessible (200).
- * Used for checking image permissions, since they take some seconds to be effective
- * TODO: implement HEAD in backend, since Response is not used
- * @param url
- * @returns Response | null - the response of the successful (GET) request, or null if max retries exceeded
- */
-async function waitForImagePermission(url: string): Promise<Response | null> {
-  // dont wait static time. 833, 714, 625, 555, 500, 454, 416, 384, 357, 333, 312, 294, 277, 263, 250, 238, 227, 217, 208,
-  // -- carefully crafted
-  const getWaitSeconds = (attempt: number) =>
-    Math.max(1000 / (1 + attempt - attempt * 0.8), 500);
-
-  const maxLoops = 50;
-  for (let i = 1; i <= maxLoops; i++) {
-    console.log(
-      `Checking image permission, attempt ${i}/${maxLoops}, wait ${getWaitSeconds(i)}ms before try...`,
-    );
-    await new Promise((resolve) => setTimeout(resolve, getWaitSeconds(i))); // wait before retrying
-
-    const response = await fetch(url, {
-      method: "GET",
-      credentials: "include",
-    });
-
-    if (response.status === 200) {
-      return response;
-    } else if (!(response.status === 403 || response.status === 401)) {
-      throw new Error(
-        `Failed while waiting for image: ${response.statusText}; code: ${response.status}`,
-      );
-    }
-  }
-  return null;
 }
 
 function UploadAttachmentView({ node }: NodeViewProps) {

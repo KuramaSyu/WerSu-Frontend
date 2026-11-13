@@ -9,7 +9,7 @@
 // in the *.hook.tsx / Bridge.tsx / Controller.tsx siblings.
 // ---------------------------------------------------------------------------
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Box, Paper, Typography } from "@mui/material";
 import { alpha, getOverlayAlpha } from "@mui/material/styles";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
@@ -19,6 +19,7 @@ import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { useViewConfig } from "../../zustand/useViewConfig";
 import { useActiveNoteStore } from "../../zustand/editorStore";
 import { useDraftStore } from "../../zustand/useDraftStore";
+import { useHeaderImageModalStore } from "../../zustand/useHeaderImageModalStore";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useThemeBackgroundStore } from "../../zustand/useThemeBackgroundStore";
 import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
@@ -58,6 +59,15 @@ import { HoldKeyActionBar } from "../../components/HoldKeyActionBar";
 import { useEditorModeShortcuts } from "./Panel/useEditorModeShortcuts";
 import { useNoteWidthMode } from "./Panel/useNoteWidthMode";
 import { useEditorBackdropBlurImage } from "./useEditorBackdropBlurImage";
+import { HeaderImageBanner } from "../../components/HeaderImage/HeaderImageBanner";
+import { ImageUploadModal } from "../../components/DirectoryEdit/ImageUploadModal";
+import {
+  NOTE_HEADER_IMAGE_ALT,
+  buildHeaderImageMarkdown,
+  composeNoteContent,
+  extractImageUrl,
+  findNoteHeaderImage,
+} from "../../utils/headerImage";
 
 export interface NoteEditorProps {
   note?: Note;
@@ -72,6 +82,7 @@ export interface NoteEditorCoreProps extends NoteEditorProps {
   ydoc: Y.Doc | null;
   provider: HocuspocusProvider | null;
 }
+
 
 /** Inner component that actually consumes useDialog(). Lives behind a DialogProvider. */
 const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
@@ -95,6 +106,10 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
   const sourceMarkdown = useActiveNoteStore((s) => s.sourceMarkdown);
   const setSourceMarkdown = useActiveNoteStore((s) => s.setSourceMarkdown);
   const seedSourceMarkdown = useActiveNoteStore((s) => s.seedSourceMarkdown);
+  const headerImageMarkdown = useActiveNoteStore((s) => s.headerImageMarkdown);
+  const setHeaderImageMarkdown = useActiveNoteStore(
+    (s) => s.setHeaderImageMarkdown,
+  );
 
   const viewMode = useEditorSettings((s) => s.viewMode);
   const editMode = useEditorSettings((s) => s.editMode);
@@ -237,6 +252,14 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
 
   useEffect(() => {
     if (note) {
+      // The header image is rendered as a banner above the editor, so
+      // keep it out of the body the editor receives.
+      setHeaderImageMarkdown(
+        findNoteHeaderImage(note.content)?.markdown ?? null,
+      );
+      // The source buffer keeps the full Markdown (header included)
+      // so source mode shows the `HeaderImage` line. The rich editor
+      // strips it internally when `setContent` writes to the Y.Doc.
       // Use the seed setter: it mirrors the source buffer without
       // marking the markdown as already-written, so the seed effect in
       // `useNoteEditor` still loads it into the editor. This matters on
@@ -246,6 +269,51 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [note?.id]);
+
+  // Header image state: derived from the store so an upload updates the
+  // banner immediately, before the note query refetch lands.
+  const headerImageUrl = useMemo(
+    () => extractImageUrl(headerImageMarkdown),
+    [headerImageMarkdown],
+  );
+  const headerModalOpen = useHeaderImageModalStore((s) => s.open);
+  const setHeaderModalOpen = useHeaderImageModalStore((s) => s.setOpen);
+  const canEditHeader = editMode && !readOnly;
+
+  // The open flag is shared (the top-bar overflow menu opens the same
+  // modal), so clear it when this editor goes away rather than leaving
+  // it set for the next note.
+  useEffect(
+    () => () => {
+      useHeaderImageModalStore.getState().setOpen(false);
+    },
+    [],
+  );
+
+  const handleHeaderUploaded = useCallback(
+    (markdownUrl: string) => {
+      const url = extractImageUrl(markdownUrl);
+      if (!url) {
+        return;
+      }
+      const header = buildHeaderImageMarkdown(url, NOTE_HEADER_IMAGE_ALT);
+      setHeaderImageMarkdown(header);
+      if (!noteId) {
+        return;
+      }
+      // Persist immediately so the header survives a reload. The body
+      // is read from the store so a live collab session's unsaved body
+      // is not lost.
+      const body = useActiveNoteStore.getState().getContent();
+      void updateNote({
+        noteId,
+        content: composeNoteContent(body, header),
+      }).catch((error: unknown) => {
+        console.error("Failed to save the header image", error);
+      });
+    },
+    [noteId, setHeaderImageMarkdown, updateNote],
+  );
 
   // Insertion helper: routes the link to the active surface. Used by
   // the file-upload dialog. Memoized so it does not re-fire per key.
@@ -401,12 +469,43 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
         >
           {/* The title is only editable while the editor is in edit
               mode. Read-only shares stay non-editable even there. */}
-          <NoteTitleBar
-            title={title}
-            setTitle={setTitleFromUser}
-            forceFullWidth={forceFullWidth}
-            readOnly={readOnly || !editMode}
-          />
+          {headerImageUrl ? (
+            <Box
+              sx={{
+                mx: forceFullWidth ? 0 : `-${M3}`,
+                position: "relative",
+              }}
+            >
+              <HeaderImageBanner
+                imageUrl={headerImageUrl}
+                alt={NOTE_HEADER_IMAGE_ALT}
+                onChange={
+                  canEditHeader
+                    ? () => setHeaderModalOpen(true)
+                    : undefined
+                }
+              >
+                <Box sx={{ width: "100%" }}>
+                  <NoteTitleBar
+                    title={title}
+                    setTitle={setTitleFromUser}
+                    forceFullWidth={forceFullWidth}
+                    readOnly={readOnly || !editMode}
+                    fitContent
+                  />
+                </Box>
+              </HeaderImageBanner>
+            </Box>
+          ) : (
+            <NoteTitleBar
+              title={title}
+              setTitle={setTitleFromUser}
+              forceFullWidth={forceFullWidth}
+              readOnly={readOnly || !editMode}
+              showHeaderImageAction={canEditHeader}
+              onInsertHeaderImage={() => setHeaderModalOpen(true)}
+            />
+          )}
 
           {editor && viewMode === "rich" && (
             <NoteRichEditor
@@ -456,6 +555,16 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
         active={holdShortcuts.length > 0}
         capture={false}
         actions={holdShortcuts}
+      />
+
+      {/* Header image picker. Shared by the banner's image button and
+          the top-bar overflow menu. */}
+      <ImageUploadModal
+        open={headerModalOpen}
+        onClose={() => setHeaderModalOpen(false)}
+        onUploaded={handleHeaderUploaded}
+        currentImageUrl={headerImageUrl ?? undefined}
+        getReadmeNoteId={async () => noteId ?? null}
       />
 
       {/* Imperative dialogs. Each owns its own state and re-renders

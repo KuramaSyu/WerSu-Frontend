@@ -64,7 +64,9 @@ const InsertSpeedDialImpl: React.FC<InsertSpeedDialProps> = ({
 
   const handleSourceToggle = useCallback(() => {
     if (isRich) {
-      const markdown = editor?.getMarkdown() ?? sourceMarkdown;
+      // `getContent` serialises the rich editor and re-attaches the
+      // header image, so source mode always shows the full document.
+      const markdown = useActiveNoteStore.getState().getContent();
       setSourceMarkdown(markdown);
       setViewMode("source");
       return;
@@ -75,7 +77,6 @@ const InsertSpeedDialImpl: React.FC<InsertSpeedDialProps> = ({
     setViewMode("rich");
   }, [
     isRich,
-    editor,
     sourceMarkdown,
     setSourceMarkdown,
     setViewMode,

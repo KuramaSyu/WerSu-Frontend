@@ -16,6 +16,7 @@ import { AttachmentApi, type IAttachmentApi } from "../../api/AttachmentApi";
 import useInfoStore, { SnackbarUpdateImpl } from "../../zustand/InfoStore";
 import { AttachmentLinkBuilder } from "../../api/utils/AttachmentLInkBuilder";
 import { getReadmePreview } from "../../utils/readme";
+import { waitForImagePermission } from "../../utils/waitForImagePermission";
 
 export interface ImageUploadModalProps {
   open: boolean;
@@ -216,12 +217,28 @@ export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
         );
       }
 
-      const markdownUrl = new AttachmentLinkBuilder(api)
-        .asMarkdown()
-        .setWidth(720)
-        .getLink(metadata.key);
+      const linkBuilder = new AttachmentLinkBuilder(api).setWidth(720);
+      const imageUrl = linkBuilder.getLink(metadata.key);
+
+      // Attachment permissions are written asynchronously after the
+      // link call. Wait until the image URL actually returns 200 before
+      // handing it to the caller, otherwise the <img> can cache a
+      // 401/403 and only recover on a full reload.
+      if (linked !== null) {
+        await waitForImagePermission(imageUrl);
+      }
+
+      const markdownUrl = linkBuilder.asMarkdown().getLink(metadata.key);
       onUploaded?.(markdownUrl);
       onClose();
+    } catch (error) {
+      console.error("Image upload failed", error);
+      setMessage(
+        new SnackbarUpdateImpl(
+          error instanceof Error ? error.message : "Image upload failed",
+          "error",
+        ),
+      );
     } finally {
       setUploading(false);
     }

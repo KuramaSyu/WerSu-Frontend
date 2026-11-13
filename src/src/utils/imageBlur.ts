@@ -45,20 +45,79 @@ function isBackendImageUrl(url: string): boolean {
   }
 }
 
+/**
+ * Same-origin path for a backend URL when the app is served from a
+ * different origin (dev server on :5173, backend on :8080).
+ *
+ * Both the Vite dev proxy and the production nginx config forward
+ * `/api/` to the backend, so fetching the path (instead of the absolute
+ * backend URL) keeps the request same-origin. That matters for the
+ * attachment image endpoint, which answers with the image but without
+ * CORS headers, so a cross-origin read is blocked by the browser.
+ */
+function toSameOriginBackendPath(url: string): string | null {
+  if (typeof window === "undefined" || !isBackendImageUrl(url)) {
+    return null;
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(url, window.location.origin);
+  } catch {
+    return null;
+  }
+  if (parsed.origin === window.location.origin) {
+    return null;
+  }
+  return `${parsed.pathname}${parsed.search}`;
+}
+
+/** Reject proxy / SPA-fallback responses (an HTML error page). */
+function isUsableImageResponse(blob: Blob): boolean {
+  return !blob.type.startsWith("text/html");
+}
+
 /** Fetch a remote image into a Blob (used for URL-sourced themes). */
 export async function fetchImageBlob(url: string): Promise<Blob> {
   const target = normalizeImageUrl(url);
-  const response = await fetch(target, {
-    mode: "cors",
-    // Attachment images are auth-protected. The default `same-origin`
-    // credentials mode drops the session cookie on the cross-origin backend
-    // request, so the image endpoint answers 401.
-    credentials: isBackendImageUrl(target) ? "include" : "same-origin",
-  });
-  if (!response.ok) {
-    throw new Error(`Failed to fetch image (HTTP ${response.status})`);
+  const sameOriginPath = toSameOriginBackendPath(target);
+  // Prefer the proxied same-origin path; fall back to the absolute backend
+  // URL for deployments without a proxy.
+  const candidates =
+    sameOriginPath === null ? [target] : [sameOriginPath, target];
+  let lastError: unknown = null;
+  for (const candidate of candidates) {
+    try {
+      const response = await fetch(candidate, {
+        mode: "cors",
+        // Attachment images are auth-protected. The default `same-origin`
+        // credentials mode drops the session cookie on the cross-origin
+        // backend request, so the image endpoint answers 401.
+        credentials: isBackendImageUrl(target) ? "include" : "same-origin",
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image (HTTP ${response.status})`);
+      }
+      const blob = await response.blob();
+      if (!isUsableImageResponse(blob)) {
+        throw new Error(
+          `Unexpected image response type "${blob.type || "unknown"}"`,
+        );
+      }
+      return blob;
+    } catch (error) {
+      lastError = error;
+      if (sameOriginPath !== null) {
+        console.debug(
+          "[image-blob] same-origin fetch failed, retrying absolute URL",
+          candidate,
+          error,
+        );
+      }
+    }
   }
-  return await response.blob();
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Failed to fetch image");
 }
 
 /**

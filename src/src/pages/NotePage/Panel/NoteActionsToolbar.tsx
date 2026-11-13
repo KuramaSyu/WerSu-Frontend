@@ -11,6 +11,7 @@ import {
 import ShareIcon from "@mui/icons-material/Share";
 import SaveIcon from "@mui/icons-material/Save";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
+import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
@@ -26,6 +27,7 @@ import { useDeleteNote } from "../../../api/queries/useNoteQueries";
 import { useEditorSettings } from "../../../zustand/useEditorSettings";
 import { useThemeStore } from "../../../zustand/useThemeStore";
 import { useTopBarStore } from "../../../zustand/useTopBarStore";
+import { useHeaderImageModalStore } from "../../../zustand/useHeaderImageModalStore";
 import { usePublicRouteReady } from "../../../hooks/usePublicRouteReady";
 import { getNoteActionVisibility } from "./noteActionVisibility";
 import { NoteWidthToggle } from "./NoteWidthToggle";
@@ -89,6 +91,8 @@ export const NoteActionsToolbar: React.FC = () => {
 export const NoteActionsToolbarInner: React.FC = () => {
   const handleSave = useActiveNoteStore((s) => s.save);
   const noteId = useActiveNoteStore((s) => s.noteId);
+  const headerImageMarkdown = useActiveNoteStore((s) => s.headerImageMarkdown);
+  const setHeaderImageModalOpen = useHeaderImageModalStore((s) => s.setOpen);
   const readOnly = useViewConfig((s) => s.config.readOnly);
   const editMode = useEditorSettings((s) => s.editMode);
   // Public viewers (anonymous or signed-in) don't own the note, so
@@ -101,6 +105,9 @@ export const NoteActionsToolbarInner: React.FC = () => {
     readOnly,
     editMode,
   });
+  // Header images follow the same editability as the banner: only an
+  // editable, non-read-only session can add/replace the image.
+  const canEditHeader = editMode && !readOnly;
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [permissionsOpen, setPermissionsOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
@@ -132,7 +139,7 @@ export const NoteActionsToolbarInner: React.FC = () => {
   // public ones, since it only reads.
   const handleMenuCopyMarkdown = async () => {
     closeMenu();
-    const markdown = useActiveNoteStore.getState().getContent();
+    const markdown = useActiveNoteStore.getState().getContentWithHeader();
     const copied = await copyToClipboard(markdown);
     setMessage(
       new SnackbarUpdateImpl(
@@ -140,6 +147,13 @@ export const NoteActionsToolbarInner: React.FC = () => {
         copied ? "success" : "error",
       ),
     );
+  };
+
+  // Opens the same picker as the banner's image button. The modal is
+  // mounted by `NoteEditorCore`, which reads the shared open flag.
+  const handleMenuHeaderImage = () => {
+    closeMenu();
+    setHeaderImageModalOpen(true);
   };
 
   const runDelete = async () => {
@@ -223,6 +237,16 @@ export const NoteActionsToolbarInner: React.FC = () => {
           onClose={closeMenu}
           slotProps={{ list: { dense: true } }}
         >
+          {canEditHeader && (
+            <MenuItem onClick={handleMenuHeaderImage}>
+              <ListItemIcon>
+                <AddPhotoAlternateIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>
+                {headerImageMarkdown ? "Edit image" : "Add image"}
+              </ListItemText>
+            </MenuItem>
+          )}
           <MenuItem onClick={() => void handleMenuCopyMarkdown()}>
             <ListItemIcon>
               <ContentCopyIcon fontSize="small" />

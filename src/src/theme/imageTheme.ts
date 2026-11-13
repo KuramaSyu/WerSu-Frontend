@@ -15,6 +15,11 @@ import {
   hslToHex,
 } from "../utils/blendWithContrast";
 import { normalizeImageUrl } from "../utils/imageUrl";
+// Downloads the bytes first so the canvas Vibrant reads is never tainted.
+// Attachment images live on the backend origin and need the session
+// credentials; a direct `<img>`/canvas read is blocked (and Vibrant then
+// never settles) because that origin has no CORS headers.
+import { fetchImageBlob } from "../utils/imageBlur";
 
 /**
  * Generate an MUI theme from the color palette of an uploaded image.
@@ -30,7 +35,9 @@ import { normalizeImageUrl } from "../utils/imageUrl";
  *
  * `GeneratedThemeRecord` is the serializable shape persisted to
  * localStorage; `buildThemeFromImageRecord` turns it back into an MUI
- * theme at boot / on demand.
+ * theme at boot / on demand, and `buildThemeFromImage` runs the whole
+ * pipeline in one shot for callers that only need a theme for a given
+ * image without persisting anything (e.g. a header-image banner).
  */
 
 export type ThemeMode = "light" | "dark";
@@ -196,6 +203,48 @@ const paletteSwatchHex = (
   key: keyof VibrantPalette,
 ): string | null => palette[key]?.hex ?? null;
 
+/** Flatten an unknown thrown value into something console-friendly. */
+function describeError(error: unknown): {
+  name?: string;
+  message: string;
+  stack?: string;
+} {
+  if (error instanceof Error) {
+    return { name: error.name, message: error.message, stack: error.stack };
+  }
+  return { message: String(error) };
+}
+
+/**
+ * Vibrant can hang (instead of rejecting) when its internal image load
+ * never settles, e.g. on a tainted canvas. Race it against a timer so the
+ * caller always gets either swatches or a loggable error.
+ */
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  label: string,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${String(ms)}ms`));
+    }, ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
+/** How long Vibrant may spend quantizing one image before we give up. */
+const SWATCH_EXTRACTION_TIMEOUT_MS = 20_000;
+
 /**
  * Run Vibrant over an image and normalize its palette into a compact,
  * serializable set of hex colors. `src` may be an object URL, a data
@@ -204,13 +253,76 @@ const paletteSwatchHex = (
 export async function extractImageSwatches(
   src: string,
 ): Promise<ImageSwatchData> {
-  const vibrantPalette = await Vibrant.from(normalizeImageUrl(src))
-    .maxDimension(512)
-    .getPalette();
+  const normalizedSrc = normalizeImageUrl(src);
+  let sameOrigin = false;
+  if (typeof window !== "undefined" && /^https?:/i.test(normalizedSrc)) {
+    try {
+      sameOrigin = new URL(normalizedSrc).origin === window.location.origin;
+    } catch {
+      sameOrigin = false;
+    }
+  }
+  const opaqueSource =
+    normalizedSrc.startsWith("blob:") || normalizedSrc.startsWith("data:");
+  console.debug("[themegen] extracting swatches", {
+    src,
+    normalizedSrc,
+    rewritten: normalizedSrc !== src,
+    sameOrigin,
+    // Cross-origin images are downloaded to a blob first (see below);
+    // reading them directly taints the canvas.
+    strategy: opaqueSource ? "direct" : "fetch-blob",
+  });
+
+  if (normalizedSrc.length === 0) {
+    const error = new Error("[themegen] empty image source");
+    console.error("[themegen] swatch extraction failed", describeError(error));
+    throw error;
+  }
+
+  // `blob:` / `data:` sources are already canvas-clean. Anything else is
+  // downloaded to a blob URL first: reading a cross-origin image (e.g. a
+  // backend attachment) directly would taint the canvas, and Vibrant's
+  // promise hangs instead of rejecting on that failure.
+  let objectUrl: string | null = null;
+  let vibrantPalette: VibrantPalette;
+  try {
+    let readSrc = normalizedSrc;
+    if (!opaqueSource) {
+      console.debug("[themegen] downloading image as blob", { normalizedSrc });
+      const blob = await fetchImageBlob(normalizedSrc);
+      objectUrl = URL.createObjectURL(blob);
+      readSrc = objectUrl;
+      console.debug("[themegen] image downloaded", {
+        normalizedSrc,
+        bytes: blob.size,
+        type: blob.type,
+      });
+    }
+    vibrantPalette = await withTimeout(
+      Vibrant.from(readSrc).maxDimension(512).getPalette(),
+      SWATCH_EXTRACTION_TIMEOUT_MS,
+      "Vibrant palette extraction",
+    );
+  } catch (error) {
+    console.error("[themegen] could not read the image", {
+      src,
+      normalizedSrc,
+      ...describeError(error),
+    });
+    throw error;
+  } finally {
+    if (objectUrl !== null) URL.revokeObjectURL(objectUrl);
+  }
 
   const swatches = Object.values(vibrantPalette).filter(
     (swatch): swatch is VibrantSwatch => swatch !== null,
   );
+  console.debug("[themegen] Vibrant palette returned", {
+    normalizedSrc,
+    swatches: swatches.length,
+    keys: Object.keys(vibrantPalette),
+  });
 
   let population = 0;
   let weightedLuminance = 0;
@@ -222,6 +334,11 @@ export async function extractImageSwatches(
   const averageLuminance =
     population > 0 ? weightedLuminance / population : 0.5;
   const suggestedMode: ThemeMode = averageLuminance < 0.5 ? "dark" : "light";
+  console.debug("[themegen] swatch luminance", {
+    normalizedSrc,
+    averageLuminance,
+    suggestedMode,
+  });
 
   const dominant =
     [...swatches].sort((a, b) => b.population - a.population)[0]?.hex ??
@@ -229,7 +346,7 @@ export async function extractImageSwatches(
   const vibrant = paletteSwatchHex(vibrantPalette, "Vibrant") ?? dominant;
   const muted = paletteSwatchHex(vibrantPalette, "Muted") ?? dominant;
 
-  return {
+  const result: ImageSwatchData = {
     suggestedMode,
     dominant,
     vibrant,
@@ -247,6 +364,11 @@ export async function extractImageSwatches(
       paletteSwatchHex(vibrantPalette, "DarkMuted") ??
       shiftLightness(muted, -15),
   };
+  console.debug("[themegen] swatches extracted", {
+    normalizedSrc,
+    swatches: result,
+  });
+  return result;
 }
 
 /**
@@ -310,6 +432,75 @@ export function buildPaletteFromSwatches(
     textPrimary: hslToHex(dominantHue, 25, 14),
     textSecondary: hslToHex(dominantHue, 15, 42),
   };
+}
+
+/**
+ * Build an MUI theme straight from an image (remote URL, data URL, or
+ * object URL) without persisting a `GeneratedThemeRecord`.
+ *
+ * Reuses the canonical pipeline -- `extractImageSwatches` ->
+ * `buildPaletteFromSwatches` -> `buildThemeFromImageRecord` -- so a
+ * theme derived here is identical to one the Settings generator would
+ * produce for the same image and mode.
+ *
+ * @param src  Image source to derive the palette from.
+ * @param options.mode  Force light/dark; defaults to the mode Vibrant
+ *   suggests from the image's average luminance.
+ * @param options.name  Short theme name used for the generated theme's
+ *   `custom.themeName` (defaults to `"image"`).
+ */
+export async function buildThemeFromImage(
+  src: string,
+  options: { mode?: ThemeMode; name?: string } = {},
+): Promise<CustomTheme> {
+  const name = options.name ?? "image";
+  console.debug("[themegen] buildThemeFromImage start", {
+    src,
+    name,
+    requestedMode: options.mode,
+  });
+  try {
+    const swatches = await extractImageSwatches(src);
+    const mode = options.mode ?? swatches.suggestedMode;
+    console.debug("[themegen] buildThemeFromImage palette", {
+      src,
+      name,
+      mode,
+      swatches,
+    });
+    const theme = buildThemeFromImageRecord({
+      id: name,
+      groupId: name,
+      name,
+      longName: name,
+      mode,
+      palette: buildPaletteFromSwatches(swatches, mode),
+      backgroundImage: "",
+      blurredBackgroundImage: "",
+      blur: 0,
+      createdAt: Date.now(),
+    });
+    console.debug("[themegen] buildThemeFromImage done", {
+      src,
+      name,
+      themeName: theme.custom?.themeName,
+      mode: theme.palette.mode,
+      primary: theme.palette.primary.main,
+      textPrimary: theme.palette.text.primary,
+      backgroundPaper: theme.palette.background.paper,
+    });
+    return theme;
+  } catch (error) {
+    // The caller (HeaderImageBanner, theme store) usually falls back
+    // silently, so log the actual reason here.
+    console.error("[themegen] buildThemeFromImage failed", {
+      src,
+      name,
+      requestedMode: options.mode,
+      ...describeError(error),
+    });
+    throw error;
+  }
 }
 
 /**

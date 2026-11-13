@@ -28,6 +28,7 @@ import type { HocuspocusProvider } from "@hocuspocus/provider";
 import { prosemirrorJSONToYXmlFragment } from "@tiptap/y-tiptap";
 import { useActiveNoteStore } from "../../zustand/editorStore";
 import { markdownToProsemirror } from "../../utils/converters/toProsemirror/markdownToProsemirror";
+import { stripNoteHeaderImage } from "../../utils/headerImage";
 import {
   fragmentHasContent,
   fragmentLength,
@@ -113,16 +114,18 @@ const CollabSyncBridgeImpl: React.FC<CollabSyncBridgeProps> = ({
       sourceMarkdownLen: useActiveNoteStore.getState().sourceMarkdown.length,
     });
     const store = useActiveNoteStore.getState();
-    // The source buffer carries the markdown we know about: the note's
-    // saved content, or a pending version restore.
-    const markdown = store.sourceMarkdown || store.getContent();
-    if (!markdown) {
+    // The source buffer carries the full markdown we know about (the
+    // header image included). The Y.Doc only ever holds the body, so
+    // strip the header before seeding it.
+    const fullMarkdown = store.sourceMarkdown || store.getContent();
+    if (!fullMarkdown) {
       logCollabContent("seed-skip(no-markdown)", noteId, {
         sourceMarkdownLen: store.sourceMarkdown.length,
         editorMarkdownLen: store.getContent().length,
       });
       return;
     }
+    const markdown = stripNoteHeaderImage(fullMarkdown);
     // Write into the doc directly. The store's `setContent` cannot be
     // used here: it dedupes against the last written markdown, and
     // the source buffer already claimed that value.
@@ -133,7 +136,7 @@ const CollabSyncBridgeImpl: React.FC<CollabSyncBridgeProps> = ({
       console.warn("[collab-sync] seeding the Y.Doc failed", err);
       return;
     }
-    store.setSourceMarkdown(markdown);
+    store.setSourceMarkdown(fullMarkdown);
     docsWithLocalContent.add(ydoc);
     logContentSet(noteId, markdown, ydoc, "ydoc-fragment");
     logCollabContent("seed", noteId, {

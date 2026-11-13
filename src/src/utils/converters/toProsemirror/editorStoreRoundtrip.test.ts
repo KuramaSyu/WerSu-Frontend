@@ -85,6 +85,7 @@ beforeEach(() => {
     ydoc: null,
     title: "",
     sourceMarkdown: "",
+    headerImageMarkdown: null,
     isSaving: false,
     onNoteUpdated: null,
   });
@@ -236,6 +237,86 @@ describe("useActiveNoteStore.replaceContent", () => {
     expect(markdown).toContain("historical list item");
     expect(markdown).not.toContain("current paragraph two");
     expect(markdown).not.toContain("current list item");
+  });
+});
+
+describe("useActiveNoteStore header image", () => {
+  const content = [
+    "![HeaderImage](http://x/header.png)",
+    "",
+    "# Body",
+    "",
+    "Some prose",
+  ].join("\n");
+
+  it("keeps the header in the source buffer but strips it from the rich editor", async () => {
+    const editor = makeEditor();
+    useActiveNoteStore.getState().setEditor(editor);
+
+    useActiveNoteStore.getState().setContent(content);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const state = useActiveNoteStore.getState();
+    expect(state.sourceMarkdown).toBe(content);
+    expect(state.headerImageMarkdown).toBe(
+      "![HeaderImage](http://x/header.png)",
+    );
+    // The rich editor never previews the header inline.
+    expect(editor.getMarkdown()).not.toContain("HeaderImage");
+    expect(editor.getMarkdown()).toContain("# Body");
+    // Serialising for save/copy re-attaches it.
+    expect(state.getContent()).toContain(
+      "![HeaderImage](http://x/header.png)",
+    );
+  });
+
+  it("keeps the header visible in source mode", () => {
+    useEditorSettings.setState({ viewMode: "source" });
+    const editor = makeEditor();
+    useActiveNoteStore.getState().setEditor(editor);
+
+    useActiveNoteStore.getState().setContent(content);
+
+    expect(useActiveNoteStore.getState().sourceMarkdown).toContain(
+      "![HeaderImage](http://x/header.png)",
+    );
+    expect(useActiveNoteStore.getState().getContent()).toContain(
+      "![HeaderImage](http://x/header.png)",
+    );
+  });
+
+  it("lets source edits change the header without duplicating it", async () => {
+    useEditorSettings.setState({ viewMode: "source" });
+    const editor = makeEditor();
+    useActiveNoteStore.getState().setEditor(editor);
+
+    useActiveNoteStore.getState().setSourceMarkdown(
+      [
+        "![HeaderImage](http://x/new.png)",
+        "",
+        "# Edited",
+      ].join("\n"),
+    );
+    useActiveNoteStore
+      .getState()
+      .setContent(
+        [
+          "![HeaderImage](http://x/new.png)",
+          "",
+          "# Edited",
+        ].join("\n"),
+        true,
+      );
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(useActiveNoteStore.getState().headerImageMarkdown).toBe(
+      "![HeaderImage](http://x/new.png)",
+    );
+    const serialised = useActiveNoteStore.getState().getContent();
+    expect(serialised.match(/HeaderImage/g)).toHaveLength(1);
+    expect(serialised).toContain("# Edited");
   });
 });
 

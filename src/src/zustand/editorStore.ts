@@ -5,6 +5,11 @@ import type { Editor } from "@tiptap/core";
 import { prosemirrorJSONToYXmlFragment } from "@tiptap/y-tiptap";
 import { useEditorSettings } from "./useEditorSettings";
 import { markdownToProsemirror } from "../utils/converters/toProsemirror/markdownToProsemirror";
+import {
+  composeNoteContent,
+  findNoteHeaderImage,
+  stripNoteHeaderImage,
+} from "../utils/headerImage";
 import { logContentSet, logCollabContent } from "../hooks/collabContentLog";
 import { NoteApi } from "../api/NoteApi";
 import { queryClient } from "../api/queryClient";
@@ -22,6 +27,13 @@ interface ActiveNoteState {
 
   title: string;
   sourceMarkdown: string;
+  /**
+   * Inline Markdown for the note's `HeaderImage` (`![HeaderImage](url)`).
+   * The source buffer keeps the full document (header included); this
+   * field is what the rich editor strips out and what `getContent`
+   * re-attaches when serialising.
+   */
+  headerImageMarkdown: string | null;
   isSaving: boolean;
   onNoteUpdated: ((note: Note) => void) | null;
 
@@ -38,6 +50,7 @@ interface ActiveNoteState {
   setYDoc: (ydoc: Y.Doc | null) => void;
   setTitle: (title: string) => void;
   setSourceMarkdown: (markdown: string) => void;
+  setHeaderImageMarkdown: (markdown: string | null) => void;
 
   /**
    * Mirrors a note's markdown into the source buffer *without* claiming
@@ -53,6 +66,8 @@ interface ActiveNoteState {
   ) => void;
 
   getContent: () => string;
+  /** Editor body with the note's header image re-attached. */
+  getContentWithHeader: () => string;
   /**
    * Writes `markdown` into the rich editor (and mirrors it into the
    * source buffer). Normally a no-op when `markdown` matches what was
@@ -100,6 +115,7 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => {
     ydoc: null,
     title: "",
     sourceMarkdown: "",
+    headerImageMarkdown: null,
     isSaving: false,
     onNoteUpdated: null,
     updateNote: (title: string, content: string) => {
@@ -118,13 +134,19 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => {
 
     setYDoc: (ydoc) => set({ ydoc }),
     setTitle: (title) => set({ title }),
+    setHeaderImageMarkdown: (headerImageMarkdown) =>
+      set({ headerImageMarkdown }),
     setSourceMarkdown: (markdown) => {
       // Track the source buffer as the latest known markdown so an
       // unchanged source -> rich toggle is deduped (no needless editor
-      // reset). Explicit source edits that differ from the editor are
-      // applied via `setContent(markdown, true)` on leaving source.
-      lastWrittenMarkdown = markdown;
-      set({ sourceMarkdown: markdown });
+      // reset). `lastWrittenMarkdown` tracks the *rich* body (header
+      // stripped) because that is what the editor actually holds.
+      lastWrittenMarkdown = stripNoteHeaderImage(markdown);
+      set({
+        sourceMarkdown: markdown,
+        headerImageMarkdown:
+          findNoteHeaderImage(markdown)?.markdown ?? null,
+      });
     },
     seedSourceMarkdown: (markdown) => {
       // Deliberately does NOT touch `lastWrittenMarkdown`: the caller
@@ -135,13 +157,18 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => {
     setUpdateNoteFn: (fn) => set({ updateNote: fn }),
 
     getContent: () => {
-      const { editMode, viewMode } = useEditorSettings.getState();
-      const { editor, sourceMarkdown } = get();
-      // parse this markdown from editor
+      const { viewMode } = useEditorSettings.getState();
+      const { editor, sourceMarkdown, headerImageMarkdown } = get();
+      // Source mode already holds the full document (header included).
+      // The rich editor holds only the body, so re-attach the header
+      // to keep every consumer (`save`, copy, conflict handling)
+      // working with complete Markdown.
       return viewMode === "source"
         ? sourceMarkdown
-        : (editor?.getMarkdown() ?? "");
+        : composeNoteContent(editor?.getMarkdown() ?? "", headerImageMarkdown);
     },
+
+    getContentWithHeader: () => get().getContent(),
 
     setContent: (markdown, force = false) => {
       const _noteId = get().noteId;
@@ -229,10 +256,22 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => {
         lastTrippedMarkdown = null;
       }
 
+      // The rich editor never holds the header image line; only the
+      // body is written to the Y.Doc / ProseMirror document.
+      const editorMarkdown = stripNoteHeaderImage(markdown);
+
       // Same-content dedupe: guards Collaboration onSynced echo.
       // `force` skips it for explicit user intents (source -> rich),
       // where the source buffer legitimately differs from the editor.
-      if (!force && lastWrittenMarkdown === markdown) {
+      if (!force && lastWrittenMarkdown === editorMarkdown) {
+        // The rich body is unchanged, but the header (or the source
+        // buffer) may still have changed. Keep both in sync without
+        // touching the editor document.
+        set({
+          sourceMarkdown: markdown,
+          headerImageMarkdown:
+            findNoteHeaderImage(markdown)?.markdown ?? null,
+        });
         logCollabContent("content-set-skipped(dedupe)", _noteId, {
           markdownLen: (markdown ?? "").length,
           editorBound: !!get().editor,
@@ -240,12 +279,15 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => {
         });
         return;
       }
-      lastWrittenMarkdown = markdown;
+      lastWrittenMarkdown = editorMarkdown;
 
       const editor = get().editor;
       const ydoc = get().ydoc;
       const noteId = get().noteId;
-      set({ sourceMarkdown: markdown });
+      set({
+        sourceMarkdown: markdown,
+        headerImageMarkdown: findNoteHeaderImage(markdown)?.markdown ?? null,
+      });
       if (!editor) {
         logCollabContent("content-set-skipped(no-editor)", noteId, {
           markdownLen: markdown.length,
@@ -253,7 +295,7 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => {
         return;
       }
       // normalize doc to prevent table errors
-      const normalizedDoc = markdownToProsemirror(editor, markdown);
+      const normalizedDoc = markdownToProsemirror(editor, editorMarkdown);
 
       // Fast path: diff the bound XmlFragment in place against the new
       // prosemirror doc, avoiding editor.commands.setContent (the source
@@ -262,7 +304,7 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => {
         try {
           const fragment = ydoc.getXmlFragment("default");
           prosemirrorJSONToYXmlFragment(editor.schema, normalizedDoc, fragment);
-          logContentSet(noteId, markdown, ydoc, "ydoc-fragment");
+          logContentSet(noteId, editorMarkdown, ydoc, "ydoc-fragment");
           return;
         } catch (err) {
           // Fall through to legacy path if ydoc write fails.
@@ -275,15 +317,19 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => {
 
       // Legacy path: read mode (no ydoc bound yet) and ydoc-write fallback.
       // Deferred via queueMicrotask so the round-trip cannot trigger flushSync.
-      logContentSet(noteId, markdown, ydoc, "editor-cmd");
+      logContentSet(noteId, editorMarkdown, ydoc, "editor-cmd");
       queueMicrotask(() => {
         editor.commands.setContent(normalizedDoc);
       });
     },
 
     replaceContent: (markdown) => {
-      lastWrittenMarkdown = markdown;
-      set({ sourceMarkdown: markdown });
+      const editorMarkdown = stripNoteHeaderImage(markdown);
+      lastWrittenMarkdown = editorMarkdown;
+      set({
+        sourceMarkdown: markdown,
+        headerImageMarkdown: findNoteHeaderImage(markdown)?.markdown ?? null,
+      });
 
       const { editor, ydoc, noteId } = get();
       if (!editor) {
@@ -293,7 +339,7 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => {
         return;
       }
 
-      const normalizedDoc = markdownToProsemirror(editor, markdown);
+      const normalizedDoc = markdownToProsemirror(editor, editorMarkdown);
 
       if (ydoc) {
         const fragment = ydoc.getXmlFragment("default");
@@ -309,12 +355,12 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => {
           }
           prosemirrorJSONToYXmlFragment(editor.schema, normalizedDoc, fragment);
         }, VERSION_PREVIEW_ORIGIN);
-        logContentSet(noteId, markdown, ydoc, "ydoc-fragment");
+        logContentSet(noteId, editorMarkdown, ydoc, "ydoc-fragment");
         return;
       }
 
       // Read mode / no bound Y.Doc: replace the ProseMirror document.
-      logContentSet(noteId, markdown, ydoc, "editor-cmd");
+      logContentSet(noteId, editorMarkdown, ydoc, "editor-cmd");
       editor.commands.setContent(normalizedDoc);
     },
 
@@ -326,6 +372,8 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => {
       if (contentOverride !== undefined) setContent(contentOverride, true);
 
       const finalTitle = titleOverride ?? title;
+      // The editor body never contains the header image, so re-attach
+      // it here before persisting.
       const finalContent = contentOverride ?? get().getContent();
 
       set({ isSaving: true });
