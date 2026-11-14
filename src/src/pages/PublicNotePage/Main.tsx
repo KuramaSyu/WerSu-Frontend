@@ -53,7 +53,7 @@ export const PublicNotePage: React.FC = () => {
     data: note,
     isError: noteIsError,
     error: noteError,
-  } = useNote(noteIdFromGrant, ready);
+  } = useNote(noteIdFromGrant, ready, true);
 
   const isWrite = grant?.permission === "SHARE_PERMISSION_WRITE";
   console.debug("PublicNotePage", {

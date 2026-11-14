@@ -99,6 +99,8 @@ export interface RightClickMenuRow {
   disabled?: boolean;
   /** Fully custom content, used instead of the label when present. */
   node?: ReactNode;
+  /** Hover popover previewing exactly what the row will copy/do. */
+  tooltip?: ReactNode;
   /** Runs the row. Custom rows without one render inert. */
   handler?: RightClickHandler;
   /** A hover submenu attached to the row. */
@@ -145,6 +147,7 @@ export interface ResolvedMenuCustomRow {
   disabled: boolean;
   danger: boolean;
   node?: ReactNode;
+  tooltip?: ReactNode;
   handler?: RightClickHandler;
   submenu?: RightClickSubmenu;
 }

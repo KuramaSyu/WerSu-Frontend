@@ -38,6 +38,7 @@ function toCustomRow(row: RightClickMenuRow): ResolvedMenuCustomRow {
     disabled: row.disabled ?? false,
     danger: row.danger ?? false,
     node: row.node,
+    tooltip: row.tooltip,
     handler: row.handler,
     submenu: row.submenu,
   };

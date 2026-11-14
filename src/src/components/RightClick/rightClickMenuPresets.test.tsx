@@ -4,6 +4,8 @@
 // singular/plural labels, and the insert submenu actions.
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { Editor } from "@tiptap/core";
+import StarterKit from "@tiptap/starter-kit";
 
 const mocks = vi.hoisted(() => ({
   analyseSelection: vi.fn(),
@@ -15,14 +17,21 @@ vi.mock("../Editor/BubbleMenus/bubbleMenuStrategies", () => ({
   clearCells: mocks.clearCells,
 }));
 
+vi.mock("../../zustand/InfoStore", () => ({
+  copyToClipboard: vi.fn(async () => true),
+}));
+
 import {
   buildCodeBlockCommands,
   buildEditorMenuRequest,
   buildImageCommands,
   buildInsertSubmenu,
+  buildSectionReferenceRows,
   buildTableMenuRows,
 } from "./rightClickMenuPresets";
 import type { EditorContextTarget } from "../Editor/editorContextTarget";
+import { useActiveNoteStore } from "../../zustand/editorStore";
+import { copyToClipboard } from "../../zustand/InfoStore";
 import { useEditorMenuStore } from "../../zustand/editorMenuStore";
 import type {
   CellContext,
@@ -82,6 +91,7 @@ beforeEach(() => {
     fileDialogRequest: 0,
     latexDialogRequest: 0,
   });
+  useActiveNoteStore.setState({ noteId: undefined });
 });
 
 describe("buildEditorMenuRequest", () => {
@@ -117,6 +127,7 @@ describe("buildEditorMenuRequest", () => {
       "table-rows",
       "table-columns",
       "clear-cells",
+      "copy-section-reference",
     ]);
   });
 });
@@ -246,7 +257,59 @@ describe("element commands", () => {
     expect(request.leadingComponents?.map((row) => row.key)).toEqual([
       "image-copy-link",
       "image-delete",
+      "copy-section-reference",
     ]);
+  });
+});
+
+describe("section reference rows", () => {
+  function makeRealEditor(): Editor {
+    return new Editor({
+      extensions: [StarterKit],
+      content: "<p>Intro</p><h1>Details</h1><p>Body</p>",
+    });
+  }
+
+  it("copies the section token for a caret inside a heading section", () => {
+    const instance = makeRealEditor();
+    try {
+      useActiveNoteStore.setState({ noteId: "note-1" });
+      instance.commands.setTextSelection(instance.state.doc.content.size - 1);
+      const rows = buildSectionReferenceRows(instance);
+
+      expect(rows[0].label).toBe("Copy section reference");
+      expect(rows[0].disabled).toBe(false);
+      rows[0].handler?.(undefined);
+      expect(copyToClipboard).toHaveBeenCalledWith("{{@note-1#details}}");
+    } finally {
+      instance.destroy();
+    }
+  });
+
+  it("omits the section before the first heading", () => {
+    const instance = makeRealEditor();
+    try {
+      useActiveNoteStore.setState({ noteId: "note-1" });
+      instance.commands.setTextSelection(1);
+      const rows = buildSectionReferenceRows(instance);
+
+      rows[0].handler?.(undefined);
+      expect(copyToClipboard).toHaveBeenCalledWith("{{@note-1}}");
+    } finally {
+      instance.destroy();
+    }
+  });
+
+  it("greys out when no note is active", () => {
+    const instance = makeRealEditor();
+    try {
+      const rows = buildSectionReferenceRows(instance);
+      expect(rows[0].disabled).toBe(true);
+      expect(rows[0].handler?.(undefined)).toBe(false);
+      expect(copyToClipboard).not.toHaveBeenCalled();
+    } finally {
+      instance.destroy();
+    }
   });
 });
 

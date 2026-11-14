@@ -174,6 +174,24 @@ describe("RightClickMenu", () => {
     expect(item("Copy")).not.toHaveAttribute("aria-disabled", "true");
   });
 
+  it("shows a hover popover with the exact clipboard preview", async () => {
+    renderMenu({
+      buttons: [],
+      extraComponents: [
+        {
+          key: "copy-section-reference",
+          label: "Copy section reference",
+          tooltip: "{{@note-1#details}}",
+          handler: ok,
+        },
+      ],
+    });
+
+    fireEvent.mouseOver(item("Copy section reference")!);
+    const tooltip = await screen.findByRole("tooltip");
+    expect(tooltip).toHaveTextContent("{{@note-1#details}}");
+  });
+
   it("runs the handler with the request target id", () => {
     const handler = vi.fn(() => true);
     renderMenu({

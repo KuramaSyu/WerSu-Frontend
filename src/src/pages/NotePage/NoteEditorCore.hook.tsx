@@ -52,6 +52,8 @@ import { SmartTextReplacement } from "../../components/Editor/SmartTextReplaceme
 import { CustomImage } from "../../components/Editor/View/CustomImage";
 import { CustomLink } from "../../components/Editor/View/CustomLink";
 import { CustomSvgLink } from "../../components/Editor/View/CustomSvgLink";
+import { CustomNoteReference } from "../../components/Editor/View/CustomNoteReference";
+import { NoteReferenceAutocompleteExtension } from "../../components/Editor/NoteReferenceAutocomplete";
 import { CustomHtml } from "../../components/Editor/CustomHtml";
 import { CustomHardBreak } from "../../components/Editor/CustomHardBreak";
 import { CustomDetails } from "../../components/Editor/CustomDetails";
@@ -200,6 +202,13 @@ export const useNoteEditor = (params: UseNoteEditorParams): Editor | null => {
         // assignment) so they survive collaborative re-renders.
         HeadingIds,
         CustomLink.configure({ openOnClick: true }),
+        // Embedded `{{@note-id#section}}` references render as inline
+        // pills. The node stores raw targets only; resolved content is
+        // loaded by its modal and never written back to note.content.
+        CustomNoteReference,
+        // `{{` auto-closes to `{{|}}`; the menu attached in
+        // NoteRichEditor searches notes for the word inside the braces.
+        NoteReferenceAutocompleteExtension,
         // Smooth caret overlay for the local user. Built on top of
         // `Decoration.widget` (the same primitive
         // CollaborationCaret uses) so the caret sits inside the

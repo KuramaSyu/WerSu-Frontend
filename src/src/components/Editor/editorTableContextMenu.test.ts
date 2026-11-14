@@ -74,6 +74,7 @@ describe("editor table context menu", () => {
         "Rows",
         "Columns",
         "Clear cell",
+        "Copy section reference",
       ]);
     } finally {
       editor.destroy();
@@ -101,6 +102,7 @@ describe("editor table context menu", () => {
         "Rows",
         "Columns",
         "Clear cell",
+        "Copy section reference",
       ]);
     } finally {
       editor.destroy();

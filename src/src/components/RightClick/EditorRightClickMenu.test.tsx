@@ -123,6 +123,7 @@ describe("EditorRightClickMenu", () => {
       "table-rows",
       "table-columns",
       "clear-cells",
+      "copy-section-reference",
     ]);
   });
 
@@ -208,6 +209,7 @@ describe("EditorRightClickMenu", () => {
     expect(request?.leadingComponents?.map((row) => row.key)).toEqual([
       "image-copy-link",
       "image-delete",
+      "copy-section-reference",
     ]);
   });
 });

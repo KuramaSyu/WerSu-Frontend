@@ -48,7 +48,11 @@ const CollabConflictControllerImpl: React.FC<{
   // modal has the most up-to-date cloud markdown. We also re-fetch
   // on status -> "conflict" so the cloud-side is fresh even if the
   // user has been on the conflict screen for a while.
-  const { data: serverNote, refetch: refetchServer } = useNote(noteId);
+  const { data: serverNote, refetch: refetchServer } = useNote(
+    noteId,
+    undefined,
+    true,
+  );
   const [resolving, setResolving] = useState(false);
 
   // Re-fetch the server's view when the modal opens. The Hocuspocus

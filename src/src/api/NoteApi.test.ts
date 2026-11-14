@@ -20,6 +20,8 @@ import { apiRegistry } from "./apiRegistry";
 // we assert the full URL so the test works regardless of which
 // `.env` is loaded - the contract is really about the `id` segment.
 const NOTE_PATH = "http://localhost:8080/api/notes/note-1";
+const RAW_NOTE_PATH = `${NOTE_PATH}?include_references=false`;
+const RESOLVED_NOTE_PATH = `${NOTE_PATH}?include_references=true`;
 
 const mockFetchOk = (body: unknown = {}) => {
   const calls: Array<{ url: string; init: RequestInit }> = [];
@@ -76,7 +78,7 @@ describe("NoteApi - per-instance (setShareTokenProvider directly)", () => {
     // No setShareTokenProvider call - default is no share token.
     const { url, init } = await api.requestInitForGet("note-1");
 
-    expect(url).toBe(NOTE_PATH);
+    expect(url).toBe(RAW_NOTE_PATH);
     expect(init.method).toBe("GET");
     expect(init.credentials).toBe("include");
     const headers = headersOf(init);
@@ -90,7 +92,7 @@ describe("NoteApi - per-instance (setShareTokenProvider directly)", () => {
 
     const { url, init } = await api.requestInitForGet("note-1");
 
-    expect(url).toBe(NOTE_PATH);
+    expect(url).toBe(RAW_NOTE_PATH);
     expect(init.method).toBe("GET");
     // Switch to `credentials: "omit"` so no session cookie eats the
     // share header. If the "Authorization header not found" log
@@ -99,6 +101,26 @@ describe("NoteApi - per-instance (setShareTokenProvider directly)", () => {
     const headers = headersOf(init);
     expect(headers.Authorization).toBe("Bearer share-jwt-abc");
     expect(headers.Accept).toBe("application/json");
+  });
+
+  it("requests raw content with include_references=false", async () => {
+    const api = new NoteApi();
+    const { url } = await api.requestInitForGet("note-1", {
+      includeReferences: false,
+    });
+
+    expect(url).toBe(`${NOTE_PATH}?include_references=false`);
+  });
+
+  it("defaults to raw content; explicit true opts into resolved references", async () => {
+    const api = new NoteApi();
+    const explicitTrue = await api.requestInitForGet("note-1", {
+      includeReferences: true,
+    });
+    const omitted = await api.requestInitForGet("note-1");
+
+    expect(explicitTrue.url).toBe(RESOLVED_NOTE_PATH);
+    expect(omitted.url).toBe(RAW_NOTE_PATH);
   });
 
   it("re-fetches the token on every call (provider is a function, not a snapshot)", async () => {
@@ -140,7 +162,7 @@ describe("NoteApi - per-instance (setShareTokenProvider directly)", () => {
     expect(note?.title).toBe("Hello");
 
     expect(calls).toHaveLength(1);
-    expect(calls[0].url).toBe(NOTE_PATH);
+    expect(calls[0].url).toBe(RAW_NOTE_PATH);
     expect(calls[0].init.method).toBe("GET");
     expect(calls[0].init.credentials).toBe("omit");
     const headers = headersOf(calls[0].init);
@@ -152,7 +174,7 @@ describe("NoteApi - private mode (registered singleton, no share provider)", () 
   it("sends credentials: 'include' and no Authorization header on GET /api/notes/:id", async () => {
     // No share-token provider installed.
     const { url, init } = await getNoteApi().requestInitForGet("note-1");
-    expect(url).toBe(NOTE_PATH);
+    expect(url).toBe(RAW_NOTE_PATH);
     expect(init.method).toBe("GET");
     expect(init.credentials).toBe("include");
     const headers = headersOf(init);
@@ -185,7 +207,7 @@ describe("NoteApi - public mode (registered singleton, share provider installed)
     apiRegistry.installShareTokenProvider(() => "share-jwt-abc");
 
     const { url, init } = await getNoteApi().requestInitForGet("note-1");
-    expect(url).toBe(NOTE_PATH);
+    expect(url).toBe(RAW_NOTE_PATH);
     expect(init.method).toBe("GET");
     expect(init.credentials).toBe("omit");
     const headers = headersOf(init);
@@ -233,7 +255,7 @@ describe("NoteApi - public mode (registered singleton, share provider installed)
     expect(note?.title).toBe("Hello");
 
     expect(calls).toHaveLength(1);
-    expect(calls[0].url).toBe(NOTE_PATH);
+    expect(calls[0].url).toBe(RAW_NOTE_PATH);
     expect(calls[0].init.method).toBe("GET");
     expect(calls[0].init.credentials).toBe("omit");
     const headers = headersOf(calls[0].init);

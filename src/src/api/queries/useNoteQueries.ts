@@ -10,7 +10,11 @@ import type {
   UpdateAttachmentRequest,
 } from "../models/attachment";
 import { SearchNotesApi, type ISearchNotesApi } from "../SearchNotesApi";
-import { Note, RestNotesSearchType, type MinimalNote } from "../models/search";
+import {
+  Note,
+  RestNotesSearchType,
+  type MinimalNote,
+} from "../models/search";
 import { getNoteApi, type INoteApi } from "../NoteApi";
 import { updateNoteParentDirectory } from "../../utils/updateNoteParentDirectory";
 import { directoryNotesQueryKeys } from "./useDirectoryNotesQuery";
@@ -20,6 +24,18 @@ import { useUserStore } from "../../zustand/userStore";
 
 const searchNotesApi: ISearchNotesApi = new SearchNotesApi();
 const noteApi: INoteApi = getNoteApi();
+
+/**
+ * Resolved references live on the canonical note-detail cache entry.
+ * Raw/other consumers use a distinct child key so a `false` observer
+ * can never take over the primary editor's `include_references=true`
+ * query function.
+ */
+function noteDetailQueryKey(noteId: string, includeReferences: boolean) {
+  return includeReferences
+    ? ["notes", noteId]
+    : ["notes", noteId, "raw"];
+}
 
 export const noteQueries = {
   /**
@@ -66,13 +82,18 @@ export const noteQueries = {
   }),
 
   /**
-   * Full note details with permissions and full content
+   * Full note details with permissions and full content.
+   *
+   * `includeReferences` maps to the API's `include_references` query
+   * flag. Defaults to false; the primary note editor opts in with
+   * true so reference nodes can use the provided `references`.
+   *
    * @returns Note
    */
-  detail: (noteId: string) => ({
-    queryKey: ["notes", noteId],
+  detail: (noteId: string, includeReferences = false) => ({
+    queryKey: noteDetailQueryKey(noteId, includeReferences),
 
-    queryFn: () => noteApi.get(noteId),
+    queryFn: () => noteApi.get(noteId, { includeReferences }),
   }),
 };
 
@@ -139,22 +160,51 @@ export function useInfiniteNoteSearch(
  * to attach the bearer header -- the regression this hook was
  * originally written to pin.
  */
-export function useNote(noteId?: string, ready?: boolean) {
+export function useNote(
+  noteId?: string,
+  ready?: boolean,
+  includeReferences = false,
+) {
   const { ready: routeReady, isPublic } = usePublicRouteReady();
   return useQuery({
-    queryKey: ["notes", noteId],
+    queryKey: noteDetailQueryKey(noteId ?? "", includeReferences),
 
     queryFn: () => {
       if (!noteId) {
         throw new Error("noteId required");
       }
-      return noteApi.get(noteId);
+      return noteApi.get(noteId, { includeReferences });
     },
 
     // Caller can force-disable with `ready = false`; on private routes
     // `routeReady` is always true (cookie auth), on public routes it
     // tracks the share JWT landing in the store.
     enabled: !!noteId && (ready ?? (routeReady || !isPublic)),
+  });
+}
+
+/**
+ * Fallback fetch for a single referenced note.
+ *
+ * The primary note is normally fetched with `include_references=true`,
+ * so a reference that exists in the saved note is resolved from
+ * `note.references` without another request. This hook is only used
+ * when that entry is missing or has no content yet (for example a
+ * reference the user just inserted/edited but has not saved).
+ */
+export function useReferenceTargetNote(noteId?: string, enabled = true) {
+  const { ready: routeReady, isPublic } = usePublicRouteReady();
+  return useQuery({
+    queryKey: ["notes", noteId, "reference-target"],
+
+    queryFn: () => {
+      if (!noteId) {
+        throw new Error("noteId required");
+      }
+      return noteApi.get(noteId, { includeReferences: false });
+    },
+
+    enabled: !!noteId && enabled && (routeReady || !isPublic),
   });
 }
 

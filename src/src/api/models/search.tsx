@@ -46,8 +46,20 @@ export interface MinimalNote {
   tag_ids: string[];
 }
 
+/** Resolved embedded note reference returned by `GET /api/notes/:id`. */
+export interface NoteReference {
+  /** Id of the referenced note. */
+  note_id: string;
+  /** Heading slug to resolve; empty string means the whole note. */
+  section: string;
+  /** Resolved section/note markdown, or an access-denied error string. */
+  content: string;
+}
+
 export interface NoteData extends MinimalNote {
   content: string;
+  /** Resolved references for `{{@note-id#section}}` tokens in `content`. */
+  references?: NoteReference[];
   /** Attachment ids linked to this note. Returned by GET /api/notes/:id. */
   attachment_ids?: string[];
   /** Optional permission relationships (legacy callers). */
@@ -65,6 +77,8 @@ export class Note implements NoteData {
   updated_at: string;
   directory_ids: string[];
   tag_ids: string[];
+  /** Resolved embedded note references. Empty when not requested/available. */
+  references: NoteReference[];
   /** Attachment ids linked to this note. */
   attachment_ids: string[];
   /** Optional permission relationships. */
@@ -80,6 +94,7 @@ export class Note implements NoteData {
     this.updated_at = data.updated_at;
     this.directory_ids = data.directory_ids ?? [];
     this.tag_ids = data.tag_ids ?? [];
+    this.references = data.references ?? [];
     this.attachment_ids = data.attachment_ids ?? [];
     this.permissions = data.permissions ?? [];
     this.tokens = data.tokens;

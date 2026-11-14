@@ -27,7 +27,7 @@ export interface NoteRightPanelProps {
  * that card, even though it collapses every box on the rail.
  */
 export const NoteRightPanel: React.FC<NoteRightPanelProps> = ({ noteId }) => {
-  const { data: note } = useNote(noteId);
+  const { data: note } = useNote(noteId, undefined, true);
   // Formatting renders first only while editing, so the edge handle
   // has to move with it to stay on the first box.
   const editMode = useEditorSettings((s) => s.editMode);

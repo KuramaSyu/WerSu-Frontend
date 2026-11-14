@@ -32,6 +32,8 @@ import {
 import type { EditorContextTarget } from "../Editor/editorContextTarget";
 import { useEditorMenuStore } from "../../zustand/editorMenuStore";
 import { copyToClipboard } from "../../zustand/InfoStore";
+import { useActiveNoteStore } from "../../zustand/editorStore";
+import { buildSectionReferenceToken } from "../../utils/sectionReference";
 import { copyEditorNode } from "./editorClipboard";
 import type { SelectionAnalysisFull } from "../Editor/BubbleMenus/bubbleMenuStrategies";
 import type {
@@ -79,6 +81,11 @@ export function buildEditorMenuRequest(
   position: MenuPosition,
   target?: EditorContextTarget | null,
 ): RightClickMenuRequest {
+  // Available in both modes: the token points at the heading section the
+  // user is in (or the whole note when the hit is before the first
+  // heading).
+  const sectionRows = buildSectionReferenceRows(editor, target);
+
   if (!editMode) {
     // Read mode has no editing actions, but a right-click on a table
     // should still copy the table itself rather than relying on a text
@@ -94,7 +101,12 @@ export function buildEditorMenuRequest(
             },
           }
         : undefined;
-    return { position, buttons: ["copy", "paste"], overrides };
+    return {
+      position,
+      buttons: ["copy", "paste"],
+      overrides,
+      leadingComponents: sectionRows,
+    };
   }
 
   const analysis = analyseSelection(editor.state);
@@ -130,16 +142,63 @@ export function buildEditorMenuRequest(
       ? analyseTableAtPos(editor.state, target.hitPos)
       : analysis;
   // Element commands lead the menu; copy/paste/etc. follow a divider.
-  const leadingComponents =
+  const elementRows =
     target?.kind === "image"
       ? buildImageCommands(editor, target.node, target)
       : target?.kind === "codeBlock"
         ? buildCodeBlockCommands(editor, target.node, target)
         : isTable
           ? buildTableMenuRows(editor, tableAnalysis)
-          : undefined;
+          : [];
+  const leadingComponents = [...elementRows, ...sectionRows];
 
-  return { position, buttons, overrides, submenus, leadingComponents };
+  return {
+    position,
+    buttons,
+    overrides,
+    submenus,
+    leadingComponents: leadingComponents.length > 0 ? leadingComponents : undefined,
+  };
+}
+
+/**
+ * Root row that copies `{{@note-id#section}}` for the section the user
+ * is in. A collapsed caret uses its own position; a selection uses its
+ * start, so a right-click inside a multi-section selection copies the
+ * section the selection begins in. Element right-clicks use the hit
+ * position instead of a stale editor selection.
+ */
+export function buildSectionReferenceRows(
+  editor: Editor,
+  target?: EditorContextTarget | null,
+): RightClickMenuRow[] {
+  const noteId = useActiveNoteStore.getState().noteId?.trim() ?? "";
+  const state = editor.state;
+  const doc = state?.doc;
+  const selection = state?.selection;
+  const pos =
+    selection && selection.from !== selection.to
+      ? selection.from
+      : (target?.hitPos ?? selection?.from ?? 0);
+  const token =
+    noteId && doc ? buildSectionReferenceToken(noteId, doc, pos) : "";
+
+  return [
+    {
+      key: "copy-section-reference",
+      label: "Copy section reference",
+      icon: <ContentCopyIcon fontSize="small" />,
+      // Show the exact token the clipboard will receive before the
+      // user commits to copying it.
+      tooltip: token ? <code>{token}</code> : undefined,
+      disabled: !token,
+      handler: () => {
+        if (!token) return false;
+        void copyToClipboard(token);
+        return true;
+      },
+    },
+  ];
 }
 
 /**

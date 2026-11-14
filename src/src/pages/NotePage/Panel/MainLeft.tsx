@@ -91,7 +91,7 @@ export const NoteLeftPanel: React.FC<NoteLeftPanelProps> = ({
   onNoteUpdated,
   readOnly = false,
 }) => {
-  const { data: note } = useNote(noteId);
+  const { data: note } = useNote(noteId, undefined, true);
   const navigate = useNavigate();
   const { setMessage } = useInfoStore();
 

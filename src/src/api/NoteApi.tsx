@@ -11,8 +11,17 @@ export interface PostNoteOptions {
   directory_ids?: string[];
 }
 
+export interface GetNoteOptions {
+  /**
+   * Resolve `{{@note-id#section}}` tokens into `note.references`.
+   * Defaults to false: only the editor fetching a primary note asks
+   * the backend to resolve references.
+   */
+  includeReferences?: boolean;
+}
+
 export interface INoteApi {
-  get(id: string): Promise<Note | undefined>;
+  get(id: string, options?: GetNoteOptions): Promise<Note | undefined>;
   /** Fetch a specific note version by its monotonic version index. */
   getVersion(id: string, versionIndex: number): Promise<Note | undefined>;
   /** Create a note; backend requires shelf_id OR directory_ids. */
@@ -68,9 +77,15 @@ export class NoteApi extends ShareTokenBearerMixin implements INoteApi {
    */
   async requestInitForGet(
     id: string,
+    options?: GetNoteOptions,
   ): Promise<{ url: string; init: RequestInit }> {
+    const baseUrl = `${BACKEND_BASE}/api/notes/${encodeURIComponent(id)}`;
+    // Always make the flag explicit so the wire log is unambiguous.
+    // The primary editor note opts in; every other caller asks for raw.
+    const includeReferences = options?.includeReferences === true;
+    const url = `${baseUrl}?include_references=${String(includeReferences)}`;
     return {
-      url: `${BACKEND_BASE}/api/notes/${encodeURIComponent(id)}`,
+      url,
       init: await this.getFetchParameters("GET"),
     };
   }
@@ -79,12 +94,12 @@ export class NoteApi extends ShareTokenBearerMixin implements INoteApi {
    * tries to authenticate a user by coockie.
    * It sets `useUserStore` to the authenticated user
    * */
-  async get(id: string): Promise<Note | undefined> {
-    const init = await this.getFetchParameters("GET");
+  async get(id: string, options?: GetNoteOptions): Promise<Note | undefined> {
+    const { url, init } = await this.requestInitForGet(id, options);
     const headerObj = init.headers as Record<string, string> | undefined;
     console.debug(
       "[note-api] get() sending request - url=",
-      `${BACKEND_BASE}/api/notes/${encodeURIComponent(id)}`,
+      url,
       "method=",
       init.method,
       "credentials=",
@@ -92,10 +107,7 @@ export class NoteApi extends ShareTokenBearerMixin implements INoteApi {
       "headers=",
       headerObj,
     );
-    const response = await fetch(
-      `${BACKEND_BASE}/api/notes/${encodeURIComponent(id)}`,
-      init,
-    );
+    const response = await fetch(url, init);
     console.debug(
       "[note-api] get() response - status=",
       response.status,

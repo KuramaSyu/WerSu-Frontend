@@ -18,6 +18,7 @@ import {
   ImageBubbleMenu,
 } from "../../components/Editor/BubbleMenus";
 import { SlashCommandMenu } from "../../components/Editor/SlashCommandMenu";
+import { NoteReferenceAutocompleteMenu } from "../../components/Editor/NoteReferenceAutocompleteMenu";
 import { ThemedEditorBox } from "../../components/Editor/ThemedEditorBox";
 import {
   EditorRightClickMenu,
@@ -71,6 +72,7 @@ const NoteRichEditorImpl: React.FC<NoteRichEditorProps> = ({
         enabled={editMode}
         extraCommands={extraCommands}
       />
+      <NoteReferenceAutocompleteMenu editor={editor} enabled={editMode} />
       <Box
         className="editor-drag-region"
         onDoubleClick={handleDoubleClick}

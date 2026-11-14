@@ -29,7 +29,9 @@ export const NotePage: React.FC = () => {
   const { data: user } = useUser();
   const { theme } = useThemeStore();
 
-  const { data: note } = useNote(id);
+  // Include resolved references so embedded note references can use
+  // the backend-provided content instead of fetching every target.
+  const { data: note } = useNote(id, undefined, true);
   const { mutateAsync: mutateNote } = useUpdateNote();
 
   // without this ref, adding a new dir and removing it

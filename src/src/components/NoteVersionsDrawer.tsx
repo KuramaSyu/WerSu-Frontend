@@ -156,7 +156,7 @@ export const NoteVersionsDrawer: React.FC<NoteVersionsDrawerProps> = ({
     isLatestSelected ? undefined : selectedVersion?.version_index,
   );
   // Fall back to the note cache when the selected version is the latest.
-  const { data: cachedNote } = useNote(noteId);
+  const { data: cachedNote } = useNote(noteId, undefined, true);
 
   // Compose the view used by the diff / preview rendering below.
   // For the latest version we read from `useNote`; for older versions

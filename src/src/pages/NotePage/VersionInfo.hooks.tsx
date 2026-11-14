@@ -40,7 +40,7 @@ export function useVersionSelection(noteId: string | undefined): {
     noteId,
     isLatestSelected ? undefined : selectedVersion?.version_index,
   );
-  const { data: cachedNote } = useNote(noteId);
+  const { data: cachedNote } = useNote(noteId, undefined, true);
   const selectedVersionContent: Note | undefined = isLatestSelected
     ? (cachedNote ?? undefined)
     : fetchedSelectedVersionContent;

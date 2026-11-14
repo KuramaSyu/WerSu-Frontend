@@ -13,6 +13,7 @@ import {
   MenuList,
   Paper,
   Popper,
+  Tooltip,
 } from "@mui/material";
 import type { SxProps, Theme } from "@mui/material/styles";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
@@ -137,6 +138,8 @@ function Row({
   );
 
   const hasSubmenu = Boolean(row.submenu);
+  // Only custom rows can carry a preview; built-in buttons have fixed labels.
+  const tooltip = row.kind === "custom" ? row.tooltip : undefined;
 
   const cancelClose = () => {
     if (closeTimer.current) clearTimeout(closeTimer.current);
@@ -161,30 +164,52 @@ function Row({
     if (handler) onRun(handler);
   };
 
+  const menuItem = (
+    <MenuItem
+      ref={(node: HTMLElement | null) => {
+        rowNode.current = node;
+      }}
+      disabled={row.disabled}
+      onClick={handleClick}
+      onMouseEnter={hasSubmenu ? cancelClose : undefined}
+      onMouseLeave={hasSubmenu ? scheduleClose : undefined}
+      sx={itemSx(row.danger)}
+    >
+      <ListItemIcon>{row.icon ?? null}</ListItemIcon>
+      <ListItemText>
+        {row.kind === "custom" ? (row.node ?? row.label) : row.label}
+      </ListItemText>
+      {/* Right chevron marks a row that opens a submenu. */}
+      {hasSubmenu && (
+        <ChevronRightIcon
+          fontSize="small"
+          sx={{ ml: 1, color: "text.disabled" }}
+        />
+      )}
+    </MenuItem>
+  );
+
   return (
     <>
-      <MenuItem
-        ref={(node: HTMLElement | null) => {
-          rowNode.current = node;
-        }}
-        disabled={row.disabled}
-        onClick={handleClick}
-        onMouseEnter={hasSubmenu ? cancelClose : undefined}
-        onMouseLeave={hasSubmenu ? scheduleClose : undefined}
-        sx={itemSx(row.danger)}
-      >
-        <ListItemIcon>{row.icon ?? null}</ListItemIcon>
-        <ListItemText>
-          {row.kind === "custom" ? (row.node ?? row.label) : row.label}
-        </ListItemText>
-        {/* Right chevron marks a row that opens a submenu. */}
-        {hasSubmenu && (
-          <ChevronRightIcon
-            fontSize="small"
-            sx={{ ml: 1, color: "text.disabled" }}
-          />
-        )}
-      </MenuItem>
+      {/* Preview rows show their exact clipboard payload on hover. A
+          submenu row keeps the plain item: MUI's Tooltip replaces the
+          child ref, which the submenu anchor needs. */}
+      {tooltip && !hasSubmenu ? (
+        <Tooltip
+          title={tooltip}
+          placement="left-start"
+          arrow
+          slotProps={{
+            tooltip: {
+              sx: { fontFamily: "monospace", fontSize: "0.75rem" },
+            },
+          }}
+        >
+          {menuItem}
+        </Tooltip>
+      ) : (
+        menuItem
+      )}
       {hasSubmenu && openSubmenu && submenuAnchor && row.submenu && (
         <SubmenuList
           submenu={row.submenu}
