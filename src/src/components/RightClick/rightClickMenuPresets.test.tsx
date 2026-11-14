@@ -102,6 +102,10 @@ describe("buildEditorMenuRequest", () => {
     expect(request.buttons).toEqual(["copy", "paste"]);
     expect(request.submenus).toBeUndefined();
     expect(request.overrides).toBeUndefined();
+    // The section-reference action is always the last menu entry.
+    expect(request.extraComponents?.map((row) => row.key)).toEqual([
+      "copy-section-reference",
+    ]);
   });
 
   it("adds cut and insert outside a table in edit mode", () => {
@@ -127,6 +131,8 @@ describe("buildEditorMenuRequest", () => {
       "table-rows",
       "table-columns",
       "clear-cells",
+    ]);
+    expect(request.extraComponents?.map((row) => row.key)).toEqual([
       "copy-section-reference",
     ]);
   });
@@ -257,6 +263,8 @@ describe("element commands", () => {
     expect(request.leadingComponents?.map((row) => row.key)).toEqual([
       "image-copy-link",
       "image-delete",
+    ]);
+    expect(request.extraComponents?.map((row) => row.key)).toEqual([
       "copy-section-reference",
     ]);
   });

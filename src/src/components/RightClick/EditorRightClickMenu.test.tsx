@@ -123,6 +123,8 @@ describe("EditorRightClickMenu", () => {
       "table-rows",
       "table-columns",
       "clear-cells",
+    ]);
+    expect(request?.extraComponents?.map((row) => row.key)).toEqual([
       "copy-section-reference",
     ]);
   });
@@ -209,6 +211,8 @@ describe("EditorRightClickMenu", () => {
     expect(request?.leadingComponents?.map((row) => row.key)).toEqual([
       "image-copy-link",
       "image-delete",
+    ]);
+    expect(request?.extraComponents?.map((row) => row.key)).toEqual([
       "copy-section-reference",
     ]);
   });

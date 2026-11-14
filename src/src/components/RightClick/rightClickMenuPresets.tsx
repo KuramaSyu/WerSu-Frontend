@@ -105,7 +105,7 @@ export function buildEditorMenuRequest(
       position,
       buttons: ["copy", "paste"],
       overrides,
-      leadingComponents: sectionRows,
+      extraComponents: sectionRows,
     };
   }
 
@@ -150,7 +150,7 @@ export function buildEditorMenuRequest(
         : isTable
           ? buildTableMenuRows(editor, tableAnalysis)
           : [];
-  const leadingComponents = [...elementRows, ...sectionRows];
+  const leadingComponents = elementRows;
 
   return {
     position,
@@ -158,6 +158,8 @@ export function buildEditorMenuRequest(
     overrides,
     submenus,
     leadingComponents: leadingComponents.length > 0 ? leadingComponents : undefined,
+    // Keep the section-reference action as the final entry in the menu.
+    extraComponents: sectionRows,
   };
 }
 
