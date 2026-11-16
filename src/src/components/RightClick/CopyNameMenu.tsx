@@ -11,9 +11,15 @@ import { useCallback, useState, type MouseEvent, type ReactNode } from "react";
 import { Box } from "@mui/material";
 import { copyToClipboard } from "../../zustand/InfoStore";
 import type { DirectoryKind } from "../../models/directoryTerminology";
+import type {
+  NoteVisibilityScope,
+  NoteVisibilityTarget,
+} from "../../api/models/noteVisibility";
 import { useRightClickMenu } from "./useRightClickMenu";
 import { AddToDirectoryDialog } from "./AddToDirectoryDialog";
 import { addToMenuIcon, addToMenuLabel } from "./addToMenu";
+import { useVisibilityHideMenu } from "./visibilityHideMenu";
+import { VisibilityHideIcon } from "./VisibilityHideIcon";
 
 export interface CopyNameMenuProps {
   /** Human-readable name copied by the menu's Copy action. */
@@ -31,6 +37,13 @@ export interface CopyNameMenuProps {
    * "book"; chapter summaries and chapter note rows pass "chapter".
    */
   targetKind?: DirectoryKind;
+  /**
+   * Recommendation surface the row belongs to. When set, the menu gains a
+   * Hide submenu (1 week / 30 days / 90 days / custom) at the bottom.
+   */
+  visibilityScope?: NoteVisibilityScope;
+  /** Override the hide target for directory activity rows. */
+  visibilityTarget?: NoteVisibilityTarget;
   children: ReactNode;
 }
 
@@ -39,10 +52,24 @@ export const CopyNameMenu: React.FC<CopyNameMenuProps> = ({
   targetId,
   note,
   targetKind = "book",
+  visibilityScope,
+  visibilityTarget,
   children,
 }) => {
   const menu = useRightClickMenu();
   const [addToDirectoryOpen, setAddToDirectoryOpen] = useState(false);
+
+  // Called unconditionally; the submenu is only attached when a scope and
+  // a note/directory target are present.
+  const { buildSubmenu, dialog } = useVisibilityHideMenu(
+    visibilityScope ?? 0,
+  );
+  const hideTarget =
+    visibilityTarget ?? (note ? { kind: "note" as const, id: note.id } : undefined);
+  const hideSubmenu =
+    visibilityScope !== undefined && hideTarget !== undefined
+      ? buildSubmenu(hideTarget)
+      : undefined;
 
   const onContextMenu = useCallback(
     (event: MouseEvent) => {
@@ -69,14 +96,27 @@ export const CopyNameMenu: React.FC<CopyNameMenuProps> = ({
               }
             : {}),
         },
+        ...(hideSubmenu
+          ? {
+              extraComponents: [
+                {
+                  key: "hide-from-recommendations",
+                  label: "Hide",
+                  icon: <VisibilityHideIcon />,
+                  submenu: hideSubmenu,
+                },
+              ],
+            }
+          : {}),
       });
     },
-    [menu, text, targetId, note, targetKind],
+    [menu, text, targetId, note, targetKind, hideSubmenu],
   );
 
   return (
     <Box sx={{ display: "contents" }} onContextMenu={onContextMenu}>
       {children}
+      {visibilityScope !== undefined && hideTarget !== undefined ? dialog : null}
       {note && (
         <AddToDirectoryDialog
           open={addToDirectoryOpen}

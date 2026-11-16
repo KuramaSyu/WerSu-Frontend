@@ -9,16 +9,21 @@ import { copyToClipboard } from "../../zustand/InfoStore";
 import { useFavouritesStore } from "../../zustand/useFavouritesStore";
 import { useRightClickMenuStore } from "../../zustand/useRightClickMenuStore";
 import { useDirectoryDelete } from "../../api/queries/useDirectoryMutations";
+import type { NoteVisibilityScope } from "../../api/models/noteVisibility";
 import { ConfirmationModal } from "../../pages/Settings/ConfirmationModal";
 import {
   useRightClickMenu,
   type RightClickMenuSpec,
 } from "./useRightClickMenu";
 import { PermissionEditor } from "../Permissions/PermissionEditor";
+import { useVisibilityHideMenu } from "./visibilityHideMenu";
+import { VisibilityHideIcon } from "./VisibilityHideIcon";
 
 export interface FolderCardMenuProps {
   directoryId: string;
   name: string;
+  /** Recommendation surface to hide this book from. Adds a Hide submenu. */
+  visibilityScope?: NoteVisibilityScope;
   children: ReactNode;
 }
 
@@ -34,6 +39,7 @@ const CARD_BUTTONS: RightClickMenuSpec["buttons"] = [
 export const FolderCardMenu: React.FC<FolderCardMenuProps> = ({
   directoryId,
   name,
+  visibilityScope,
   children,
 }) => {
   const menu = useRightClickMenu();
@@ -42,6 +48,13 @@ export const FolderCardMenu: React.FC<FolderCardMenuProps> = ({
   );
   const toggleDirectory = useFavouritesStore((s) => s.toggleDirectory);
   const deleteDirectory = useDirectoryDelete();
+  const { buildSubmenu, dialog } = useVisibilityHideMenu(
+    visibilityScope ?? 0,
+  );
+  const hideSubmenu =
+    visibilityScope !== undefined
+      ? buildSubmenu({ kind: "directory", id: directoryId })
+      : undefined;
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [permissionsOpen, setPermissionsOpen] = useState(false);
@@ -86,9 +99,21 @@ export const FolderCardMenu: React.FC<FolderCardMenuProps> = ({
             },
           },
         },
+        ...(hideSubmenu
+          ? {
+              extraComponents: [
+                {
+                  key: "hide-from-recommendations",
+                  label: "Hide",
+                  icon: <VisibilityHideIcon />,
+                  submenu: hideSubmenu,
+                },
+              ],
+            }
+          : {}),
       });
     },
-    [menu, directoryId, name, toggleDirectory, openDirectoryDialog],
+    [menu, directoryId, name, toggleDirectory, openDirectoryDialog, hideSubmenu],
   );
 
   const runDelete = async () => {
@@ -132,6 +157,7 @@ export const FolderCardMenu: React.FC<FolderCardMenuProps> = ({
         }}
         onConfirm={() => void runDelete()}
       />
+      {visibilityScope !== undefined ? dialog : null}
     </Box>
   );
 };

@@ -189,4 +189,12 @@ export class DirectorySearchResult implements SearchResult {
     this.ctx.navigate(`/d/${this.directory.id}`);
     this.ctx.closeOverlay();
   }
+
+  get_directory_id(): string {
+    return this.directory.id;
+  }
+
+  get_copy_text(): string {
+    return this.label;
+  }
 }

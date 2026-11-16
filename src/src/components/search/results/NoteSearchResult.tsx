@@ -84,4 +84,12 @@ export class NoteSearchResult implements SearchResult {
     this.ctx.navigate(`/n/${this.note.id}`);
     this.ctx.closeOverlay();
   }
+
+  get_note_id(): string {
+    return this.note.id;
+  }
+
+  get_copy_text(): string {
+    return this.note.title;
+  }
 }

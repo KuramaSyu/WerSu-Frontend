@@ -10,6 +10,7 @@ import { useIsAuthenticated } from "../../api/queries/useUser";
 import { UserError } from "../../api/models/UserError";
 import { FolderCardView, type CardSize } from "./FolderCardView";
 import { FolderCardMenu } from "../../components/RightClick/FolderCardMenu";
+import { NOTE_VISIBILITY_SCOPE_ALL } from "../../api/models/noteVisibility";
 import type { NoteVersionSummaryReply } from "../../api/models/activity";
 
 export interface FolderCardProps {
@@ -101,7 +102,11 @@ export const FolderCard: React.FC<FolderCardProps> = ({
   );
 
   return (
-    <FolderCardMenu directoryId={directoryId} name={displayName}>
+    <FolderCardMenu
+      directoryId={directoryId}
+      name={displayName}
+      visibilityScope={NOTE_VISIBILITY_SCOPE_ALL}
+    >
       <FolderCardView
         displayName={displayName}
         onClick={() => navigate(`/d/${directoryId}`)}

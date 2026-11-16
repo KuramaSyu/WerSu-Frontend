@@ -6,6 +6,7 @@ import CodeIcon from "@mui/icons-material/Code";
 import LockIcon from "@mui/icons-material/Lock";
 import PaletteIcon from "@mui/icons-material/Palette";
 import SearchIcon from "@mui/icons-material/Search";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import WifiIcon from "@mui/icons-material/Wifi";
 import type { SettingsCategory } from "./types";
 import { BookstackImportSection } from "./BookstackImportSection";
@@ -16,6 +17,7 @@ import { AppearanceSection } from "./AppearanceSection";
 import { NetworkSection } from "./NetworkSection";
 import { DeveloperSection } from "./DeveloperSection";
 import { SearchSection } from "./SearchSection";
+import { NoteVisibilitySection } from "./NoteVisibilitySection";
 import { SecuritySection } from "./SecuritySection";
 import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
 import { useAppearanceSettings } from "../../zustand/useAppearanceSettings";
@@ -24,6 +26,7 @@ import {
   useSearchSettings,
 } from "../../zustand/useSearchSettings";
 import { useThemeStore } from "../../zustand/useThemeStore";
+import { useNoteVisibilityStore } from "../../zustand/useNoteVisibilityStore";
 
 /** Add new categories here; both the rail and the body read this list. */
 export const settingsCategories: SettingsCategory[] = [
@@ -106,6 +109,16 @@ export const settingsCategories: SettingsCategory[] = [
       useSearchSettings
         .getState()
         .setDefaultSearchType(SEARCH_TYPE_NO_OVERRIDE);
+    },
+  },
+  {
+    id: "note-visibility",
+    label: "Note visibility",
+    description: "Review and unhide notes hidden from recommendations.",
+    icon: <VisibilityOffIcon />,
+    settingsContent: <NoteVisibilitySection />,
+    resetLogic: () => {
+      useNoteVisibilityStore.getState().clear();
     },
   },
   {

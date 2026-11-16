@@ -16,6 +16,12 @@ import { useAllDirectoriesQuery } from "../../../api/queries/directoryQueries";
 import { RestNotesSearchType } from "../../../api/models/search";
 import { useSearchNotesStore } from "../../../zustand/useSearchNotesStore";
 import { useThemeStore } from "../../../zustand/useThemeStore";
+import { NoteVisibilityScope } from "../../../api/models/noteVisibility";
+import {
+  isNoteHiddenForScope,
+  ruleHiddenForScope,
+  useNoteVisibilityStore,
+} from "../../../zustand/useNoteVisibilityStore";
 import { useSearchResults } from "./SearchResultsList.hook";
 import SearchResultRow from "./SearchResultRow";
 import SearchResultsEmptyState from "./SearchResultsEmptyState";
@@ -56,6 +62,10 @@ export const SearchResultsList: React.FC = () => {
   const debouncedSearch = useSearchFilterStore((s) => s.debouncedSearch);
   const searchType = useSearchFilterStore((s) => s.searchType);
   const setSearch = useSearchFilterStore((s) => s.setSearch);
+  const visibilityNotes = useNoteVisibilityStore((state) => state.notes);
+  const visibilityDirectories = useNoteVisibilityStore(
+    (state) => state.directories,
+  );
 
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [selectedWith, setSelectedWith] = useState<"mouse" | "keyboard">(
@@ -72,10 +82,24 @@ export const SearchResultsList: React.FC = () => {
 
   const filteredNotes = useMemo(
     () =>
-      notes.filter((note) =>
-        passesFilter(note.directory_ids, filter, effectiveDirs),
+      notes.filter(
+        (note) =>
+          passesFilter(note.directory_ids, filter, effectiveDirs) &&
+          !isNoteHiddenForScope(
+            visibilityNotes,
+            visibilityDirectories,
+            note.id,
+            NoteVisibilityScope.SEARCH,
+            note.directory_ids,
+          ),
       ),
-    [notes, filter, effectiveDirs],
+    [
+      notes,
+      filter,
+      effectiveDirs,
+      visibilityNotes,
+      visibilityDirectories,
+    ],
   );
 
   const closeOverlay = useCallback(() => {
@@ -117,12 +141,24 @@ export const SearchResultsList: React.FC = () => {
       debouncedSearch,
       directoriesById,
       DIRECTORY_RESULT_LIMIT,
+    ).filter(
+      (match) =>
+        !ruleHiddenForScope(
+          visibilityDirectories,
+          match.directory.id,
+          NoteVisibilityScope.SEARCH,
+        ),
     );
     if (searchType === RestNotesSearchType.KEYWORD) {
       return matches.filter((match) => match.exact);
     }
     return matches;
-  }, [debouncedSearch, directoriesById, searchType]);
+  }, [
+    debouncedSearch,
+    directoriesById,
+    searchType,
+    visibilityDirectories,
+  ]);
 
   // Only literal / partial-exact directory hits may lead the list. Purely
   // fuzzy directory matches fall below the note results instead.

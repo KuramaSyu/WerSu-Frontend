@@ -14,6 +14,11 @@ import {
   IconTitleSubtitleRow,
 } from "../Panels/HistoryListPanel";
 import { CopyNameMenu } from "../RightClick/CopyNameMenu";
+import { NoteVisibilityScope } from "../../api/models/noteVisibility";
+import {
+  isNoteHiddenForScope,
+  useNoteVisibilityStore,
+} from "../../zustand/useNoteVisibilityStore";
 
 /**
  * Props for the RecentActivityPanel component.
@@ -42,11 +47,26 @@ export const RecentActivityPanel: React.FC<RecentActivityPanelProps> = ({
   const developerMode = useFeatureStore(
     (state) => state.flags[FeatureFlagName.DeveloperMode],
   );
+  const visibilityNotes = useNoteVisibilityStore((state) => state.notes);
+  const visibilityDirectories = useNoteVisibilityStore(
+    (state) => state.directories,
+  );
 
   // Drop score-bearing rows (those belong to the Frequently Used panel).
   const recentRows = useMemo<HistoryRowEntry[]>(
-    () => rows.filter((r) => r.score === undefined),
-    [rows],
+    () =>
+      rows.filter(
+        (r) =>
+          r.score === undefined &&
+          !isNoteHiddenForScope(
+            visibilityNotes,
+            visibilityDirectories,
+            r.note_id,
+            NoteVisibilityScope.RECENT_NOTES,
+            r.directory_id ? [r.directory_id] : [],
+          ),
+      ),
+    [rows, visibilityNotes, visibilityDirectories],
   );
 
   return (
@@ -62,15 +82,25 @@ export const RecentActivityPanel: React.FC<RecentActivityPanelProps> = ({
         const e = entry as HistoryRowEntry;
         const meta = getHistoryRowMeta(e);
         const Icon = meta.icon;
+        const isDirectoryEvent = Boolean(e.action?.startsWith("directory_"));
+        const visibilityTarget = isDirectoryEvent
+          ? e.directory_id
+            ? { kind: "directory" as const, id: e.directory_id }
+            : undefined
+          : e.note_id
+            ? { kind: "note" as const, id: e.note_id }
+            : undefined;
         return (
           <CopyNameMenu
             text={e.title ?? ""}
             targetId={e.note_id}
             note={
-              e.note_id && !e.action?.startsWith("directory_")
+              e.note_id && !isDirectoryEvent
                 ? { id: e.note_id, title: e.title ?? "" }
                 : undefined
             }
+            visibilityScope={NoteVisibilityScope.RECENT_NOTES}
+            visibilityTarget={visibilityTarget}
           >
             <IconTitleSubtitleRow
               icon={<Icon fontSize="small" color={meta.color} />}

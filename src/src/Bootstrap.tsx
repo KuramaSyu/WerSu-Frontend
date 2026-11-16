@@ -8,6 +8,7 @@ import { RestNotesSearchType } from "./api/models/search";
 import { getUserApi } from "./api/UserApi";
 import { useShareAccessToken } from "./api/queries/useShareAccessToken";
 import { apiRegistry } from "./api/apiRegistry";
+import { installLocalNoteVisibilityApi } from "./api/LocalNoteVisibilityApi";
 import { queryClient } from "./api/queryClient";
 import { isAuthError, useUser } from "./api/queries/useUser";
 import { WersuUserImpl } from "./components/DiscordLogin";
@@ -21,6 +22,11 @@ import { useImageBlobCacheStore } from "./zustand/useImageBlobCache";
 import { useAppearanceSettings } from "./zustand/useAppearanceSettings";
 import { PERSIST_KEYS } from "./statics";
 import { isPublicPathname } from "./utils/publicRoute";
+
+// The visibility backend endpoint does not exist yet. Register the local
+// zustand + localStorage implementation at boot; swapping it back to the
+// REST client later is a single registration change.
+installLocalNoteVisibilityApi();
 
 /**
  * Toggles the MSW worker based on the `UseFakeApi` feature flag.

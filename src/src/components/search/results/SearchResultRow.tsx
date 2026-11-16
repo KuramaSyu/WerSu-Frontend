@@ -1,4 +1,4 @@
-import React, { memo } from "react";
+import React, { memo, useCallback, useMemo } from "react";
 import {
   Box,
   Divider,
@@ -10,6 +10,11 @@ import {
 } from "@mui/material";
 import { useThemeStore } from "../../../zustand/useThemeStore";
 import { M2, M3 } from "../../../statics";
+import { NoteVisibilityScope } from "../../../api/models/noteVisibility";
+import { copyToClipboard } from "../../../zustand/InfoStore";
+import { useRightClickMenu } from "../../RightClick/useRightClickMenu";
+import { useVisibilityHideMenu } from "../../RightClick/visibilityHideMenu";
+import { VisibilityHideIcon } from "../../RightClick/VisibilityHideIcon";
 import type { SearchResult, SearchResultContent } from "./SearchResult";
 
 interface Props {
@@ -64,8 +69,55 @@ export const SearchResultRow: React.FC<Props> = memo(
     const content = renderContent(result.get_content());
     const meta = result.get_meta?.();
     const accent = result.get_accent_color();
+    const menu = useRightClickMenu();
+    const { buildSubmenu, dialog } = useVisibilityHideMenu(
+      NoteVisibilityScope.SEARCH,
+    );
+
+    const noteId = result.get_note_id?.();
+    const directoryId = result.get_directory_id?.();
+    const hideTarget = useMemo(
+      () =>
+        noteId
+          ? ({ kind: "note", id: noteId } as const)
+          : directoryId
+            ? ({ kind: "directory", id: directoryId } as const)
+            : undefined,
+      [noteId, directoryId],
+    );
+
+    const onContextMenu = useCallback(
+      (event: React.MouseEvent) => {
+        menu.onContextMenu(event, {
+          targetId: result.get_id(),
+          buttons: ["copy"],
+          overrides: {
+            copy: {
+              handler: () => {
+                void copyToClipboard(result.get_copy_text?.() ?? result.get_id());
+                return true;
+              },
+            },
+          },
+          ...(hideTarget
+            ? {
+                extraComponents: [
+                  {
+                    key: "hide-from-search",
+                    label: "Hide",
+                    icon: <VisibilityHideIcon />,
+                    submenu: buildSubmenu(hideTarget),
+                  },
+                ],
+              }
+            : {}),
+        });
+      },
+      [menu, result, hideTarget, buildSubmenu],
+    );
 
     return (
+      <Box sx={{ display: "contents" }} onContextMenu={onContextMenu}>
       <Paper
         data-search-index={index}
         elevation={isSelected ? 1 : 0}
@@ -165,6 +217,8 @@ export const SearchResultRow: React.FC<Props> = memo(
           </Box>
         </Box>
       </Paper>
+      {hideTarget ? dialog : null}
+      </Box>
     );
   },
 );

@@ -7,6 +7,10 @@
 import { useCallback, useState, type ReactNode } from "react";
 import { Box } from "@mui/material";
 import type { MinimalNote } from "../../api/models/search";
+import type {
+  NoteVisibilityScope,
+  NoteVisibilityTarget,
+} from "../../api/models/noteVisibility";
 import { copyToClipboard } from "../../zustand/InfoStore";
 import { useDeleteNote } from "../../api/queries/useNoteQueries";
 import { ConfirmationModal } from "../../pages/Settings/ConfirmationModal";
@@ -17,9 +21,15 @@ import {
 import { NoteRenameDialog } from "./NoteRenameDialog";
 import { AddToDirectoryDialog } from "./AddToDirectoryDialog";
 import { PermissionEditor } from "../Permissions/PermissionEditor";
+import { useVisibilityHideMenu } from "./visibilityHideMenu";
+import { VisibilityHideIcon } from "./VisibilityHideIcon";
 
 export interface NoteCardMenuProps {
   note: MinimalNote;
+  /** Recommendation surface the card is rendered in. Adds a Hide submenu. */
+  visibilityScope?: NoteVisibilityScope;
+  /** Override the hide target (defaults to the note). */
+  visibilityTarget?: NoteVisibilityTarget;
   children: ReactNode;
 }
 
@@ -34,10 +44,18 @@ const CARD_BUTTONS: RightClickMenuSpec["buttons"] = [
 
 export const NoteCardMenu: React.FC<NoteCardMenuProps> = ({
   note,
+  visibilityScope,
+  visibilityTarget,
   children,
 }) => {
   const menu = useRightClickMenu();
   const deleteNote = useDeleteNote();
+  const { buildSubmenu, dialog } = useVisibilityHideMenu(
+    visibilityScope ?? 0,
+  );
+  const hideTarget = visibilityTarget ?? { kind: "note" as const, id: note.id };
+  const hideSubmenu =
+    visibilityScope !== undefined ? buildSubmenu(hideTarget) : undefined;
 
   const [renameOpen, setRenameOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -84,9 +102,21 @@ export const NoteCardMenu: React.FC<NoteCardMenuProps> = ({
             },
           },
         },
+        ...(hideSubmenu
+          ? {
+              extraComponents: [
+                {
+                  key: "hide-from-recommendations",
+                  label: "Hide",
+                  icon: <VisibilityHideIcon />,
+                  submenu: hideSubmenu,
+                },
+              ],
+            }
+          : {}),
       });
     },
-    [menu, note.id, note.title],
+    [menu, note.id, note.title, hideSubmenu],
   );
 
   const runDelete = async () => {
@@ -138,6 +168,7 @@ export const NoteCardMenu: React.FC<NoteCardMenuProps> = ({
         }}
         onConfirm={() => void runDelete()}
       />
+      {visibilityScope !== undefined ? dialog : null}
     </Box>
   );
 };

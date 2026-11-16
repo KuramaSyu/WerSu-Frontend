@@ -13,6 +13,7 @@ import {
   IconTitleSubtitleRow,
 } from "../Panels/HistoryListPanel";
 import { CopyNameMenu } from "../RightClick/CopyNameMenu";
+import { NoteVisibilityScope } from "../../api/models/noteVisibility";
 
 /**
  * Props for the FrequentlyUsedPanel component.
@@ -79,6 +80,7 @@ export const FrequentlyUsedPanel: React.FC<FrequentlyUsedPanelProps> = ({
                 ? { id: e.note_id, title: e.title ?? "" }
                 : undefined
             }
+            visibilityScope={NoteVisibilityScope.FREQUENT_NOTES}
           >
             <IconTitleSubtitleRow
               title={e.title ?? ""}
@@ -150,6 +152,7 @@ export const LastUsedPanel: React.FC<LastUsedPanelProps> = ({
                 ? { id: e.note_id, title: e.title ?? "" }
                 : undefined
             }
+            visibilityScope={NoteVisibilityScope.RECENT_NOTES}
           >
             <IconTitleSubtitleRow
               title={e.title ?? ""}

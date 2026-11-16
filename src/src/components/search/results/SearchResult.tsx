@@ -52,6 +52,12 @@ export interface SearchResult {
   get_accent_color(): string;
   /** Optional metadata chips rendered under the title. */
   get_meta?(): React.ReactNode;
+  /** Note id when this result is a note (used by visibility rules). */
+  get_note_id?(): string;
+  /** Directory id when this result is a directory (used by visibility rules). */
+  get_directory_id?(): string;
+  /** Plain text copied by the right-click Copy action. */
+  get_copy_text?(): string;
   /** Activate the result: navigate to it and close the overlay. */
   on_click(): void;
 }

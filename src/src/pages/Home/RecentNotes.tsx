@@ -23,6 +23,11 @@ import {
 } from "../../utils/blendWithContrast";
 import { markdownPreview } from "../../utils/markdownPreview";
 import { NoteCardMenu } from "../../components/RightClick/NoteCardMenu";
+import { NoteVisibilityScope } from "../../api/models/noteVisibility";
+import {
+  isNoteHiddenForScope,
+  useNoteVisibilityStore,
+} from "../../zustand/useNoteVisibilityStore";
 import TranslucentPaper from "../../components/TranslucentPaper";
 import { useAllDirectoriesQuery } from "../../api/queries/directoryQueries";
 import type { DirectoryReply } from "../../api/models/directory";
@@ -112,6 +117,8 @@ export interface RecentNoteRowProps {
   showActionColumn?: boolean;
   /** Called when a folder chip is clicked (to apply a directory filter). */
   onDirectoryClick?: (directoryId: string) => void;
+  /** Recommendation surface the row belongs to. Adds the Hide submenu. */
+  visibilityScope?: NoteVisibilityScope;
 }
 
 /**
@@ -129,6 +136,7 @@ export const RecentNoteRow: React.FC<RecentNoteRowProps> = ({
   action,
   showActionColumn = false,
   onDirectoryClick,
+  visibilityScope,
 }) => {
   const navigate = useNavigate();
   const { theme } = useThemeStore();
@@ -186,7 +194,7 @@ export const RecentNoteRow: React.FC<RecentNoteRowProps> = ({
   }, []);
 
   return (
-    <NoteCardMenu note={note}>
+    <NoteCardMenu note={note} visibilityScope={visibilityScope}>
       <>
         <Box
           onMouseEnter={handleEnter}
@@ -516,6 +524,8 @@ export interface NoteListProps {
   showActionColumn?: boolean;
   /** Called when a folder chip is clicked. */
   onDirectoryClick?: (directoryId: string) => void;
+  /** Recommendation surface the list belongs to. Adds the Hide submenu. */
+  visibilityScope?: NoteVisibilityScope;
 }
 
 /**
@@ -532,6 +542,7 @@ export const NoteList: React.FC<NoteListProps> = ({
   actionById,
   showActionColumn = false,
   onDirectoryClick,
+  visibilityScope,
 }) => {
   // Resolve folder / tag ids from the app-wide data rather than the search
   // reply, which may omit entries for ids the notes reference.
@@ -563,6 +574,7 @@ export const NoteList: React.FC<NoteListProps> = ({
             action={actionById?.[note.id]}
             showActionColumn={showActionColumn}
             onDirectoryClick={onDirectoryClick}
+            visibilityScope={visibilityScope}
           />
         ),
       )}
@@ -620,6 +632,10 @@ export const RecentNotes: React.FC<RecentNotesProps> = ({
   onDirectoryClick,
 }) => {
   const { theme } = useThemeStore();
+  const visibilityNotes = useNoteVisibilityStore((state) => state.notes);
+  const visibilityDirectories = useNoteVisibilityStore(
+    (state) => state.directories,
+  );
 
   // Show the later of the last view/edit and `updated_at` in each row's
   // time cell, so a read note reads as "viewed X ago" too.
@@ -669,6 +685,17 @@ export const RecentNotes: React.FC<RecentNotesProps> = ({
   }
 
   const filtered = notes.filter((note) => {
+    if (
+      isNoteHiddenForScope(
+        visibilityNotes,
+        visibilityDirectories,
+        note.id,
+        NoteVisibilityScope.RECENT_NOTES,
+        note.directory_ids ?? [],
+      )
+    ) {
+      return false;
+    }
     if (filterDirectoryIds && filterDirectoryIds.length > 0) {
       const inDirectory = (note.directory_ids ?? []).some((id) =>
         filterDirectoryIds.includes(id),
@@ -696,6 +723,7 @@ export const RecentNotes: React.FC<RecentNotesProps> = ({
       emptyText={emptyText}
       timestampById={timestampById}
       onDirectoryClick={onDirectoryClick}
+      visibilityScope={NoteVisibilityScope.RECENT_NOTES}
     />
   );
 };

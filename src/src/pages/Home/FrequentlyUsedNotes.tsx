@@ -6,6 +6,11 @@ import { NoteList, NoteRowSkeleton } from "./RecentNotes";
 import TranslucentPaper from "../../components/TranslucentPaper";
 import { useFrequentlyUsedRows } from "../../components/FrequentlyUsed/FrequentlyUsedFeatures";
 import { noteQueries } from "../../api/queries/useNoteQueries";
+import { NoteVisibilityScope } from "../../api/models/noteVisibility";
+import {
+  isNoteHiddenForScope,
+  useNoteVisibilityStore,
+} from "../../zustand/useNoteVisibilityStore";
 import type { HistoryRowEntry } from "../../components/RecentActivity/HistoryRowFeatures";
 import type { MinimalNote, Note } from "../../api/models/search";
 import type { MostUsedAlgorithm } from "../../api/models/history";
@@ -109,6 +114,11 @@ export const FrequentlyUsedNotes: React.FC<FrequentlyUsedNotesProps> = ({
     }
   });
 
+  const visibilityNotes = useNoteVisibilityStore((state) => state.notes);
+  const visibilityDirectories = useNoteVisibilityStore(
+    (state) => state.directories,
+  );
+
   const resolvedPage = pageRows.map((row: HistoryRowEntry): MinimalNote => {
     const known = notesById[row.note_id];
     if (known) {
@@ -130,6 +140,19 @@ export const FrequentlyUsedNotes: React.FC<FrequentlyUsedNotesProps> = ({
       tag_ids: [],
     };
   });
+
+  // Directory-level rules can only be evaluated once the note's folders
+  // are known, so apply them after detail resolution.
+  const visiblePage = resolvedPage.filter(
+    (note) =>
+      !isNoteHiddenForScope(
+        visibilityNotes,
+        visibilityDirectories,
+        note.id,
+        NoteVisibilityScope.FREQUENT_NOTES,
+        note.directory_ids ?? [],
+      ),
+  );
 
   if (isLoading) {
     const skeleton = (
@@ -163,11 +186,12 @@ export const FrequentlyUsedNotes: React.FC<FrequentlyUsedNotesProps> = ({
   return (
     <Stack spacing={M2}>
       <NoteList
-        notes={resolvedPage}
+        notes={visiblePage}
         emptyText="No frequently used notes yet."
         bare={bare}
         skeletonIds={detailLoadingIds}
         onDirectoryClick={onDirectoryClick}
+        visibilityScope={NoteVisibilityScope.FREQUENT_NOTES}
       />
       {pageCount > 1 && (
         <Pagination

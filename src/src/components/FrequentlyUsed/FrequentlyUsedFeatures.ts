@@ -11,6 +11,11 @@ import {
 } from "../RecentActivity/HistoryRowFeatures";
 import { crumble } from "../../utils/stringCrumbler";
 import { markdownPreview } from "../../utils/markdownPreview";
+import { NoteVisibilityScope } from "../../api/models/noteVisibility";
+import {
+  ruleHiddenForScope,
+  useNoteVisibilityStore,
+} from "../../zustand/useNoteVisibilityStore";
 
 /** Cap on the description preview rendered per frequently-used row. */
 const FREQUENTLY_USED_DESCRIPTION_CAP = 120;
@@ -60,24 +65,34 @@ export function useFrequentlyUsedRows(
   );
 
   const result = useMostUsedActivity(filter);
+  const hiddenNotes = useNoteVisibilityStore((state) => state.notes);
 
   // Map wire shape into shared HistoryRowEntry. Markdown strip + crumble enforce the 120-char cap.
-  const rows: HistoryRowEntry[] = (result.data ?? []).map((r) => {
-    const description = r.stripped_content
-      ? (crumble(
-          markdownPreview(r.stripped_content, {
-            maxLength: FREQUENTLY_USED_DESCRIPTION_CAP,
-          }),
-          FREQUENTLY_USED_DESCRIPTION_CAP,
-        )[0] ?? "")
-      : "";
-    return {
-      note_id: r.note_id,
-      score: r.score,
-      title: r.title,
-      description,
-    };
-  });
+  const rows: HistoryRowEntry[] = (result.data ?? [])
+    .filter(
+      (r) =>
+        !ruleHiddenForScope(
+          hiddenNotes,
+          r.note_id,
+          NoteVisibilityScope.FREQUENT_NOTES,
+        ),
+    )
+    .map((r) => {
+      const description = r.stripped_content
+        ? (crumble(
+            markdownPreview(r.stripped_content, {
+              maxLength: FREQUENTLY_USED_DESCRIPTION_CAP,
+            }),
+            FREQUENTLY_USED_DESCRIPTION_CAP,
+          )[0] ?? "")
+        : "";
+      return {
+        note_id: r.note_id,
+        score: r.score,
+        title: r.title,
+        description,
+      };
+    });
 
   return {
     rows,
@@ -106,16 +121,26 @@ export function useLastUsedRows(
   );
 
   const result = useActivityHistory(filter);
+  const hiddenNotes = useNoteVisibilityStore((state) => state.notes);
 
   // ActivityReply rows are a superset of HistoryRowEntry; lift title/description from metadata_json.
-  const rawRows: HistoryRowEntry[] = (result.data ?? []).map((row) => {
-    const { title, description } = extractNoteMetadata(row);
-    return {
-      ...row,
-      ...(title ? { title } : {}),
-      ...(description ? { description } : {}),
-    };
-  });
+  const rawRows: HistoryRowEntry[] = (result.data ?? [])
+    .filter(
+      (row) =>
+        !ruleHiddenForScope(
+          hiddenNotes,
+          row.note_id,
+          NoteVisibilityScope.RECENT_NOTES,
+        ),
+    )
+    .map((row) => {
+      const { title, description } = extractNoteMetadata(row);
+      return {
+        ...row,
+        ...(title ? { title } : {}),
+        ...(description ? { description } : {}),
+      };
+    });
 
   // Collapse duplicates by note_id (newest-first, so the first occurrence per id wins).
   // Over-fetch on the wire so the visible list stays at limit entries after dedupe.
