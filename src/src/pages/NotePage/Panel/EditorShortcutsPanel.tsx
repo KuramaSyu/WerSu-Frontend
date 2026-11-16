@@ -17,6 +17,8 @@ export const EditorShortcutsPanel: React.FC = () => {
     <PanelSection
       title="Shortcuts"
       titleIcon={<KeyboardIcon fontSize="small" />}
+      collapsible
+      defaultExpanded
       bordered
     >
       <Stack spacing={1}>

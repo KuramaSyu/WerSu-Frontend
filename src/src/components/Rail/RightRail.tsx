@@ -98,11 +98,25 @@ export const RightRail: React.FC<RightRailProps> = ({ children, width }) => {
       >
         <Box
           sx={{
-            display: "flex",
-            flexDirection: "column",
             height: "100%",
-            overflow: "hidden",
+            // A rail taller than the viewport must scroll instead of
+            // clipping its last sections. The scroll lives here (not in
+            // each panel) so every right-rail panel -- `UpperPanel` based
+            // ones as well as the graph's own stack -- shares one scroll
+            // area. Block layout (not flex) lets a `height: 100%` child
+            // resolve against this box, so `UpperPanel` still lays out
+            // exactly one viewport tall.
+            overflowY: "auto",
+            overflowX: "hidden",
             minWidth: 0,
+            // Side rails should never show a chunky default scrollbar;
+            // keep it invisible until the rail is hovered (mirrors the
+            // left rail).
+            scrollbarWidth: "thin",
+            scrollbarColor: "transparent transparent",
+            "&:hover": {
+              scrollbarColor: `${theme.palette.secondary.dark} transparent`,
+            },
             // Inner right gutter. Kept off the outer flex box because
             // that box is sized to the rail width: padding on it would
             // add to `width` (no global border-box), stealing the gutter
