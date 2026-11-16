@@ -45,3 +45,4 @@ vite.config.ts.timestamp*
 data/
 src/pnpm-workspace.yaml
 pnpm-lock.yaml
+get_model.py
