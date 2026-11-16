@@ -74,7 +74,11 @@ describe("editor table context menu", () => {
         "Rows",
         "Columns",
         "Clear cell",
-        "Copy section reference",
+      ]);
+      // The section-reference action is always the last entry, so it lives in
+      // `extraComponents` rather than the element-command leading rows.
+      expect(request.extraComponents?.map((row) => row.key)).toEqual([
+        "copy-section-reference",
       ]);
     } finally {
       editor.destroy();
@@ -102,7 +106,9 @@ describe("editor table context menu", () => {
         "Rows",
         "Columns",
         "Clear cell",
-        "Copy section reference",
+      ]);
+      expect(request.extraComponents?.map((row) => row.key)).toEqual([
+        "copy-section-reference",
       ]);
     } finally {
       editor.destroy();
