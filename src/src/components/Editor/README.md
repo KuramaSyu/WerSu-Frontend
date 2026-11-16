@@ -62,9 +62,11 @@ The components here are intentionally split by responsibility: editor shell, for
 
 - `SlashCommandMenu.tsx`
 	- Floating menu shown when a reachable text block contains a `/` query.
-	- Filters and ranks commands by query score.
-	- `Enter` executes the top-ranked command.
-	- `Escape`, a space, or a bare `-` typed right after the slash
+	- Filters and ranks commands by the typed query.
+	- `Enter` or `Tab` activates the top-ranked command. Commands without
+	  arguments run immediately; commands with arguments open the
+	  Discord-style composer.
+	- `Escape`, whitespace, or a bare `-` typed right after the slash
 	  hides the menu without deleting the typed text.
 	- Current command set:
 		- `/table`
@@ -73,7 +75,7 @@ The components here are intentionally split by responsibility: editor shell, for
 		- `/heading-1`
 		- `/heading-2`
 		- `/heading-3`
-		- `/codeblock`
+		- `/codeblock [language]` (optional, defaults to `plaintext`)
 		- `/mermaid` (also matches `diagram`, `flowchart`, `graph`)
 		- `/details`
 		- `/cite` (also matches `quote`)
@@ -88,12 +90,30 @@ The components here are intentionally split by responsibility: editor shell, for
 	  with the requested initial type, then insert the result with
 	  `insertInlineMath` or `insertBlockMath`.
 	- `/mermaid` inserts a code block tagged `language: "mermaid"`
-	  pre-filled with a starter flowchart (`MERMAID_TEMPLATE`). The
-	  diagram itself is edited in the block's source. See “Mermaid
-	  diagrams” below.
+	  pre-filled with a starter flowchart (`MERMAID_TEMPLATE`), so there is
+	  no language argument to pick. See “Mermaid diagrams” below.
 	- Commands can be invoked from any editable editor context, including
 	  lists, tables, code blocks, and selections containing text after the
 	  slash query.
+
+- `SlashCommandComposer.tsx`
+	- Inline Discord-style argument composer, rendered as an ephemeral
+	  ProseMirror widget (`SlashCommandComposerExtension`) after the
+	  completed `/command` text.
+	- Each argument is a bordered chip: argument name on a darker
+	  background on the left, value input on the right. Required arguments
+	  are marked with `*`.
+	- `Enter` runs the command when all required arguments have a value
+	  (typed value or `defaultValue`). If an autocomplete menu is open,
+	  the first `Enter` selects the highlighted suggestion.
+	- `Tab` accepts the highlighted suggestion or focuses the next argument.
+	- `ArrowUp`/`ArrowDown` navigate suggestions; `Escape` closes the
+	  suggestions first, then the composer.
+	- `Backspace` in an empty argument removes that argument; in the first
+	  argument it closes the composer, leaving the `/command` text intact.
+	- Autocomplete menus appear above the focused chip. Sources may be a
+	  static option list or an async callback (useful for server searches).
+	- The composer never becomes document content or collaboration state.
 
 ### Table controls
 
@@ -149,14 +169,16 @@ writes the fence.
 	  not above: the preview renders asynchronously, and a height change
 	  above an active selection makes browsers (Firefox in particular)
 	  keep painting the caret at its previous screen position.
-	- Hides the source in read-only editors, so view mode shows the
-	  diagram only.
+	- Hides the source entirely in read-only editors, so view mode shows
+	  the diagram only.
 	- Invalid diagrams surface an inline error instead of a preview.
 	- Observes the preview box for size changes and forces a DOM selection
-	  rewrite (`mermaid/mermaidPreviewResize.ts`), which keeps carets that
-	  sit below the diagram in place. Re-running ProseMirror's own
-	  selection sync is not enough: it skips writing a selection that
-	  already matches its state.
+	  rewrite (`mermaid/mermaidPreviewResize.ts`). The preview renders
+	  asynchronously, so without that nudge the browser keeps painting the
+	  caret at its old screen position after the diagram (or its inline
+	  parse error) below the diagram grows or shrinks. Re-running
+	  ProseMirror's own selection sync is not enough: it skips writing a
+	  selection that already matches its state.
 
 - `lowlight.ts`
 	- Registers `mermaid` with the `plaintext` grammar purely so
@@ -226,7 +248,23 @@ In `SlashCommandMenu.tsx`, extend the `slashCommands` array with:
 - `label`: user-facing name
 - `keywords`: search aliases
 - `getCommandName(editor)`: optional state-aware command name
-- `run(editor)`: command implementation
+- `arguments`: optional array of argument definitions. Commands with at
+  least one argument open the composer instead of running immediately.
+- `run(editor, args)`: command implementation; `args.values` maps argument
+  names to resolved values, and `args.value(name)` is a convenience getter.
+
+Argument definitions (`SlashCommandArgument` from
+`slashCommandTypes.ts`):
+
+- `name`: chip label and key in `args.values`
+- `description`: help text shown above suggestions
+- `required`: blocks execution until a value (or default) exists
+- `defaultValue`: fallback value; also satisfies `required`
+- `autocomplete`: static `{ value, label?, description? }[]` list or an
+  async callback receiving `{ editor, command, argument, query, values,
+  signal }`. Use the `signal` to abort server requests when the query
+  changes.
+- `allowCustomValue`: defaults to `true`
 
 Guidelines:
 
@@ -234,10 +272,13 @@ Guidelines:
 - Use `clearSlashCommand(editor)` for inline toggles so surrounding text is preserved.
 - Use Tiptap mark toggles for formatting commands rather than inserting marker text.
 - Use `getCommandName` to report active state, such as `/bold off`.
+- Read argument values via `args.value("name")` and define sensible
+  defaults for optional arguments.
 - For LaTeX variants, open the shared LaTeX dialog and insert the
   confirmed result with the matching Mathematics command.
-- Mermaid stays a plain `codeBlock` with language `mermaid`; use the
-  helpers in `mermaid/mermaidBlock.ts` instead of hard-coding the tag.
+- For Mermaid, call `insertMermaidBlock(editor)` and reuse
+  `MERMAID_LANGUAGE` from `mermaid/mermaidBlock.ts` instead of
+  hard-coding the language tag or the starter template.
 - Keep `run` deterministic and side-effect free beyond editor updates.
 - Prefer chainable Tiptap commands with `.focus()`.
 

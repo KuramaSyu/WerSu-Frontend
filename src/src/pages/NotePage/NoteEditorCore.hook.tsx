@@ -58,7 +58,7 @@ import { NoteReferenceAutocompleteExtension } from "../../components/Editor/Note
 import { CustomHtml } from "../../components/Editor/CustomHtml";
 import { CustomHardBreak } from "../../components/Editor/CustomHardBreak";
 import { CustomDetails } from "../../components/Editor/CustomDetails";
-import { SlashMenuStateExtension } from "../../components/Editor/SlashCommandMenu";
+import { SlashCommandComposerExtension, SlashMenuStateExtension } from "../../components/Editor/SlashCommandMenu";
 import { getAttachmentApi } from "../../api/AttachmentApi";
 import { AttachmentLinkBuilder } from "../../api/utils/AttachmentLInkBuilder";
 import UploadFileBuilder from "./UploadFileBuilder";
@@ -326,6 +326,7 @@ export const useNoteEditor = (params: UseNoteEditorParams): Editor | null => {
         }),
         SmartTextReplacement,
         SlashMenuStateExtension,
+        SlashCommandComposerExtension,
         Markdown,
       ],
 

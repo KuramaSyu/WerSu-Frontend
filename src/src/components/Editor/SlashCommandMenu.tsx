@@ -3,9 +3,10 @@ import { Extension } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
 import { FloatingMenu } from "@tiptap/react/menus";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
+import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import type { EditorView } from "@tiptap/pm/view";
-import { insertMermaidBlock } from "./mermaid/mermaidBlock";
 import { useEffect, useRef, useState } from "react";
+import { useTheme, type Theme } from "@mui/material/styles";
 import {
   List,
   ListItemButton,
@@ -13,6 +14,30 @@ import {
   Paper,
   Typography,
 } from "@mui/material";
+import { SUPPORTED_LANGUAGES, lowlight } from "./lowlight";
+import {
+  EMPTY_SLASH_COMMAND_ARGUMENTS,
+  createSlashCommandArguments,
+  type SlashCommand,
+} from "./slashCommandTypes";
+import { SlashCommandComposerController } from "./SlashCommandComposer";
+import { insertMermaidBlock } from "./mermaid/mermaidBlock";
+
+// Re-export the public slash-command API from the menu module so existing
+// importers keep working while the types live in a dependency-free module
+// (the composer imports them too, which would otherwise be a cycle).
+export type {
+  SlashCommand,
+  SlashCommandArgument,
+  SlashCommandArgumentAutocomplete,
+  SlashCommandArgumentOption,
+  SlashCommandArguments,
+  SlashCommandAutocompleteContext,
+} from "./slashCommandTypes";
+export {
+  EMPTY_SLASH_COMMAND_ARGUMENTS,
+  createSlashCommandArguments,
+} from "./slashCommandTypes";
 
 interface SlashCommandMenuProps {
   editor: Editor;
@@ -25,22 +50,13 @@ interface SlashCommandMenuProps {
   extraCommands?: SlashCommand[];
 }
 
-export interface SlashCommand {
-  id: string;
-  label: string;
-  keywords: string[];
-  /** Optional command name that reflects the editor's current state. */
-  getCommandName?: (editor: Editor) => string;
-  run: (editor: Editor) => void | Promise<void>;
-}
-
 // Tracks the position of the last "/" the user typed so the slash menu
 // can open mid-paragraph, not only on an empty line. Stored as plugin
 // state on the editor. `dismissed` is set when the user explicitly
 // closes the menu (ESC) or types a character that ends the command
-// context (space / a bare "-"); the state is kept (instead of cleared)
-// so the text-based fallback in `isSlashCommandContext` cannot re-open
-// the menu behind the user's back. Cleared when a command runs.
+// context (whitespace / a bare "-"); the state is kept (instead of
+// cleared) so the text-based fallback in `isSlashCommandContext` cannot
+// re-open the menu behind the user's back. Cleared when a command runs.
 type SlashMenuState = { pos: number; dismissed: boolean } | null;
 
 type SlashMenuMeta =
@@ -122,7 +138,7 @@ export const SlashMenuStateExtension = Extension.create({
             //     trigger, so it must not open / keep the menu.
             const existing = slashMenuStateKey.getState(view.state);
             if (existing && !existing.dismissed && from >= existing.pos + 1) {
-              const isSpace = /\s/.test(text);
+              const isWhitespace = /\s/.test(text);
               const query = view.state.doc.textBetween(
                 existing.pos + 1,
                 from,
@@ -130,7 +146,7 @@ export const SlashMenuStateExtension = Extension.create({
                 "\n",
               );
               const isBareHyphen = query.length === 0 && text.includes("-");
-              if (isSpace || isBareHyphen) {
+              if (isWhitespace || isBareHyphen) {
                 dismissSlashMenu(view);
               }
             }
@@ -165,6 +181,151 @@ export const setSlashMenuState = (editor: Editor, pos: number | null): void => {
     pos === null ? { type: "clear" } : { type: "set", pos };
   const tr = editor.state.tr.setMeta(slashMenuStateKey, meta);
   editor.view.dispatch(tr);
+};
+
+/** Active Discord-style argument composer. */
+export interface SlashCommandComposerState {
+  /** Document position of the slash that started the command. */
+  from: number;
+  /** Document position right after the canonical `/command` text. */
+  to: number;
+  controller: SlashCommandComposerController;
+}
+
+type SlashCommandComposerMeta =
+  | { type: "open"; state: SlashCommandComposerState }
+  | { type: "close" };
+
+export const slashCommandComposerKey =
+  new PluginKey<SlashCommandComposerState | null>("slashCommandComposer");
+
+/**
+ * Renders the argument composer as a widget decoration right after the
+ * `/command` text, so the chips sit inline exactly where the user is
+ * composing the command. The composer is ephemeral: it never becomes part
+ * of the document (or collaboration state).
+ */
+export const SlashCommandComposerExtension = Extension.create({
+  name: "slashCommandComposer",
+
+  addProseMirrorPlugins() {
+    return [
+      new Plugin<SlashCommandComposerState | null>({
+        key: slashCommandComposerKey,
+        state: {
+          init() {
+            return null;
+          },
+          apply(tr, value) {
+            const meta = tr.getMeta(slashCommandComposerKey) as
+              | SlashCommandComposerMeta
+              | undefined;
+            if (meta) {
+              return meta.type === "open" ? meta.state : null;
+            }
+            return value;
+          },
+        },
+        props: {
+          decorations(state) {
+            const composer = slashCommandComposerKey.getState(state);
+            if (!composer) {
+              return null;
+            }
+            return DecorationSet.create(state.doc, [
+              Decoration.widget(composer.to, composer.controller.element, {
+                side: 1,
+                key: "slash-command-composer",
+              }),
+            ]);
+          },
+        },
+      }),
+    ];
+  },
+
+  onDestroy() {
+    const composer = slashCommandComposerKey.getState(this.editor.state);
+    composer?.controller.dispose();
+  },
+});
+
+/**
+ * Opens the argument composer for a command that declares arguments.
+ *
+ * The typed query is replaced with the canonical `/command-id` text, the
+ * slash menu is dismissed, and the composer widget is inserted after the
+ * command name. Returns `false` when the command has no arguments or the
+ * slash context is gone.
+ */
+export const openSlashCommandComposer = (
+  editor: Editor,
+  command: SlashCommand,
+  theme?: Theme,
+): boolean => {
+  if (!command.arguments || command.arguments.length === 0) {
+    return false;
+  }
+  const slashState = slashMenuStateKey.getState(editor.state);
+  if (!slashState || slashState.dismissed) {
+    return false;
+  }
+  const from = slashState.pos;
+  const to = editor.state.selection.from;
+  if (to < from + 1) {
+    return false;
+  }
+
+  const commandText = `/${command.id}`;
+  const replaceTr = editor.state.tr
+    .insertText(commandText, from, to)
+    .setMeta(slashMenuStateKey, { type: "dismiss" })
+    .setMeta(slashMenuFloatingKey, "hide");
+  editor.view.dispatch(replaceTr);
+
+  const end = from + commandText.length;
+  const controller = new SlashCommandComposerController(
+    editor,
+    command,
+    end,
+    theme,
+    {
+      onExecute: (values, omittedArguments) => {
+        clearSlashCommandComposer(editor);
+        void command.run(
+          editor,
+          createSlashCommandArguments(command, values, omittedArguments),
+        );
+      },
+      onCancel: (reason) => {
+        clearSlashCommandComposer(editor);
+        if (reason === "dismiss") {
+          // Explicitly backing out (Escape/Backspace) must return focus to
+          // the editor. Clicking elsewhere already moved the selection.
+          editor.chain().focus().setTextSelection(end).run();
+        }
+      },
+    },
+  );
+  editor.view.dispatch(
+    editor.state.tr.setMeta(slashCommandComposerKey, {
+      type: "open",
+      state: { from, to: end, controller },
+    }),
+  );
+  return true;
+};
+
+/** Closes an open argument composer without changing the document text. */
+export const clearSlashCommandComposer = (editor: Editor): void => {
+  const composer = slashCommandComposerKey.getState(editor.state);
+  if (!composer) {
+    return;
+  }
+  composer.controller.dispose();
+  editor.view.dispatch(
+    editor.state.tr.setMeta(slashCommandComposerKey, { type: "close" }),
+  );
 };
 
 const getCurrentParagraphRange = (editor: Editor) => {
@@ -323,9 +484,29 @@ const slashCommands: SlashCommand[] = [
     id: "codeblock",
     label: "Code block",
     keywords: ["code", "codeblock", "snippet"],
-    run: (editor) => {
+    arguments: [
+      {
+        name: "language",
+        description: "Language used for syntax highlighting.",
+        required: false,
+        defaultValue: "plaintext",
+        autocomplete: SUPPORTED_LANGUAGES.map((language) => ({
+          value: language,
+          label: language,
+        })),
+      },
+    ],
+    run: (editor, args) => {
+      const requested = args?.value("language")?.trim().toLowerCase();
+      // Fall back to plaintext for missing or unknown languages: an
+      // unregistered language would make CodeBlockLowlight run the
+      // expensive `highlightAuto` path on every render.
+      const language =
+        requested && lowlight.registered(requested)
+          ? requested
+          : "plaintext";
       clearSlashLine(editor);
-      editor.chain().focus().setCodeBlock().run();
+      editor.chain().focus().setCodeBlock({ language }).run();
     },
   },
   {
@@ -436,12 +617,20 @@ const slashCommands: SlashCommand[] = [
 export const getSlashCommandName = (
   editor: Editor,
   command: SlashCommand,
-): string => command.getCommandName?.(editor) ?? `/${command.id}`;
+): string => {
+  const name = command.getCommandName?.(editor) ?? `/${command.id}`;
+  const argumentHint = (command.arguments ?? [])
+    .map((argument) =>
+      argument.required ? `<${argument.name}>` : `[${argument.name}]`,
+    )
+    .join(" ");
+  return argumentHint ? `${name} ${argumentHint}` : name;
+};
 
 /**
- * @returns what the user has typed after "/"
+ * @returns the raw text the user has typed after "/"
  */
-const getSlashQuery = (editor: Editor) => {
+const getRawSlashQuery = (editor: Editor) => {
   const { selection, doc } = editor.state;
 
   // Prefer the slash state set by the SlashMenuStateExtension when
@@ -471,7 +660,7 @@ const getSlashQuery = (editor: Editor) => {
       ) {
         return "";
       }
-      return doc.textBetween(slashState.pos + 1, selection.from).toLowerCase();
+      return doc.textBetween(slashState.pos + 1, selection.from);
     } catch {
       return "";
     }
@@ -486,10 +675,14 @@ const getSlashQuery = (editor: Editor) => {
   console.warn(
     "[slash-query] no slash state found, falling back to text search (this is expected for pasted content and unit tests)",
   );
-  return doc
-    .textBetween(fallbackRange.from + 1, selection.from)
-    .toLowerCase();
+  return doc.textBetween(fallbackRange.from + 1, selection.from);
 };
+
+/**
+ * @returns the command word typed after "/", lowercased
+ */
+const getSlashQuery = (editor: Editor) =>
+  getRawSlashQuery(editor).trim().toLowerCase();
 
 /**
  * @returns a score how much the command matches the current query.
@@ -609,21 +802,40 @@ export function isSlashCommandContext(editor: Editor): boolean {
 }
 
 /**
+ * Runs a command, or opens its argument composer when it declares
+ * arguments. Shared by the menu keyboard/mouse handlers and
+ * `runBestSlashCommand`.
+ */
+export function activateSlashCommand(
+  editor: Editor,
+  command: SlashCommand,
+  theme?: Theme,
+): boolean {
+  if (command.arguments && command.arguments.length > 0) {
+    return openSlashCommandComposer(editor, command, theme);
+  }
+  void command.run(editor, EMPTY_SLASH_COMMAND_ARGUMENTS);
+  return true;
+}
+
+/**
  * Executes the best matching slash command for the current editor context, if any.
  * Usually executed when the user presses Enter or selects it
  * @param editor
  * @returns `true` if a command was executed, `false` otherwise
  */
 export function runBestSlashCommand(editor: Editor): boolean {
-  // Used for keyboard confirmation: Enter executes the top-ranked command.
+  if (!isSlashCommandContext(editor)) {
+    return false;
+  }
+  // Used for keyboard confirmation: Enter activates the top-ranked command.
   const commands = getMatchingSlashCommands(editor);
   const bestCommand = commands[0];
   if (!bestCommand) {
     return false;
   }
 
-  bestCommand.run(editor);
-  return true;
+  return activateSlashCommand(editor, bestCommand);
 }
 
 /**
@@ -648,6 +860,10 @@ export const SlashCommandMenu = ({
   enabled = true,
   extraCommands = [],
 }: SlashCommandMenuProps) => {
+  // The app's ThemeProvider is above this component; the argument composer
+  // is mounted in a separate React root as a ProseMirror widget, so pass
+  // the active theme along explicitly.
+  const theme = useTheme();
   // Keep `extraCommands` accessible to the selector closure without making
   // the selector referentially unstable on every render — the ref is
   // mutated in an effect, so the selector identity stays stable.
@@ -705,9 +921,8 @@ export const SlashCommandMenu = ({
         setSelectedIndex((prev) => (prev > 0 ? prev - 1 : 0));
       } else {
         event.preventDefault();
-        setSelectedIndex((prev) =>
-          prev < matchingCommands.length - 1 ? prev + 1 : prev,
-        );
+        const count = getMatchingSlashCommands(editor).length;
+        setSelectedIndex((prev) => (prev < count - 1 ? prev + 1 : prev));
       }
     };
 
@@ -717,7 +932,7 @@ export const SlashCommandMenu = ({
         editor.view.dom.removeEventListener("keydown", handleKeyDown, true);
       }
     };
-  }, [editor, enabled, matchingCommands]);
+  }, [editor, enabled]);
 
   // keyboard navigation: Enter or Tab to execute the selected command
   useEffect(() => {
@@ -734,13 +949,20 @@ export const SlashCommandMenu = ({
       }
 
       // Most relevant command is always the first after scoring/sorting.
-      const selectedCommand = matchingCommands[selectedIndex];
+      // Compute the matches from the *current* editor state instead of the
+      // React render closure: the last typed character and Tab can land in
+      // the same tick, before `useEditorState` has re-rendered the menu.
+      const currentMatches = getMatchingSlashCommands(editor);
+      const selectedCommand =
+        currentMatches[
+          Math.min(selectedIndex, Math.max(0, currentMatches.length - 1))
+        ];
       if (!selectedCommand) {
         return;
       }
 
       event.preventDefault();
-      selectedCommand.run(editor);
+      activateSlashCommand(editor, selectedCommand, theme);
     };
 
     // register listener
@@ -757,7 +979,7 @@ export const SlashCommandMenu = ({
         );
       }
     };
-  }, [editor, enabled, matchingCommands, selectedIndex]);
+  }, [editor, enabled, selectedIndex, theme]);
 
   // clear index when commands change
   useEffect(() => {
@@ -813,7 +1035,7 @@ export const SlashCommandMenu = ({
               ref={i === selectedIndex ? selectedItemRef : undefined}
               onMouseDown={(event) => {
                 event.preventDefault();
-                command.run(editor);
+                activateSlashCommand(editor, command, theme);
               }}
               onMouseEnter={() => setSelectedIndex(i)}
               sx={{

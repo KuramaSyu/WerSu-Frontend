@@ -54,6 +54,10 @@ vi.mock("@mui/material", () => ({
   ),
 }));
 
+vi.mock("react-dom/client", () => ({
+  createRoot: () => ({ render: () => {}, unmount: () => {} }),
+}));
+
 import { Editor } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import {
@@ -63,18 +67,25 @@ import {
   TableRow,
 } from "@tiptap/extension-table";
 import {
+  SlashCommandComposerExtension,
   SlashMenuStateExtension,
+  clearSlashCommandComposer,
   clearSlashLine,
+  createSlashCommandArguments,
   getMatchingSlashCommands,
   getSlashCommandName,
   isSlashCommandContext,
+  openSlashCommandComposer,
   setSlashMenuState,
   shouldHandleSlashMenuArrowKey,
+  slashCommandComposerKey,
   slashMenuFloatingKey,
   slashMenuStateKey,
   type SlashCommand,
 } from "./SlashCommandMenu";
 import { CustomDetails } from "./CustomDetails";
+import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
+import { lowlight } from "./lowlight";
 import { DetailsContent, DetailsSummary } from "@tiptap/extension-details";
 
 function makeEditor(): Editor {
@@ -92,9 +103,32 @@ function makeEditor(): Editor {
       DetailsSummary,
       DetailsContent,
       SlashMenuStateExtension,
+      SlashCommandComposerExtension,
     ],
   });
 }
+
+/** Editor with the real (lowlight-backed) code block used by the app. */
+function makeCodeBlockEditor(): Editor {
+  return new Editor({
+    extensions: [
+      StarterKit.configure({ codeBlock: false }),
+      CodeBlockLowlight.configure({ lowlight, defaultLanguage: "plaintext" }),
+      SlashMenuStateExtension,
+      SlashCommandComposerExtension,
+    ],
+  });
+}
+
+const getCodeBlockLanguage = (editor: Editor): string | undefined => {
+  let language: string | undefined;
+  editor.state.doc.descendants((node) => {
+    if (node.type.name === "codeBlock") {
+      language = node.attrs.language as string | undefined;
+    }
+  });
+  return language;
+};
 
 describe("SlashCommandMenu — extraCommands", () => {
   it("concatenates built-ins and extras without deduping", () => {
@@ -188,6 +222,145 @@ describe("SlashCommandMenu — extraCommands", () => {
       expect(json).toContain('"text":"Details content"');
       // Slash query must not survive in the doc.
       expect(editor.state.doc.textContent).not.toContain("/details");
+    } finally {
+      editor.destroy();
+    }
+  });
+});
+
+describe("SlashCommandMenu — command arguments", () => {
+  it("shows required arguments in angle brackets and optional ones in brackets", () => {
+    const editor = makeEditor();
+    try {
+      const codeblock = getMatchingSlashCommands(editor).find(
+        (candidate) => candidate.id === "codeblock",
+      );
+      expect(codeblock).toBeDefined();
+      expect(getSlashCommandName(editor, codeblock!)).toBe(
+        "/codeblock [language]",
+      );
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("applies argument defaults when no value was entered", () => {
+    const editor = makeEditor();
+    try {
+      const codeblock = getMatchingSlashCommands(editor).find(
+        (candidate) => candidate.id === "codeblock",
+      )!;
+
+      expect(createSlashCommandArguments(codeblock, {})).toMatchObject({
+        raw: "plaintext",
+        tokens: ["plaintext"],
+        values: { language: "plaintext" },
+      });
+      expect(
+        createSlashCommandArguments(codeblock, {
+          language: "javascript",
+        }).value("language"),
+      ).toBe("javascript");
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("creates a code block with the requested language", () => {
+    const editor = makeCodeBlockEditor();
+    try {
+      editor.commands.setContent("<p>/codeblock</p>");
+      editor.commands.focus("end");
+      setSlashMenuState(editor, 1);
+
+      const command = getMatchingSlashCommands(editor)[0];
+      expect(command?.id).toBe("codeblock");
+      command!.run(
+        editor,
+        createSlashCommandArguments(command!, { language: "javascript" }),
+      );
+
+      expect(getCodeBlockLanguage(editor)).toBe("javascript");
+      expect(editor.state.doc.textContent).not.toContain("/codeblock");
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("defaults to plaintext without arguments", () => {
+    const editor = makeCodeBlockEditor();
+    try {
+      editor.commands.setContent("<p>/codeblock</p>");
+      editor.commands.focus("end");
+      setSlashMenuState(editor, 1);
+
+      const command = getMatchingSlashCommands(editor)[0];
+      command!.run(editor, createSlashCommandArguments(command!, {}));
+
+      expect(getCodeBlockLanguage(editor)).toBe("plaintext");
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("falls back to plaintext for an unknown language", () => {
+    const editor = makeCodeBlockEditor();
+    try {
+      editor.commands.setContent("<p>/codeblock</p>");
+      editor.commands.focus("end");
+      setSlashMenuState(editor, 1);
+
+      const command = getMatchingSlashCommands(editor)[0];
+      command!.run(
+        editor,
+        createSlashCommandArguments(command!, {
+          language: "not-a-language",
+        }),
+      );
+
+      expect(getCodeBlockLanguage(editor)).toBe("plaintext");
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("opens the composer, completes the command name, and anchors the widget", () => {
+    const editor = makeEditor();
+    try {
+      editor.commands.setContent("<p>/codeb</p>");
+      editor.commands.focus("end");
+      setSlashMenuState(editor, 1);
+
+      const codeblock = getMatchingSlashCommands(editor).find(
+        (candidate) => candidate.id === "codeblock",
+      )!;
+      expect(openSlashCommandComposer(editor, codeblock)).toBe(true);
+
+      expect(editor.state.doc.textContent).toBe("/codeblock");
+      expect(slashCommandComposerKey.getState(editor.state)).toMatchObject({
+        from: 1,
+        to: 11,
+      });
+
+      clearSlashCommandComposer(editor);
+      expect(slashCommandComposerKey.getState(editor.state)).toBeNull();
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("does not open the composer for commands without arguments", () => {
+    const editor = makeEditor();
+    try {
+      editor.commands.setContent("<p>/bold</p>");
+      editor.commands.focus("end");
+      setSlashMenuState(editor, 1);
+
+      const bold = getMatchingSlashCommands(editor).find(
+        (candidate) => candidate.id === "bold",
+      )!;
+      expect(openSlashCommandComposer(editor, bold)).toBe(false);
+      expect(slashCommandComposerKey.getState(editor.state)).toBeNull();
     } finally {
       editor.destroy();
     }
@@ -757,19 +930,19 @@ describe("SlashCommandMenu — mermaid command", () => {
   const collectCodeBlocks = (
     editor: Editor,
   ): Array<{
-    language: string | null;
+    language: string | null | undefined;
     text: string;
     parentType: string;
   }> => {
     const blocks: Array<{
-      language: string | null;
+      language: string | null | undefined;
       text: string;
       parentType: string;
     }> = [];
     editor.state.doc.descendants((node, _pos, parent) => {
       if (node.type.name === "codeBlock") {
         blocks.push({
-          language: (node.attrs.language as string | null) ?? null,
+          language: node.attrs.language as string | null | undefined,
           text: node.textContent,
           parentType: parent?.type.name ?? "doc",
         });
@@ -779,17 +952,17 @@ describe("SlashCommandMenu — mermaid command", () => {
   };
 
   it("matches the `/mermaid` and `/diagram` queries exactly once", () => {
-    const editor = makeEditor();
+    const editor = makeCodeBlockEditor();
     try {
       for (const query of ["mermaid", "diagram"]) {
         editor.commands.setContent(`<p>/${query}</p>`);
         editor.commands.focus("end");
 
-        const matches = getMatchingSlashCommands(editor).filter(
+        const mermaidMatches = getMatchingSlashCommands(editor).filter(
           (command) => command.id === "mermaid",
         );
-        expect(matches, query).toHaveLength(1);
-        expect(matches[0]?.label).toBe("Mermaid diagram");
+        expect(mermaidMatches, query).toHaveLength(1);
+        expect(mermaidMatches[0]?.label).toBe("Mermaid diagram");
       }
     } finally {
       editor.destroy();
@@ -797,7 +970,7 @@ describe("SlashCommandMenu — mermaid command", () => {
   });
 
   it("replaces `/mermaid` with a template-filled mermaid code block", () => {
-    const editor = makeEditor();
+    const editor = makeCodeBlockEditor();
     try {
       editor.commands.setContent("<p>/mermaid</p>");
       editor.commands.focus("end");
@@ -822,11 +995,14 @@ describe("SlashCommandMenu — mermaid command", () => {
   });
 
   it("inserts a sibling block instead of nesting when the caret is inside a code block", () => {
-    const editor = makeEditor();
+    const editor = makeCodeBlockEditor();
     try {
       editor.commands.setContent("<pre><code>/mermaid</code></pre>");
-      // The caret sits inside the code block, after the slash query.
+      // Put the caret after the query, inside the code block (the code
+      // block spans 0..10 and its text starts at 1). `focus("end")` would
+      // land after the block instead.
       editor.commands.setTextSelection(9);
+      // The "/" lives at document position 1 (inside the code block).
       setSlashMenuState(editor, 1);
 
       const command = getMatchingSlashCommands(editor).find(
@@ -836,7 +1012,8 @@ describe("SlashCommandMenu — mermaid command", () => {
       command!.run(editor);
 
       const blocks = collectCodeBlocks(editor);
-      // No code block may contain another; the diagram is a top-level block.
+      // The pre-existing block survives as an empty sibling; the diagram
+      // is a second top-level block. No code block may contain another.
       expect(blocks.every((block) => block.parentType === "doc")).toBe(true);
       const mermaidBlocks = blocks.filter(
         (block) => block.language === "mermaid",
