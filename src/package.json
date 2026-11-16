@@ -67,6 +67,7 @@
     "framer-motion": "^12.23.25",
     "katex": "^0.16.47",
     "lowlight": "^3.3.0",
+    "mermaid": "^12.3.0",
     "node-vibrant": "^4.0.4",
     "nspell": "^2.1.5",
     "react": "^19.2.0",

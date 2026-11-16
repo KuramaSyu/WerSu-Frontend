@@ -4,6 +4,7 @@ import { useEditorState } from "@tiptap/react";
 import { FloatingMenu } from "@tiptap/react/menus";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
+import { insertMermaidBlock } from "./mermaid/mermaidBlock";
 import { useEffect, useRef, useState } from "react";
 import {
   List,
@@ -325,6 +326,17 @@ const slashCommands: SlashCommand[] = [
     run: (editor) => {
       clearSlashLine(editor);
       editor.chain().focus().setCodeBlock().run();
+    },
+  },
+  {
+    id: "mermaid",
+    label: "Mermaid diagram",
+    keywords: ["mermaid", "diagram", "flowchart", "graph", "chart", "sequence"],
+    run: (editor) => {
+      clearSlashLine(editor);
+      // No composer argument: the diagram body is edited inside the block
+      // itself, where the live preview renders next to the source.
+      insertMermaidBlock(editor);
     },
   },
   {

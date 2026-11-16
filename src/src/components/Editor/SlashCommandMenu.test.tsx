@@ -748,3 +748,104 @@ describe("SlashCommandMenu - arrow key ownership", () => {
     }
   });
 });
+
+// `/mermaid` creates a *normal* code block tagged `language: "mermaid"`:
+// there is no dedicated node type, so the diagram round-trips through
+// markdown as a plain fenced code block.
+describe("SlashCommandMenu — mermaid command", () => {
+  /** Snapshot of every code block plus its parent, so nesting is visible. */
+  const collectCodeBlocks = (
+    editor: Editor,
+  ): Array<{
+    language: string | null;
+    text: string;
+    parentType: string;
+  }> => {
+    const blocks: Array<{
+      language: string | null;
+      text: string;
+      parentType: string;
+    }> = [];
+    editor.state.doc.descendants((node, _pos, parent) => {
+      if (node.type.name === "codeBlock") {
+        blocks.push({
+          language: (node.attrs.language as string | null) ?? null,
+          text: node.textContent,
+          parentType: parent?.type.name ?? "doc",
+        });
+      }
+    });
+    return blocks;
+  };
+
+  it("matches the `/mermaid` and `/diagram` queries exactly once", () => {
+    const editor = makeEditor();
+    try {
+      for (const query of ["mermaid", "diagram"]) {
+        editor.commands.setContent(`<p>/${query}</p>`);
+        editor.commands.focus("end");
+
+        const matches = getMatchingSlashCommands(editor).filter(
+          (command) => command.id === "mermaid",
+        );
+        expect(matches, query).toHaveLength(1);
+        expect(matches[0]?.label).toBe("Mermaid diagram");
+      }
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("replaces `/mermaid` with a template-filled mermaid code block", () => {
+    const editor = makeEditor();
+    try {
+      editor.commands.setContent("<p>/mermaid</p>");
+      editor.commands.focus("end");
+
+      const command = getMatchingSlashCommands(editor).find(
+        (candidate) => candidate.id === "mermaid",
+      );
+      expect(command).toBeDefined();
+      command!.run(editor);
+
+      const blocks = collectCodeBlocks(editor);
+      expect(blocks).toHaveLength(1);
+      expect(blocks[0]?.language).toBe("mermaid");
+      expect(blocks[0]?.parentType).toBe("doc");
+      // The starter diagram is pre-filled so the preview renders at once.
+      expect(blocks[0]?.text).toContain("flowchart TD");
+      // The typed slash query must not leak into the document.
+      expect(editor.state.doc.textContent).not.toContain("/mermaid");
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("inserts a sibling block instead of nesting when the caret is inside a code block", () => {
+    const editor = makeEditor();
+    try {
+      editor.commands.setContent("<pre><code>/mermaid</code></pre>");
+      // The caret sits inside the code block, after the slash query.
+      editor.commands.setTextSelection(9);
+      setSlashMenuState(editor, 1);
+
+      const command = getMatchingSlashCommands(editor).find(
+        (candidate) => candidate.id === "mermaid",
+      );
+      expect(command).toBeDefined();
+      command!.run(editor);
+
+      const blocks = collectCodeBlocks(editor);
+      // No code block may contain another; the diagram is a top-level block.
+      expect(blocks.every((block) => block.parentType === "doc")).toBe(true);
+      const mermaidBlocks = blocks.filter(
+        (block) => block.language === "mermaid",
+      );
+      expect(mermaidBlocks).toHaveLength(1);
+      expect(mermaidBlocks[0]?.text).toContain("flowchart TD");
+      expect(editor.state.doc.textContent).not.toContain("/mermaid");
+    } finally {
+      editor.destroy();
+    }
+  });
+});

@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import { Autocomplete, Box, TextField } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import {
   NodeViewContent,
   NodeViewWrapper,
@@ -14,6 +15,9 @@ import {
 } from "@tiptap/react";
 import { CopyButton } from "../../CopyButton";
 import { SUPPORTED_LANGUAGES } from "../lowlight";
+import { isMermaidLanguage } from "../mermaid/mermaidBlock";
+import { syncCaretAfterPreviewResize } from "../mermaid/mermaidPreviewResize";
+import { MermaidPreview } from "./MermaidPreview";
 
 // Shared metrics so the line-number gutter and the code content always sit
 // on the same baseline grid. Applied to both the `<pre>` and the gutter.
@@ -77,6 +81,16 @@ const locateTextOffset = (
  * Code-block node view: adds a top-right toolbar with a language
  * picker and copy button. Toolbar is `contentEditable={false}` so
  * clicks don't move the caret into the controls.
+ *
+ * A code block whose language is "mermaid" additionally renders a live
+ * diagram preview *below* the source (see `MermaidPreview`). The preview
+ * must not sit above the caret: it is rendered asynchronously, and a
+ * height change above an active selection makes browsers (Firefox in
+ * particular) keep painting the caret at its previous screen position.
+ * Below the source, the code being edited never moves.
+ *
+ * The source row stays mounted so the block is still editable; in
+ * read-only mode it is only hidden, never unmounted, for the same reason.
  */
 export const CodeBlockNodeView: React.FC<NodeViewProps> = memo(
   ({ node, updateAttributes, editor }) => {
@@ -84,12 +98,19 @@ export const CodeBlockNodeView: React.FC<NodeViewProps> = memo(
     const code = useMemo(() => node.textContent, [node]);
     const lines = useMemo(() => code.split("\n"), [code]);
     const isSingleLine = lines.length <= 1;
+    const isMermaid = isMermaidLanguage(language);
+    const muiTheme = useTheme();
+    // Mermaid has its own theme scale; map the app's palette mode onto the
+    // nearest mermaid variant so the diagram never sits on a clashing
+    // background.
+    const previewTheme = muiTheme.palette.mode === "dark" ? "dark" : "default";
     // `useEditorState` only listens to ProseMirror transactions, but
     // `editor.setEditable(...)` emits an `update` event without a
     // transaction. Subscribe to both so toggling view/edit mode flips
     // the gutter immediately.
     const [isEditable, setIsEditable] = useState(editor.isEditable);
     const containerRef = useRef<HTMLDivElement | null>(null);
+    const previewContainerRef = useRef<HTMLDivElement | null>(null);
     // Number of rendered rows each logical line occupies. Lines wider than
     // the block wrap, so a line can span more than one row and its gutter
     // cell must grow to keep the following numbers aligned.
@@ -153,6 +174,31 @@ export const CodeBlockNodeView: React.FC<NodeViewProps> = memo(
       };
     }, [lines, isEditable]);
 
+    // The preview renders asynchronously. It sits below the source, so the
+    // code being edited never moves - but anything *below* the diagram does,
+    // and a caret sitting there can be left painted at its old position.
+    // Observe the box and re-write the DOM selection on each real size change
+    // (see mermaidPreviewResize.ts).
+    useEffect(() => {
+      const element = previewContainerRef.current;
+      if (!isMermaid || !element || typeof ResizeObserver === "undefined") {
+        return;
+      }
+
+      let lastHeight = element.getBoundingClientRect().height;
+      const observer = new ResizeObserver((entries) => {
+        const height =
+          entries[0]?.contentRect.height ??
+          element.getBoundingClientRect().height;
+        // Sub-pixel noise would only cause pointless selection rewrites.
+        if (Math.abs(height - lastHeight) < 1) return;
+        lastHeight = height;
+        syncCaretAfterPreviewResize(editor);
+      });
+      observer.observe(element);
+      return () => observer.disconnect();
+    }, [editor, isMermaid]);
+
     const handleLanguageChange = (_event: unknown, value: string | null) => {
       updateAttributes({ language: value || null });
     };
@@ -169,10 +215,18 @@ export const CodeBlockNodeView: React.FC<NodeViewProps> = memo(
           sx={{
             backgroundColor: (theme) => theme.palette.background.default,
             p: 1,
-            // Extra breathing room below the code block.
-            mb: 2,
+            // Extra breathing room below the code block. A diagram follows
+            // immediately below, so it only needs a small gap.
+            mb: isMermaid ? 1 : 2,
             borderRadius: 2,
-            display: "flex",
+            // Anchor the absolute toolbar (language picker / copy button) to
+            // this row instead of the node wrapper.
+            position: "relative",
+            // A read-only diagram's source is noise next to the rendered
+            // picture, so hide the row - but keep it mounted (hidden via
+            // `display`, not unmounted) so view/collaboration state and the
+            // node's contentDOM are untouched.
+            display: isMermaid && !isEditable ? "none" : "flex",
             alignItems: "flex-start",
             // Guarantee the code and the gutter share a baseline grid.
             "& pre": {
@@ -296,6 +350,23 @@ export const CodeBlockNodeView: React.FC<NodeViewProps> = memo(
             </Box>
           </Box>
         </Box>
+        {isMermaid && (
+          <Box
+            ref={previewContainerRef}
+            contentEditable={false}
+            data-mermaid-preview-container=""
+            sx={(theme) => ({
+              backgroundColor: theme.palette.background.default,
+              mt: 1,
+              mb: 2,
+              p: 1,
+              borderRadius: 2,
+              overflowX: "auto",
+            })}
+          >
+            <MermaidPreview code={code} theme={previewTheme} />
+          </Box>
+        )}
       </NodeViewWrapper>
     );
   },

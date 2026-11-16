@@ -39,6 +39,11 @@ The components here are intentionally split by responsibility: editor shell, for
 	- Hidden while table node is active.
 	- Currently renders `BoldItalicMenu`.
 
+- `FormattingPanel.tsx`
+	- Right-rail formatting panel for the full-page editor.
+	- The insert-block group starts with a Mermaid button (`AccountTree`
+	  icon), which inserts the same code block as `/mermaid`.
+
 - `BoldItalicMenu.tsx`
 	- Toggle buttons for bold, italic, strike.
 	- Uses `useEditorState` to keep visual state synced with selection marks.
@@ -69,6 +74,7 @@ The components here are intentionally split by responsibility: editor shell, for
 		- `/heading-2`
 		- `/heading-3`
 		- `/codeblock`
+		- `/mermaid` (also matches `diagram`, `flowchart`, `graph`)
 		- `/details`
 		- `/cite` (also matches `quote`)
 		- `/bold`
@@ -81,6 +87,10 @@ The components here are intentionally split by responsibility: editor shell, for
 	- `/latex inline` and `/latex block` open the existing LaTeX dialog
 	  with the requested initial type, then insert the result with
 	  `insertInlineMath` or `insertBlockMath`.
+	- `/mermaid` inserts a code block tagged `language: "mermaid"`
+	  pre-filled with a starter flowchart (`MERMAID_TEMPLATE`). The
+	  diagram itself is edited in the block's source. See “Mermaid
+	  diagrams” below.
 	- Commands can be invoked from any editable editor context, including
 	  lists, tables, code blocks, and selections containing text after the
 	  slash query.
@@ -102,6 +112,56 @@ The components here are intentionally split by responsibility: editor shell, for
 
 - `TableButtonGroup.tsx`
 	- Static toolbar group with quick table insertion button.
+
+### Mermaid diagrams
+
+A Mermaid diagram is stored as a plain fenced code block tagged
+`mermaid` - there is no custom node type:
+
+````text
+```mermaid
+flowchart TD
+    A[Start] --> B{Decision}
+```
+````
+
+That keeps markdown round-tripping and other markdown consumers working
+with no Mermaid-specific handling; `CustomCodeBlock` already parses and
+writes the fence.
+
+- `mermaid/mermaidBlock.ts`
+	- `MERMAID_LANGUAGE`, `MERMAID_TEMPLATE`, `isMermaidLanguage`,
+	  `insertMermaidBlock`.
+	- Single source of truth for the language tag and the starter diagram,
+	  shared by `/mermaid` and the formatting-rail button.
+
+- `mermaid/mermaidRenderer.ts`
+	- `renderMermaid(code, theme)` wraps the lazily imported `mermaid`
+	  package (`securityLevel: "strict"`) and resolves to SVG markup.
+	- The import is dynamic, so Mermaid stays out of the initial bundle
+	  until the first diagram renders. Import this module instead of
+	  `mermaid` directly so the preview stays mockable in tests (jsdom has
+	  no layout engine).
+	- `resetMermaidRenderer()` drops the cached module and theme config.
+
+- Code-block node view
+	- Renders a live SVG preview below the source while editing. Below,
+	  not above: the preview renders asynchronously, and a height change
+	  above an active selection makes browsers (Firefox in particular)
+	  keep painting the caret at its previous screen position.
+	- Hides the source in read-only editors, so view mode shows the
+	  diagram only.
+	- Invalid diagrams surface an inline error instead of a preview.
+	- Observes the preview box for size changes and forces a DOM selection
+	  rewrite (`mermaid/mermaidPreviewResize.ts`), which keeps carets that
+	  sit below the diagram in place. Re-running ProseMirror's own
+	  selection sync is not enough: it skips writing a selection that
+	  already matches its state.
+
+- `lowlight.ts`
+	- Registers `mermaid` with the `plaintext` grammar purely so
+	  `CodeBlockLowlight` never reaches the costly `highlightAuto` path for
+	  these blocks; highlighting the diagram source adds nothing.
 
 ## Shared state and interaction rules
 
@@ -176,6 +236,8 @@ Guidelines:
 - Use `getCommandName` to report active state, such as `/bold off`.
 - For LaTeX variants, open the shared LaTeX dialog and insert the
   confirmed result with the matching Mathematics command.
+- Mermaid stays a plain `codeBlock` with language `mermaid`; use the
+  helpers in `mermaid/mermaidBlock.ts` instead of hard-coding the tag.
 - Keep `run` deterministic and side-effect free beyond editor updates.
 - Prefer chainable Tiptap commands with `.focus()`.
 

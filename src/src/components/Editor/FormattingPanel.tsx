@@ -17,11 +17,13 @@ import HorizontalRuleIcon from "@mui/icons-material/HorizontalRule";
 import TableChartIcon from "@mui/icons-material/TableChart";
 import ImageIcon from "@mui/icons-material/Image";
 import FunctionsIcon from "@mui/icons-material/Functions";
+import AccountTreeIcon from "@mui/icons-material/AccountTree";
 import { useEditorState } from "@tiptap/react";
 import { useActiveNoteStore } from "../../zustand/editorStore";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { useEditorMenuStore } from "../../zustand/editorMenuStore";
 import { PanelSection } from "../Panels/PanelSection";
+import { insertMermaidBlock } from "./mermaid/mermaidBlock";
 import {
   FORMATTING_CONTEXTS,
   TippedToggle,
@@ -255,6 +257,18 @@ export const FormattingPanel: React.FC<FormattingPanelProps> = ({
       </ToggleButtonGroup>
 
       <ToggleButtonGroup size="small" color="primary">
+        {/* Mermaid is stored as a regular code block tagged `language:
+            "mermaid"`; CustomCodeBlock's node view turns that tag into a
+            live diagram, so this looks like any other insert button. */}
+        <TippedToggle
+          title="Insert Mermaid diagram"
+          ariaLabel="insert mermaid"
+          value="mermaid"
+          disabled={disabled}
+          onClick={() => insertMermaidBlock(editor)}
+        >
+          <AccountTreeIcon fontSize="small" />
+        </TippedToggle>
         <TippedToggle
           title="Insert table"
           ariaLabel="insert table"

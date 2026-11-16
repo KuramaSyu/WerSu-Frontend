@@ -53,6 +53,15 @@ lowlight.register("sql", sql);
 lowlight.register("typescript", typescript);
 lowlight.register("xml", xml);
 
+// `mermaid` is not a highlight.js grammar: the block renders as a diagram,
+// so its source is never tokenized. It still has to be *registered* because
+// `@tiptap/extension-code-block-lowlight` checks `lowlight.registered(lang)`
+// on every decoration recompute and otherwise falls back to
+// `lowlight.highlightAuto(...)` over all 380+ grammars - which freezes the
+// editor on long diagrams. Registering the plaintext grammar is free and
+// also surfaces "mermaid" in `SUPPORTED_LANGUAGES` (the language picker).
+lowlight.register("mermaid", plaintext);
+
 for (const [name, grammar] of Object.entries(all)) {
   if (!lowlight.registered(name)) lowlight.register(name, grammar);
 }
