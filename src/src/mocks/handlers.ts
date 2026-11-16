@@ -5,6 +5,7 @@ import type {
   FakeDb,
   FakeDirectory,
   FakeNote,
+  FakePreferenceRow,
   FakeShare,
   FakeShelf,
 } from "./types";
@@ -39,6 +40,120 @@ const okNoContent = () => new HttpResponse(null, { status: 204 });
 
 function nowIso(): string {
   return new Date().toISOString();
+}
+
+/** Body shared by POST / PATCH / DELETE `/api/preferences`. */
+interface PreferenceBody {
+  scope?: string;
+  target_id?: string;
+  key?: string;
+  preferences_json?: string;
+}
+
+/** Backend limit: one owner can hold at most this many keyed blobs. */
+const MAX_PREFERENCE_KEYS = 50;
+
+/** Treat an empty key as "the default blob". */
+function normalizePreferenceKey(key: string | null | undefined): string | undefined {
+  return key === null || key === undefined || key === "" ? undefined : key;
+}
+
+function findPreferenceRow(
+  rows: FakePreferenceRow[],
+  scope: string,
+  targetId: string,
+  key: string | undefined,
+): FakePreferenceRow | undefined {
+  return rows.find(
+    (row) =>
+      row.scope === scope &&
+      row.target_id === targetId &&
+      normalizePreferenceKey(row.key) === key,
+  );
+}
+
+function parsePreferenceBlob(
+  value: string | undefined,
+): Record<string, unknown> | null {
+  if (value === undefined) return {};
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+      return null;
+    }
+    return parsed as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+interface ResolvedPreferenceTarget {
+  scope: "user" | "shelf" | "role";
+  target_id: string;
+  key: string | undefined;
+}
+
+/** Validate the request body's `(scope, target_id, key)` triple. */
+function resolvePreferenceTarget(
+  body: PreferenceBody,
+): ResolvedPreferenceTarget | { error: HttpResponse<JsonBodyType> } {
+  const scope = body.scope;
+  if (scope !== "user" && scope !== "shelf" && scope !== "role") {
+    return { error: json({ error: "invalid_scope" }, { status: 400 }) };
+  }
+  if (!body.target_id) {
+    return { error: json({ error: "missing_target_id" }, { status: 400 }) };
+  }
+  return {
+    scope,
+    target_id: body.target_id,
+    key: normalizePreferenceKey(body.key),
+  };
+}
+
+/** POST/PATCH bodies must carry the blob; DELETE does not. */
+function requirePreferenceJson(
+  body: PreferenceBody,
+): string | HttpResponse<JsonBodyType> {
+  if (typeof body.preferences_json !== "string") {
+    return json({ error: "missing_preferences_json" }, { status: 400 });
+  }
+  return body.preferences_json;
+}
+
+/** The backend rejects a 51st keyed row for the same owner. */
+function enforcePreferenceKeyLimit(
+  db: FakeDb,
+  target: ResolvedPreferenceTarget,
+  rowExists: boolean,
+): HttpResponse<JsonBodyType> | null {
+  if (target.key === undefined || rowExists) return null;
+  const keyedRows = db.preferences.filter(
+    (row) =>
+      row.scope === target.scope &&
+      row.target_id === target.target_id &&
+      normalizePreferenceKey(row.key) !== undefined,
+  );
+  if (keyedRows.length < MAX_PREFERENCE_KEYS) return null;
+  return json(
+    {
+      error: "preference_key_limit_reached",
+      detail: `An owner can hold at most ${String(MAX_PREFERENCE_KEYS)} keyed preferences.`,
+    },
+    { status: 409 },
+  );
+}
+
+function preferenceReply(
+  target: ResolvedPreferenceTarget,
+  preferencesJson: string,
+) {
+  return {
+    scope: target.scope,
+    target_id: target.target_id,
+    key: target.key ?? "",
+    preferences_json: preferencesJson,
+  };
 }
 
 /**
@@ -716,6 +831,130 @@ export const handlers = [
       b.created_at.localeCompare(a.created_at),
     );
     return json(sorted.slice(offset, offset + limit));
+  }),
+
+  // ─────────────────────── preferences ──────────────────────────
+
+  /**
+   * `/api/preferences` stores opaque JSON blobs keyed by
+   * `(scope, target_id, key?)`. The backend never reads the blob; it
+   * only reads/writes/merges. Mirroring that here is what makes the
+   * per-note spell-check row (`spellcheck@note:<id>`) work in fake
+   * mode instead of hitting the 501 catch-all.
+   */
+  http.get("*/api/preferences", async ({ request }) => {
+    await delay(50);
+    const db = getFakeDb();
+    const url = new URL(request.url);
+    const scope = url.searchParams.get("scope");
+    const targetId = url.searchParams.get("target_id");
+    const key = normalizePreferenceKey(url.searchParams.get("key"));
+    if (!scope || !targetId) {
+      return json(
+        { error: "missing_scope_or_target_id" },
+        { status: 400 },
+      );
+    }
+    const row = findPreferenceRow(db.preferences, scope, targetId, key);
+    return json({
+      scope,
+      target_id: targetId,
+      key: key ?? "",
+      // Absent rows echo `{}`, matching the wire contract.
+      preferences_json: row?.preferences_json ?? "{}",
+    });
+  }),
+
+  http.post("*/api/preferences", async ({ request }) => {
+    await delay(50);
+    const db = getFakeDb();
+    const body = (await request.json()) as PreferenceBody;
+    const row = resolvePreferenceTarget(body);
+    if ("error" in row) return row.error;
+    const preferencesJson = requirePreferenceJson(body);
+    if (typeof preferencesJson !== "string") return preferencesJson;
+
+    const existing = findPreferenceRow(
+      db.preferences,
+      row.scope,
+      row.target_id,
+      row.key,
+    );
+    const limitError = enforcePreferenceKeyLimit(db, row, Boolean(existing));
+    if (limitError) return limitError;
+
+    if (existing) {
+      existing.preferences_json = preferencesJson;
+    } else {
+      db.preferences.push({
+        scope: row.scope,
+        target_id: row.target_id,
+        key: row.key,
+        preferences_json: preferencesJson,
+      });
+    }
+    return json(preferenceReply(row, preferencesJson));
+  }),
+
+  http.patch("*/api/preferences", async ({ request }) => {
+    await delay(50);
+    const db = getFakeDb();
+    const body = (await request.json()) as PreferenceBody;
+    const row = resolvePreferenceTarget(body);
+    if ("error" in row) return row.error;
+    const preferencesJson = requirePreferenceJson(body);
+    if (typeof preferencesJson !== "string") return preferencesJson;
+
+    const existing = findPreferenceRow(
+      db.preferences,
+      row.scope,
+      row.target_id,
+      row.key,
+    );
+    const limitError = enforcePreferenceKeyLimit(db, row, Boolean(existing));
+    if (limitError) return limitError;
+
+    // Shallow merge of the top-level keys, exactly like the backend.
+    const current = parsePreferenceBlob(existing?.preferences_json);
+    const incoming = parsePreferenceBlob(preferencesJson);
+    if (current === null || incoming === null) {
+      return json(
+        { error: "invalid_preferences_json" },
+        { status: 400 },
+      );
+    }
+    const merged = JSON.stringify({ ...current, ...incoming });
+
+    if (existing) {
+      existing.preferences_json = merged;
+    } else {
+      db.preferences.push({
+        scope: row.scope,
+        target_id: row.target_id,
+        key: row.key,
+        preferences_json: merged,
+      });
+    }
+    return json(preferenceReply(row, merged));
+  }),
+
+  http.delete("*/api/preferences", async ({ request }) => {
+    await delay(50);
+    const db = getFakeDb();
+    const body = (await request.json()) as PreferenceBody;
+    const row = resolvePreferenceTarget(body);
+    if ("error" in row) return row.error;
+
+    const before = db.preferences.length;
+    db.preferences = db.preferences.filter(
+      (entry) =>
+        !(
+          entry.scope === row.scope &&
+          entry.target_id === row.target_id &&
+          normalizePreferenceKey(entry.key) === row.key
+        ),
+    );
+    return json({ success: db.preferences.length < before });
   }),
 
   // ──────────────────────── everything else ─────────────────────

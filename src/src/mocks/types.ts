@@ -113,6 +113,18 @@ export interface FakeActivity {
   metadata_json: string;
 }
 
+/**
+ * One stored `/api/preferences` row. The blob is an opaque JSON
+ * string; the backend never interprets it. `key` is omitted for the
+ * default row and set for keyed topics (e.g. `spellcheck@note:note-1`).
+ */
+export interface FakePreferenceRow {
+  scope: "user" | "shelf" | "role";
+  target_id: string;
+  key?: string;
+  preferences_json: string;
+}
+
 export interface FakeDb {
   users: FakeUser[];
   currentUserId: string;
@@ -123,6 +135,7 @@ export interface FakeDb {
   shares: FakeShare[];
   shelves: FakeShelf[];
   activity: FakeActivity[];
+  preferences: FakePreferenceRow[];
   accessToken: string;
 }
 
@@ -569,6 +582,7 @@ The series is known for the contrast between its soft, childlike visual style an
       },
     ],
     activity,
+    preferences: [],
     accessToken: "fake-access-token",
   };
 }

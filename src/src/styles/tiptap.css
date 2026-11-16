@@ -415,3 +415,18 @@
   background-color: rgba(249, 115, 22, 0.55);
   box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.9);
 }
+
+/* Misspelled words from the in-app checker (see src/spellcheck).
+   A wavy underline in the theme error hue; no background so it does
+   not fight other marks. */
+.tiptap .ProseMirror .spellcheck-error {
+  text-decoration-line: underline;
+  text-decoration-style: wavy;
+  text-decoration-color: color-mix(
+    in srgb,
+    var(--spellcheck-underline, #e5484d) 80%,
+    currentColor
+  );
+  text-decoration-skip-ink: none;
+  text-underline-offset: 3px;
+}

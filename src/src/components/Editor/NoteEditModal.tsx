@@ -202,6 +202,11 @@ export const NoteEditorModal: React.FC<NoteEditorModalProps> = ({
       '# Markdown Test\n\nClick **"Parse Markdown"** to load content from the left panel.',
     contentType: "markdown",
     editorProps: {
+      attributes: {
+        // Native checking cannot handle a second language; the note
+        // page's opt-in checker is the only one used.
+        spellcheck: "false",
+      },
       handleKeyDown(view, event) {
         // Delete an empty table / empty row when Backspace fires in
         // its first cell; otherwise fall through to the codeBlock

@@ -261,6 +261,15 @@ bubble menu and the right-click menu both consume it, so there is one
 run implementation per operation. Deleting a row/column pluralises from
 the selection, and a whole-table selection offers only **Delete table**.
 
+### Spell suggestions
+
+When the in-app checker flags the word under the pointer (see
+[spellcheck.md](spellcheck.md)), its suggestions are prepended as
+`leadingComponents`, so they sit above the element rows and above the
+generic buttons (the resolver adds the divider). Picking one replaces
+the word and leaves the caret after it. Read mode and notes with spell
+check off produce no suggestion rows.
+
 ### Insert submenu
 
 Hovering **Insert** opens a second menu:

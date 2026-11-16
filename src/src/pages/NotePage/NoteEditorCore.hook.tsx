@@ -38,6 +38,7 @@ import { colorFromString, randomMatchingColor } from "../../utils/blendWithContr
 import { CustomCodeBlock } from "../../components/Editor/View/CustomCodeBlock";
 import { EditorContextHighlight } from "../../components/Editor/editorContextHighlight";
 import { FindReplaceExtension } from "../../components/Editor/FindReplaceExtension";
+import { SpellcheckExtension } from "../../spellcheck/SpellcheckExtension";
 import { EditorListMergePreview } from "../../components/Editor/editorListMergePreview";
 import { handleCodeBlockTabKey } from "../../components/Editor/codeBlockTabKey";
 import { handleTableBackspaceKey } from "../../components/Editor/tableBackspaceKey";
@@ -247,6 +248,7 @@ export const useNoteEditor = (params: UseNoteEditorParams): Editor | null => {
         CustomCodeBlock.configure({ lowlight, defaultLanguage: "plaintext" }),
         EditorContextHighlight,
         FindReplaceExtension,
+        SpellcheckExtension,
         EditorListMergePreview,
         TaskList,
         TaskItem.configure({ nested: true }),
@@ -330,6 +332,11 @@ export const useNoteEditor = (params: UseNoteEditorParams): Editor | null => {
       content: undefined,
       contentType: "markdown",
       editorProps: {
+        attributes: {
+          // Native checking is off everywhere: it keys a whole document
+          // to one dictionary. The opt-in in-app checker replaces it.
+          spellcheck: "false",
+        },
         handleDOMEvents: {
           contextmenu(_view, event) {
             const opener = contextMenuOpenerRef.current;

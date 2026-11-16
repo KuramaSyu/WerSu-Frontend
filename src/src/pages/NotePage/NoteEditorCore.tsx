@@ -46,6 +46,7 @@ import { FileUploadDialogController } from "./FileUploadDialogController";
 import { NoteTitleBar } from "./NoteTitleBar";
 import { NoteRichEditor } from "./NoteRichEditor";
 import { FindReplaceBar } from "./FindReplaceBar";
+import { SpellcheckController } from "../../components/Editor/SpellcheckController";
 import {
   NoteSourceEditor,
   type NoteSourceEditorHandle,
@@ -551,6 +552,7 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
       />
 
       {/* Hold-to-run editor shortcuts; the right rail lists them. */}
+      <SpellcheckController noteId={noteId} editor={editor} />
       <HoldKeyActionBar
         active={holdShortcuts.length > 0}
         capture={false}

@@ -11,6 +11,7 @@
 
 import type { Editor } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+import { TextSelection } from "@tiptap/pm/state";
 import TableChartIcon from "@mui/icons-material/TableChart";
 import TableRowsIcon from "@mui/icons-material/TableRows";
 import ViewColumnIcon from "@mui/icons-material/ViewColumn";
@@ -19,6 +20,7 @@ import FunctionsIcon from "@mui/icons-material/Functions";
 import CodeIcon from "@mui/icons-material/Code";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteIcon from "@mui/icons-material/Delete";
+import SpellcheckIcon from "@mui/icons-material/Spellcheck";
 import {
   analyseSelection,
   analyseTableAtPos,
@@ -35,6 +37,11 @@ import { copyToClipboard } from "../../zustand/InfoStore";
 import { useActiveNoteStore } from "../../zustand/editorStore";
 import { buildSectionReferenceToken } from "../../utils/sectionReference";
 import { copyEditorNode } from "./editorClipboard";
+import {
+  documentPosAtCoords,
+  findMisspelledWordAtPos,
+} from "../../spellcheck/suggestions";
+import { useSpellcheckStore } from "../../spellcheck/spellcheckStore";
 import type { SelectionAnalysisFull } from "../Editor/BubbleMenus/bubbleMenuStrategies";
 import type {
   MenuPosition,
@@ -141,6 +148,9 @@ export function buildEditorMenuRequest(
     isTable && !analysis.cell && target
       ? analyseTableAtPos(editor.state, target.hitPos)
       : analysis;
+  // Spell suggestions lead the menu so a typo can be fixed without
+  // leaving the right-click flow. Only edit mode can replace text.
+  const spellcheckRows = buildSpellcheckSuggestionRows(editor, position);
   // Element commands lead the menu; copy/paste/etc. follow a divider.
   const elementRows =
     target?.kind === "image"
@@ -150,7 +160,7 @@ export function buildEditorMenuRequest(
         : isTable
           ? buildTableMenuRows(editor, tableAnalysis)
           : [];
-  const leadingComponents = elementRows;
+  const leadingComponents = [...spellcheckRows, ...elementRows];
 
   return {
     position,
@@ -201,6 +211,50 @@ export function buildSectionReferenceRows(
       },
     },
   ];
+}
+
+/**
+ * Rows that replace the misspelled word under the pointer with one of
+ * the checker's suggestions. Empty when spell check is off for this
+ * note or the click missed a flagged word.
+ */
+export function buildSpellcheckSuggestionRows(
+  editor: Editor,
+  position: MenuPosition,
+): RightClickMenuRow[] {
+  const pos = documentPosAtCoords(editor, position);
+  if (pos === null) return [];
+  const hit = findMisspelledWordAtPos(editor, pos);
+  if (!hit) return [];
+
+  const suggestions = useSpellcheckStore
+    .getState()
+    .getSuggestions(hit.word, 5)
+    .filter((suggestion) => suggestion && suggestion !== hit.word);
+
+  return suggestions.map((suggestion, index) => ({
+    key: `spellcheck-suggestion-${String(index)}`,
+    label: suggestion,
+    icon: <SpellcheckIcon fontSize="small" />,
+    handler: () => {
+      const transaction = editor.state.tr.insertText(
+        suggestion,
+        hit.from,
+        hit.to,
+      );
+      // Keep the caret after the replaced word so typing continues
+      // where the user was looking.
+      transaction.setSelection(
+        TextSelection.create(
+          transaction.doc,
+          hit.from + suggestion.length,
+        ),
+      );
+      editor.view.dispatch(transaction);
+      editor.commands.focus();
+      return true;
+    },
+  }));
 }
 
 /**

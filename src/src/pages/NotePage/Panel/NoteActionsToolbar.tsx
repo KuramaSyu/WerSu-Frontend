@@ -15,6 +15,7 @@ import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import SpellcheckIcon from "@mui/icons-material/Spellcheck";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useActiveNoteStore } from "../../../zustand/editorStore";
@@ -34,6 +35,7 @@ import { NoteWidthToggle } from "./NoteWidthToggle";
 import { ShareDialog } from "../ShareDialog";
 import { ConfirmationModal } from "../../Settings/ConfirmationModal";
 import { PermissionEditor } from "../../../components/Permissions/PermissionEditor";
+import { SpellcheckDialog } from "../../../components/Editor/SpellcheckDialog";
 
 /**
  * Stable id used to register this toolbar in :class:`useTopBarStore`.
@@ -110,6 +112,7 @@ export const NoteActionsToolbarInner: React.FC = () => {
   const canEditHeader = editMode && !readOnly;
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [permissionsOpen, setPermissionsOpen] = useState(false);
+  const [spellcheckOpen, setSpellcheckOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const navigate = useNavigate();
@@ -253,6 +256,21 @@ export const NoteActionsToolbarInner: React.FC = () => {
             </ListItemIcon>
             <ListItemText>Copy as Markdown</ListItemText>
           </MenuItem>
+          {/* Spell check is a per-note, per-user setting, so it is
+              offered to signed-in viewers only. */}
+          {!isPublic && noteId && (
+            <MenuItem
+              onClick={() => {
+                closeMenu();
+                setSpellcheckOpen(true);
+              }}
+            >
+              <ListItemIcon>
+                <SpellcheckIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Spellcheck</ListItemText>
+            </MenuItem>
+          )}
           {showDelete && (
             <MenuItem
               onClick={() => {
@@ -282,6 +300,11 @@ export const NoteActionsToolbarInner: React.FC = () => {
         noteId={noteId ?? ""}
         open={shareDialogOpen}
         onClose={() => setShareDialogOpen(false)}
+      />
+      <SpellcheckDialog
+        open={spellcheckOpen}
+        noteId={noteId ?? undefined}
+        onClose={() => setSpellcheckOpen(false)}
       />
       <PermissionEditor
         open={permissionsOpen}
