@@ -173,7 +173,9 @@ const InsertSpeedDialImpl: React.FC<InsertSpeedDialProps> = ({
       : {
           id: `${ownerId}-readwrite`,
           label: readWriteLabel,
-          icon: editMode ? <VisibilityIcon /> : <EditIcon />,
+          // Mirror the desktop FAB: show the *current* mode rather
+          // than the mode the tap will switch to.
+          icon: editMode ? <EditIcon /> : <VisibilityIcon />,
           onClick: () => handlersRef.current.readWrite(),
         };
     const actions: MobileAction[] = [
