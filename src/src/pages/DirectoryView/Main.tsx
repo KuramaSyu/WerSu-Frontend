@@ -18,7 +18,7 @@ import { CreateDirectoryModal } from "../MainPage/CreateDirectory";
 import { useCreateModalsFromUrl } from "../../hooks/useCreateModalsFromUrl";
 import { usePageHoldShortcuts } from "../../hooks/usePageHoldShortcuts";
 import { HoldKeyActionBar } from "../../components/HoldKeyActionBar";
-import { M3, M4 } from "../../statics";
+import { M2, M3, M4 } from "../../statics";
 import { DirectoryHirarchyItem } from "../../models/HirarchyItem";
 import { ChapterAccordion } from "./ChapterAccordion";
 import { SelectionActionBar } from "./SelectionActionBar";
@@ -156,6 +156,11 @@ export const DirectoryView: React.FC = () => {
         height: "100%",
         width: `clamp(20rem, 100%, 90rem)`,
         alignSelf: "center",
+        // The AppShell outlet only pads the top/left; give the directory
+        // canvas its own right gutter so cards don't touch the edge, and
+        // add to the (quite tight) top padding for more breathing room.
+        pr: M3,
+        // pt: M2,
       }}
     >
       <Stack direction="row" spacing={M4} sx={{ alignItems: "stretch" }}>
