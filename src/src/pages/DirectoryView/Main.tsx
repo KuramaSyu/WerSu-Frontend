@@ -156,11 +156,14 @@ export const DirectoryView: React.FC = () => {
         height: "100%",
         width: `clamp(20rem, 100%, 90rem)`,
         alignSelf: "center",
-        // The AppShell outlet only pads the top/left; give the directory
-        // canvas its own right gutter so cards don't touch the edge, and
-        // add to the (quite tight) top padding for more breathing room.
+        // The AppShell outlet only pads partially
         pr: M3,
-        // pt: M2,
+        pt: M2,
+        // The app has no global border-box reset, so under the default
+        // `content-box` the `width: 100%` above plus the horizontal padding
+        // would render wider than the scroll container and make the page
+        // scroll on the X axis. Keep the padding inside the width.
+        boxSizing: "border-box",
       }}
     >
       <Stack direction="row" spacing={M4} sx={{ alignItems: "stretch" }}>
