@@ -1,12 +1,13 @@
 // Floating editor actions: read/write FAB (or a read-only badge when
 // the view is not writable) and source/rich FAB. Save lives in the
-// desktop top bar.
+// desktop top bar; on mobile (no top bar) leaving write mode prompts
+// to save instead.
 //
 // On mobile the two FABs are not rendered on the canvas; instead they
 // register with `useMobileActionsStore` so `MobileBottomBar` shows them
 // as compact icon buttons (see `CreateActions` for the same pattern).
 
-import { memo, useCallback, useEffect, useId, useRef } from "react";
+import { memo, useCallback, useEffect, useId, useRef, useState } from "react";
 import { Box, Stack, Tooltip, Typography } from "@mui/material";
 import CodeIcon from "@mui/icons-material/Code";
 import EditIcon from "@mui/icons-material/Edit";
@@ -22,9 +23,11 @@ import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { useViewConfig } from "../../zustand/useViewConfig";
 import { useActiveNoteStore } from "../../zustand/editorStore";
 import { useThemeStore } from "../../zustand/useThemeStore";
+import { useDraftStore } from "../../zustand/useDraftStore";
 import { logRerender } from "./editorRenderLog";
 import ArticleIcon from "@mui/icons-material/Article";
 import { StateFab, type StateFabState } from "../../components/StateFab";
+import { SaveBeforeReadDialog } from "./SaveBeforeReadDialog";
 
 export interface InsertSpeedDialProps {
   editor: Editor | null;
@@ -59,6 +62,13 @@ const InsertSpeedDialImpl: React.FC<InsertSpeedDialProps> = ({
   const readOnly = useViewConfig((s) => s.config.readOnly);
   const { isMobile } = useBreakpoint();
   const setContent = useActiveNoteStore((s) => s.setContent);
+  const noteId = useActiveNoteStore((s) => s.noteId);
+  const save = useActiveNoteStore((s) => s.save);
+  const isSaving = useActiveNoteStore((s) => s.isSaving);
+  // Mobile has no top bar, and therefore no Save button, so leaving
+  // write mode prompts for a save instead of silently dropping the
+  // only obvious way back to the persisted note.
+  const [savePromptOpen, setSavePromptOpen] = useState(false);
 
   const isRich = viewMode === "rich";
 
@@ -75,18 +85,52 @@ const InsertSpeedDialImpl: React.FC<InsertSpeedDialProps> = ({
     // already claimed this markdown (which the dedupe guard would skip).
     setContent(sourceMarkdown, true);
     setViewMode("rich");
-  }, [
-    isRich,
-    sourceMarkdown,
-    setSourceMarkdown,
-    setViewMode,
-    setContent,
-  ]);
+  }, [isRich, sourceMarkdown, setSourceMarkdown, setViewMode, setContent]);
 
   // Tooltip/aria for the tap action; the FAB itself shows the current state.
   const readWriteLabel = editMode
     ? "Switch to read mode"
     : "Switch to write mode";
+
+  const handleReadWriteToggle = useCallback(() => {
+    if (!editMode) {
+      // Entering write mode always starts with a clean prompt state.
+      setSavePromptOpen(false);
+      setWrite(true);
+      return;
+    }
+    // Desktop has a Save button in the top bar; mobile does not.
+    if (isMobile && noteId) {
+      setSavePromptOpen(true);
+      return;
+    }
+    setWrite(false);
+  }, [editMode, isMobile, noteId, setWrite]);
+
+  // Derive the visible state: a mode change from anywhere else
+  // (keyboard, version restore, a route change) closes the prompt
+  // without needing a synchronising effect.
+  const savePromptVisible = savePromptOpen && editMode && isMobile;
+
+  const handleSaveAndRead = useCallback(async () => {
+    const hadDraft = noteId
+      ? Boolean(useDraftStore.getState().drafts[noteId])
+      : false;
+    await save();
+    // A failed save keeps the tracked draft. Stay in edit mode so the
+    // user can retry instead of leaving the prompt and losing the
+    // chance to persist.
+    if (hadDraft && noteId && useDraftStore.getState().drafts[noteId]) {
+      return;
+    }
+    setSavePromptOpen(false);
+    setWrite(false);
+  }, [noteId, save, setWrite]);
+
+  const handleSkipSave = useCallback(() => {
+    setSavePromptOpen(false);
+    setWrite(false);
+  }, [setWrite]);
 
   // Read-only badge: replaces the toggle when the share does not
   // grant write. Desktop gets an extended FAB with the "View only"
@@ -108,10 +152,10 @@ const InsertSpeedDialImpl: React.FC<InsertSpeedDialProps> = ({
   });
   useEffect(() => {
     handlersRef.current = {
-      readWrite: () => setWrite(!editMode),
+      readWrite: handleReadWriteToggle,
       source: handleSourceToggle,
     };
-  }, [setWrite, editMode, handleSourceToggle]);
+  }, [handleReadWriteToggle, handleSourceToggle]);
 
   useEffect(() => {
     if (!isMobile) {
@@ -156,7 +200,15 @@ const InsertSpeedDialImpl: React.FC<InsertSpeedDialProps> = ({
   ]);
 
   if (isMobile) {
-    return null;
+    return (
+      <SaveBeforeReadDialog
+        open={savePromptVisible}
+        saving={isSaving}
+        onSave={handleSaveAndRead}
+        onSkipSave={handleSkipSave}
+        onCancel={() => setSavePromptOpen(false)}
+      />
+    );
   }
 
   const bottom = isMobile ? `calc(${M4} + ${MOBILE_BOTTOM_BAR_CLEARANCE})` : M4;
@@ -208,13 +260,11 @@ const InsertSpeedDialImpl: React.FC<InsertSpeedDialProps> = ({
             color="primary"
             aria-label={readWriteLabel}
             expandOnHover
-            onClick={() => setWrite(!editMode)}
+            onClick={handleReadWriteToggle}
           />
         )}
       </Tooltip>
-      <Tooltip
-        title={isRich ? "Swap to Source view" : "Swap to Rich editor"}
-      >
+      <Tooltip title={isRich ? "Swap to Source view" : "Swap to Rich editor"}>
         <StateFab
           states={SOURCE_STATES}
           activeKey={isRich ? "rich" : "source"}
