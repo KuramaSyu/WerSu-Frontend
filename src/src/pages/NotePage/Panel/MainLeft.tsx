@@ -13,10 +13,16 @@ import { TableOfContentsPanel } from "./TableOfContentsPanel";
 import { useNote } from "../../../api/queries/useNoteQueries";
 import {
   NoteActionPanel,
+  type NoteTagPath,
   type ParentDirectoryPath,
   type PermissionSection,
 } from "./NoteActionPanel";
 import { ManageParentsDialog } from "./ManageParentsDialog";
+import { ManageTagsDialog, type TagOption } from "./ManageTagsDialog";
+import { useAllTagsQuery, useCreateTag } from "../../../api/queries/tagQueries";
+import { useTagStore } from "../../../zustand/useTagStore";
+import { tagLabel } from "../../../api/models/tag";
+import { slugify } from "../../../utils/slugify";
 import { ROOT_PARENT_ID } from "./DirectorySelect";
 import { Box } from "@mui/material";
 
@@ -98,6 +104,9 @@ export const NoteLeftPanel: React.FC<NoteLeftPanelProps> = ({
   const [isUpdatingParent, setIsUpdatingParent] = useState(false);
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [selectedParentId, setSelectedParentId] = useState(ROOT_PARENT_ID);
+  const [tagsDialogOpen, setTagsDialogOpen] = useState(false);
+  const [isUpdatingTags, setIsUpdatingTags] = useState(false);
+  const { mutateAsync: createTag } = useCreateTag();
 
   const directoryListQuery = useMemo<ListDirectoriesQuery>(
     () => ({ limit: 500, offset: 0 }),
@@ -180,6 +189,39 @@ export const NoteLeftPanel: React.FC<NoteLeftPanelProps> = ({
           directory.id,
       }));
   }, [directoriesById, parentDirectoryIds]);
+
+  // Tag labels can already be present in the shared store (search replies
+  // bundle tag rows). The full list query fills the add-tag picker and is
+  // skipped on public/read-only views, where listing every tag is not
+  // needed and may not be permitted.
+  const tagsById = useTagStore((state) => state.tagsById);
+  const { list: allTags } = useAllTagsQuery(!readOnly && Boolean(noteId));
+
+  const noteTagIds = useMemo(
+    () => [...new Set(note?.tag_ids ?? [])],
+    [note?.tag_ids],
+  );
+
+  const noteTags = useMemo<NoteTagPath[]>(
+    () =>
+      noteTagIds.map((tagId) => ({
+        id: tagId,
+        label: tagLabel(tagsById[tagId], tagId),
+      })),
+    [noteTagIds, tagsById],
+  );
+
+  const selectableTags = useMemo<TagOption[]>(() => {
+    const excluded = new Set(noteTagIds);
+    return (allTags ?? [])
+      .filter((tag) => !excluded.has(tag.id))
+      .sort((a, b) => tagLabel(a).localeCompare(tagLabel(b)))
+      .map((tag) => ({
+        id: tag.id,
+        label: tagLabel(tag),
+        slug: tag.slug,
+      }));
+  }, [allTags, noteTagIds]);
 
   const handleUpdateParentDirectories = async () => {
     if (!noteId || !note) {
@@ -269,6 +311,87 @@ export const NoteLeftPanel: React.FC<NoteLeftPanelProps> = ({
     [noteId, note, onNoteUpdated, parentDirectoryIds, setMessage],
   );
 
+  const updateNoteTags = useCallback(
+    async (nextTagIds: string[], successMessage: string): Promise<boolean> => {
+      if (!noteId || !note) {
+        return false;
+      }
+      setIsUpdatingTags(true);
+      try {
+        const updatedNote = new Note({
+          ...note,
+          tag_ids: nextTagIds,
+        } as NoteData);
+
+        await onNoteUpdated(updatedNote);
+        setMessage(new SnackbarUpdateImpl(successMessage, "success"));
+        return true;
+      } catch (error) {
+        console.error("Failed to update tags", error);
+        setMessage(new SnackbarUpdateImpl("Failed to update tags", "error"));
+        return false;
+      } finally {
+        setIsUpdatingTags(false);
+      }
+    },
+    [noteId, note, onNoteUpdated, setMessage],
+  );
+
+  const handleAddTag = useCallback(
+    async (tagId: string) => {
+      if (!note || noteTagIds.includes(tagId)) {
+        setTagsDialogOpen(false);
+        return;
+      }
+      const updated = await updateNoteTags(
+        [...noteTagIds, tagId],
+        "Tag added",
+      );
+      if (updated) {
+        setTagsDialogOpen(false);
+      }
+    },
+    [note, noteTagIds, updateNoteTags],
+  );
+
+  const handleCreateTag = useCallback(
+    async (displayName: string) => {
+      if (!note) {
+        return;
+      }
+      setIsUpdatingTags(true);
+      try {
+        const created = await createTag({
+          display_name: displayName,
+          slug: slugify(displayName),
+        });
+        const updated = await updateNoteTags(
+          [...noteTagIds, created.id],
+          "Tag created and added",
+        );
+        if (updated) {
+          setTagsDialogOpen(false);
+        }
+      } catch (error) {
+        console.error("Failed to create tag", error);
+        setMessage(new SnackbarUpdateImpl("Failed to create tag", "error"));
+      } finally {
+        setIsUpdatingTags(false);
+      }
+    },
+    [createTag, note, noteTagIds, setMessage, updateNoteTags],
+  );
+
+  const handleRemoveTag = useCallback(
+    async (tagId: string) => {
+      await updateNoteTags(
+        noteTagIds.filter((id) => id !== tagId),
+        "Tag removed",
+      );
+    },
+    [noteTagIds, updateNoteTags],
+  );
+
   return (
     <>
       <UpperPanel spacing={2.5}>
@@ -284,6 +407,14 @@ export const NoteLeftPanel: React.FC<NoteLeftPanelProps> = ({
           canChangeParent={!readOnly && Boolean(note && noteId)}
           onRemoveParent={handleRemoveParentDirectory}
           canRemoveParent={!readOnly && Boolean(note && noteId)}
+          tags={noteTags}
+          onNavigateToTag={
+            readOnly ? () => {} : (tagId) => navigate(`/t/${tagId}`)
+          }
+          onChangeTagsClick={() => setTagsDialogOpen(true)}
+          canChangeTags={!readOnly && Boolean(note && noteId)}
+          onRemoveTag={handleRemoveTag}
+          canRemoveTag={!readOnly && Boolean(note && noteId)}
         />
         <Box>
           <TableOfContentsPanel />
@@ -300,6 +431,17 @@ export const NoteLeftPanel: React.FC<NoteLeftPanelProps> = ({
         onConfirm={() => void handleUpdateParentDirectories()}
         onCancel={() => setMoveDialogOpen(false)}
       />
+
+      {tagsDialogOpen && (
+        <ManageTagsDialog
+          open
+          isUpdating={isUpdatingTags}
+          availableTags={selectableTags}
+          onAddTag={(tagId) => void handleAddTag(tagId)}
+          onCreateTag={(displayName) => void handleCreateTag(displayName)}
+          onCancel={() => setTagsDialogOpen(false)}
+        />
+      )}
     </>
   );
 };

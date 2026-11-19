@@ -273,6 +273,12 @@ export function useUpdateNote() {
         queryKey: directoryNotesQueryKeys.all,
       });
 
+      // Tag pages keep their own notes namespace; tag edits (and any
+      // title changes) must refresh the grid there too.
+      queryClient.invalidateQueries({
+        queryKey: ["tags", "notes"],
+      });
+
       // Saving creates a new note version server-side. Refresh the
       // note's version list (Versions panel / drawer) so the new entry
       // shows up without a manual query reset.
@@ -344,6 +350,11 @@ export function useDeleteNote() {
       // refresh all lists/searches
       queryClient.invalidateQueries({
         queryKey: ["notes"],
+      });
+
+      // Tag pages list notes under their own query namespace.
+      queryClient.invalidateQueries({
+        queryKey: ["tags", "notes"],
       });
     },
   });

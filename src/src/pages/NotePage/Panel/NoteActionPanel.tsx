@@ -18,6 +18,11 @@ export interface ParentDirectoryPath {
   label: string;
 }
 
+export interface NoteTagPath {
+  id: string;
+  label: string;
+}
+
 export interface PermissionSection {
   label: string;
   users: string[];
@@ -33,6 +38,12 @@ interface NoteActionPanelProps {
   canChangeParent: boolean;
   onRemoveParent: (id: string) => void;
   canRemoveParent: boolean;
+  tags: NoteTagPath[];
+  onNavigateToTag: (id: string) => void;
+  onChangeTagsClick: () => void;
+  canChangeTags: boolean;
+  onRemoveTag: (id: string) => void;
+  canRemoveTag: boolean;
 }
 
 /**
@@ -50,6 +61,12 @@ export const NoteActionPanel: React.FC<NoteActionPanelProps> = ({
   canChangeParent,
   onRemoveParent,
   canRemoveParent,
+  tags,
+  onNavigateToTag,
+  onChangeTagsClick,
+  canChangeTags,
+  onRemoveTag,
+  canRemoveTag,
 }) => {
   // Pushed by `NoteStatsBridge` from the live editor; stays 0/0/0
   // until the editor mounts and the first transaction fires.
@@ -118,6 +135,60 @@ export const NoteActionPanel: React.FC<NoteActionPanelProps> = ({
                       onClick={onChangeParentClick}
                       disabled={!canChangeParent}
                       aria-label="add parent book or chapter"
+                      sx={{
+                        border: 1,
+                        borderColor: "divider",
+                        borderRadius: 1,
+                      }}
+                    >
+                      <AddIcon fontSize="small" />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+              </ListItem>
+            </List>
+          </Stack>
+
+          <Stack spacing={0.5}>
+            <Typography variant="caption" color="textSecondary">
+              Tags
+            </Typography>
+            {tags.length === 0 && (
+              <Typography variant="body2" color="textSecondary">
+                No tags
+              </Typography>
+            )}
+            <List
+              dense
+              disablePadding
+              sx={{
+                display: "flex",
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: 0.5,
+                alignItems: "center",
+              }}
+            >
+              {tags.map((tag) => (
+                <ListItem key={tag.id} disablePadding sx={{ width: "auto" }}>
+                  <Chip
+                    label={tag.label}
+                    variant="outlined"
+                    onClick={() => onNavigateToTag(tag.id)}
+                    onDelete={
+                      canRemoveTag ? () => onRemoveTag(tag.id) : undefined
+                    }
+                  />
+                </ListItem>
+              ))}
+              <ListItem disablePadding sx={{ width: "auto" }}>
+                <Tooltip title="Add tag">
+                  <span>
+                    <IconButton
+                      size="small"
+                      onClick={onChangeTagsClick}
+                      disabled={!canChangeTags}
+                      aria-label="add tag"
                       sx={{
                         border: 1,
                         borderColor: "divider",
