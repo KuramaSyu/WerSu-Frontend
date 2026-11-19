@@ -1,5 +1,4 @@
-import { Box, Divider, Paper, Stack, Typography } from "@mui/material";
-import { DragDropProvider } from "@dnd-kit/react";
+import { Divider, Stack, Typography } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { DirectoryLeftPanel } from "./LeftPanel";
@@ -18,14 +17,14 @@ import { CreateDirectoryModal } from "../MainPage/CreateDirectory";
 import { useCreateModalsFromUrl } from "../../hooks/useCreateModalsFromUrl";
 import { usePageHoldShortcuts } from "../../hooks/usePageHoldShortcuts";
 import { HoldKeyActionBar } from "../../components/HoldKeyActionBar";
-import { M2, M3, M4 } from "../../statics";
+import { M3 } from "../../statics";
 import { DirectoryHirarchyItem } from "../../models/HirarchyItem";
 import { ChapterAccordion } from "./ChapterAccordion";
 import { SelectionActionBar } from "./SelectionActionBar";
 import { useDirectorySelectionStore } from "../../zustand/useDirectorySelectionStore";
 import { useDirectoryTypeAheadStore } from "../../zustand/useDirectoryTypeAheadStore";
 import { useDirectoryTypeAhead } from "./useDirectoryTypeAhead";
-import TranslucentPaper from "../../components/TranslucentPaper";
+import PageSurface from "../../components/PageSurface";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { ACCENT_FONT_FAMILY } from "../../theme/customTheme";
 import {
@@ -42,9 +41,7 @@ import {
  * mounted by `useDirectoryFeatures` via `useRightPanel`.
  */
 export const DirectoryView: React.FC = () => {
-  const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(
-    null,
-  );
+  const [, setScrollElement] = useState<HTMLDivElement | null>(null);
   const [createNoteOpen, setCreateNoteOpen] = useState(false);
   const [createDirectoryOpen, setCreateDirectoryOpen] = useState(false);
   const [createDirectoryParentId, setCreateDirectoryParentId] = useState<
@@ -142,115 +139,8 @@ export const DirectoryView: React.FC = () => {
     [childDirectories, notesInDirectory],
   );
 
-  return (
-    // this would be a paper with elevation=0, but this breaks the
-    // transluctent effect -> hence use app background uses elevation=0 backgruond
-    // and we swtich here to a plain box
-    <Box
-      ref={setScrollElement}
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        // Fill the AppShell main content box exactly; any overflow
-        // is handed to that box's overflowY: auto so the page scrolls.
-        height: "100%",
-        width: `clamp(20rem, 100%, 90rem)`,
-        alignSelf: "center",
-        // The AppShell outlet only pads partially
-        pr: M3,
-        pt: M2,
-        // The app has no global border-box reset, so under the default
-        // `content-box` the `width: 100%` above plus the horizontal padding
-        // would render wider than the scroll container and make the page
-        // scroll on the X axis. Keep the padding inside the width.
-        boxSizing: "border-box",
-      }}
-    >
-      <Stack direction="row" spacing={M4} sx={{ alignItems: "stretch" }}>
-        <TranslucentPaper
-          elevation={0}
-          sx={{
-            flex: 1,
-            p: M3,
-            borderRadius: theme.shape.borderRadius,
-          }}
-        >
-          <SelectionActionBar allSelectable={allSelectable} />
-          <Stack spacing={M3}>
-            <Stack spacing={0.5}>
-              <DirectoryBreadCrumbs
-                path={path}
-                onNavigate={(id) => navigate(`/d/${id}`)}
-              />
-              <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-                <Typography
-                  variant="h4"
-                  sx={{
-                    fontFamily:
-                      theme.custom?.accentFontFamily ?? ACCENT_FONT_FAMILY,
-                    fontWeight: 300,
-                  }}
-                >
-                  {title}
-                </Typography>
-                <DirectoryMenu
-                  currentNode={currentNode}
-                  cascadePreview={cascadePreview}
-                  handleEditDirectory={handleEditDirectory}
-                  handleDeleteDirectory={handleDeleteDirectory}
-                />
-              </Stack>
-            </Stack>
-
-            <Stack spacing={2}>
-              {childDirectories.map((child) => (
-                <ChapterAccordion
-                  key={child.getId()}
-                  index={0}
-                  directory={
-                    child instanceof DirectoryHirarchyItem
-                      ? child.getDirectory()
-                      : {
-                          id: child.getId(),
-                          name: child.getName(),
-                          display_name: child.getName(),
-                          parent_dir_ids: child.getParent()
-                            ? [child.getParent()!]
-                            : [],
-                          child_dir_ids: [],
-                          child_note_ids: [],
-                          shelf_ids: [],
-                        }
-                  }
-                  // Fetch the full DirectoryReply on mount so the
-                  // row badge has accurate counts even before
-                  // the user expands the chapter.
-                  onNavigate={navigate}
-                />
-              ))}
-
-              <Divider sx={{ opacity: 0.3 }} />
-
-              {notesInDirectory.length === 0 ? (
-                <Typography variant="body2" color="textSecondary">
-                  No notes yet in this {dirTerms.singularLower}.
-                </Typography>
-              ) : (
-                notesInDirectory.map((note, index) => (
-                  <DirectoryItem
-                    key={note.id}
-                    variant="note"
-                    index={index}
-                    note={note}
-                    targetKind={directoryKind}
-                    onClick={() => navigate(`/n/${note.id}`)}
-                  />
-                ))
-              )}
-            </Stack>
-          </Stack>
-        </TranslucentPaper>
-      </Stack>
+  const overlay = (
+    <>
       <CreateNote
         open={createNoteOpen}
         onOpenChange={setCreateNoteOpen}
@@ -285,6 +175,85 @@ export const DirectoryView: React.FC = () => {
         capture={false}
         actions={holdActions}
       />
-    </Box>
+    </>
+  );
+
+  return (
+    <PageSurface containerRef={setScrollElement} overlay={overlay}>
+      <SelectionActionBar allSelectable={allSelectable} />
+      <Stack spacing={M3}>
+        <Stack spacing={0.5}>
+          <DirectoryBreadCrumbs
+            path={path}
+            onNavigate={(id) => navigate(`/d/${id}`)}
+          />
+          <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+            <Typography
+              variant="h4"
+              sx={{
+                fontFamily:
+                  theme.custom?.accentFontFamily ?? ACCENT_FONT_FAMILY,
+                fontWeight: 300,
+              }}
+            >
+              {title}
+            </Typography>
+            <DirectoryMenu
+              currentNode={currentNode}
+              cascadePreview={cascadePreview}
+              handleEditDirectory={handleEditDirectory}
+              handleDeleteDirectory={handleDeleteDirectory}
+            />
+          </Stack>
+        </Stack>
+
+        <Stack spacing={2}>
+          {childDirectories.map((child) => (
+            <ChapterAccordion
+              key={child.getId()}
+              index={0}
+              directory={
+                child instanceof DirectoryHirarchyItem
+                  ? child.getDirectory()
+                  : {
+                      id: child.getId(),
+                      name: child.getName(),
+                      display_name: child.getName(),
+                      parent_dir_ids: child.getParent()
+                        ? [child.getParent()!]
+                        : [],
+                      child_dir_ids: [],
+                      child_note_ids: [],
+                      shelf_ids: [],
+                    }
+              }
+              // Fetch the full DirectoryReply on mount so the
+              // row badge has accurate counts even before
+              // the user expands the chapter.
+              onNavigate={navigate}
+            />
+          ))}
+
+          <Divider sx={{ opacity: 0.3 }} />
+
+          {notesInDirectory.length === 0 ? (
+            <Typography variant="body2" color="textSecondary">
+              No notes yet in this {dirTerms.singularLower}.
+            </Typography>
+          ) : (
+            notesInDirectory.map((note, index) => (
+              <DirectoryItem
+                key={note.id}
+                variant="note"
+                index={index}
+                note={note}
+                targetKind={directoryKind}
+                onClick={() => navigate(`/n/${note.id}`)}
+              />
+            ))
+          )}
+        </Stack>
+      </Stack>
+    </PageSurface>
   );
 };
