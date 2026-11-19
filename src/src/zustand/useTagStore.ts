@@ -5,6 +5,7 @@ interface TagState {
   tagsById: Record<string, MinimalTag>;
   upsertTags: (tags: MinimalTag[]) => void;
   upsertTag: (tag: MinimalTag) => void;
+  removeTag: (tagId: string) => void;
   clearTags: () => void;
 }
 
@@ -20,6 +21,15 @@ export const useTagStore = create<TagState>((set) => ({
     }),
   upsertTag: (tag: MinimalTag) =>
     set((state) => ({ tagsById: { ...state.tagsById, [tag.id]: tag } })),
+  removeTag: (tagId: string) =>
+    set((state) => {
+      if (!(tagId in state.tagsById)) {
+        return state;
+      }
+      const next = { ...state.tagsById };
+      delete next[tagId];
+      return { tagsById: next };
+    }),
   clearTags: () => set({ tagsById: {} }),
 }));
 

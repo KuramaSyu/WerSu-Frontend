@@ -8,6 +8,7 @@ import type {
   FakePreferenceRow,
   FakeShare,
   FakeShelf,
+  FakeTag,
 } from "./types";
 import { getFakeDb } from "./types";
 
@@ -30,6 +31,7 @@ import { getFakeDb } from "./types";
 
 let nextNoteSeq = 100;
 let nextDirSeq = 100;
+let nextTagSeq = 100;
 
 const json = (body: JsonBodyType, init?: ResponseInit) =>
   HttpResponse.json(body, init);
@@ -202,6 +204,14 @@ function directoryWireShape(d: FakeDirectory) {
     child_note_ids: d.child_note_ids,
     shelf_ids: d.shelf_ids ?? [],
     relationships: [],
+  };
+}
+
+function tagWireShape(t: FakeTag) {
+  return {
+    id: t.id,
+    slug: t.slug,
+    display_name: t.display_name,
   };
 }
 
@@ -438,6 +448,68 @@ export const handlers = [
     return db.directories.length < before
       ? okNoContent()
       : notFound("directory not found");
+  }),
+
+  // ──────────────────────────── tags ─────────────────────────────
+
+  http.get("*/api/tags", async () => {
+    await delay(50);
+    return json(getFakeDb().tags.map(tagWireShape));
+  }),
+
+  http.get("*/api/tags/:id", async ({ params }) => {
+    await delay(50);
+    const tag = getFakeDb().tags.find((t) => t.id === params.id);
+    return tag ? json(tagWireShape(tag)) : notFound("tag not found");
+  }),
+
+  http.post("*/api/tags", async ({ request }) => {
+    await delay(80);
+    const db = getFakeDb();
+    const body = (await request.json()) as Partial<FakeTag>;
+    if (!body.slug || !body.display_name) {
+      return json({ error: "slug and display_name required" }, { status: 400 });
+    }
+    if (db.tags.some((t) => t.slug === body.slug)) {
+      return json({ error: "slug already exists" }, { status: 409 });
+    }
+    const tag: FakeTag = {
+      id: `tag-${nextTagSeq++}`,
+      slug: body.slug,
+      display_name: body.display_name,
+    };
+    db.tags.push(tag);
+    return json(tagWireShape(tag), { status: 200 });
+  }),
+
+  http.patch("*/api/tags/:id", async ({ params, request }) => {
+    await delay(80);
+    const db = getFakeDb();
+    const idx = db.tags.findIndex((t) => t.id === params.id);
+    if (idx < 0) return notFound("tag not found");
+    const patch = (await request.json()) as Partial<FakeTag>;
+    if (
+      patch.slug &&
+      db.tags.some((t) => t.id !== params.id && t.slug === patch.slug)
+    ) {
+      return json({ error: "slug already exists" }, { status: 409 });
+    }
+    db.tags[idx] = { ...db.tags[idx], ...patch };
+    return json(tagWireShape(db.tags[idx]));
+  }),
+
+  http.delete("*/api/tags/:id", async ({ params }) => {
+    await delay(80);
+    const db = getFakeDb();
+    const before = db.tags.length;
+    db.tags = db.tags.filter((t) => t.id !== params.id);
+    const deleted = db.tags.length < before;
+    if (deleted) {
+      for (const note of db.notes) {
+        note.tag_ids = note.tag_ids.filter((id) => id !== params.id);
+      }
+    }
+    return json({ deleted });
   }),
 
   // ─────────────────────────── search ───────────────────────────
