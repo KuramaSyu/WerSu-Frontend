@@ -22,6 +22,7 @@ import { ShortcutPulse } from "./components/ShortcutPulse";
 import { ThemeFavicon } from "./components/ThemeFavicon";
 import { NotePage } from "./pages/NotePage/Main";
 import { DirectoryView } from "./pages/DirectoryView/Main";
+import { TagView } from "./pages/TagView/Main";
 import { DirectoryEditPage } from "./pages/DirectoryEdit/Main";
 import { CreateSubdirectoryPage } from "./pages/DirectoryCreate/Main";
 import { FileGraphPage } from "./pages/FileGraph/Main";
@@ -126,6 +127,7 @@ function App() {
                   <Route path="/" element={<HomePage />} />
                   <Route path="/n/:id" element={<NotePage />} />
                   <Route path="/d/:id" element={<DirectoryView />} />
+                  <Route path="/t/:id" element={<TagView />} />
                   <Route path="/d/:id/edit" element={<DirectoryEditPage />} />
                   <Route
                     path="/d/:id/new"

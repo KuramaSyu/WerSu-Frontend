@@ -1,36 +1,36 @@
-import {
-  Box,
-  Grid,
-  Paper,
-  Typography,
-  useMediaQuery,
-  Skeleton,
-} from "@mui/material";
-import { useEffect, useMemo, useRef, useState, type JSX } from "react";
+import { Box, Paper, Skeleton, Typography } from "@mui/material";
+import { useEffect, useMemo, useState } from "react";
 
 import { useSearchNotesStore } from "../../zustand/useSearchNotesStore";
 import { NoteCard } from "./NoteCard";
-import { M1, M2, M3, M4, M5, M6 } from "../../statics";
+import { M2, M4 } from "../../statics";
 import { useLoadingStore } from "../../zustand/loadingStore";
-import { useThemeStore } from "../../zustand/useThemeStore";
-import { string } from "zod";
-import type { MinimalNote, Note } from "../../api/models/search";
+import type { MinimalNote } from "../../api/models/search";
 
 export interface CardGridProps {
   title: string;
   notes: Array<MinimalNote>;
   loading?: boolean;
+  /** When provided, cards call this instead of opening the popup modal. */
+  onNoteOpen?: (note: MinimalNote) => void;
+  /**
+   * Render only the grid content, without the surrounding Paper and
+   * section title. Used when an outer page surface already provides the
+   * background and hierarchy.
+   */
+  bare?: boolean;
 }
 
 export const CardGrid: React.FC<CardGridProps> = ({
   title,
   notes,
   loading = false,
+  onNoteOpen,
+  bare = false,
 }) => {
   const { isLoading } = useLoadingStore();
   const { isSearching } = useSearchNotesStore();
 
-  const { theme } = useThemeStore();
   const columnCount = useColumnCount(22, 12);
 
   // Sort notes for display in row-major order (left-to-right, top-to-bottom)
@@ -68,6 +68,33 @@ export const CardGrid: React.FC<CardGridProps> = ({
       }),
     );
 
+    const loadingGrid = (
+      <Box
+        sx={{
+          columnCount: columnCount,
+          columnGap: M2,
+        }}
+      >
+        {loadingNotes.map((note) => (
+          <Box
+            key={note.id}
+            sx={{
+              mb: M2,
+              breakInside: "avoid",
+              display: "inline-block",
+              width: "100%",
+            }}
+          >
+            <NoteCard note={note} loading sx={{ width: "100%" }} />
+          </Box>
+        ))}
+      </Box>
+    );
+
+    if (bare) {
+      return loadingGrid;
+    }
+
     return (
       <Paper sx={{ p: M4 }} elevation={1}>
         <Skeleton
@@ -76,28 +103,36 @@ export const CardGrid: React.FC<CardGridProps> = ({
           animation="wave"
           sx={{ mb: M4 }}
         />
-        <Box
-          sx={{
-            columnCount: columnCount,
-            columnGap: M2,
-          }}
-        >
-          {loadingNotes.map((note) => (
-            <Box
-              key={note.id}
-              sx={{
-                mb: M2,
-                breakInside: "avoid",
-                display: "inline-block",
-                width: "100%",
-              }}
-            >
-              <NoteCard note={note} loading sx={{ width: "100%" }} />
-            </Box>
-          ))}
-        </Box>
+        {loadingGrid}
       </Paper>
     );
+  }
+
+  const grid = (
+    <Box
+      sx={{
+        columnCount: columnCount,
+        columnGap: M2,
+        width: "100%",
+      }}
+    >
+      {displayNotes.map((note) => {
+        return (
+          <NoteCard
+            key={note.id}
+            note={note}
+            onOpen={onNoteOpen}
+            sx={{
+              mb: M2,
+            }}
+          />
+        );
+      })}
+    </Box>
+  );
+
+  if (bare) {
+    return grid;
   }
 
   return (
@@ -105,28 +140,7 @@ export const CardGrid: React.FC<CardGridProps> = ({
       <Typography variant="h2" sx={{ mb: M4 }}>
         {title}
       </Typography>
-      <Box
-        sx={{
-          columnCount: columnCount,
-          columnGap: M2,
-          width: "100%",
-        }}
-      >
-        {displayNotes.map((note) => {
-          return (
-            <NoteCard
-              key={note.id}
-              note={note}
-              sx={{
-                mb: M2,
-                // breakInside: "avoid",
-                display: "block",
-                // width: "100%",
-              }}
-            />
-          );
-        })}
-      </Box>
+      {grid}
     </Paper>
   );
 };
