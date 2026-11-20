@@ -209,8 +209,15 @@ export const LoadingPage: React.FC = () => {
           />
         </Box>
 
-        {/* Full-screen swirl: above circle 1, below circle 2 and the UI. */}
-        <DocumentSwirl anchorRef={logoAnchorRef} sx={{ zIndex: 2 }} />
+        {/* Full-screen swirl: above circle 1, below circle 2 and the UI.
+            Lean like the login one: no document icons, no travelling
+            pulses, just the slow ambient turn. */}
+        <DocumentSwirl
+          anchorRef={logoAnchorRef}
+          showDocuments={false}
+          showPulses={false}
+          sx={{ zIndex: 2 }}
+        />
 
         {/* Circle 2: gradient-opacity twin that dims the swirl and blends
             into circle 1. */}

@@ -56,8 +56,15 @@ export const LoginPage: React.FC = () => {
       </Box>
 
       {/* Full-screen decorative swirl: above circle 1, below circle 2
-          and every real UI element. Centred on the logo via anchorRef. */}
-      <DocumentSwirl anchorRef={logoAnchorRef} sx={{ zIndex: 2 }} />
+          and every real UI element. Centred on the logo via anchorRef.
+          Login keeps it lean: no document icons, no travelling pulses,
+          just the slow ambient turn. */}
+      <DocumentSwirl
+        anchorRef={logoAnchorRef}
+        showDocuments={false}
+        showPulses={false}
+        sx={{ zIndex: 2 }}
+      />
 
       {/* Circle 2: a second, identical circle with a gradient-opacity
           fill that dims the swirl beneath it and blends into circle 1. */}
