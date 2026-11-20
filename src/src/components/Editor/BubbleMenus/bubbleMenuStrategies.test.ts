@@ -15,7 +15,7 @@
 
 // @vitest-environment jsdom
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Editor } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import {
@@ -28,6 +28,7 @@ import { CellSelection, TableMap } from "@tiptap/pm/tables";
 import Image from "@tiptap/extension-image";
 import {
   analyseSelection,
+  analyseTableAtPos,
   pickStrategy,
   type BubbleMenuOp,
 } from "./bubbleMenuStrategies";
@@ -810,3 +811,106 @@ function opIsAction(
 ): op is Extract<BubbleMenuOp, { kind: "action" }> {
   return op.kind === "action";
 }
+
+describe("stale table maps", () => {
+  // Regression for "Uncaught RangeError: No cell with offset N found"
+  // thrown from the bubble-menu selector. A stale/concurrent edit can
+  // leave the cached TableMap without the selected cell's offset;
+  // rendering the editor menu must degrade to a plain text analysis
+  // instead of crashing the whole editor.
+  it("falls back instead of throwing from the selectors", () => {
+    const editor = makeEditor();
+    const originalGet = TableMap.get;
+    let spy: ReturnType<typeof vi.spyOn> | undefined;
+    try {
+      editor.commands.setContent({
+        type: "doc",
+        content: [
+          {
+            type: "table",
+            content: [
+              {
+                type: "tableRow",
+                content: [
+                  {
+                    type: "tableCell",
+                    content: [
+                      {
+                        type: "paragraph",
+                        content: [{ type: "text", text: "hello" }],
+                      },
+                    ],
+                  },
+                  {
+                    type: "tableCell",
+                    content: [
+                      {
+                        type: "paragraph",
+                        content: [{ type: "text", text: "world" }],
+                      },
+                    ],
+                  },
+                ],
+              },
+              {
+                type: "tableRow",
+                content: [
+                  {
+                    type: "tableCell",
+                    content: [
+                      {
+                        type: "paragraph",
+                        content: [{ type: "text", text: "foo" }],
+                      },
+                    ],
+                  },
+                  {
+                    type: "tableCell",
+                    content: [
+                      {
+                        type: "paragraph",
+                        content: [{ type: "text", text: "bar" }],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+
+      const table = editor.state.doc.firstChild!;
+      const map = TableMap.get(table);
+      // First cell starts at doc pos 2; relative to the table start its
+      // offset is 1 (the value TableMap stores).
+      const cellOffset = 1;
+      const staleMap = new TableMap(
+        map.width,
+        map.height,
+        map.map.map((offset) => (offset === cellOffset ? 0 : offset)),
+        map.problems,
+      );
+      spy = vi
+        .spyOn(TableMap, "get")
+        .mockImplementation((node) =>
+          node === table ? staleMap : originalGet.call(TableMap, node),
+        );
+
+      editor.commands.setTextSelection({ from: 4, to: 6 });
+
+      expect(() => analyseSelection(editor.state)).not.toThrow();
+      expect(analyseSelection(editor.state).kind).toBe("text");
+
+      expect(() =>
+        analyseTableAtPos(editor.state, editor.state.selection.from),
+      ).not.toThrow();
+      expect(
+        analyseTableAtPos(editor.state, editor.state.selection.from).kind,
+      ).toBe("empty");
+    } finally {
+      spy?.mockRestore();
+      editor.destroy();
+    }
+  });
+});

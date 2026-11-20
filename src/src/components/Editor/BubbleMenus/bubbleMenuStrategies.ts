@@ -77,60 +77,89 @@ export interface BubbleMenuStrategy {
   build(analysis: SelectionAnalysisFull, editor: Editor): BubbleMenuOp[];
 }
 
+type CellRect = {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+};
+
+/**
+ * `TableMap.findCell` throws a RangeError when the offset does not
+ * belong to the map. That happens for malformed/legacy tables (e.g. a
+ * cell hidden by another cell's rowspan after a concurrent edit) and
+ * must never take down the React menu that is rendering the editor.
+ * Returns null instead so callers can fall back to a text/empty
+ * analysis.
+ */
+function findCellRect(map: TableMap, offset: number): CellRect | null {
+  if (!Number.isInteger(offset) || offset < 0) return null;
+  if (!map.map.includes(offset)) return null;
+  return map.findCell(offset);
+}
+
+function isCellNodeName(name: string): boolean {
+  return name === "tableCell" || name === "tableHeader";
+}
+
 function findTableContext(
   state: EditorState,
 ): { tableDepth: number; cellDepth: number } | null {
   const { $from } = state.selection;
-  let tableDepth = -1;
-  let cellDepth = -1;
   for (let depth = $from.depth; depth > 0; depth -= 1) {
-    const node = $from.node(depth);
-    if (tableDepth === -1 && node.type.name === "table") {
-      tableDepth = depth;
-    }
-    if (
-      cellDepth === -1 &&
-      (node.type.name === "tableCell" || node.type.name === "tableHeader")
-    ) {
-      cellDepth = depth;
-    }
-    if (tableDepth !== -1 && cellDepth !== -1) break;
+    if (!isCellNodeName($from.node(depth).type.name)) continue;
+    // A table cell is always a direct child of a table row, which in
+    // turn is a direct child of the table. Deriving the table from the
+    // cell avoids pairing a nested table with an outer cell.
+    const tableDepth = depth - 2;
+    if (tableDepth <= 0) return null;
+    if ($from.node(tableDepth).type.name !== "table") return null;
+    return { tableDepth, cellDepth: depth };
   }
-  if (tableDepth === -1 || cellDepth === -1) return null;
-  return { tableDepth, cellDepth };
+  return null;
 }
 
 type TableScope = "in-table" | "none" | "multi-table";
 
 function classifyTableScope(state: EditorState): TableScope {
-  if (state.selection instanceof CellSelection) return "in-table";
+  if (state.selection instanceof CellSelection) {
+    const anchorTable = state.selection.$anchorCell.start(-1);
+    const headTable = state.selection.$headCell.start(-1);
+    return anchorTable === headTable ? "in-table" : "multi-table";
+  }
   const { $from, $to } = state.selection;
-  const fromTable = nearestTableDepth($from);
-  const toTable = nearestTableDepth($to);
-  if (fromTable === -1 && toTable === -1) return "none";
-  if (fromTable === -1 || toTable === -1) return "multi-table";
+  const fromTable = nearestTablePos($from);
+  const toTable = nearestTablePos($to);
+  if (fromTable === null && toTable === null) return "none";
+  if (fromTable === null || toTable === null) return "multi-table";
   return fromTable === toTable ? "in-table" : "multi-table";
 }
 
-function nearestTableDepth($pos: {
+function nearestTablePos($pos: {
   depth: number;
+  before: (d: number) => number;
   node: (d: number) => { type: { name: string } };
-}): number {
+}): number | null {
   for (let d = $pos.depth; d > 0; d -= 1) {
-    if ($pos.node(d).type.name === "table") return d;
+    if ($pos.node(d).type.name === "table") return $pos.before(d);
   }
-  return -1;
+  return null;
 }
 
 function collectCellSelectionContext(state: EditorState): CellContext | null {
   if (!(state.selection instanceof CellSelection)) return null;
   const { $anchorCell, $headCell } = state.selection;
   const tableNode = $anchorCell.node(-1);
-  const tablePos = $anchorCell.start(-1) - 1;
-  const map = TableMap.get(tableNode);
+  if (tableNode.type.name !== "table") return null;
   const tableStart = $anchorCell.start(-1);
-  const anchorRect = map.findCell($anchorCell.pos - tableStart);
-  const headRect = map.findCell($headCell.pos - tableStart);
+  // A CellSelection must never span two tables; if it does (stale
+  // collaboration selection / mapped positions), the head offset is
+  // meaningless relative to the anchor table's map.
+  if ($headCell.start(-1) !== tableStart) return null;
+  const map = TableMap.get(tableNode);
+  const anchorRect = findCellRect(map, $anchorCell.pos - tableStart);
+  const headRect = findCellRect(map, $headCell.pos - tableStart);
+  if (!anchorRect || !headRect) return null;
   const rect = {
     left: Math.min(anchorRect.left, headRect.left),
     right: Math.max(anchorRect.right, headRect.right),
@@ -139,14 +168,20 @@ function collectCellSelectionContext(state: EditorState): CellContext | null {
   };
   const rowIndices = new Set<number>();
   const columnIndices = new Set<number>();
+  let invalid = false;
   state.selection.forEachCell((_node, pos) => {
-    const r = map.findCell(pos - tableStart);
+    const r = findCellRect(map, pos - tableStart);
+    if (!r) {
+      invalid = true;
+      return;
+    }
     rowIndices.add(r.top);
     columnIndices.add(r.left);
   });
+  if (invalid) return null;
   return {
     tableNode,
-    tablePos,
+    tablePos: tableStart - 1,
     map,
     rect,
     rowIndices: Array.from(rowIndices).sort((a, b) => a - b),
@@ -220,28 +255,26 @@ function inCellContext(state: EditorState): CellContext | null {
 }
 
 function cellContextAt($from: ResolvedPos): CellContext | null {
-  let tableDepth = -1;
   let cellDepth = -1;
   for (let d = $from.depth; d > 0; d -= 1) {
-    const node = $from.node(d);
-    if (tableDepth === -1 && node.type.name === "table") tableDepth = d;
-    if (
-      cellDepth === -1 &&
-      (node.type.name === "tableCell" || node.type.name === "tableHeader")
-    ) {
+    if (isCellNodeName($from.node(d).type.name)) {
       cellDepth = d;
+      break;
     }
-    if (tableDepth !== -1 && cellDepth !== -1) break;
   }
-  if (tableDepth === -1 || cellDepth === -1) return null;
+  if (cellDepth < 3) return null;
+  // Derive the table from the cell itself (cell -> row -> table). The
+  // previous implementation paired the nearest table with the nearest
+  // cell independently, which could combine a nested table's map with
+  // a cell offset from an outer table and make findCell throw.
+  const tableDepth = cellDepth - 2;
   const tableNode = $from.node(tableDepth);
-  const tablePos = (
-    $from as unknown as { before: (d: number) => number }
-  ).before(tableDepth);
+  if (tableNode.type.name !== "table") return null;
+  const tablePos = $from.before(tableDepth);
   const map = TableMap.get(tableNode);
   const cellPosInTable = $from.before(cellDepth) - tablePos - 1;
-  if (cellPosInTable < 0) return null;
-  const cellRect = map.findCell(cellPosInTable);
+  const cellRect = findCellRect(map, cellPosInTable);
+  if (!cellRect) return null;
   return {
     tableNode,
     tablePos,

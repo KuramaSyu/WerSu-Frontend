@@ -31,11 +31,21 @@ export const TablePinnedMenu = ({
   // Reactive so the menu follows entering / leaving a table.
   const { inTable, canDeleteColumn, canDeleteRow } = useEditorState({
     editor,
-    selector: (ctx) => ({
-      inTable: ctx.editor.isActive("table"),
-      canDeleteColumn: ctx.editor.can().deleteColumn(),
-      canDeleteRow: ctx.editor.can().deleteRow(),
-    }),
+    selector: (ctx) => {
+      const inTable = ctx.editor.isActive("table");
+      // The table commands call TableMap.findCell, which throws for a
+      // malformed table (a cell hidden by a stale rowspan). A disabled
+      // button is always better than crashing the whole editor.
+      try {
+        return {
+          inTable,
+          canDeleteColumn: ctx.editor.can().deleteColumn(),
+          canDeleteRow: ctx.editor.can().deleteRow(),
+        };
+      } catch {
+        return { inTable, canDeleteColumn: false, canDeleteRow: false };
+      }
+    },
   });
 
   const isOpen = enabled && editorEditable && inTable;
