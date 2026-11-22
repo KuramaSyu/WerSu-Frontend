@@ -6,7 +6,11 @@
  * the editor/dialog graph.
  */
 export interface NoteActionVisibility {
-  /** Save only appears while editing a writable session. */
+  /**
+   * Save is available whenever the session can write. Unlike editing,
+   * ticking a task checkbox in view mode also creates unsaved changes,
+   * so the control must remain reachable without entering edit mode.
+   */
   showSave: boolean;
   /** Share is for note owners only -- never for public viewers. */
   showShare: boolean;
@@ -17,13 +21,13 @@ export interface NoteActionVisibility {
 export const getNoteActionVisibility = ({
   isPublic,
   readOnly,
-  editMode,
 }: {
   isPublic: boolean;
   readOnly: boolean;
+  /** Retained for callers that share this rule set; Save no longer depends on it. */
   editMode: boolean;
 }): NoteActionVisibility => ({
-  showSave: !readOnly && editMode,
+  showSave: !readOnly,
   showShare: !isPublic,
   showDelete: !readOnly && !isPublic,
 });

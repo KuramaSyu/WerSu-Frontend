@@ -3,7 +3,8 @@
 // The rule that matters most here is the product contract: public
 // viewers never get the Share action, regardless of whether the share
 // grants write access. Delete is likewise owner-only, while Save
-// follows the writable + edit-mode gate.
+// follows the writable gate: task checkboxes can be ticked in view mode,
+// so the save control cannot be limited to edit mode.
 
 import { describe, expect, it } from "vitest";
 
@@ -11,7 +12,7 @@ import { getNoteActionVisibility } from "./noteActionVisibility";
 
 describe("getNoteActionVisibility", () => {
   describe("private (owner) sessions", () => {
-    it("shows Save only while editing a writable session", () => {
+    it("shows Save whenever the session is writable, including view mode", () => {
       expect(
         getNoteActionVisibility({
           isPublic: false,
@@ -25,7 +26,7 @@ describe("getNoteActionVisibility", () => {
           readOnly: false,
           editMode: false,
         }).showSave,
-      ).toBe(false);
+      ).toBe(true);
       expect(
         getNoteActionVisibility({
           isPublic: false,
@@ -84,12 +85,12 @@ describe("getNoteActionVisibility", () => {
       ).toBe(false);
     });
 
-    it("still shows Save for a write-granted session in edit mode", () => {
+    it("still shows Save for a write-granted session in view mode", () => {
       expect(
         getNoteActionVisibility({
           isPublic: true,
           readOnly: false,
-          editMode: true,
+          editMode: false,
         }).showSave,
       ).toBe(true);
     });

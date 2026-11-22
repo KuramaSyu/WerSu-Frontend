@@ -15,6 +15,12 @@ import { NoteApi } from "../api/NoteApi";
 import { queryClient } from "../api/queryClient";
 import useInfoStore, { SnackbarUpdateImpl } from "./InfoStore";
 import { useDraftStore } from "./useDraftStore";
+import {
+  NoteSaveMachine,
+  type NoteSaveStatus,
+} from "./noteSaveMachine";
+
+export type { NoteSaveStatus } from "./noteSaveMachine";
 
 interface ActiveNoteState {
   noteId: string | undefined;
@@ -35,6 +41,12 @@ interface ActiveNoteState {
    */
   headerImageMarkdown: string | null;
   isSaving: boolean;
+  /**
+   * Last save attempt for the active note. Drives the Save control's
+   * inline label: `saving` while the request is in flight, `saved` for
+   * the success window, `failed` after an error. Reset per note.
+   */
+  saveStatus: NoteSaveStatus;
   onNoteUpdated: ((note: Note) => void) | null;
 
   /* function to actually store a note. should be used to inject a tanstack mutation function */
@@ -109,6 +121,61 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => {
   let lastWrittenMarkdown: string | null = null;
   let lastTrippedMarkdown: string | null = null;
 
+  // The state machine owns every save-status transition (including the
+  // minimum "Saving" display time and the 10 s "Saved now" window). The
+  // store only mirrors its status for React consumers.
+  const saveMachine = new NoteSaveMachine({
+    onStatusChange: (saveStatus) => set({ saveStatus }),
+  });
+  let unsubscribeDrafts: (() => void) | null = null;
+  // Ticks can arrive while a save is in flight. Queue one follow-up
+  // request instead of dropping the newer document state.
+  let saveInFlight = false;
+  let saveQueued = false;
+
+  const persistActiveNote = async (
+    titleOverride?: string,
+    contentOverride?: string,
+  ): Promise<void> => {
+    const { noteId, title, onNoteUpdated, setContent } = get();
+    if (!noteId) return;
+
+    if (titleOverride !== undefined) set({ title: titleOverride });
+    if (contentOverride !== undefined) setContent(contentOverride, true);
+
+    const finalTitle = titleOverride ?? title;
+    // The editor body never contains the header image, so re-attach
+    // it here before persisting.
+    const finalContent = contentOverride ?? get().getContent();
+
+    const started = saveMachine.start();
+    if (!started) return;
+    set({ isSaving: true });
+    try {
+      const saved = await get().updateNote(finalTitle, finalContent);
+      await onNoteUpdated?.(saved); // call hook
+      // Waits out the machine's minimum "Saving" window before the
+      // status becomes "Saved now".
+      await saveMachine.succeed();
+      // The note now matches what is on the server, so it is no longer
+      // a draft. Cleared only on success so a failed save keeps the
+      // draft visible on Home.
+      useDraftStore.getState().clearDraft(noteId);
+      set({ title: finalTitle });
+    } catch {
+      // Keep "Saving" visible for the same minimum window before
+      // surfacing the failure. No success toast: the Save control
+      // itself reports success; errors still get a snackbar because
+      // they are actionable and must not be missed.
+      await saveMachine.fail();
+      useInfoStore
+        .getState()
+        .setMessage(new SnackbarUpdateImpl("Failed to save note", "error"));
+    } finally {
+      set({ isSaving: false });
+    }
+  };
+
   return {
     noteId: undefined,
     editor: null,
@@ -117,12 +184,32 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => {
     sourceMarkdown: "",
     headerImageMarkdown: null,
     isSaving: false,
+    saveStatus: "notSavable",
     onNoteUpdated: null,
     updateNote: (title: string, content: string) => {
       throw new Error("updateNote function not set");
     },
 
-    registerNote: (noteId, onNoteUpdated) => set({ noteId, onNoteUpdated }),
+    registerNote: (noteId, onNoteUpdated) => {
+      unsubscribeDrafts?.();
+      unsubscribeDrafts = null;
+      saveMachine.reset();
+
+      // Draft tracking is the note's dirty flag. The machine owns the
+      // following transitions: clean -> not savable, dirty -> savable.
+      if (noteId) {
+        const hasDraft = () =>
+          Boolean(useDraftStore.getState().drafts[noteId]);
+        unsubscribeDrafts = useDraftStore.subscribe(() => {
+          if (hasDraft()) saveMachine.markDirty();
+          else saveMachine.markClean();
+        });
+        if (hasDraft()) saveMachine.markDirty();
+        else saveMachine.markClean();
+      }
+
+      set({ noteId, onNoteUpdated, saveStatus: saveMachine.status });
+    },
     setEditor: (editor) => {
       // Reset watchdog state when the editor instance changes.
       callTimestamps.length = 0;
@@ -365,35 +452,28 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => {
     },
 
     save: async (titleOverride, contentOverride) => {
-      const { noteId, title, onNoteUpdated, setContent } = get();
-      if (!noteId) return;
+      if (saveInFlight) {
+        // The active request finishes first, then re-reads the live
+        // editor so the follow-up includes every tick made meanwhile.
+        saveQueued = true;
+        return;
+      }
 
-      if (titleOverride !== undefined) set({ title: titleOverride });
-      if (contentOverride !== undefined) setContent(contentOverride, true);
-
-      const finalTitle = titleOverride ?? title;
-      // The editor body never contains the header image, so re-attach
-      // it here before persisting.
-      const finalContent = contentOverride ?? get().getContent();
-
-      set({ isSaving: true });
+      saveInFlight = true;
       try {
-        const saved = await get().updateNote(finalTitle, finalContent);
-        await onNoteUpdated?.(saved); // call hook
-        // The note now matches what is on the server, so it is no longer
-        // a draft. Cleared only on success so a failed save keeps the
-        // draft visible on Home.
-        useDraftStore.getState().clearDraft(noteId);
-        set({ title: finalTitle });
-        useInfoStore
-          .getState()
-          .setMessage(new SnackbarUpdateImpl("Note saved", "success"));
-      } catch (error) {
-        useInfoStore
-          .getState()
-          .setMessage(new SnackbarUpdateImpl("Failed to save note", "error"));
+        let nextTitle = titleOverride;
+        let nextContent = contentOverride;
+        do {
+          saveQueued = false;
+          await persistActiveNote(nextTitle, nextContent);
+          // Follow-up saves always use the latest document, not the
+          // overrides from the first call.
+          nextTitle = undefined;
+          nextContent = undefined;
+        } while (saveQueued);
       } finally {
-        set({ isSaving: false });
+        saveInFlight = false;
+        saveQueued = false;
       }
     },
   };

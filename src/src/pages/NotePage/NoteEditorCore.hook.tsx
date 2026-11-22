@@ -30,6 +30,8 @@ import type { Editor } from "@tiptap/core";
 import type { Note } from "../../api/models/search";
 import { useActiveNoteStore } from "../../zustand/editorStore";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
+import { useViewConfig } from "../../zustand/useViewConfig";
+import { useDraftStore } from "../../zustand/useDraftStore";
 import { useAuthStore } from "../../zustand/useAuthStore";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useUser } from "../../api/queries/useUser";
@@ -251,7 +253,50 @@ export const useNoteEditor = (params: UseNoteEditorParams): Editor | null => {
         SpellcheckExtension,
         EditorListMergePreview,
         TaskList,
-        TaskItem.configure({ nested: true }),
+        TaskItem.configure({
+          nested: true,
+          // Fallback for read-mode checkbox activation paths that do not
+          // pass through the click interception below (e.g. synthetic
+          // `change` events): locate the task item and apply the same
+          // document update instead of letting Tiptap revert the tick.
+          onReadOnlyChecked: (node, checked) => {
+            if (!editor || useViewConfig.getState().config.readOnly) {
+              return false;
+            }
+            let targetPos = -1;
+            editor.state.doc.descendants((candidate, pos) => {
+              if (targetPos !== -1) return false;
+              if (candidate.type.name !== "taskItem") return;
+              if (
+                candidate === node ||
+                (candidate.textContent === node.textContent &&
+                  candidate.attrs.checked !== checked)
+              ) {
+                targetPos = pos;
+                return false;
+              }
+            });
+            if (targetPos < 0) return false;
+            const current = editor.state.doc.nodeAt(targetPos);
+            if (!current) return false;
+            editor.view.dispatch(
+              editor.state.tr.setNodeMarkup(targetPos, undefined, {
+                ...current.attrs,
+                checked,
+              }),
+            );
+            if (noteId) {
+              useDraftStore
+                .getState()
+                .markDraft(noteId, { changedChars: 1 });
+            }
+            // Ticking a task is an explicit change to the note, so persist
+            // it right away. Additional ticks while a save is in flight are
+            // queued by the store and re-saved after the current request.
+            void useActiveNoteStore.getState().save();
+            return true;
+          },
+        }),
         Youtube.configure({ inline: false, width: 480, height: 320 }),
         Twitch.configure({
           inline: false,
@@ -339,6 +384,58 @@ export const useNoteEditor = (params: UseNoteEditorParams): Editor | null => {
           spellcheck: "false",
         },
         handleDOMEvents: {
+          /**
+           * Task checkboxes stay interactive in view (read) mode: ticking
+           * one updates the document without turning the note editable,
+           * so the change can be persisted with the normal Save button.
+           *
+           * Tiptap's TaskItem node view otherwise reverts read-only
+           * checkbox clicks. Intercepting the click before the browser's
+           * default activation lets us dispatch the same `checked`
+           * attribute update the editable path uses; the NodeView then
+           * re-renders from the transaction. Read-only shares keep the
+           * stock, non-interactive behaviour.
+           */
+          click(view, event) {
+            if (view.editable) return false;
+            if (useViewConfig.getState().config.readOnly) return false;
+
+            const target = event.target as HTMLElement | null;
+            const checkbox = target?.closest(
+              'input[type="checkbox"]',
+            ) as HTMLInputElement | null;
+            const listItem = checkbox?.closest('li[data-type="taskItem"]');
+            if (!checkbox || !listItem || !view.dom.contains(listItem)) {
+              return false;
+            }
+
+            let pos: number;
+            try {
+              pos = view.posAtDOM(listItem, 0);
+            } catch {
+              return false;
+            }
+            const node = view.state.doc.nodeAt(pos);
+            if (!node || node.type.name !== "taskItem") return false;
+
+            // Cancel the native checkbox toggle; the transaction below is
+            // the single source of truth for both the UI and the draft.
+            event.preventDefault();
+            event.stopPropagation();
+            view.dispatch(
+              view.state.tr.setNodeMarkup(pos, undefined, {
+                ...node.attrs,
+                checked: !node.attrs.checked,
+              }),
+            );
+            if (noteId) {
+              useDraftStore
+                .getState()
+                .markDraft(noteId, { changedChars: 1 });
+            }
+            void useActiveNoteStore.getState().save();
+            return true;
+          },
           contextmenu(_view, event) {
             const opener = contextMenuOpenerRef.current;
             // No opener (mobile, or not mounted yet): leave the

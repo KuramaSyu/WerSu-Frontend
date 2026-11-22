@@ -149,14 +149,18 @@ export const DesktopTopBar: React.FC = () => {
           <ShelfMenu />
         </Stack>
 
-        {/* Centre: search bar sits centred between the
-            auto-width wordmark (left) and the right cluster.
-            The wrapper only takes the search bar's clamped
-            width; `margin: auto` pushes the leftover space
-            equally to both sides so it always lines up with
-            the page centre, regardless of the top panel's
-            total width. */}
-        <Box sx={{ margin: "auto" }}>
+        {/* Centre: the search bar is pinned to the viewport centre
+            instead of relying on the leftover flex space. That keeps it
+            still when the right cluster changes width (for example the
+            Save control expanding its status label). */}
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+          }}
+        >
           <SearchBar />
         </Box>
 
@@ -164,7 +168,9 @@ export const DesktopTopBar: React.FC = () => {
             store reads (slots, reachability, user) and local
             anchors (popovers / user menu) only re-render its
             subtree. See :class:`TopBarRightCluster`. */}
-        <TopBarRightCluster />
+        <Box sx={{ ml: "auto", display: "flex" }}>
+          <TopBarRightCluster />
+        </Box>
       </TranslucentPaper>
     </Slide>
   );

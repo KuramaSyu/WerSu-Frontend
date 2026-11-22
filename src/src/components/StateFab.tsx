@@ -3,16 +3,18 @@
 // A FAB that knows about one or more states, each described by an
 // `icon` and a `text` label. It always shows the active state's icon.
 // On mount and whenever the active state changes, it briefly expands
-// into a rounded-rect (via MUI `Collapse`) to spell out the active
-// state's text, then collapses back to a fully round icon-only FAB.
+// into a rounded-rect to spell out the active state's text, then
+// collapses back to a fully round icon-only FAB. The label width is
+// measured and animated so changing states ("Save" -> "Saving" ->
+// "Saved now") morphs smoothly instead of snapping to the new width.
 //
 // The micro-interaction makes state indicators unambiguous: an eye
 // with "Viewing" reads as "you are viewing now", not "tap to view".
 //
 // Reuse it anywhere a toggle needs to explain its current state.
 
-import React, { useEffect, useState } from "react";
-import { Box, Collapse, Fab, Typography } from "@mui/material";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Box, Fab, Typography } from "@mui/material";
 import type { FabProps } from "@mui/material";
 import { useThemeStore } from "../zustand/useThemeStore";
 
@@ -41,6 +43,13 @@ export interface StateFabProps
   iconGap?: number;
   /** Keep the label expanded while the pointer rests on the FAB. */
   expandOnHover?: boolean;
+  /**
+   * State keys that trigger the automatic label pulse on mount / state
+   * change. Defaults to every state, preserving the original FAB
+   * behaviour. Pass a narrower list for controls whose "idle" state
+   * should only explain itself on hover.
+   */
+  expandKeys?: string[];
 }
 
 const DEFAULT_DURATION_MS = 3_000;
@@ -58,6 +67,7 @@ export const StateFab = React.forwardRef<HTMLButtonElement, StateFabProps>(
       buttonSize = DEFAULT_SIZE,
       iconGap = DEFAULT_ICON_GAP,
       expandOnHover = false,
+      expandKeys,
       onClick,
       onMouseEnter,
       onMouseLeave,
@@ -69,17 +79,21 @@ export const StateFab = React.forwardRef<HTMLButtonElement, StateFabProps>(
     const { theme } = useThemeStore();
     const active =
       states.find((state) => state.key === activeKey) ?? states[0];
+    const autoExpand =
+      expandKeys === undefined || expandKeys.includes(activeKey);
 
     // `expanded` drives the width/label; `shownKey` tracks which state's
     // micro-interaction is playing so a state change re-opens the label.
-    const [expanded, setExpanded] = useState(true);
+    const [expanded, setExpanded] = useState(autoExpand);
     const [hovered, setHovered] = useState(false);
     const [shownKey, setShownKey] = useState(activeKey);
+    const labelContentRef = useRef<HTMLSpanElement>(null);
+    const [labelWidth, setLabelWidth] = useState(0);
     if (shownKey !== activeKey) {
       // Render-phase state adjustment (React's recommended pattern for
       // derived state) so the effect below only owns the timer.
       setShownKey(activeKey);
-      setExpanded(true);
+      setExpanded(autoExpand);
     }
 
     useEffect(() => {
@@ -89,6 +103,14 @@ export const StateFab = React.forwardRef<HTMLButtonElement, StateFabProps>(
       );
       return () => window.clearTimeout(timer);
     }, [shownKey, labelDurationMs]);
+
+    // Measure the rendered label so a text/state change can animate the
+    // width from the previous label to the new one. The content stays
+    // laid out at its intrinsic width even while the outer clip is 0.
+    useLayoutEffect(() => {
+      const width = labelContentRef.current?.scrollWidth ?? 0;
+      if (width > 0) setLabelWidth(width);
+    }, [active?.text, iconGap]);
 
     if (!active) {
       return null;
@@ -142,18 +164,27 @@ export const StateFab = React.forwardRef<HTMLButtonElement, StateFabProps>(
           sx={{ display: "inline-flex", alignItems: "center" }}
         >
           {active.icon}
-          <Collapse
-            in={showLabel}
-            appear
-            orientation="horizontal"
-            timeout={theme.transitions.duration.complex}
-            unmountOnExit
+          <Box
+            component="span"
+            aria-hidden={!showLabel}
+            sx={{
+              display: "inline-flex",
+              alignItems: "center",
+              overflow: "hidden",
+              width: showLabel ? labelWidth : 0,
+              transition: theme.transitions.create("width", {
+                duration: theme.transitions.duration.complex,
+                easing: theme.transitions.easing.easeInOut,
+              }),
+            }}
           >
             <Box
               component="span"
+              ref={labelContentRef}
               sx={{
                 display: "inline-flex",
                 alignItems: "center",
+                flexShrink: 0,
                 pl: iconGap,
               }}
             >
@@ -170,7 +201,7 @@ export const StateFab = React.forwardRef<HTMLButtonElement, StateFabProps>(
                 {active.text}
               </Typography>
             </Box>
-          </Collapse>
+          </Box>
         </Box>
       </Fab>
     );

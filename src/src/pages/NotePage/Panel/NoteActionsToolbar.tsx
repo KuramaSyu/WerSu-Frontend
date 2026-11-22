@@ -10,6 +10,9 @@ import {
 } from "@mui/material";
 import ShareIcon from "@mui/icons-material/Share";
 import SaveIcon from "@mui/icons-material/Save";
+import CloudDoneIcon from "@mui/icons-material/CloudDone";
+import CloudSyncIcon from "@mui/icons-material/CloudSync";
+import ErrorOutlineIcon from "@mui/icons-material/ErrorOutlined";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -36,6 +39,29 @@ import { ShareDialog } from "../ShareDialog";
 import { ConfirmationModal } from "../../Settings/ConfirmationModal";
 import { PermissionEditor } from "../../../components/Permissions/PermissionEditor";
 import { SpellcheckDialog } from "../../../components/Editor/SpellcheckDialog";
+import { StateFab, type StateFabState } from "../../../components/StateFab";
+import { SAVED_STATUS_DURATION_MS } from "../../../zustand/noteSaveMachine";
+
+/**
+ * Save control states. The icon + label pair follows the same
+ * micro-interaction as the editor FABs: the label expands when the
+ * state changes (and on hover), then collapses back to an icon.
+ */
+const SAVE_STATES: StateFabState[] = [
+  { key: "notSavable", icon: <SaveIcon />, text: "No Changes" },
+  { key: "idle", icon: <SaveIcon />, text: "Save" },
+  {
+    key: "saving",
+    icon: <CloudSyncIcon />,
+    text: "Saving",
+  },
+  { key: "saved", icon: <CloudDoneIcon />, text: "Saved now" },
+  { key: "failed", icon: <ErrorOutlineIcon />, text: "Failed" },
+];
+
+const SAVE_LABEL_DURATION_MS = 3_000;
+/** Idle only explains itself on hover; meaningful transitions pulse. */
+const SAVE_PULSE_KEYS = ["notSavable", "saving", "saved", "failed"];
 
 /**
  * Stable id used to register this toolbar in :class:`useTopBarStore`.
@@ -93,6 +119,7 @@ export const NoteActionsToolbar: React.FC = () => {
 export const NoteActionsToolbarInner: React.FC = () => {
   const handleSave = useActiveNoteStore((s) => s.save);
   const noteId = useActiveNoteStore((s) => s.noteId);
+  const saveStatus = useActiveNoteStore((s) => s.saveStatus);
   const headerImageMarkdown = useActiveNoteStore((s) => s.headerImageMarkdown);
   const setHeaderImageModalOpen = useHeaderImageModalStore((s) => s.setOpen);
   const readOnly = useViewConfig((s) => s.config.readOnly);
@@ -119,6 +146,34 @@ export const NoteActionsToolbarInner: React.FC = () => {
   const deleteNote = useDeleteNote();
   const { theme } = useThemeStore();
   const setMessage = useInfoStore((s) => s.setMessage);
+
+  // The save control explains its current state next to the icon. The
+  // "Saved now" window is longer than the default state-label pulse so
+  // the confirmation stays readable for ten seconds after the upload.
+  const saveLabelDurationMs =
+    saveStatus === "saved"
+      ? SAVED_STATUS_DURATION_MS
+      : SAVE_LABEL_DURATION_MS;
+  const saveLabel =
+    saveStatus === "saving"
+      ? "Saving"
+      : saveStatus === "saved"
+        ? "Saved now"
+        : saveStatus === "failed"
+          ? "Failed to save"
+          : saveStatus === "notSavable"
+            ? "No Changes"
+            : "Save";
+  const saveIconColor =
+    saveStatus === "failed"
+      ? theme.palette.error.main
+      : saveStatus === "saved"
+        ? theme.palette.primary.main
+        : saveStatus === "saving"
+          ? theme.palette.primary.main
+          : saveStatus === "notSavable"
+            ? theme.palette.text.disabled
+            : theme.palette.text.primary;
 
   // Overflow menu wiring -- mirrors the anchor + Menu pattern used
   // in `ShareDialog.tsx`. Close on selection so the menu doesn't
@@ -188,21 +243,47 @@ export const NoteActionsToolbarInner: React.FC = () => {
           transition: theme.transitions.create("all"),
         }}
       >
-        {/* Save pops in only when the editor enters edit mode
-            (and the session is not read-only). `Grow` mounts +
-            animates the icon so the user sees the new affordance
-            appear instead of having it blink into existence. */}
+        {/* Save stays reachable while viewing, too: task checkboxes can
+            be ticked without entering edit mode, and the change then
+            needs a way to persist. The FAB-style control spells out
+            "Saving", "Saved now" (for 10 s) or "Failed" next to its
+            icon, and reveals the same label on hover. */}
         <Grow
           in={showSave}
           timeout={theme.transitions.duration.complex}
           mountOnEnter
           unmountOnExit
         >
-          <Tooltip title="Save">
-            <IconButton onClick={() => void handleSave()}>
-              <SaveIcon />
-            </IconButton>
-          </Tooltip>
+          <StateFab
+            states={SAVE_STATES}
+            activeKey={saveStatus}
+            aria-label={saveLabel}
+            labelDurationMs={saveLabelDurationMs}
+            expandKeys={SAVE_PULSE_KEYS}
+            expandOnHover
+            buttonSize={40}
+            expandedRadius={12}
+            iconGap={1}
+            disabled={saveStatus === "saving"}
+            aria-disabled={
+              saveStatus === "saving" || saveStatus === "notSavable"
+            }
+            onClick={() => void handleSave()}
+            sx={{
+              backgroundColor: "transparent",
+              color: saveIconColor,
+              boxShadow: "none",
+              "&:hover": {
+                backgroundColor: theme.palette.action.hover,
+                boxShadow: "none",
+              },
+              "&.Mui-disabled": {
+                backgroundColor: "transparent",
+                color: saveIconColor,
+                opacity: 1,
+              },
+            }}
+          />
         </Grow>
 
         {showShare && (
