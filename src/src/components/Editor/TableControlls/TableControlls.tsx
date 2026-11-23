@@ -1,4 +1,11 @@
-import { Box, Button, Fade, useTheme } from "@mui/material";
+import {
+  Box,
+  Button,
+  Fade,
+  IconButton,
+  Tooltip,
+  useTheme,
+} from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import {
   NodeViewWrapper,
@@ -10,9 +17,15 @@ import {
 import { Table } from "@tiptap/extension-table";
 import { TextSelection } from "@tiptap/pm/state";
 import { useRef, useState } from "react";
-import { IconPlus as AddIcon } from "@tabler/icons-react";
+import {
+  IconArrowsSort,
+  IconPlus as AddIcon,
+  IconSortAscending,
+  IconSortDescending,
+} from "@tabler/icons-react";
 import { useEditorMenuStore } from "../../../zustand/editorMenuStore";
 import { renderWerSuTable } from "../../../utils/converters/toMarkdown/renderTableToMarkdown";
+import { useTableSort } from "./useTableSort";
 
 // Action row + column menu are disabled: the bubble menu now
 // owns add/remove/move for rows and columns, so the legacy
@@ -29,6 +42,12 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
   const [showAddColControl, setShowAddColControl] = useState(false);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const theme = useTheme();
+  const {
+    isEditable,
+    sort,
+    controls: sortControls,
+    toggleSort,
+  } = useTableSort(editor, wrapperRef);
   const isTextSelectionMenuOpen = useEditorMenuStore(
     (state) => state.isTextSelectionMenuOpen,
   );
@@ -163,7 +182,7 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
       >
         {/* add column side button */}
         <Fade
-          in={isTableHovered && showAddColControl && editor.isEditable}
+          in={isTableHovered && showAddColControl && isEditable}
           easing={theme.transitions.easing.easeInOut}
           timeout={200}
         >
@@ -198,7 +217,7 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
 
         {/* add row bottom button */}
         <Fade
-          in={isTableHovered && showAddRowControl && editor.isEditable}
+          in={isTableHovered && showAddRowControl && isEditable}
           easing={theme.transitions.easing.easeInOut}
           timeout={200}
         >
@@ -233,6 +252,71 @@ export const TableNodeView: React.FC<ReactNodeViewProps> = ({
       <CssOverrideForImageCellsBox>
         <NodeViewContent />
       </CssOverrideForImageCellsBox>
+      {!isEditable && sortControls.length > 0 && (
+        <Box
+          className="table-sort-controls"
+          sx={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 5 }}
+        >
+          {sortControls.map((control) => {
+            const isActive = sort?.columnIndex === control.columnIndex;
+            const direction = isActive ? sort.direction : null;
+            const SortIcon =
+              direction === "asc"
+                ? IconSortAscending
+                : direction === "desc"
+                  ? IconSortDescending
+                  : IconArrowsSort;
+            const label =
+              direction === "asc"
+                ? "Sorted ascending. Click to sort descending."
+                : direction === "desc"
+                  ? "Sorted descending. Click to clear sorting."
+                  : "Sort column ascending";
+
+            return (
+              <Tooltip key={control.columnIndex} title={label}>
+                <IconButton
+                  size="small"
+                  data-table-sort-button
+                  data-column-index={control.columnIndex}
+                  data-sort-direction={direction ?? undefined}
+                  aria-label={label}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    toggleSort(control.columnIndex);
+                  }}
+                  sx={(theme) => ({
+                    position: "absolute",
+                    left: control.left,
+                    top: control.top,
+                    width: control.width,
+                    height: control.height,
+                    minWidth: control.width,
+                    borderRadius: 1,
+                    pointerEvents: "auto",
+                    color: isActive
+                      ? theme.palette.primary.main
+                      : theme.palette.text.secondary,
+                    backgroundColor: alpha(
+                      theme.palette.background.paper,
+                      0.88,
+                    ),
+                    border: `1px solid ${theme.palette.divider}`,
+                    boxShadow: theme.shadows[1],
+                    "&:hover": {
+                      backgroundColor: theme.palette.background.paper,
+                      color: theme.palette.primary.main,
+                    },
+                  })}
+                >
+                  <SortIcon size={16} />
+                </IconButton>
+              </Tooltip>
+            );
+          })}
+        </Box>
+      )}
     </NodeViewWrapper>
   );
 };
