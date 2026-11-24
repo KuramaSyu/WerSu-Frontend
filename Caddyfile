@@ -1,0 +1,82 @@
+# Production server for the built SPA (replaces the previous nginx
+# config). Same contract: hashed assets cached forever, `index.html`
+# never cached, `/api/` proxied to the REST service, everything else
+# falls back to the SPA shell.
+#
+# Port 5173 is internal only - TLS is terminated upstream (Traefik or
+# whatever fronts the compose network). Do NOT put a hostname here, or
+# Caddy will start its own ACME / HTTPS-redirect logic and fight it.
+:5173 {
+	root * /srv
+
+	# gzip + zstd. zstd is ~15% smaller than gzip on JS and is understood
+	# by every current browser over HTTPS.
+	encode {
+		zstd
+		gzip
+		minimum_length 1024
+	}
+
+	# The app shell and the runtime `env.js` must never be served stale,
+	# otherwise deploys and `BACKEND_URL` changes would not roll out.
+	header /index.html Cache-Control "no-store"
+	header /env.js Cache-Control "no-store"
+
+	# Hashed asset names are content-addressed, so cache them for a year.
+	# `/assets/*` + the root icons only: a bare extension matcher would also
+	# hit `/env.js`, which must stay uncached (see the no-store rule above).
+	@hashed {
+		path /assets/* /favicon.svg /favicon-32x32.png /favicon-16x16.png /apple-touch-icon.png
+		path_regexp \.(?:js|css|woff2?|ttf|otf|eot|svg|png|jpe?g|gif|webp|ico|map)$
+	}
+	header @hashed Cache-Control "public, immutable, max-age=31536000"
+
+	# `handle` blocks are terminal and run in the order written, which is
+	# what keeps `/api/...` out of the SPA fallback below (a bare
+	# `try_files` at this level would be ordered before them and swallow
+	# the API paths).
+
+	# Same as the Vite dev proxy (`/api` -> backend, prefix kept) and the
+	# backend's own routing: the REST service mounts everything under
+	# `/api/...` (verify with `curl -i <backend>/api/swagger/doc.json`).
+	#
+	# NOTE: the previous nginx config did `proxy_pass .../` (trailing
+	# slash), which *stripped* `/api`. That made same-origin `/api/...`
+	# requests 404 at the backend (the dev server never stripped, so dev
+	# and prod disagreed). Prefix is preserved here on purpose.
+	handle /api/* {
+		reverse_proxy wersu-rest:8080 {
+			# nginx forwarded X-Real-IP explicitly; keep parity for backend logs.
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# Assets and icons must 404 when missing instead of returning the SPA
+	# shell (nginx did this with `try_files $uri =404`), otherwise a bad
+	# script request surfaces as "Unexpected token '<'".
+	@static path /assets/* /favicon.svg /favicon-32x32.png /favicon-16x16.png /apple-touch-icon.png
+	handle @static {
+		file_server {
+			precompressed zstd gzip
+		}
+	}
+
+	# SPA fallback: equivalent of `try_files $uri $uri/ /index.html`.
+	#
+	# `route` pins the order inside the block: try_files rewrites the URI
+	# first, then the header middleware runs. That is how the app shell and
+	# `/env.js` end up `no-store` even when the requested path was a deep
+	# route (nginx achieved the same via its internal redirect to
+	# `location = /index.html`).
+	#
+	# `precompressed` is a no-op until the build emits .zst/.gz siblings.
+	handle {
+		route {
+			try_files {path} {path}/ /index.html
+			header Cache-Control "no-store"
+			file_server {
+				precompressed zstd gzip
+			}
+		}
+	}
+}

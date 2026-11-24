@@ -49,7 +49,7 @@ function isBackendImageUrl(url: string): boolean {
  * Same-origin path for a backend URL when the app is served from a
  * different origin (dev server on :5173, backend on :8080).
  *
- * Both the Vite dev proxy and the production nginx config forward
+ * Both the Vite dev proxy and the production Caddy config forward
  * `/api/` to the backend, so fetching the path (instead of the absolute
  * backend URL) keeps the request same-origin. That matters for the
  * attachment image endpoint, which answers with the image but without

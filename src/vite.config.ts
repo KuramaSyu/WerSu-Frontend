@@ -34,7 +34,7 @@ function devMswWorkerPlugin(): Plugin {
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
-  // Mirror the production nginx config: forward `/api/` to the backend so
+  // Mirror the production Caddy config: forward `/api/` to the backend so
   // same-origin requests (e.g. the attachment image blob used for theme
   // extraction) work in dev too. The backend's image endpoint sends no CORS
   // headers, so a direct cross-origin fetch from :5173 fails.
