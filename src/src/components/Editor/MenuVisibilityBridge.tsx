@@ -138,10 +138,13 @@ const MenuVisibilityBridgeImpl: React.FC<MenuVisibilityBridgeProps> = ({
   // doesn't toggle us) and on `window` for pointerup (so a
   // release that ends outside the editor still clears the
   // flag).
+  //
+  // `editor.view` throws until `EditorContent` has attached the view
+  // ("The editor view is not available"), and this bridge is a sibling
+  // that mounts *before* it. Attach on TipTap's `mount` event instead of
+  // assuming the view already exists.
   useEffect(() => {
     if (!editor) return;
-    const dom = editor.view?.dom as HTMLElement | undefined;
-    if (!dom) return;
 
     const onPointerDown = (event: PointerEvent) => {
       // The event is already routed through ProseMirror's own
@@ -162,15 +165,36 @@ const MenuVisibilityBridgeImpl: React.FC<MenuVisibilityBridgeProps> = ({
     const onPointerCancel = () => setPointerDown(false);
     const onBlur = () => setPointerDown(false);
 
-    dom.addEventListener("pointerdown", onPointerDown);
-    window.addEventListener("pointerup", onPointerUp);
-    window.addEventListener("pointercancel", onPointerCancel);
-    dom.addEventListener("blur", onBlur);
+    let detachDom: (() => void) | undefined;
+
+    const attach = (): void => {
+      if (detachDom) return;
+      let dom: HTMLElement | undefined;
+      try {
+        dom = editor.view?.dom as HTMLElement | undefined;
+      } catch {
+        // View not mounted yet: retry on the `mount` event below.
+        dom = undefined;
+      }
+      if (!dom) return;
+
+      dom.addEventListener("pointerdown", onPointerDown);
+      dom.addEventListener("blur", onBlur);
+      window.addEventListener("pointerup", onPointerUp);
+      window.addEventListener("pointercancel", onPointerCancel);
+      detachDom = () => {
+        dom.removeEventListener("pointerdown", onPointerDown);
+        dom.removeEventListener("blur", onBlur);
+        window.removeEventListener("pointerup", onPointerUp);
+        window.removeEventListener("pointercancel", onPointerCancel);
+      };
+    };
+
+    attach();
+    editor.on("mount", attach);
     return () => {
-      dom.removeEventListener("pointerdown", onPointerDown);
-      window.removeEventListener("pointerup", onPointerUp);
-      window.removeEventListener("pointercancel", onPointerCancel);
-      dom.removeEventListener("blur", onBlur);
+      editor.off("mount", attach);
+      detachDom?.();
     };
   }, [editor, enabled, setPointerDown, setTextSelectionMenuOpen]);
 
