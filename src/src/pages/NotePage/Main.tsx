@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useRef } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { Box, Fade } from "@mui/material";
 import { LoginPage } from "../LoginPage/Main";
 import { M3, M4 } from "../../statics";
 import type { Note } from "../../api/models/search";
-import { NoteEditor } from "./Editor";
 import { NoteLeftPanel } from "./Panel/MainLeft";
 import { NoteRightPanel } from "./Panel/MainRight";
 import { NoteActionsToolbar } from "./Panel/NoteActionsToolbar";
@@ -23,6 +22,13 @@ import { useScrollToSectionOnLoad } from "../../hooks/useScrollToSectionOnLoad";
 import { queryClient } from "../../api/queryClient";
 import { historyQueryKeys } from "../../api/queries/historyQueries";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
+
+// The TipTap / highlight.js / KaTeX / CodeMirror stack is the single
+// heaviest part of the app. It loads as its own chunk so the note
+// shell (panels, toolbar, skeleton) paints without it.
+const NoteEditor = lazy(() =>
+  import("./Editor").then((m) => ({ default: m.NoteEditor })),
+);
 
 export const NotePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -172,13 +178,15 @@ export const NotePage: React.FC = () => {
               alignItems: "flex-start",
             }}
           >
-            <NoteEditor
-              note={note}
-              noteId={id}
-              fetchError={null}
-              onNoteUpdated={updateNote}
-              key={id}
-            />
+            <Suspense fallback={<NoteEditorSkeleton showSourceEditor={false} />}>
+              <NoteEditor
+                note={note}
+                noteId={id}
+                fetchError={null}
+                onNoteUpdated={updateNote}
+                key={id}
+              />
+            </Suspense>
           </Box>
         </Box>
       </Fade>

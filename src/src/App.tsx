@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { lazy, useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -16,18 +16,82 @@ import { FeatureFlagName, useFeatureStore } from "./zustand/FeatureStore";
 
 import "./App.css";
 import { HomePage } from "./pages/Home/Main";
-import { SwaggerDocs } from "./pages/docs/Main";
 import InfoDisplay from "./pages/MainPage/InfoDisplay";
 import { ShortcutPulse } from "./components/ShortcutPulse";
 import { ThemeFavicon } from "./components/ThemeFavicon";
-import { NotePage } from "./pages/NotePage/Main";
-import { DirectoryView } from "./pages/DirectoryView/Main";
-import { TagView } from "./pages/TagView/Main";
-import { DirectoryEditPage } from "./pages/DirectoryEdit/Main";
-import { CreateSubdirectoryPage } from "./pages/DirectoryCreate/Main";
-import { FileGraphPage } from "./pages/FileGraph/Main";
 import { recordNavigation } from "./utils/navigationMemento";
 import { Bootstrap } from "./Bootstrap";
+import { LoginPage } from "./pages/LoginPage/Main";
+
+// Route-level code splitting. Everything that is not needed for the
+// first paint (editor stack, swagger-ui, mermaid/graph, codemirror,
+// settings) loads on navigation. Suspense boundaries live in
+// `AppShell` (shell stays mounted) and in the note pages (editor-only
+// fallback), so a slow chunk never blanks the app.
+const SwaggerDocs = lazy(() =>
+  import("./pages/docs/Main").then((m) => ({ default: m.SwaggerDocs })),
+);
+const NotePage = lazy(() =>
+  import("./pages/NotePage/Main").then((m) => ({ default: m.NotePage })),
+);
+const PublicNotePage = lazy(() =>
+  import("./pages/PublicNotePage/Main").then((m) => ({
+    default: m.PublicNotePage,
+  })),
+);
+const DirectoryView = lazy(() =>
+  import("./pages/DirectoryView/Main").then((m) => ({
+    default: m.DirectoryView,
+  })),
+);
+const TagView = lazy(() =>
+  import("./pages/TagView/Main").then((m) => ({ default: m.TagView })),
+);
+const DirectoryEditPage = lazy(() =>
+  import("./pages/DirectoryEdit/Main").then((m) => ({
+    default: m.DirectoryEditPage,
+  })),
+);
+const CreateSubdirectoryPage = lazy(() =>
+  import("./pages/DirectoryCreate/Main").then((m) => ({
+    default: m.CreateSubdirectoryPage,
+  })),
+);
+const FileGraphPage = lazy(() =>
+  import("./pages/FileGraph/Main").then((m) => ({
+    default: m.FileGraphPage,
+  })),
+);
+const SettingsPage = lazy(() => import("./pages/Settings/Main"));
+const ShelfEditPage = lazy(() =>
+  import("./pages/ShelfEdit/Main").then((m) => ({
+    default: m.ShelfEditPage,
+  })),
+);
+const ShelfTabRedirect = lazy(() =>
+  import("./pages/ShelfEdit/Main").then((m) => ({
+    default: m.ShelfTabRedirect,
+  })),
+);
+const SharesPage = lazy(() =>
+  import("./pages/Shares/Main").then((m) => ({ default: m.SharesPage })),
+);
+const RolesPage = lazy(() =>
+  import("./pages/Roles/RolesPage").then((m) => ({
+    default: m.RolesPage,
+  })),
+);
+const RoleDetailPage = lazy(() =>
+  import("./pages/Roles/RoleDetailPage").then((m) => ({
+    default: m.RoleDetailPage,
+  })),
+);
+const ShortcutsPage = lazy(() =>
+  import("./pages/Shortcuts/Main").then((m) => ({
+    default: m.ShortcutsPage,
+  })),
+);
+
 import "@fontsource-variable/fraunces";
 import "@fontsource-variable/fraunces/wght-italic.css";
 import "@fontsource/fira-sans/400.css";
@@ -47,17 +111,6 @@ import { AppShell } from "./AppShell";
 import { RequireAuth } from "./components/RequireAuth";
 import { RightClickMenuHost } from "./components/RightClick/RightClickMenuHost";
 import { DirectoryDialogHost } from "./components/RightClick/DirectoryDialogHost";
-import { PublicNotePage } from "./pages/PublicNotePage/Main";
-import SettingsPage from "./pages/Settings/Main";
-import { LoginPage } from "./pages/LoginPage/Main";
-import {
-  ShelfEditPage,
-  ShelfTabRedirect,
-} from "./pages/ShelfEdit/Main";
-import { SharesPage } from "./pages/Shares/Main";
-import { RolesPage } from "./pages/Roles/RolesPage";
-import { RoleDetailPage } from "./pages/Roles/RoleDetailPage";
-import { ShortcutsPage } from "./pages/Shortcuts/Main";
 
 /**
  * records the navigation of the user, so that the back button works as expected

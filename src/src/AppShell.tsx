@@ -9,7 +9,7 @@ import {
   TOP_BAR_HEIGHT,
 } from "./statics";
 import { useLayout } from "./LayoutProvider";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { LoadingPage } from "./pages/LoadingPage/Main";
 import { LeftRail } from "./components/Rail/LeftRail";
@@ -30,6 +30,7 @@ import { NotificationsDialog } from "./components/TopBar/NotificationsDialog";
 import { ServiceFailureDialogHost } from "./components/TopBar/ServiceFailureDialogHost";
 import { useHasBackgroundImage } from "./hooks/useHasBackgroundImage";
 import { buildDotGridBackground } from "./utils/dotGridBackground";
+import { RouteFallback } from "./pages/RouteFallback";
 import { useAppearanceSettings } from "./zustand/useAppearanceSettings";
 
 // Path patterns that gate the auto-hide topbar behaviour. The topbar
@@ -363,7 +364,11 @@ export const AppShell: React.FC = () => {
                 minHeight: 0,
               }}
             >
-              <Outlet />
+              {/* Route chunks are lazy (see App.tsx); the shell, rails
+                  and top bar stay mounted while one loads. */}
+              <Suspense fallback={<RouteFallback />}>
+                <Outlet />
+              </Suspense>
               {/* previously a strack with outlet and bottom padding
               which looked nasty in the loginscreen */}
             </Box>

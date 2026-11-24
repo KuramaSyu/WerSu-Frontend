@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Box, Fade } from "@mui/material";
 import { usePublicShare } from "../../api/queries/publicSharingQueries";
@@ -14,7 +14,6 @@ import {
 } from "../../LayoutProvider";
 import { M3, M4 } from "../../statics";
 import type { Note } from "../../api/models/search";
-import { PublicNoteEditor } from "../NotePage/Editor";
 import { NoteEditorSkeleton } from "../NotePage/NoteEditorSkeleton";
 import { PublicShareUnavailable } from "./PublicShareUnavailable";
 import { getPublicCollabEntry } from "../../hooks/usePublicNoteCollaboration";
@@ -24,6 +23,12 @@ import { NoteRightPanel } from "../NotePage/Panel/MainRight";
 import { NoteActionsToolbar } from "../NotePage/Panel/NoteActionsToolbar";
 import { useScrollToSectionOnLoad } from "../../hooks/useScrollToSectionOnLoad";
 import { usePublicRouteReady } from "../../hooks/usePublicRouteReady";
+
+// Same lazy editor chunk as the private note page (TipTap, highlight.js,
+// KaTeX, CodeMirror).
+const PublicNoteEditor = lazy(() =>
+  import("../NotePage/Editor").then((m) => ({ default: m.PublicNoteEditor })),
+);
 
 /**
  * Route `/public/n/:share_id` - opens a note published through a
@@ -211,13 +216,17 @@ export const PublicNotePage: React.FC = () => {
               alignItems: "flex-start",
             }}
           >
-            <PublicNoteEditor
-              note={note}
-              noteId={grant?.note_id ?? ""}
-              fetchError={null}
-              onNoteUpdated={updateNote}
-              key={grant?.note_id ?? ""}
-            />
+            <Suspense
+              fallback={<NoteEditorSkeleton showSourceEditor={false} />}
+            >
+              <PublicNoteEditor
+                note={note}
+                noteId={grant?.note_id ?? ""}
+                fetchError={null}
+                onNoteUpdated={updateNote}
+                key={grant?.note_id ?? ""}
+              />
+            </Suspense>
           </Box>
         </Box>
       </Fade>

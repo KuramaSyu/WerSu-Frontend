@@ -1,7 +1,7 @@
 import { DragDropProvider, type DragDropEvents } from "@dnd-kit/react";
 import { Box, IconButton, Stack } from "@mui/material";
 
-import { useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import CreateIcon from "@mui/icons-material/Create";
 import AddIcon from "@mui/icons-material/Add";
@@ -25,11 +25,19 @@ import { getNoteParentDirectoryIds } from "../../utils/fileGraphUtils";
 import { useLatestNotes, useMoveNote } from "../../api/queries/useNoteQueries";
 import { useLayout, useLeftPanel, usePanelSize } from "../../LayoutProvider";
 import { useNavigate } from "react-router-dom";
-import { PopupNoteModal } from "./Modals/PopupNoteModal";
+import { useMainPageStore } from "../../zustand/useMainPageStore";
+// The popup editor pulls the whole TipTap stack; only fetch it when
+// the modal is first opened (it stays mounted at null while closed).
+const PopupNoteModal = lazy(() =>
+  import("./Modals/PopupNoteModal").then((m) => ({
+    default: m.PopupNoteModal,
+  })),
+);
 import { set } from "zod";
 import { EmptyLandingPage } from "./EmptyLandingPage";
 
 export const MainContent: React.FC = () => {
+  const noteModalOpen = useMainPageStore((s) => s.noteModalOpen);
   const { mutate: moveNote } = useMoveNote();
   const { data: latestNotes, isLoading } = useLatestNotes();
   const { setMessage } = useInfoStore();
@@ -219,7 +227,13 @@ export const MainContent: React.FC = () => {
           </DragDropProvider>
         </Box>
         {!isLoading && latestNotes?.length === 0 && <EmptyLandingPage />}
-        <PopupNoteModal />
+        {/* Mounted only while a quick-create modal is open, so the
+            TipTap editor chunk is not fetched on a plain home visit. */}
+        {noteModalOpen && (
+          <Suspense fallback={null}>
+            <PopupNoteModal />
+          </Suspense>
+        )}
       </Box>
     </>
   );
