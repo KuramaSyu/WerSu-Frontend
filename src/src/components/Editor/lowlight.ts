@@ -1,4 +1,5 @@
-import { all, createLowlight } from "lowlight";
+import { createLowlight } from "lowlight";
+import { HIGHLIGHT_LANGUAGE_NAMES } from "./highlightLanguages";
 import bash from "highlight.js/lib/languages/bash";
 import css from "highlight.js/lib/languages/css";
 import javascript from "highlight.js/lib/languages/javascript";
@@ -25,10 +26,15 @@ import materialPalenight from "highlight.js/styles/base16/material-palenight.css
  * lowlight grammar set for the note editor.
  *
  * Curated subset (the 10 imports above) is used directly for the
- * languages users pick most often. The full `lowlight.all` set
- * (380+ grammars) is registered on top so any language the user
- * selects from the picker gets a real lexer instead of falling
- * through to `plaintext`.
+ * languages users pick most often, so those work the moment the editor
+ * mounts. The remaining ~180 grammars of `lowlight.all` do not live in
+ * this module: `ensureAllGrammars()` fetches them as their own chunk and
+ * registers them on top, so any language from the picker still gets a
+ * real lexer instead of falling through to `plaintext`.
+ *
+ * `SUPPORTED_LANGUAGES` therefore comes from a static name snapshot
+ * (`highlightLanguages.ts`), not `lowlight.listLanguages()`: the picker
+ * has to render synchronously, before the grammar chunk arrives.
  *
  * `defaultLanguage: "plaintext"` is pinned on `CustomCodeBlock` at
  * the call sites - that keeps the
@@ -62,16 +68,43 @@ lowlight.register("xml", xml);
 // also surfaces "mermaid" in `SUPPORTED_LANGUAGES` (the language picker).
 lowlight.register("mermaid", plaintext);
 
-for (const [name, grammar] of Object.entries(all)) {
-  if (!lowlight.registered(name)) lowlight.register(name, grammar);
-}
+// Until the full grammar chunk arrives, a code block tagged with one of
+// the non-curated languages would make lowlight throw
+// (`Unknown language: ... is not registered`), which TipTap surfaces as a
+// broken node view. Render such blocks as plaintext until then; the chunk
+// normally lands long before the block is read, and the next decoration
+// pass highlights it for real.
+const highlightRegistered = lowlight.highlight.bind(lowlight);
+lowlight.highlight = ((language, value, options) =>
+  highlightRegistered(
+    lowlight.registered(language) ? language : "plaintext",
+    value,
+    options,
+  )) as typeof lowlight.highlight;
+
+let allGrammarsPromise: Promise<void> | null = null;
+
+/**
+ * Fetches and registers every highlight.js grammar (~900 kB).
+ *
+ * Idempotent and cached: concurrent callers share one import. Kicked off
+ * below so the grammar chunk downloads in parallel with the editor chunk
+ * rather than on the first exotic code block.
+ */
+export const ensureAllGrammars = (): Promise<void> => {
+  allGrammarsPromise ??= import("./lowlightGrammars").then(
+    ({ registerAllGrammars }) => {
+      registerAllGrammars(lowlight);
+    },
+  );
+  return allGrammarsPromise;
+};
+
+void ensureAllGrammars();
 
 export const SUPPORTED_LANGUAGES: readonly string[] = Object.freeze([
   "plaintext",
-  ...lowlight
-    .listLanguages()
-    .filter((l) => l !== "plaintext")
-    .sort(),
+  ...HIGHLIGHT_LANGUAGE_NAMES.filter((language) => language !== "plaintext"),
 ]);
 
 /**
