@@ -66,8 +66,10 @@ export const NOTE_WIDTH_STATES: Record<NoteWidthMode, NoteWidthState> = {
     id: "normal",
     label: "Normal",
     tooltip: "Current: Normal",
-    bodyWidth: NOTE_EDITOR_A4_WIDTH,
-    paperWidth: `calc(${NOTE_EDITOR_A4_WIDTH} + 1rem)`,
+    // A4 is the preferred reading width, but scale it down on narrow
+    // canvases (with rails open a 52rem card can overflow the viewport).
+    bodyWidth: `clamp(20rem, ${NOTE_EDITOR_A4_WIDTH}, 100%)`,
+    paperWidth: `clamp(21rem, calc(${NOTE_EDITOR_A4_WIDTH} + 1rem), 100%)`,
     panels: null,
   },
   wide: {
