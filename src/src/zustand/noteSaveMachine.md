@@ -18,7 +18,7 @@ stateDiagram-v2
 
     Saved --> Idle: markDirty
     Saved --> Saving: start
-    Saved --> NotSavable: 10 s timeout / reset
+    Saved --> NotSavable: 4 s timeout / reset
 
     Failed --> Saving: start (retry)
     Failed --> NotSavable: reset
@@ -31,7 +31,7 @@ stateDiagram-v2
 | `NotSavable` | No local changes are pending. | “No Changes”, starting a save is a no-op |
 | `Idle` | A draft exists and can be saved. | “Save” |
 | `Saving` | A save is in flight. The minimum window keeps “Saving” visible for at least 500 ms, even when the request finishes instantly. | “Saving” |
-| `Saved` | The last save succeeded. Stays visible for 10 seconds, then returns to `NotSavable`. | “Saved now”, primary color |
+| `Saved` | The last save succeeded. Stays visible for 4 seconds, then returns to `NotSavable`. | “Saved now”, primary color |
 | `Failed` | The last save failed. The error snackbar is shown; a new save can be started to retry. | “Failed” |
 
 ## Notes

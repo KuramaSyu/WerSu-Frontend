@@ -122,7 +122,7 @@ export const useActiveNoteStore = create<ActiveNoteState>((set, get) => {
   let lastTrippedMarkdown: string | null = null;
 
   // The state machine owns every save-status transition (including the
-  // minimum "Saving" display time and the 10 s "Saved now" window). The
+  // minimum "Saving" display time and the 4 s "Saved now" window). The
   // store only mirrors its status for React consumers.
   const saveMachine = new NoteSaveMachine({
     onStatusChange: (saveStatus) => set({ saveStatus }),

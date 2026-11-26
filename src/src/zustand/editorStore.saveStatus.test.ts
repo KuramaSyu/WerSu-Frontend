@@ -7,7 +7,7 @@
 // error surface). Success deliberately emits no snackbar anymore.
 //
 // The state machine guarantees a minimum "Saving" display window and
-// owns the 10 s "Saved now" timeout, so these tests drive fake timers.
+// owns the 4 s "Saved now" timeout, so these tests drive fake timers.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 

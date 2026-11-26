@@ -23,7 +23,7 @@ export type NoteSaveStatus =
 export const MIN_SAVING_DISPLAY_MS = 500;
 
 /** How long "Saved now" stays active before returning to idle. */
-export const SAVED_STATUS_DURATION_MS = 10_000;
+export const SAVED_STATUS_DURATION_MS = 4_000;
 
 export interface NoteSaveContext {
   now(): number;

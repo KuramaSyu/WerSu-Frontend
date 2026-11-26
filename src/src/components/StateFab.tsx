@@ -25,10 +25,18 @@ export interface StateFabState {
   icon: React.ReactNode;
   /** Label revealed by the expand micro-interaction. */
   text: string;
+  /**
+   * Enter this state with the label collapsed: no pulse on the state
+   * change. Hover still reveals the label. Use it for quiet idle
+   * states that should not shout each time they become active.
+   */
+  startCollapsed?: boolean;
 }
 
-export interface StateFabProps
-  extends Omit<FabProps, "children" | "variant" | "size"> {
+export interface StateFabProps extends Omit<
+  FabProps,
+  "children" | "variant" | "size"
+> {
   /** All states the FAB can be in. */
   states: StateFabState[];
   /** Key of the currently active state. */
@@ -43,6 +51,13 @@ export interface StateFabProps
   iconGap?: number;
   /** Keep the label expanded while the pointer rests on the FAB. */
   expandOnHover?: boolean;
+  /**
+   * Mount with the label collapsed instead of expanded. Later state
+   * changes still pulse the label unless the state itself sets
+   * `startCollapsed`. Use it for controls whose idle state shouldn't
+   * shout on page load.
+   */
+  startCollapsed?: boolean;
   /**
    * State keys that trigger the automatic label pulse on mount / state
    * change. Defaults to every state, preserving the original FAB
@@ -67,6 +82,7 @@ export const StateFab = React.forwardRef<HTMLButtonElement, StateFabProps>(
       buttonSize = DEFAULT_SIZE,
       iconGap = DEFAULT_ICON_GAP,
       expandOnHover = false,
+      startCollapsed = false,
       expandKeys,
       onClick,
       onMouseEnter,
@@ -77,14 +93,14 @@ export const StateFab = React.forwardRef<HTMLButtonElement, StateFabProps>(
     ref,
   ) {
     const { theme } = useThemeStore();
-    const active =
-      states.find((state) => state.key === activeKey) ?? states[0];
+    const active = states.find((state) => state.key === activeKey) ?? states[0];
     const autoExpand =
-      expandKeys === undefined || expandKeys.includes(activeKey);
+      !active?.startCollapsed &&
+      (expandKeys === undefined || expandKeys.includes(activeKey));
 
     // `expanded` drives the width/label; `shownKey` tracks which state's
     // micro-interaction is playing so a state change re-opens the label.
-    const [expanded, setExpanded] = useState(autoExpand);
+    const [expanded, setExpanded] = useState(autoExpand && !startCollapsed);
     const [hovered, setHovered] = useState(false);
     const [shownKey, setShownKey] = useState(activeKey);
     const labelContentRef = useRef<HTMLSpanElement>(null);

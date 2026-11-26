@@ -48,7 +48,14 @@ import { SAVED_STATUS_DURATION_MS } from "../../../zustand/noteSaveMachine";
  * state changes (and on hover), then collapses back to an icon.
  */
 const SAVE_STATES: StateFabState[] = [
-  { key: "notSavable", icon: <SaveIcon />, text: "No Changes" },
+  // After "Saved now" times out the note is simply clean again; that
+  // quiet state should not pulse "No Changes" in the top bar.
+  {
+    key: "notSavable",
+    icon: <SaveIcon />,
+    text: "No Changes",
+    startCollapsed: true,
+  },
   { key: "idle", icon: <SaveIcon />, text: "Save" },
   {
     key: "saving",
@@ -61,7 +68,7 @@ const SAVE_STATES: StateFabState[] = [
 
 const SAVE_LABEL_DURATION_MS = 3_000;
 /** Idle only explains itself on hover; meaningful transitions pulse. */
-const SAVE_PULSE_KEYS = ["notSavable", "saving", "saved", "failed"];
+const SAVE_PULSE_KEYS = ["saving", "saved", "failed"];
 
 /**
  * Stable id used to register this toolbar in :class:`useTopBarStore`.
@@ -149,11 +156,9 @@ export const NoteActionsToolbarInner: React.FC = () => {
 
   // The save control explains its current state next to the icon. The
   // "Saved now" window is longer than the default state-label pulse so
-  // the confirmation stays readable for ten seconds after the upload.
+  // the confirmation stays readable for a few seconds after the upload.
   const saveLabelDurationMs =
-    saveStatus === "saved"
-      ? SAVED_STATUS_DURATION_MS
-      : SAVE_LABEL_DURATION_MS;
+    saveStatus === "saved" ? SAVED_STATUS_DURATION_MS : SAVE_LABEL_DURATION_MS;
   const saveLabel =
     saveStatus === "saving"
       ? "Saving"
@@ -246,7 +251,7 @@ export const NoteActionsToolbarInner: React.FC = () => {
         {/* Save stays reachable while viewing, too: task checkboxes can
             be ticked without entering edit mode, and the change then
             needs a way to persist. The FAB-style control spells out
-            "Saving", "Saved now" (for 10 s) or "Failed" next to its
+            "Saving", "Saved now" (for SAVED_STATUS_DURATION_MS) or "Failed" next to its
             icon, and reveals the same label on hover. */}
         <Grow
           in={showSave}
@@ -261,6 +266,10 @@ export const NoteActionsToolbarInner: React.FC = () => {
             labelDurationMs={saveLabelDurationMs}
             expandKeys={SAVE_PULSE_KEYS}
             expandOnHover
+            // On page load the top bar is busy enough without the save
+            // control spelling itself out; it still pulses on state
+            // changes and on hover.
+            startCollapsed
             buttonSize={40}
             expandedRadius={12}
             iconGap={1}
