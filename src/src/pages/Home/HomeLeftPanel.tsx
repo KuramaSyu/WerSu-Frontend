@@ -8,35 +8,66 @@ import {
   LastUsedPanel,
 } from "../../components/FrequentlyUsed/Main";
 import { RecentActivityPanel } from "../../components/RecentActivity/Main";
+import {
+  uniquePerDayForCounting,
+  usePersonalizationSettings,
+} from "../../zustand/usePersonalizationSettings";
 
 /**
  * Left rail for the Home page: the three history blocks (last used,
  * frequently used, recent activity).
+ *
+ * The first two blocks read their window / algorithm / row count from
+ * the Personalize settings, so the user can tune how the rail is built
+ * without touching the Home page itself.
  */
-export const HomeLeftPanel: React.FC = () => (
-  <UpperPanel spacing={2.5}>
-    <RailSection
-      title="Last used"
-      description="Notes you touched most recently."
-      icon={<HistoryIcon />}
-    >
-      <LastUsedPanel title={null} />
-    </RailSection>
+export const HomeLeftPanel: React.FC = () => {
+  const frequentlyUsedDays = usePersonalizationSettings(
+    (state) => state.frequentlyUsedDays,
+  );
+  const frequentlyUsedAlgorithm = usePersonalizationSettings(
+    (state) => state.frequentlyUsedAlgorithm,
+  );
+  const frequentlyUsedCounting = usePersonalizationSettings(
+    (state) => state.frequentlyUsedCounting,
+  );
+  const frequentlyUsedRailLimit = usePersonalizationSettings(
+    (state) => state.frequentlyUsedRailLimit,
+  );
+  const lastUsedDays = usePersonalizationSettings(
+    (state) => state.lastUsedDays,
+  );
+  const lastUsedRailLimit = usePersonalizationSettings(
+    (state) => state.lastUsedRailLimit,
+  );
 
-    <RailSection
-      title="Frequently used"
-      description="Notes you keep coming back to."
-      icon={<LocalFireDepartmentIcon />}
-    >
-      <FrequentlyUsedPanel title={null} />
-    </RailSection>
+  return (
+    <UpperPanel spacing={2.5}>
+      <RailSection title="Last used" icon={<HistoryIcon />}>
+        <LastUsedPanel
+          title={null}
+          limit={lastUsedRailLimit}
+          days={lastUsedDays}
+        />
+      </RailSection>
 
-    <RailSection
-      title="Recent activity"
-      description="Latest edits, views and moves."
-      icon={<ScheduleIcon />}
-    >
-      <RecentActivityPanel title={null} target={{ type: "root" }} />
-    </RailSection>
-  </UpperPanel>
-);
+      <RailSection title="Frequently used" icon={<LocalFireDepartmentIcon />}>
+        <FrequentlyUsedPanel
+          title={null}
+          limit={frequentlyUsedRailLimit}
+          algorithm={frequentlyUsedAlgorithm}
+          uniquePerDay={uniquePerDayForCounting(frequentlyUsedCounting)}
+          days={frequentlyUsedDays ?? undefined}
+        />
+      </RailSection>
+
+      <RailSection
+        title="Recent activity"
+        description="Latest edits, views and moves."
+        icon={<ScheduleIcon />}
+      >
+        <RecentActivityPanel title={null} target={{ type: "root" }} />
+      </RailSection>
+    </UpperPanel>
+  );
+};

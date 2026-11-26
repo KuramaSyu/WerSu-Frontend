@@ -27,6 +27,8 @@ export interface FrequentlyUsedPanelProps {
   algorithm?: MostUsedAlgorithm;
   /** Only count activity within this many days. Omit for all time. */
   days?: number;
+  /** Count at most one hit per note per day. */
+  uniquePerDay?: boolean;
 }
 
 /**
@@ -48,11 +50,13 @@ export const FrequentlyUsedPanel: React.FC<FrequentlyUsedPanelProps> = ({
   limit = 20,
   algorithm = "MOST_USED_ALGORITHM_LOG_COUNT",
   days,
+  uniquePerDay,
 }) => {
   const { rows, isLoading, hasError } = useFrequentlyUsedRows({
     limit,
     algorithm,
     days,
+    uniquePerDay,
   });
   const navigate = useNavigate();
   const developerMode = useFeatureStore(

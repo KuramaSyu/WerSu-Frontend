@@ -6,6 +6,7 @@ import CodeIcon from "@mui/icons-material/Code";
 import LockIcon from "@mui/icons-material/Lock";
 import PaletteIcon from "@mui/icons-material/Palette";
 import SearchIcon from "@mui/icons-material/Search";
+import TuneIcon from "@mui/icons-material/Tune";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import WifiIcon from "@mui/icons-material/Wifi";
 import type { SettingsCategory } from "./types";
@@ -18,6 +19,7 @@ import { NetworkSection } from "./NetworkSection";
 import { DeveloperSection } from "./DeveloperSection";
 import { SearchSection } from "./SearchSection";
 import { NoteVisibilitySection } from "./NoteVisibilitySection";
+import { PersonalizeSection } from "./PersonalizeSection";
 import { SecuritySection } from "./SecuritySection";
 import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
 import { useAppearanceSettings } from "../../zustand/useAppearanceSettings";
@@ -27,6 +29,7 @@ import {
 } from "../../zustand/useSearchSettings";
 import { useThemeStore } from "../../zustand/useThemeStore";
 import { useNoteVisibilityStore } from "../../zustand/useNoteVisibilityStore";
+import { usePersonalizationSettings } from "../../zustand/usePersonalizationSettings";
 
 /** Add new categories here; both the rail and the body read this list. */
 export const settingsCategories: SettingsCategory[] = [
@@ -80,6 +83,16 @@ export const settingsCategories: SettingsCategory[] = [
       resetDotGridSettings();
       // Developer mode is part of appearance prefs; reset alongside.
       useFeatureStore.getState().setFlag(FeatureFlagName.DeveloperMode, false);
+    },
+  },
+  {
+    id: "personalize",
+    label: "Personalize",
+    description: "Tune the Home rail and how your history is ranked.",
+    icon: <TuneIcon />,
+    settingsContent: <PersonalizeSection />,
+    resetLogic: () => {
+      usePersonalizationSettings.getState().reset();
     },
   },
   {
