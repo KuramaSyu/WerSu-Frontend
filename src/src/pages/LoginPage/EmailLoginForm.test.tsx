@@ -34,6 +34,10 @@ vi.mock("../../api/UserManagementApi", () => ({
 
 // The client ships plaintext; the server handles password handling.
 
+vi.mock("@mui/icons-material/ArrowForward", () => ({
+  default: () => <span aria-hidden="true">→</span>,
+}));
+
 vi.mock("../../zustand/useThemeStore", () => ({
   useThemeStore: () => ({
     theme: { palette: { text: { primary: "#000" } } },
@@ -81,13 +85,19 @@ vi.mock("@mui/material", () => {
       onClick,
       disabled,
       type,
+      ...rest
     }: {
       children?: ReactNode;
       onClick?: () => void;
       disabled?: boolean;
       type?: "button" | "reset" | "submit";
-    }) => (
-      <button type={type ?? "button"} disabled={disabled} onClick={onClick}>
+    } & Record<string, unknown>) => (
+      <button
+        type={type ?? "button"}
+        disabled={disabled}
+        onClick={onClick}
+        aria-label={rest["aria-label"] as string | undefined}
+      >
         {children}
       </button>
     ),
@@ -97,6 +107,13 @@ vi.mock("@mui/material", () => {
       <div role="separator">{children}</div>
     ),
     Stack: passthrough("div"),
+    Tooltip: ({
+      children,
+      title,
+    }: {
+      children?: ReactNode;
+      title?: ReactNode;
+    }) => <div data-tooltip={typeof title === "string" ? title : ""}>{children}</div>,
     ThemeProvider: ({ children }: { children?: ReactNode }) => <>{children}</>,
     Tab: ({
       label,
@@ -367,6 +384,87 @@ describe("EmailSignupForm", () => {
       expect(screen.getByText(/do not match/i)).toBeInTheDocument(),
     );
     expect(mockSignup).not.toHaveBeenCalled();
+  });
+});
+
+describe("Credentials submit affordance", () => {
+  it("desktop: arrow button starts disabled and enables once email + password are set", () => {
+    render(<EmailLoginForm />, { wrapper: buildWrapper(qc) });
+    const arrow = screen.getByRole("button", { name: "Log in" });
+    expect(arrow).toBeDisabled();
+    expect(arrow.closest("[data-tooltip]")?.getAttribute("data-tooltip")).toMatch(
+      /enter your email and password/i,
+    );
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "alice@example.com" },
+    });
+    expect(arrow).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "hunter2hunter2" },
+    });
+    expect(arrow).toBeEnabled();
+    expect(arrow.closest("[data-tooltip]")?.getAttribute("data-tooltip")).toBe(
+      "Log in",
+    );
+  });
+
+  it("desktop: signup arrow stays disabled until every field is filled", () => {
+    render(<EmailSignupForm />, { wrapper: buildWrapper(qc) });
+    const arrow = screen.getByRole("button", { name: "Sign up" });
+    fireEvent.change(screen.getByLabelText("Username"), {
+      target: { value: "alice" },
+    });
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "alice@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "abcdefgh" },
+    });
+    expect(arrow).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Confirm password"), {
+      target: { value: "abcdefgh" },
+    });
+    expect(arrow).toBeEnabled();
+  });
+
+  it("mobile: renders a full-width Continue button at the bottom of the card", () => {
+    render(<AuthCard isMobile />, { wrapper: buildWrapper(qc) });
+    expect(screen.queryByRole("button", { name: "Log in" })).not.toBeInTheDocument();
+    const cont = screen.getByRole("button", { name: "Continue" });
+    expect(cont).toBeDisabled();
+    // It lives below the alternative login options, not in the form.
+    const discord = screen.getByRole("button", { name: /discord/i });
+    expect(
+      discord.compareDocumentPosition(cont) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "alice@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "hunter2hunter2" },
+    });
+    expect(cont).toBeEnabled();
+  });
+
+  it("mobile: signup mode swaps the Continue button's target form", () => {
+    render(<AuthCard isMobile />, { wrapper: buildWrapper(qc) });
+    fireEvent.click(screen.getByRole("button", { name: "Sign up instead" }));
+    expect(screen.queryByRole("button", { name: "Sign up" })).not.toBeInTheDocument();
+    const cont = screen.getByRole("button", { name: "Continue" });
+    expect(cont).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Username"), {
+      target: { value: "alice" },
+    });
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "alice@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "abcdefgh" },
+    });
+    fireEvent.change(screen.getByLabelText("Confirm password"), {
+      target: { value: "abcdefgh" },
+    });
+    expect(cont).toBeEnabled();
   });
 });
 

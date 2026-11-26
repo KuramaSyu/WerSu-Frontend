@@ -91,7 +91,7 @@ export const LoginPage: React.FC = () => {
           overflow: "hidden",
         }}
       >
-        <AuthCard />
+        <AuthCard isMobile={isMobile} />
       </Box>
       <Box
         sx={{

@@ -3,8 +3,11 @@
 // Layout (matches the design sketch):
 //   - Title row: "Login" + "Sign up instead" toggle (or vice versa)
 //   - Email + password fields (login) or username + email + password
-//     + confirm (signup). Forms submit on Enter; no visible submit button
-//     keeps the focus on the alternative-login buttons below.
+//     + confirm (signup). Forms submit on Enter; on desktop a
+//     full-width arrow button row sits below the credentials and only
+//     enables once the credentials are complete. On mobile the arrow
+//     row is replaced by a full-width "Continue" button at the bottom
+//     of the card, below the alternative login options.
 //   - "OR" divider
 //   - Discord + Passkey rectangular outlined buttons
 //
@@ -12,7 +15,7 @@
 // readers and the Enter key still submit; the buttons are visually
 // hidden but DOM-present.
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import {
   Alert,
   Box,
@@ -20,8 +23,10 @@ import {
   Divider,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { getUserManagementApi } from "../../api/UserManagementApi";
@@ -47,14 +52,71 @@ function commitLogin(user: JsUserAuth): void {
 
 type FormStatus = "idle" | "pending" | "error";
 
+/** Default height of a MUI outlined text field / button. */
+const FIELD_HEIGHT = 56;
+
+/** Props shared by the login + signup forms. */
+export interface EmailFormProps {
+  /** On mobile the arrow row is replaced by a "Continue" button. */
+  isMobile?: boolean;
+  /** id so the card-level mobile button can submit the form. */
+  formId?: string;
+  /** Notifies the card whether the submit button should be enabled. */
+  onReadyChange?: (ready: boolean) => void;
+}
+
+/** ids used by the card-level "Continue" button's `form` attribute. */
+export const LOGIN_FORM_ID = "email-login-form";
+export const SIGNUP_FORM_ID = "email-signup-form";
+
+/**
+ * Full-width submit row below the credentials.
+ *
+ * Disabled until the required fields are filled; a tooltip explains
+ * why it is disabled. Hidden on mobile, where the card renders a
+ * "Continue" button below the alternative login options instead.
+ */
+const CredentialsSubmit: React.FC<{
+  disabled: boolean;
+  label: string;
+  disabledHint: string;
+  enabledHint: string;
+}> = ({ disabled, label, disabledHint, enabledHint }) => (
+  // Tooltip needs a non-disabled wrapper: disabled buttons swallow
+  // pointer events, so the span carries the hover for the hint.
+  <Tooltip title={disabled ? disabledHint : enabledHint} arrow>
+    <span style={{ display: "flex", width: "100%" }}>
+      <Button
+        type="submit"
+        variant="contained"
+        disabled={disabled}
+        aria-label={label}
+        fullWidth
+        sx={{ height: FIELD_HEIGHT, borderRadius: 1 }}
+      >
+        <ArrowForwardIcon fontSize="small" />
+      </Button>
+    </span>
+  </Tooltip>
+);
+
 /** POST /api/auth/login form. Submits on Enter. */
-export const EmailLoginForm: React.FC = () => {
+export const EmailLoginForm: React.FC<EmailFormProps> = ({
+  isMobile = false,
+  formId = LOGIN_FORM_ID,
+  onReadyChange,
+}) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<FormStatus>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  const ready = Boolean(email && password) && status !== "pending";
+  useEffect(() => {
+    onReadyChange?.(ready);
+  }, [ready, onReadyChange]);
 
   const submit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
@@ -95,6 +157,7 @@ export const EmailLoginForm: React.FC = () => {
 
   return (
     <form
+      id={formId}
       onSubmit={submit}
       noValidate
       style={{ display: "flex", flexDirection: "column", gap: 16 }}
@@ -120,6 +183,14 @@ export const EmailLoginForm: React.FC = () => {
       {status === "error" && message !== null && (
         <Alert severity="error">{message}</Alert>
       )}
+      {!isMobile && (
+        <CredentialsSubmit
+          disabled={!ready}
+          label="Log in"
+          disabledHint="Enter your email and password to continue."
+          enabledHint="Log in"
+        />
+      )}
       {/* Hidden submit keeps Enter-to-submit working for AT and keyboard. */}
       <button
         type="submit"
@@ -141,7 +212,11 @@ export const EmailLoginForm: React.FC = () => {
 };
 
 /** POST /api/auth/signup form. Submits on Enter. */
-export const EmailSignupForm: React.FC = () => {
+export const EmailSignupForm: React.FC<EmailFormProps> = ({
+  isMobile = false,
+  formId = SIGNUP_FORM_ID,
+  onReadyChange,
+}) => {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -150,6 +225,12 @@ export const EmailSignupForm: React.FC = () => {
   const [message, setMessage] = useState<string | null>(null);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  const ready =
+    Boolean(username && email && password && confirm) && status !== "pending";
+  useEffect(() => {
+    onReadyChange?.(ready);
+  }, [ready, onReadyChange]);
 
   const submit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
@@ -201,6 +282,7 @@ export const EmailSignupForm: React.FC = () => {
 
   return (
     <form
+      id={formId}
       onSubmit={submit}
       noValidate
       style={{ display: "flex", flexDirection: "column", gap: 16 }}
@@ -244,6 +326,14 @@ export const EmailSignupForm: React.FC = () => {
       {status === "error" && message !== null && (
         <Alert severity="error">{message}</Alert>
       )}
+      {!isMobile && (
+        <CredentialsSubmit
+          disabled={!ready}
+          label="Sign up"
+          disabledHint="Fill in all fields to create your account."
+          enabledHint="Create account"
+        />
+      )}
       <button
         type="submit"
         aria-hidden="true"
@@ -267,12 +357,16 @@ type AuthMode = "login" | "signup";
 
 /**
  * Unified login/signup card.
- * Title + toggle link on top, the active form below, then "OR"
- * divider and the alternative login buttons.
+ * Title + toggle link on top, the active form below (with a
+ * full-width arrow submit row on desktop), then "OR" divider and the
+ * alternative login buttons. On mobile a "Continue" button sits
+ * below all of that and submits the active form.
  */
-export const AuthCard: React.FC = () => {
+export const AuthCard: React.FC<EmailFormProps> = ({ isMobile = false }) => {
   const [mode, setMode] = useState<AuthMode>("login");
+  const [canContinue, setCanContinue] = useState(false);
   const isLogin = mode === "login";
+  const formId = isLogin ? LOGIN_FORM_ID : SIGNUP_FORM_ID;
 
   return (
     <Stack spacing={3} sx={{ width: "100%", maxWidth: 360 }}>
@@ -294,7 +388,21 @@ export const AuthCard: React.FC = () => {
         </Button>
       </Stack>
 
-      <Box>{isLogin ? <EmailLoginForm /> : <EmailSignupForm />}</Box>
+      <Box>
+        {isLogin ? (
+          <EmailLoginForm
+            isMobile={isMobile}
+            formId={LOGIN_FORM_ID}
+            onReadyChange={setCanContinue}
+          />
+        ) : (
+          <EmailSignupForm
+            isMobile={isMobile}
+            formId={SIGNUP_FORM_ID}
+            onReadyChange={setCanContinue}
+          />
+        )}
+      </Box>
 
       <Divider sx={{ width: "100%" }}>
         <Typography variant="caption" sx={{ color: "text.secondary", px: 1 }}>
@@ -306,6 +414,19 @@ export const AuthCard: React.FC = () => {
         <DiscordLoginButton />
         <PasskeyButton />
       </Stack>
+
+      {isMobile && (
+        <Button
+          type="submit"
+          form={formId}
+          variant="contained"
+          fullWidth
+          disabled={!canContinue}
+          sx={{ textTransform: "none" }}
+        >
+          Continue
+        </Button>
+      )}
     </Stack>
   );
 };
