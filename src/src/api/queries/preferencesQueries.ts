@@ -9,11 +9,17 @@
     - `useMergePreferences`    — shallow-merge (mutation).
     - `useDeletePreferences`   — drop the blob (mutation).
 
+  Rail personalization gets a dedicated pair on top of those primitives:
+
+    - `usePersonalizationPreferences`      — read the rail settings.
+    - `useSavePersonalizationPreferences`  — merge rail settings in.
+
   Every mutation invalidates the matching `preferencesKeys.detail(...)` entry
   on success so the next `usePreferences` read reflects the write. Wire types
   live in `../models/preferences`.
 */
 
+import { useMemo } from "react";
 import {
   useMutation,
   useQuery,
@@ -23,6 +29,12 @@ import {
 } from "@tanstack/react-query";
 
 import { getPreferencesApi } from "../PreferencesApi";
+import {
+  PERSONALIZATION_PREFERENCE_KEY,
+  parsePersonalizationData,
+  serializePersonalizationData,
+  type PersonalizationData,
+} from "../../models/personalization";
 
 import type {
   DeletePreferencesEndpointReply,
@@ -208,5 +220,100 @@ export function useDeletePreferences(
       });
       await userOnSuccess?.(data, variables, ...args);
     },
+  });
+}
+
+// -----------------------------------------------------------------------------
+// Rail personalization (`scope: "user"`, `key: "personalization"`)
+// -----------------------------------------------------------------------------
+
+/**
+ * Request shape of `usePersonalizationPreferences`'s read. The rail settings
+ * always live in the signed-in user's own scope, so callers only pass the id.
+ */
+export interface PersonalizationPreferenceOwner {
+  /** Id of the signed-in user; empty/`null` disables the read. */
+  userId: string | null;
+}
+
+/**
+ * Read the Home left-rail personalization row.
+ *
+ * Stored as a *keyed* preference (`key: "personalization"`) under the user
+ * scope rather than in a brand-new row: the keyed blob is the existing
+ * mechanism for topic-scoped preference payloads (see `custom-themes`), so the
+ * rail settings share the owner's preference budget instead of competing for
+ * one of their key slots with an unrelated default blob.
+ *
+ * Returns the parsed payload (`null` when absent or written by an older
+ * client) plus the raw TanStack state, so callers can tell "not loaded yet"
+ * from "loaded, no row" via `isLoading`.
+ */
+export function usePersonalizationPreferences(
+  owner: PersonalizationPreferenceOwner,
+) {
+  const request: GetPreferencesEndpointRequest = {
+    scope: "user",
+    target_id: owner.userId ?? "",
+    key: PERSONALIZATION_PREFERENCE_KEY,
+  };
+  const query = useQuery({
+    queryKey: preferencesKeys.detail(request),
+    queryFn: () => preferencesApi.getPreferences(request),
+    enabled: !!request.target_id,
+  });
+
+  const data = useMemo(
+    () => parsePersonalizationData(query.data?.preferences_json),
+    [query.data],
+  );
+
+  return {
+    data,
+    isLoading: query.isLoading,
+    isError: query.isError,
+    /** Timestamp of the last successful read; advances on every `refetch`. */
+    dataUpdatedAt: query.dataUpdatedAt,
+    /** Re-read the row (e.g. after another client changed the settings). */
+    refetch: () => {
+      void query.refetch();
+    },
+  };
+}
+
+/** Variables for `useSavePersonalizationPreferences`. */
+export interface SavePersonalizationPreferencesRequest {
+  /** Id of the signed-in user the row belongs to. */
+  userId: string;
+  /** Full rail payload to persist; encoded by the hook. */
+  data: PersonalizationData;
+}
+
+/**
+ * Merge rail settings into the existing `personalization` preference row.
+ *
+ * Uses `PATCH /api/preferences` (shallow merge) rather than a replace, so a
+ * payload written by a newer client — or any other top-level key sharing the
+ * row — survives. `useMergePreferences` invalidates the matching detail cache,
+ * so `usePersonalizationPreferences` re-reads the saved blob.
+ */
+export function useSavePersonalizationPreferences(
+  options?: UseMutationOptions<
+    MergePreferencesEndpointReply,
+    Error,
+    SavePersonalizationPreferencesRequest
+  >,
+) {
+  const merge = useMergePreferences();
+
+  return useMutation({
+    mutationFn: (request: SavePersonalizationPreferencesRequest) =>
+      merge.mutateAsync({
+        scope: "user",
+        target_id: request.userId,
+        key: PERSONALIZATION_PREFERENCE_KEY,
+        preferences_json: serializePersonalizationData(request.data),
+      }),
+    ...options,
   });
 }
