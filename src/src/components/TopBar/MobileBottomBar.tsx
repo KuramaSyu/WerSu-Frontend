@@ -228,9 +228,9 @@ export const MobileBottomBar: React.FC = () => {
         elevation={8}
         sx={{
           position: "fixed",
-          left: M3,
-          right: M3,
-          bottom: "calc(env(safe-area-inset-bottom, 0px) + 1.25rem)",
+          left: M2,
+          right: M2,
+          bottom: `calc(env(safe-area-inset-bottom, 0px) + ${M2})`,
           zIndex: (t) => t.zIndex.appBar,
           color: theme.palette.text.primary,
           backgroundColor: flatLayout
