@@ -138,6 +138,14 @@ const SearchResultsOverlayInner: React.FC<SearchResultsOverlayProps> = ({
               flexDirection: "column",
               gap: 1.5,
               p: 1.5,
+              // Constrain the panel to the drawer height so the
+              // results list becomes the scroll container (instead
+              // of the whole drawer scrolling). Without this the
+              // back-to-top FAB would sit at the bottom of the
+              // overflowing content instead of over the list.
+              height: "100%",
+              minHeight: 0,
+              overflow: "hidden",
               // Touch-action "pan-y" lets the inner list scroll
               // vertically while the drawer's own swipe-down
               // gesture still works.
@@ -166,11 +174,23 @@ const SearchResultsOverlayInner: React.FC<SearchResultsOverlayProps> = ({
               }}
               onClick={() => handleClose()}
             />
-            <SearchOverlayHeader open={open} onClose={onClose} />
-            <SearchOverlayToolbar
-              isInitialLoading={isInitialLoading}
-              isFetchingNextPage={isFetchingNextPage}
-            />
+            {/* Header + toolbar stay pinned to the top of the drawer;
+                only the results list below scrolls. `flexShrink: 0`
+                stops the flexed list from squeezing them. */}
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 1.5,
+                flexShrink: 0,
+              }}
+            >
+              <SearchOverlayHeader open={open} onClose={onClose} />
+              <SearchOverlayToolbar
+                isInitialLoading={isInitialLoading}
+                isFetchingNextPage={isFetchingNextPage}
+              />
+            </Box>
             <SearchResultsList />
           </Box>
         </SwipeableDrawer>
