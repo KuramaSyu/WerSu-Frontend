@@ -330,6 +330,12 @@ export const AppShell: React.FC = () => {
               sx={{
                 flex: 1,
                 overflowY: "auto",
+                // Note pages opt out of horizontal scrolling entirely.
+                // Card/editor paddings can make the note surface a few
+                // pixels wider than the outlet; without this the scroll
+                // container turns that into a tiny X scrollbar. Clip it
+                // instead of letting the page pan sideways.
+                overflowX: isNotesPage ? "hidden" : undefined,
                 display: "flex",
                 flexDirection: "column",
                 scrollbarWidth: "none",
