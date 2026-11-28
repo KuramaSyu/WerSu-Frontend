@@ -85,10 +85,10 @@ export const COLLAPSED_PANEL_SIZE = "0px";
 export const MOBILE_BOTTOM_BAR_CLEARANCE = "6rem";
 /**
  * Width of the mobile side rails when they render as overlay
- * drawers. 8/13 of the viewport keeps a sliver of the content
+ * drawers. 90% of the viewport keeps a sliver of the content
  * visible so the drawer reads as sliding over it.
  */
-export const MOBILE_DRAWER_WIDTH = "calc(100vw * 8 / 13)";
+export const MOBILE_DRAWER_WIDTH = "90vw";
 /**
  * Elevation for Main Panel. All others should have elevation below that
  */
