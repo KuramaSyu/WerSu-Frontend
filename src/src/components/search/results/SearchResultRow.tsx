@@ -15,6 +15,7 @@ import { copyToClipboard } from "../../../zustand/InfoStore";
 import { useRightClickMenu } from "../../RightClick/useRightClickMenu";
 import { useVisibilityHideMenu } from "../../RightClick/visibilityHideMenu";
 import { VisibilityHideIcon } from "../../RightClick/VisibilityHideIcon";
+import { useBreakpoint } from "../../../hooks/useBreakpoint";
 import type { SearchResult, SearchResultContent } from "./SearchResult";
 
 interface Props {
@@ -26,13 +27,18 @@ interface Props {
   onActivate: (result: SearchResult) => void;
 }
 
-// Interleave vertical dividers between snippets so multiple matches read as
-// separate columns in the horizontal content strip.
-const withDividers = (items: React.ReactNode[]): React.ReactNode => (
+// Interleave dividers between snippets. Side by side they read as separate
+// columns in a horizontal strip; when stacked (mobile) they become rows.
+const withDividers = (
+  items: React.ReactNode[],
+  stacked: boolean,
+): React.ReactNode => (
   <>
     {items.map((item, i) => (
       <React.Fragment key={i}>
-        {i > 0 ? <Divider orientation="vertical" flexItem /> : null}
+        {i > 0 ? (
+          <Divider orientation={stacked ? "horizontal" : "vertical"} flexItem />
+        ) : null}
         {item}
       </React.Fragment>
     ))}
@@ -41,7 +47,10 @@ const withDividers = (items: React.ReactNode[]): React.ReactNode => (
 
 // Render the interface's content value: strings / string[] become text,
 // anything else (note highlight fragments, custom nodes) is dropped in.
-const renderContent = (content: SearchResultContent): React.ReactNode => {
+const renderContent = (
+  content: SearchResultContent,
+  stacked: boolean,
+): React.ReactNode => {
   if (typeof content === "string") {
     return <Typography variant="body2">{content}</Typography>;
   }
@@ -53,9 +62,10 @@ const renderContent = (content: SearchResultContent): React.ReactNode => {
             {line}
           </Typography>
         )),
+        stacked,
       );
     }
-    return withDividers(content as React.ReactNode[]);
+    return withDividers(content as React.ReactNode[], stacked);
   }
   return <>{content}</>;
 };
@@ -66,7 +76,8 @@ const renderContent = (content: SearchResultContent): React.ReactNode => {
 export const SearchResultRow: React.FC<Props> = memo(
   ({ result, index, isSelected, hoverEnabled, onSelect, onActivate }) => {
     const theme = useThemeStore((s) => s.theme);
-    const content = renderContent(result.get_content());
+    const { isMobile } = useBreakpoint();
+    const content = renderContent(result.get_content(), isMobile);
     const meta = result.get_meta?.();
     const accent = result.get_accent_color();
     const menu = useRightClickMenu();
@@ -168,11 +179,13 @@ export const SearchResultRow: React.FC<Props> = memo(
           </Box>
         </Tooltip>
 
-        {/* Actual content, kept on the row's elevated paper surface. */}
+        {/* Actual content, kept on the row's elevated paper surface. On
+            mobile the header and snippets stack vertically; on wider
+            screens they sit side by side. */}
         <Box
           sx={{
             display: "flex",
-            flexDirection: "row",
+            flexDirection: isMobile ? "column" : "row",
             gap: M2,
             p: M2,
             pl: M3,
@@ -180,7 +193,10 @@ export const SearchResultRow: React.FC<Props> = memo(
             minWidth: 0,
           }}
         >
-          <Box className="note.header" sx={{ minWidth: 3 / 8 }}>
+          <Box
+            className="note.header"
+            sx={{ minWidth: isMobile ? 0 : 3 / 8 }}
+          >
             <Typography
               variant="subtitle1"
               sx={{
@@ -194,21 +210,28 @@ export const SearchResultRow: React.FC<Props> = memo(
             </Typography>
 
             {meta ? (
-              <Stack direction="row" spacing={2} sx={{ minWidth: 5 / 8 }}>
+              <Stack
+                direction="row"
+                spacing={2}
+                sx={{ minWidth: isMobile ? 0 : 5 / 8, flexWrap: "wrap" }}
+              >
                 {meta}
               </Stack>
             ) : null}
           </Box>
 
-          <Divider orientation="vertical" flexItem />
-          {/* Keep multiple matched snippets side by side, matching the
-              original row layout instead of stacking them vertically. */}
+          <Divider
+            orientation={isMobile ? "horizontal" : "vertical"}
+            flexItem
+          />
+          {/* Mobile stacks the matched snippets below the title; wider
+              screens keep them side by side in a horizontal strip. */}
           <Box
             sx={{
               flex: 1,
               minWidth: 0,
               display: "flex",
-              flexDirection: "row",
+              flexDirection: isMobile ? "column" : "row",
               gap: M2,
               overflow: "hidden",
             }}
