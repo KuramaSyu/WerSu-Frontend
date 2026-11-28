@@ -23,6 +23,7 @@ import { recordNavigation } from "./utils/navigationMemento";
 import { Bootstrap } from "./Bootstrap";
 import { LoginPage } from "./pages/LoginPage/Main";
 
+// PERF - only load pages on request
 // Route-level code splitting. Everything that is not needed for the
 // first paint (editor stack, swagger-ui, mermaid/graph, codemirror,
 // settings) loads on navigation. Suspense boundaries live in
@@ -192,10 +193,7 @@ function App() {
                   <Route path="/role/:id" element={<RoleDetailPage />} />
                   <Route path="/shortcuts" element={<ShortcutsPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
-                  <Route
-                    path="/shelves/:shelfId"
-                    element={<ShelfEditPage />}
-                  />
+                  <Route path="/shelves/:shelfId" element={<ShelfEditPage />} />
                   <Route
                     path="/shelves/:shelfId/edit"
                     element={<ShelfTabRedirect tab="settings" />}

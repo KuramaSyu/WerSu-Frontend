@@ -518,7 +518,13 @@ export const useNoteEditor = (params: UseNoteEditorParams): Editor | null => {
   // collaborators see the new label without the editor re-mounting.
   // Logged-in users keep their fixed Discord identity.
   useEffect(() => {
-    if (!editor || user) {
+    // Opening a public share in write mode swaps the Y.Doc, and
+    // `useEditor` destroys the old instance while this commit's effects
+    // are still flushing. That stale instance is returned for this
+    // render, and its `commands` getter throws once `commandManager`
+    // has been cleared. The new instance triggers this effect again,
+    // so skipping the destroyed one is safe.
+    if (!editor || editor.isDestroyed || user) {
       return;
     }
     editor.commands.updateUser({
@@ -571,7 +577,8 @@ export const useNoteEditor = (params: UseNoteEditorParams): Editor | null => {
 
   // Sync editMode with the editor's own editable state.
   useEffect(() => {
-    editor?.setEditable(editMode);
+    if (!editor || editor.isDestroyed) return;
+    editor.setEditable(editMode);
   }, [editMode, editor]);
 
   return editor;
