@@ -110,8 +110,8 @@ vi.mock("./SearchTypeOverrideHint", () => ({
 const getInput = () =>
   screen.getByPlaceholderText(/type "\/"/) as HTMLInputElement;
 
-const renderHeader = () =>
-  render(<SearchOverlayHeader onClose={() => undefined} />);
+const renderHeader = (open = true) =>
+  render(<SearchOverlayHeader open={open} onClose={() => undefined} />);
 
 beforeEach(() => {
   useSearchFilterStore.setState({
@@ -123,6 +123,25 @@ beforeEach(() => {
 });
 
 describe("SearchOverlayHeader slash commands", () => {
+  it("autofocuses the search input on mount", () => {
+    renderHeader();
+    expect(getInput()).toHaveFocus();
+  });
+
+  it("autofocuses the input when the overlay is (re)opened", () => {
+    const { rerender } = renderHeader(false);
+    // The mobile drawer keeps the header mounted while closed, so a
+    // closed overlay must not steal focus.
+    expect(getInput()).not.toHaveFocus();
+
+    rerender(<SearchOverlayHeader open onClose={() => undefined} />);
+    expect(getInput()).toHaveFocus();
+
+    rerender(<SearchOverlayHeader open={false} onClose={() => undefined} />);
+    rerender(<SearchOverlayHeader open onClose={() => undefined} />);
+    expect(getInput()).toHaveFocus();
+  });
+
   it("opens a suggestion list when the input starts with a slash", () => {
     renderHeader();
     fireEvent.change(getInput(), { target: { value: "/" } });

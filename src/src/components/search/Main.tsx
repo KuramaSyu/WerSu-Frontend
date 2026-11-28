@@ -101,6 +101,11 @@ const SearchResultsOverlayInner: React.FC<SearchResultsOverlayProps> = ({
           open={internalOpen}
           onOpen={handleOpen}
           onClose={handleClose}
+          // The drawer is an MUI Modal, which by default focuses the
+          // drawer container on open and thereby blurs the search input
+          // right after it autofocuses. Leave focus management to the
+          // header so the keyboard opens on mobile.
+          disableAutoFocus
           // Wide swipe area so the gesture is easy to discover.
           disableSwipeToOpen
           slotProps={{
@@ -161,7 +166,7 @@ const SearchResultsOverlayInner: React.FC<SearchResultsOverlayProps> = ({
               }}
               onClick={() => handleClose()}
             />
-            <SearchOverlayHeader onClose={onClose} />
+            <SearchOverlayHeader open={open} onClose={onClose} />
             <SearchOverlayToolbar
               isInitialLoading={isInitialLoading}
               isFetchingNextPage={isFetchingNextPage}
@@ -229,7 +234,7 @@ const SearchResultsOverlayInner: React.FC<SearchResultsOverlayProps> = ({
                   p: 2,
                 }}
               >
-                <SearchOverlayHeader onClose={onClose} />
+                <SearchOverlayHeader open={open} onClose={onClose} />
                 <SearchOverlayToolbar
                   isInitialLoading={isInitialLoading}
                   isFetchingNextPage={isFetchingNextPage}

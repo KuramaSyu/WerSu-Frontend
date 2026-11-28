@@ -1,4 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Box, InputAdornment, Stack, TextField } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import { useSearchFilterStore } from "../../../zustand/useSearchFilterStore";
@@ -14,15 +21,28 @@ import {
   type SearchCommandSuggestion,
 } from "../commands/searchCommands";
 
+// MUI's default `enteringScreen` transition length. The mobile overlay
+// is a SwipeableDrawer and finishes its slide-in within this window; the
+// input re-focuses once it has settled. Kept as a constant so this
+// component doesn't have to subscribe to the (heavy) theme store just
+// for a duration.
+const DRAWER_ENTER_MS = 225;
+
 interface Props {
   // Kept so callers still passing onClose don't break; the actual
   // close affordance lives on the drawer's swipe handle / backdrop.
   onClose: () => void;
+  // Whether the overlay is visible. Must be passed in rather than
+  // inferred from mount: the mobile overlay is a SwipeableDrawer, and
+  // MUI's SwipeableDrawer forces `ModalProps.keepMounted`, so the
+  // header stays mounted for the lifetime of the app even while the
+  // drawer is closed. Autofocus therefore has to be keyed on `open`.
+  open?: boolean;
 }
 
 // Search input with strategy picker as a sibling, not an adornment.
 // Subscribes to search + searchType only so keystrokes don't ripple.
-export const SearchOverlayHeader: React.FC<Props> = () => {
+export const SearchOverlayHeader: React.FC<Props> = ({ open = true }) => {
   const search = useSearchFilterStore((s) => s.search);
   const searchType = useSearchFilterStore((s) => s.searchType);
   const setSearch = useSearchFilterStore((s) => s.setSearch);
@@ -63,6 +83,38 @@ export const SearchOverlayHeader: React.FC<Props> = () => {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
+
+  // Focus the input whenever the overlay opens. `autoFocus` alone is
+  // not enough on mobile: the mobile overlay is a SwipeableDrawer that
+  // keeps the header mounted (MUI forces `keepMounted`), so the input
+  // only autofocuses once at app load, never when the drawer opens.
+  // The first attempt runs in a layout effect so it happens inside the
+  // click/keypress that opened the overlay -- iOS Safari only raises
+  // the keyboard for focus calls made within a user gesture. Re-assert
+  // on the next frame and after the enter transition in case the modal
+  // focus trap or the slide-in steals it. Skipped when the input is
+  // already active (e.g. user tapped or typed in the meantime).
+  const focusInput = useCallback(() => {
+    const input = inputRef.current;
+    if (input && document.activeElement !== input) {
+      input.focus({ preventScroll: true });
+    }
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    focusInput();
+  }, [open, focusInput]);
+
+  useEffect(() => {
+    if (!open) return;
+    const raf = requestAnimationFrame(focusInput);
+    const timer = window.setTimeout(focusInput, DRAWER_ENTER_MS);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(timer);
+    };
+  }, [open, focusInput]);
 
   // Executes a suggestion: mode commands switch the strategy and clear
   // the input so the user can type the query right away; the bare
@@ -170,7 +222,6 @@ export const SearchOverlayHeader: React.FC<Props> = () => {
     >
       <Box sx={{ position: "relative", flex: 1, minWidth: 0 }}>
         <TextField
-          autoFocus
           fullWidth
           placeholder='Search or type "/" for commands'
           variant="outlined"
