@@ -359,8 +359,13 @@ const NoteRowWithSelection: React.FC<{
           px: 2,
           py: 1,
           width: "100%",
+          maxWidth: "100%",
           borderRadius: 2,
           minWidth: 0,
+          // Match the row card to the viewport even under the app's
+          // content-box default: width 100% plus padding would otherwise
+          // push the card's background past the right edge.
+          boxSizing: "border-box",
           backgroundColor: isSelected
             ? theme.elevate(theme.palette.background.paper, 6)
             : undefined,

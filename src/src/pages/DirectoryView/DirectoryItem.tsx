@@ -145,6 +145,12 @@ export const DirectoryItem: React.FC<DirectoryItemProps> = (props) => {
           py: 1.5,
           borderRadius: 2,
           width: "100%",
+          maxWidth: "100%",
+          minWidth: 0,
+          // The app has no global border-box reset; without this the
+          // `width: 100%` card becomes 100% + horizontal padding wide
+          // and its background bleeds past the viewport edge.
+          boxSizing: "border-box",
           backgroundColor: isSelected
             ? theme.elevate(theme.palette.background.paper, 6)
             : undefined,

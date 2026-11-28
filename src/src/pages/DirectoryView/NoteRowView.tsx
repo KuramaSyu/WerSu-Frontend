@@ -40,6 +40,7 @@ export const NoteRowView: React.FC<NoteRowViewProps> = memo(
         sx={{
           alignItems: "flex-start",
           width: "100%",
+          maxWidth: "100%",
           minWidth: 0,
         }}
       >
@@ -65,6 +66,8 @@ export const NoteRowView: React.FC<NoteRowViewProps> = memo(
               // text width as the element's min-content width,
               // which prevented the flex container from shrinking
               // and pushed the bar past the row's padding.
+              maxWidth: "100%",
+              minWidth: 0,
               overflow: "hidden",
               textOverflow: "ellipsis",
             }}
@@ -79,8 +82,17 @@ export const NoteRowView: React.FC<NoteRowViewProps> = memo(
               display: "-webkit-box",
               WebkitLineClamp: 2,
               WebkitBoxOrient: "vertical",
+              // A long unbroken string (e.g. a URI in a code block) must
+              // not contribute its full width to the row's min-content
+              // size; otherwise the card grows far past the viewport.
+              // `anywhere` both breaks mid-string and lets the text box
+              // shrink to the available width.
+              maxWidth: "100%",
+              minWidth: 0,
               overflow: "hidden",
               overflowX: "hidden",
+              overflowWrap: "anywhere",
+              wordBreak: "break-word",
             }}
           >
             {previewText}

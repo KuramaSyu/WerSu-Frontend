@@ -38,6 +38,8 @@ export const PageSurface: React.FC<PageSurfaceProps> = ({
         // handed to that box's overflowY: auto so the page scrolls.
         height: "100%",
         width: `clamp(20rem, 100%, 90rem)`,
+        maxWidth: "100%",
+        minWidth: 0,
         alignSelf: "center",
         // The AppShell outlet only pads partially.
         pr: M3,
@@ -54,6 +56,8 @@ export const PageSurface: React.FC<PageSurfaceProps> = ({
           elevation={0}
           sx={{
             flex: 1,
+            minWidth: 0,
+            maxWidth: "100%",
             p: M3,
             borderRadius: (theme) => theme.shape.borderRadius,
           }}

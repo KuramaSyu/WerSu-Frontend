@@ -39,7 +39,7 @@ export const ChapterRowView: React.FC<ChapterRowViewProps> = memo(
     <Stack
       direction="row"
       spacing={2}
-      sx={{ alignItems: "center", width: "100%", minWidth: 0 }}
+      sx={{ alignItems: "center", width: "100%", maxWidth: "100%", minWidth: 0 }}
     >
       <Box
         sx={{
@@ -59,6 +59,8 @@ export const ChapterRowView: React.FC<ChapterRowViewProps> = memo(
             // scrollbar; `overflowX: "scroll"` kept the full
             // unwrapped text as the row's min-content width and
             // pushed long directory names past the row padding.
+            maxWidth: "100%",
+            minWidth: 0,
             overflow: "hidden",
             textOverflow: "ellipsis",
           }}
