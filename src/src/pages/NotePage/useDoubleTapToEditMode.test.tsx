@@ -2,12 +2,23 @@
 
 import "../../test/setup";
 
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
 import type { MouseEvent } from "react";
 import { useDoubleTapToEditMode } from "./useDoubleTapToEditMode";
 import { useEditorSettings } from "../../zustand/useEditorSettings";
 import { useViewConfig } from "../../zustand/useViewConfig";
+
+const breakpoint = vi.hoisted(() => ({ isMobile: true }));
+
+vi.mock("../../hooks/useBreakpoint", () => ({
+  useBreakpoint: () => ({
+    isMobile: breakpoint.isMobile,
+    isTablet: false,
+    isDesktop: !breakpoint.isMobile,
+    isXL: false,
+  }),
+}));
 
 function makeEvent(
   overrides: Partial<{ defaultPrevented: boolean; target: unknown }> = {},
@@ -21,7 +32,11 @@ function makeEvent(
 }
 
 describe("useDoubleTapToEditMode", () => {
-  it("swaps into write mode when read mode is active", () => {
+  beforeEach(() => {
+    breakpoint.isMobile = true;
+  });
+
+  it("swaps into write mode when read mode is active on mobile", () => {
     useEditorSettings.setState({ editMode: false });
     useViewConfig.setState({ config: { readOnly: false, widthMode: "normal" } });
 
@@ -31,6 +46,19 @@ describe("useDoubleTapToEditMode", () => {
 
     expect(useEditorSettings.getState().editMode).toBe(true);
     expect(event.preventDefault).toHaveBeenCalled();
+  });
+
+  it("is a no-op on desktop so double click keeps selecting text", () => {
+    breakpoint.isMobile = false;
+    useEditorSettings.setState({ editMode: false });
+    useViewConfig.setState({ config: { readOnly: false, widthMode: "normal" } });
+
+    const { result } = renderHook(() => useDoubleTapToEditMode());
+    const event = makeEvent();
+    result.current(event);
+
+    expect(useEditorSettings.getState().editMode).toBe(false);
+    expect(event.preventDefault).not.toHaveBeenCalled();
   });
 
   it("is a no-op while already editing", () => {
