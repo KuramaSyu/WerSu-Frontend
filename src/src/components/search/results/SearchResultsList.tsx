@@ -5,7 +5,8 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Box, Stack } from "@mui/material";
+import { Box, Fab, Stack } from "@mui/material";
+import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import { useNavigate } from "react-router-dom";
 import {
   expandToSubtree,
@@ -41,6 +42,13 @@ const STRIP_THRESHOLD = 100;
 const STRIP_CHUNK = 100;
 // at most this many directory results in the combined list
 const DIRECTORY_RESULT_LIMIT = 3;
+// px scrolled before the "back to top" FAB appears: the user has to
+// actually scroll a bit, it never shows up on open
+const GO_TO_TOP_SHOW_PX = 240;
+// hysteresis so the FAB doesn't flicker around the threshold
+const GO_TO_TOP_HIDE_PX = 120;
+// only worth offering when the list is long enough to be scrolled
+const GO_TO_TOP_MIN_RESULTS = 10;
 
 // scrollable list of results with arrow-key navigation
 export const SearchResultsList: React.FC = () => {
@@ -72,6 +80,7 @@ export const SearchResultsList: React.FC = () => {
     "mouse",
   );
   const [hoverEnabled, setHoverEnabled] = useState(true);
+  const [showGoToTop, setShowGoToTop] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   // expand the directory selection to the full subtree when scope=subtree
@@ -281,49 +290,116 @@ export const SearchResultsList: React.FC = () => {
     setSelectedIndex(0);
   }, [debouncedSearch, searchType]);
 
+  // reveal the "back to top" FAB only once the user scrolled past the
+  // show threshold, and keep it until they come back near the top.
+  const goToTopVisible =
+    showGoToTop && results.length > GO_TO_TOP_MIN_RESULTS;
+  useEffect(() => {
+    const root = scrollRef.current;
+    if (!root) return;
+    const handleScroll = () => {
+      const y = root.scrollTop;
+      setShowGoToTop((prev) =>
+        prev ? y > GO_TO_TOP_HIDE_PX : y > GO_TO_TOP_SHOW_PX,
+      );
+    };
+    handleScroll();
+    root.addEventListener("scroll", handleScroll, { passive: true });
+    return () => root.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const handleGoToTop = useCallback(() => {
+    scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
   return (
     <Box
-      ref={scrollRef}
       sx={{
-        zIndex: 1301,
-        flex: 1,
-        overflowY: "auto",
-        scrollbarGutter: "stable",
         position: "relative",
-        overflowX: "hidden",
-        scrollbarWidth: "none",
+        flex: 1,
+        minHeight: 0,
+        display: "flex",
+        flexDirection: "column",
       }}
     >
-      <Box sx={{ width: "98%" }}>
-        <Stack spacing={1.5}>
-          {visibleResults.map((result, offset) => {
-            const index = visibleStartIndex + offset;
-            return (
-              <SearchResultRow
-                key={result.get_id()}
-                result={result}
-                index={index}
-                isSelected={index === selectedIndex}
-                hoverEnabled={hoverEnabled}
-                onSelect={handleSelect}
-                onActivate={handleActivate}
-              />
-            );
-          })}
-        </Stack>
+      <Box
+        ref={scrollRef}
+        sx={{
+          zIndex: 1301,
+          flex: 1,
+          minHeight: 0,
+          overflowY: "auto",
+          position: "relative",
+          overflowX: "hidden",
+          // scrollbar stays hidden; the "back to top" FAB is the
+          // scroll affordance instead
+          scrollbarWidth: "none",
+          msOverflowStyle: "none",
+          "&::-webkit-scrollbar": { display: "none" },
+        }}
+      >
+        <Box sx={{ width: "98%" }}>
+          <Stack spacing={1.5}>
+            {visibleResults.map((result, offset) => {
+              const index = visibleStartIndex + offset;
+              return (
+                <SearchResultRow
+                  key={result.get_id()}
+                  result={result}
+                  index={index}
+                  isSelected={index === selectedIndex}
+                  hoverEnabled={hoverEnabled}
+                  onSelect={handleSelect}
+                  onActivate={handleActivate}
+                />
+              );
+            })}
+          </Stack>
 
-        <SearchResultsEmptyState
-          isInitialLoading={isInitialLoading}
-          hasResults={results.length > 0}
-          searchQuery={debouncedSearch}
-        />
+          <SearchResultsEmptyState
+            isInitialLoading={isInitialLoading}
+            hasResults={results.length > 0}
+            searchQuery={debouncedSearch}
+          />
 
-        <InfiniteScrollSentinel
-          hasNextPage={hasNextPage}
-          isFetchingNextPage={isFetchingNextPage}
-          onLoadMore={handleLoadMore}
-        />
+          <InfiniteScrollSentinel
+            hasNextPage={hasNextPage}
+            isFetchingNextPage={isFetchingNextPage}
+            onLoadMore={handleLoadMore}
+          />
+        </Box>
       </Box>
+
+      {/* Back-to-top FAB: fades in after a real scroll, stays hidden
+          for short lists and right after opening. */}
+      <Fab
+        size="small"
+        color="primary"
+        aria-label="Scroll back to top"
+        aria-hidden={!goToTopVisible}
+        tabIndex={goToTopVisible ? 0 : -1}
+        // keep focus in the search input when the FAB is clicked
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={handleGoToTop}
+        sx={{
+          position: "absolute",
+          right: 12,
+          bottom: 12,
+          zIndex: 1302,
+          visibility: goToTopVisible ? "visible" : "hidden",
+          opacity: goToTopVisible ? 1 : 0,
+          transform: goToTopVisible ? "none" : "translateY(8px)",
+          transition: theme.transitions.create(
+            ["opacity", "transform", "visibility"],
+            {
+              duration: theme.transitions.duration.short,
+              easing: theme.transitions.easing.easeInOut,
+            },
+          ),
+        }}
+      >
+        <KeyboardArrowUpIcon />
+      </Fab>
     </Box>
   );
 };

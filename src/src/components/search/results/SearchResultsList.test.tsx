@@ -26,6 +26,7 @@ import { useSearchNotesStore } from "../../../zustand/useSearchNotesStore";
 vi.mock("@mui/material", () => ({
   Box: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   Stack: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  Fab: ({ children }: { children?: ReactNode }) => <button>{children}</button>,
 }));
 
 // Keep the row / empty / sentinel subtrees out of the test: this test only
@@ -36,7 +37,29 @@ vi.mock("./InfiniteScrollSentinel", () => ({ default: () => null }));
 
 vi.mock("../../../zustand/useThemeStore", () => ({
   useThemeStore: (selector: (state: { theme: unknown }) => unknown) =>
-    selector({ theme: {} }),
+    selector({
+      theme: {
+        // Minimal MUI-theme stub: the list only reads `transitions` (for
+        // the back-to-top FAB). Mirrors `theme.transitions.create`'s
+        // string output.
+        transitions: {
+          duration: { shortest: 100, shorter: 150, short: 200 },
+          easing: { easeInOut: "cubic-bezier(0.4, 0, 0.2, 1)" },
+          create: (
+            props: string | string[],
+            options: { duration?: number; easing?: string } = {},
+          ) => {
+            const list = Array.isArray(props) ? props : [props];
+            return list
+              .map(
+                (prop) =>
+                  `${prop} ${options.duration ?? 150}ms ${options.easing ?? "ease"}`,
+              )
+              .join(", ");
+          },
+        },
+      },
+    }),
 }));
 
 vi.mock("../../../api/queries/directoryQueries", () => ({
