@@ -9,6 +9,8 @@ import {
   alpha,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import { LEFT_PANEL_SECTION_ELEVATION } from "../../statics";
+import { FeatureFlagName, useFeatureStore } from "../../zustand/FeatureStore";
 
 export interface RailSectionProps {
   /** Section title. */
@@ -25,15 +27,31 @@ export interface RailSectionProps {
   collapsible?: boolean;
   /** Initial expanded state when collapsible. Defaults to true. */
   defaultExpanded?: boolean;
+  /**
+   * MUI elevation of the card surface. Drives the body fill: in dark mode
+   * every step up adds MUI's `Paper` white overlay (and a matching shadow),
+   * so this is the single knob for how light the section body reads.
+   * Defaults to `LEFT_PANEL_SECTION_ELEVATION` (1) to match the editor
+   * card; pass 0 for a flat, outlined-style card with no overlay.
+   */
+  elevation?: number;
 }
 
 /**
  * Paper card used by the left rails.
  *
- * The rail canvas stays on `background.default`; the card body uses the
- * paper surface and only the heading row gets a light primary wash. This
- * keeps every side rail on the same visual hierarchy as the Home rail
- * while still supporting collapsible sections (metadata, outline).
+ * The rail canvas stays on `background.default`; the card body is a
+ * `variant="elevation"` Paper, so its fill is `background.default` (or
+ * `background.paper` when FlatLayout is off) plus the elevation overlay MUI
+ * applies in dark mode — the same base + overlay composite the note editor
+ * card uses. The heading row keeps its light primary wash on top of that
+ * body, so the header still reads as tinted without owning a color of its
+ * own.
+ *
+ * At `elevation={0}` there is no overlay, so the card falls back to a
+ * divider border to keep its edge visible. The default comes from
+ * `LEFT_PANEL_SECTION_ELEVATION` in `statics.tsx` so it can be tuned next
+ * to the rail / main-panel elevations.
  */
 export const RailSection: React.FC<RailSectionProps> = ({
   title,
@@ -43,8 +61,12 @@ export const RailSection: React.FC<RailSectionProps> = ({
   children,
   collapsible = false,
   defaultExpanded = true,
+  elevation = LEFT_PANEL_SECTION_ELEVATION,
 }) => {
   const [expanded, setExpanded] = useState(defaultExpanded);
+  const flatLayout = useFeatureStore(
+    (state) => state.flags[FeatureFlagName.FlatLayout],
+  );
   const bodyVisible = !collapsible || expanded;
   const toggle = collapsible
     ? () => setExpanded((current) => !current)
@@ -53,13 +75,20 @@ export const RailSection: React.FC<RailSectionProps> = ({
   return (
     <Paper
       component="section"
-      variant="outlined"
-      elevation={0}
+      variant="elevation"
+      elevation={elevation}
       sx={{
         minWidth: 0,
         borderRadius: 2,
+        // The body fill is the Paper default (`background.paper` + the
+        // dark-mode elevation overlay); only the flat variant needs an
+        // explicit outline, since elevation supplies its own edge shadow.
+        border: elevation === 0 ? "1px solid" : "none",
         borderColor: "divider",
-        backgroundColor: "background.paper",
+        // Match the note editor's base: FlatLayout paints the shell/flat
+        // canvas tone, otherwise the paper tone. The elevation overlay
+        // above it is what actually differentiates the card from its rail.
+        backgroundColor: flatLayout ? "background.default" : "background.paper",
         overflow: "hidden",
       }}
     >

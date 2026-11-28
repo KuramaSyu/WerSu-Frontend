@@ -27,7 +27,7 @@ import { useAppearanceSettings } from "../../zustand/useAppearanceSettings";
 import { useUpdateNote } from "../../api/queries/useNoteQueries";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { useLayout } from "../../LayoutProvider";
-import { M2, M3 } from "../../statics";
+import { M2, M3, MAIN_PANEL_ELEVATION } from "../../statics";
 import { getNoteEditorWidths } from "./Panel/noteWidthMode";
 import { DialogProvider } from "./InputDialog";
 import { LiveUsersBridge } from "./LiveUsersBridge";
@@ -365,9 +365,10 @@ const NoteEditorCoreInner: React.FC<NoteEditorCoreProps> = ({
   return (
     <>
       <Paper
-        // AppShell already provides the page card surface; the editor
-        // sits on top with elevation 0 so it does not double-card.
-        elevation={1}
+        // AppShell already provides the page card surface; the editor sits
+        // on top of it at the main-panel elevation so both surfaces resolve
+        // to the same base + overlay composite.
+        elevation={MAIN_PANEL_ELEVATION}
         sx={{
           // The frosted layer below is absolutely positioned relative to
           // this card.

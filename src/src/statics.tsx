@@ -45,6 +45,16 @@ export const TOP_BAR_ELEVATION = 4;
 export const RAIL_ELEVATION = 2;
 
 /**
+ * Elevation of the section cards stacked inside the left rail
+ * (`RailSection`). Together with the card's base color (FlatLayout picks
+ * `background.default`, otherwise `background.paper`) this has to match
+ * the note editor card — which uses `MAIN_PANEL_ELEVATION` — for a rail
+ * section body to resolve to the same color once the rail's inactive
+ * opacity is lifted on hover.
+ */
+export const LEFT_PANEL_SECTION_ELEVATION = 2;
+
+/**
  * M5 is too big and M4 is too small
  */
 export const TOP_BAR_HEIGHT = "3.5rem";
@@ -82,7 +92,7 @@ export const MOBILE_DRAWER_WIDTH = "calc(100vw * 8 / 13)";
 /**
  * Elevation for Main Panel. All others should have elevation below that
  */
-export const MAIN_PANEL_ELEVATION = 1;
+export const MAIN_PANEL_ELEVATION = 2;
 
 /**
  * Backdrop blur shared by every modal-like surface (`Modal`,
